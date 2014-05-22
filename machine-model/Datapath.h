@@ -76,6 +76,7 @@ class Datapath
   void dumpStats();
   void writeFinalLevel();
   void writeGlobalIsolated();
+  void writePerCycleActivity();
   void writeMicroop(std::vector<int> &microop);
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
