@@ -12,6 +12,7 @@ LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
          -lcommonfuncs -ligraph -lz -lgzstream -ldramsim
 libuncore : $(OBJS)
 	$(CXX) -shared -fPIC -o ../lib/libuncore.so $(OBJS)
+	rm *.o
 
 Datapath.o : Datapath.h Datapath.cpp
 	$(CXX) $(CFLAGS) Datapath.cpp

@@ -11,15 +11,7 @@ LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
          -lcommonfuncs -ligraph -lz -lgzstream
 libprofiling : $(OBJS)
 	$(CXX) -shared -fPIC -o ../lib/libprofiling.so $(OBJS)
-
-level_profile.o : level_profile.h level_profile.cpp
-	$(CXX) $(CFLAGS) level_profile.cpp
-  
-priority_profile.o : priority_profile.h priority_profile.cpp
-	$(CXX) $(CFLAGS) priority_profile.cpp
-
-register_profile.o : register_profile.h register_profile.cpp
-	$(CXX) $(CFLAGS) register_profile.cpp
+	rm *.o
 
 profile_base_address.o : profile_base_address.h profile_base_address.cpp
 	$(CXX) $(CFLAGS) profile_base_address.cpp

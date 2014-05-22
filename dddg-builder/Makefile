@@ -9,8 +9,8 @@ LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
          -L../lib/\
          -lcommonfuncs -ligraph -lz -lgzstream
 libdddgbuild : $(OBJS)
-	$(CXX) -shared -fPIC -o \
-  ../lib/libdddgbuild.so $(OBJS)
+	$(CXX) -shared -fPIC -o ../lib/libdddgbuild.so $(OBJS)
+	rm *.o
 
 dddg.o : dddg.h dddg.cpp
 	$(CXX) $(CFLAGS) dddg.cpp

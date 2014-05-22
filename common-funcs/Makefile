@@ -11,6 +11,7 @@ LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/lib/ -ligraph -lz
 #	rm *.o
 libcommonfuncs : $(OBJS)
 	$(CXX) -shared -o ../lib/libcommonfuncs.so $(OBJS)
+	rm *.o
 
 file_func.o : file_func.h file_func.cpp
 	$(CXX) $(CFLAGS) file_func.cpp

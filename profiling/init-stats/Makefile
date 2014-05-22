@@ -10,6 +10,7 @@ LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
          -lcommonfuncs -ligraph -lz -lgzstream
 libtraceprofiler : $(OBJS)
 	$(CXX) -shared -fPIC -o ../..//lib/libtraceprofiler.so $(OBJS)
+	rm *.o
 
 traceProfiler.o : traceProfiler.h traceProfiler.cpp
 	$(CXX) $(CFLAGS) traceProfiler.cpp
