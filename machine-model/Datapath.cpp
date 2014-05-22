@@ -43,6 +43,8 @@ void Datapath::clearGlobalGraph()
   writeMicroop(microop);
   newLevel.assign(numTotalNodes, 0);
   globalIsolated.assign(numTotalNodes, 1);
+  regEntry *p = new regEntry[1];
+  regStats.assign(numTotalNodes, *p);
 }
 
 void Datapath::globalOptimizationPass()
@@ -912,6 +914,7 @@ void Datapath::dumpStats()
   writeFinalLevel();
   writeGlobalIsolated();
   writePerCycleActivity();
+  writeRegStats();
 }
 
 //localOptimizationFunctions
@@ -1837,6 +1840,16 @@ void Datapath::readGraph(igraph_t *tmp_g)
 }
 
 //initFunctions
+void Datapath::writeRegStats()
+{
+  string bn(benchName);
+  string tmp_name = bn + "_reg_stats";
+  ofstream stats;
+  stats.open(tmp_name.c_str());
+  for (unsigned level_id = 0; level_id < cycle; ++level_id)
+    stats << regStats.at(level_id).size << "," << regStats.at(level_id).reads << "," << regStats.at(level_id).writes << endl; 
+  stats.close();
+}
 void Datapath::writePerCycleActivity()
 {
   string bn(benchName);
@@ -2081,7 +2094,7 @@ int Datapath::clearGraph()
   string gn(graphName);
 
   cerr << gn << "," << cycle-prevCycle << endl;
-
+  updateRegStats();
   edgeLatency.clear();
   callLatency.clear();
   numParents.clear();
@@ -2093,7 +2106,40 @@ int Datapath::clearGraph()
   igraph_destroy(g);
   return cycle-prevCycle;
 }
-
+void Datapath::updateRegStats()
+{
+  for(unsigned node_id = 0; node_id < numGraphNodes; node_id++)
+  {
+    if (isolated.at(node_id))
+      continue;
+    int node_level = newLevel.at(node_id);
+    igraph_vs_t 	vs_children;
+    igraph_vit_t 	vit_children_it; 
+    igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
+    igraph_vit_create(g, vs_children, &vit_children_it);
+    
+    int max_children_level 		= node_level;
+    while (!IGRAPH_VIT_END(vit_children_it))
+    {
+      int child_id = (int)IGRAPH_VIT_GET(vit_children_it);
+      IGRAPH_VIT_NEXT(vit_children_it);
+      if (is_memory_op(microop.at(child_id)) && 
+          (!is_store_op(microop.at(node_id))))
+        continue;
+      int child_level = newLevel.at(child_id);
+      if (child_level > max_children_level)
+        max_children_level = child_level;
+      if (child_level > node_level )
+        regStats.at(child_level).reads++;
+    }
+    igraph_vs_destroy(&vs_children);
+    igraph_vit_destroy(&vit_children_it);
+    if (max_children_level > node_level)
+      regStats.at(node_level).writes++;
+    for (int i = node_level; i < max_children_level; ++i)
+      regStats.at(i).size++;
+  }
+}
 bool Datapath::step()
 {
   cerr << "===========Stepping============" << endl;

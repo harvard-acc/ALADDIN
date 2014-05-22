@@ -50,10 +50,8 @@ int main( int argc, const char *argv[])
   method_latency.open(bench+ "_method_latency", ofstream::out);
   for(unsigned method_id = 0; method_id < v_method_order.size(); ++method_id)
   {
-    
     string current_dynamic_method;
     string graph_file;
-    
     if (method_id != v_method_order.size() -1)
     {
       current_dynamic_method = v_method_order.at(method_id);
@@ -64,7 +62,6 @@ int main( int argc, const char *argv[])
       current_dynamic_method = bench;
       graph_file = bench;
     }
-    
     cerr << current_dynamic_method << endl;
     
     unsigned base_method;
@@ -88,5 +85,5 @@ int main( int argc, const char *argv[])
   }
   method_latency.close();
   acc->dumpStats();
-
+  
 }

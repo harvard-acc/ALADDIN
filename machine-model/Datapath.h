@@ -23,7 +23,12 @@ struct partitionEntry
   unsigned array_size; //num of elements
   unsigned part_factor;
 };
-
+struct regEntry
+{
+  int size;
+  int reads;
+  int writes;
+};
 struct callDep
 {
   string caller;
@@ -77,6 +82,8 @@ class Datapath
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity();
+  void writeRegStats();
+  void updateRegStats();
   void writeMicroop(std::vector<int> &microop);
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
@@ -127,6 +134,7 @@ class Datapath
   Scratchpad *scratchpad;
   std::vector<bool> globalIsolated;
   std::vector<int> newLevel;
+  std::vector<regEntry> regStats;
   std::vector<int> microop;
   std::vector<string> baseAddress;
 
