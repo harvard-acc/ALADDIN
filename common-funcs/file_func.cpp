@@ -533,6 +533,8 @@ void update_method_latency (string bench, unordered_map<int, int> &call_latency)
     }
     method_latency.close();
   }
+#ifdef DEBUG
   std::cerr << "leaving update_method_latency " << endl;
+#endif
 }
 

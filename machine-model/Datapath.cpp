@@ -2430,7 +2430,7 @@ void Datapath::readInductionConfig(std::unordered_set<string> &ind_config)
     
     ostringstream oss;
     oss << methodid << "-" << varid ;
-    cerr << "ind_config inserting: " << oss.str() << endl;
+    //cerr << "ind_config inserting: " << oss.str() << endl;
     ind_config.insert(oss.str());
   }
   config_file.close();

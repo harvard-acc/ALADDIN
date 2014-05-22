@@ -62,7 +62,6 @@ int main( int argc, const char *argv[])
       current_dynamic_method = bench;
       graph_file = bench;
     }
-    cerr << current_dynamic_method << endl;
     
     unsigned base_method;
     int dynamic_count;
@@ -78,7 +77,7 @@ int main( int argc, const char *argv[])
     while(!acc->step())
       spad->step();
     int cycles = acc->clearGraph();
-    cerr << cycles << endl;
+    cerr << current_dynamic_method << "," << cycles << endl;
     method_latency 
       << map_method_2_callinst[current_dynamic_method]  << ","
       << cycles << endl;
