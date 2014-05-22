@@ -11,6 +11,7 @@
 #include "file_func.h"
 #include "iljit_func.h"
 #include "graph_func.h"
+#include "generic_func.h"
 #include "./Scratchpad.h"
 
 using namespace std;

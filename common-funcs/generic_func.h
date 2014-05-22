@@ -6,4 +6,5 @@ using namespace std;
 int max_value(const vector<int> array, int start, int end);
 
 int min_value(const vector<int> array, int start, int end);
+unsigned next_power_of_two(unsigned int x);
 #endif

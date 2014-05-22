@@ -160,9 +160,6 @@ void Datapath::cleanLeafNodes()
   tmp_g = new igraph_t;
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   /*track the number of children each node has*/
   vector<int> num_of_children(numTotalNodes, 0);
   initialized_num_of_children(tmp_g, num_of_children);
@@ -219,9 +216,6 @@ void Datapath::removeInductionDependence()
   tmp_g = new igraph_t;
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<int> par4vid(numTotalNodes, 0);
   initParVid(par4vid, 4);
 
@@ -282,9 +276,6 @@ void Datapath::removeAddressCalculation()
   tmp_g = new igraph_t;
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<bool> to_remove_edges(num_edges, 0);
   std::vector<newEdge> to_add_edges;
 
@@ -407,9 +398,6 @@ void Datapath::removeBranchEdges()
   tmp_g = new igraph_t;
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<unsigned> edge_latency(num_edges, 0);
   initEdgeLatency(edge_latency);
   
@@ -621,9 +609,6 @@ void Datapath::methodGraphSplitter()
       updated[node_id] = 1;
       ++node_id;
     }
-#ifdef DEBUG
-    cerr << "ended node_id," << node_id << endl;
-#endif    
     //write output files
     ofstream new_graph_file;
     ogzstream new_edgeparid_file, new_edgevarid_file, new_edgelatency_file;
@@ -673,7 +658,7 @@ void Datapath::methodGraphSplitter()
       igraph_integer_t from, to;
       igraph_edge(tmp_g, edge_id, &from, &to);
       
-      if ((int)from == (int)to)
+      if ((int)from == (int)to || (int)from == (int) call_inst || (int) to == int(call_inst))
         continue;
       //cerr << "from,to," << from << "," << to << endl;
       auto split_from_it = to_split_nodes.find((int)from);
@@ -763,9 +748,6 @@ void Datapath::addCallDependence()
   tmp_g = new igraph_t;
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<newEdge> to_add_edges;
   int last_call = -1;
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
@@ -861,9 +843,6 @@ void Datapath::scratchpadPartition()
   std::unordered_map<unsigned, partitionEntry> part_config;
   readPartitionConfig(part_config);
   //set scratchpad
-#ifdef DEBUG
-  cerr << "Before Setting Scratchpad" << endl;
-#endif
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
     unsigned base_addr = it->first;
@@ -907,7 +886,8 @@ void Datapath::scratchpadPartition()
       if (!p_type.compare("block"))  //block partition
       {
         ostringstream oss;
-        oss << node_base << "-" << (int) (rel_addr / ceil (num_of_elements / p_factor)) ;
+        unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
+        oss << node_base << "-" << (int) (rel_addr / ceil (num_of_elements_in_2 / p_factor)) ;
         baseAddress.at(node_id) = oss.str();
       }
       else // (!p_type.compare("cyclic")), cyclic partition
@@ -963,9 +943,6 @@ void Datapath::loopUnrolling()
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
   unsigned num_nodes = (unsigned) igraph_vcount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<int> instid(num_nodes, 0);
   initInstID(instid);
 
@@ -1056,9 +1033,6 @@ void Datapath::removeSharedLoads()
   readGraph(tmp_g); 
   unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
   unsigned num_nodes = (unsigned) igraph_vcount(tmp_g);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
-#endif
   std::vector<unsigned> address(num_nodes, 0);
   initAddress(address);
   
@@ -2087,7 +2061,7 @@ void Datapath::setGraphForStepping(string graph_name)
   
   updateGlobalIsolated();
 
-  update_method_latency(benchName, callLatency);
+  //update_method_latency(benchName, callLatency);
   numParents.assign(numGraphNodes, 0);
   totalConnectedNodes = initialized_num_of_parents(g, isolated, numParents);
 #ifdef DEBUG
@@ -2117,7 +2091,7 @@ int Datapath::clearGraph()
 #endif
   updateRegStats();
   edgeLatency.clear();
-  callLatency.clear();
+  //callLatency.clear();
   numParents.clear();
   isolated.clear();
   std::vector<int>().swap(edgeLatency);
@@ -2182,18 +2156,38 @@ bool Datapath::step()
 
 void Datapath::stepExecutedQueue()
 {
+#ifdef DEBUG
+  cerr << "======stepping executed queue " << endl;
+#endif
+  
   auto it = executedQueue.begin();
+  it = executedQueue.begin();
+  while (it != executedQueue.end())
+  {
+#ifdef DEBUG
+    cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+#endif
+    it++;
+  }
+#ifdef DEBUG
+  cerr << "======real stepping executed queue " << endl;
+#endif
+  it = executedQueue.begin();
   while (it != executedQueue.end())
   {
     //it->second is the number of cycles to execute current nodes
-    //cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+#ifdef DEBUG
+    cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+#endif
     if (it->second <= cycleTime)
     {
       unsigned node_id = it->first;
       executedNodes++;
       newLevel.at(node_id) = cycle;
-      updateChildren(node_id, it->second);
+      //updateChildren(node_id, it->second);
       it = executedQueue.erase(it);
+      //it->second = 0;
+      //it++;
     }
     else
     {
@@ -2201,6 +2195,9 @@ void Datapath::stepExecutedQueue()
       it++;
     }
   }
+#ifdef DEBUG
+  cerr << "======End stepping executed queue " << endl;
+#endif
 }
 
 void Datapath::updateChildrenForNextStep(unsigned node_id)
@@ -2264,6 +2261,9 @@ void Datapath::updateChildrenForCurrentStep(unsigned node_id)
 
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
+#ifdef DEBUG
+  cerr << "updating the children of " << node_id << endl;
+#endif
   igraph_vs_t vs_children;
   igraph_vit_t vit_children;
   igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
@@ -2271,6 +2271,9 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
   while (!IGRAPH_VIT_END(vit_children))
   {
     unsigned child_id = (unsigned) IGRAPH_VIT_GET(vit_children);
+#ifdef DEBUG
+    cerr << "child_id, numParents: " << child_id << "," << numParents[child_id] << endl;
+#endif
     if (numParents[child_id] > 0)
     {
       numParents[child_id]--;
@@ -2279,7 +2282,10 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
         if (is_memory_op(microop.at(child_id)))
           addMemReadyNode(child_id);
         else
+        {
           executedQueue.push_back(make_pair(child_id, latencySoFar + node_latency(microop.at(child_id))));
+          updateChildren(child_id, latencySoFar + node_latency(microop.at(child_id)));
+        }
       }
     }
     IGRAPH_VIT_NEXT(vit_children);
@@ -2331,18 +2337,19 @@ int Datapath::fireNonMemNodes()
     firedNodes++;
     //if call instruction, put in executedQueue and start countdown
     //else update its children
-    if (callLatency.find(node_id) != callLatency.end())
-    {
-      int method_cycle = callLatency[node_id];
-      executedQueue.push_back(make_pair(node_id, method_cycle-1));
-    }
-    else
-    {
+    //if (callLatency.find(node_id) != callLatency.end())
+    //{
+      //int method_cycle = callLatency[node_id];
+      //executedQueue.push_back(make_pair(node_id, cycleTime * (method_cycle-1)));
+      //updateChildren(node_id, cycleTime * (method_cycle -1));
+    //}
+    //else
+    //{
       //find its children that can execute in the same cycle
       //FIXME floating point node latency, check cycle boundary
       executedQueue.push_back(make_pair(node_id, node_latency(microop.at(node_id))));
       updateChildren(node_id, node_latency(microop.at(node_id)));
-    }
+      //}
     it = nonMemReadyQueue.erase(it);
   }
 #ifdef DEBUG

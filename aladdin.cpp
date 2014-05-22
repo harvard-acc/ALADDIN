@@ -40,7 +40,6 @@ int main( int argc, const char *argv[])
   acc->globalOptimizationPass();
   
   acc->clearGlobalGraph();
-
   vector<string> v_method_order;
   unordered_map<string, int > map_method_2_callinst;
   init_method_order(bench, v_method_order, map_method_2_callinst);
@@ -73,6 +72,7 @@ int main( int argc, const char *argv[])
     acc->optimizationPass();
     //graph, edgeLatency, edgeType fixed
     
+    cerr << current_dynamic_method  << endl;
     acc->setGraphForStepping(graph_file);
     while(!acc->step())
       spad->step();
