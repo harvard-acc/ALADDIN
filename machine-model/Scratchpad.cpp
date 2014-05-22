@@ -70,3 +70,12 @@ unsigned Scratchpad::findPartitionID(string baseName)
     exit(0);
   }
 }
+
+void Scratchpad::partitionNames(std::vector<string> &names)
+{
+  for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
+  {
+    string base_name = base_it->first;
+    names.push_back(base_name);
+  }
+}

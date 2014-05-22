@@ -20,6 +20,7 @@ class Scratchpad
   bool partitionExist(string baseName);
   unsigned findPartitionID(string baseName);
   float addressRequest(string baseName);
+  void partitionNames(std::vector<string> &names);
 
  private:
   unsigned numOfPartitions;
