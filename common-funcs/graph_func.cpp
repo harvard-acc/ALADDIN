@@ -77,7 +77,9 @@ return the total number of connected nodes*/
 unsigned int initialized_num_of_parents(igraph_t *g, vector<bool>
 v_isolated, vector<int> &num_of_parents)
 {
+#ifdef DEBUG
   std::cerr << "in initialized_num_of_parents" << endl;
+#endif
   unsigned num_of_vertices = (unsigned) igraph_vcount(g);
   unsigned total_connected_nodes = 0;
   for (unsigned int i = 0; i < num_of_vertices; ++i)
@@ -98,13 +100,17 @@ v_isolated, vector<int> &num_of_parents)
       igraph_vit_destroy(&vit_parents);
     }
   }
+#ifdef DEBUG
   std::cerr << "leaving initialized_num_of_parents" << endl;
+#endif
   return total_connected_nodes;
 }
 
 int isolated_nodes (igraph_t *g, unsigned num_of_vertices, vector<bool> &v_isolated)
 {
+#ifdef DEBUG
   std::cerr << "in isolate_nodes" << endl;
+#endif
   int isolated = 0;
   for (unsigned int node_id = 0; node_id < num_of_vertices; node_id++)
   {
@@ -130,6 +136,8 @@ int isolated_nodes (igraph_t *g, unsigned num_of_vertices, vector<bool> &v_isola
     igraph_vs_destroy(&vs_parent);
     igraph_vit_destroy(&vit_parent_it);
   }
+#ifdef DEBUG
   std::cerr << "leaving  isolate_nodes" << endl;
+#endif
   return isolated;
 }

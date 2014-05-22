@@ -44,6 +44,9 @@ void Datapath::clearGlobalGraph()
   newLevel.assign(numTotalNodes, 0);
   globalIsolated.assign(numTotalNodes, 1);
   regEntry *p = new regEntry[1];
+  p->size = 0;
+  p->reads = 0;
+  p->writes = 0;
   regStats.assign(numTotalNodes, *p);
 }
 
@@ -561,8 +564,9 @@ void Datapath::methodGraphSplitter()
   {
     unsigned method_node_id = (unsigned) VECTOR(v_topological)[method_i];
     string method_name = method_node.at(method_node_id);
+#ifdef DEBUG
     cerr << "current method: " << method_name << endl;
-    
+#endif    
     //find its ony parent
     igraph_vs_t vs_method_parent;
     igraph_vit_t vit_method_parent;
@@ -577,7 +581,9 @@ void Datapath::methodGraphSplitter()
     int method_edgeid = check_edgeid(parent_method, method_node_id, tmp_method_g);
     int call_inst = method_edge.at(method_edgeid);
 
+#ifdef DEBUG
     cerr << "call_inst," << call_inst << endl;
+#endif    
     method_order << method_name << "," <<
       method_node.at(parent_method) << "," << call_inst << endl;
     
@@ -615,8 +621,9 @@ void Datapath::methodGraphSplitter()
       updated[node_id] = 1;
       ++node_id;
     }
+#ifdef DEBUG
     cerr << "ended node_id," << node_id << endl;
-    
+#endif    
     //write output files
     ofstream new_graph_file;
     ogzstream new_edgeparid_file, new_edgevarid_file, new_edgelatency_file;
@@ -854,13 +861,17 @@ void Datapath::scratchpadPartition()
   std::unordered_map<unsigned, partitionEntry> part_config;
   readPartitionConfig(part_config);
   //set scratchpad
+#ifdef DEBUG
   cerr << "Before Setting Scratchpad" << endl;
+#endif
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
     unsigned base_addr = it->first;
     unsigned size = it->second.array_size;
     unsigned p_factor = it->second.part_factor;
+#ifdef DEBUG
     cerr << base_addr << "," << size << "," << p_factor << endl;
+#endif
     for ( unsigned i = 0; i < p_factor ; i++)
     {
       ostringstream oss;
@@ -868,7 +879,9 @@ void Datapath::scratchpadPartition()
       scratchpad->setScratchpad(oss.str(), size);
     }
   }
+#ifdef DEBUG
   cerr << "End Setting Scratchpad" << endl;
+#endif
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
     unsigned node_base = orig_base.at(node_id);
@@ -1791,9 +1804,9 @@ void Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
   new_edgelatency.close();
   new_edgeparid.close();
   new_edgevarid.close();
-//#ifdef DEBUG
-  //std::cerr << "=======End Write Graph With Isolated Edges=====" << std::endl;
-//#endif
+#ifdef DEBUG
+  std::cerr << "=======End Write Graph With Isolated Edges=====" << std::endl;
+#endif
 }
 
 void Datapath::readMethodGraph(igraph_t *tmp_g)
@@ -2057,7 +2070,9 @@ void Datapath::setGraphForStepping(string graph_name)
     std::cerr << "no such file: " << graph_file_name << std::endl;
     exit(0);
   }
+#ifdef DEBUG
   std::cerr << "========Setting Graph======" << std::endl;
+#endif
   igraph_read_graph_edgelist(g, fp, 0, 1);
   fclose(fp);
   
@@ -2075,7 +2090,9 @@ void Datapath::setGraphForStepping(string graph_name)
   update_method_latency(benchName, callLatency);
   numParents.assign(numGraphNodes, 0);
   totalConnectedNodes = initialized_num_of_parents(g, isolated, numParents);
+#ifdef DEBUG
   cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
+#endif
 
   executedNodes = 0;
 
@@ -2086,14 +2103,18 @@ void Datapath::setGraphForStepping(string graph_name)
   executedQueue.clear();
 
   initReadyQueue();
+#ifdef DEBUG
   cerr << "End of Setting Graph: " << graph_name << endl;
+#endif
 }
 
 int Datapath::clearGraph()
 {
   string gn(graphName);
 
+#ifdef DEBUG
   cerr << gn << "," << cycle-prevCycle << endl;
+#endif
   updateRegStats();
   edgeLatency.clear();
   callLatency.clear();
@@ -2142,13 +2163,17 @@ void Datapath::updateRegStats()
 }
 bool Datapath::step()
 {
+#ifdef DEBUG
   cerr << "===========Stepping============" << endl;
+#endif
   int firedNodes = fireNonMemNodes();
   firedNodes += fireMemNodes();
 
   stepExecutedQueue();
 
+#ifdef DEBUG
   cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
+#endif
   cycle++;
   if (executedNodes == totalConnectedNodes)
     return 1;
@@ -2285,13 +2310,17 @@ int Datapath::fireMemNodes()
     else
       ++it;
   }
+#ifdef DEBUG
   cerr << "fired Memory Nodes," << firedNodes << endl;
+#endif
   return firedNodes;
 }
 
 int Datapath::fireNonMemNodes()
 {
+#ifdef DEBUG
   cerr << "=========Firing NonMemory Nodes========" << endl;
+#endif
   int firedNodes = 0;
   //assume the Queue is sorted by somehow
   //non considering user's constraints on num of functional units
@@ -2316,13 +2345,17 @@ int Datapath::fireNonMemNodes()
     }
     it = nonMemReadyQueue.erase(it);
   }
+#ifdef DEBUG
   cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
+#endif
   return firedNodes;
 }
 
 void Datapath::initReadyQueue()
 {
+#ifdef DEBUG
   cerr << "======Initializing Ready Queue=========" << endl;
+#endif
   for(unsigned i = 0; i < numGraphNodes; i++)
   {
     if (numParents[i] == 0 && isolated[i] != 1)
@@ -2333,7 +2366,9 @@ void Datapath::initReadyQueue()
         addNonMemReadyNode(i);
     }
   }
+#ifdef DEBUG
   cerr << "InitialReadyQueueSize: Memory," << memReadyQueue.size() << ", Non-Mem," << nonMemReadyQueue.size() << endl;
+#endif
 }
 
 void Datapath::addMemReadyNode(unsigned node_id)
@@ -2373,7 +2408,7 @@ void Datapath::readUnrollingConfig(std::unordered_map<string, pair<int, int> > &
     ostringstream oss;
     oss << methodid << "-" << instid;
     unrolling_config[oss.str()] = make_pair(factor, 0);
-    cerr << oss.str() << "," << factor << endl;
+    //cerr << oss.str() << "," << factor << endl;
   }
   config_file.close();
 }

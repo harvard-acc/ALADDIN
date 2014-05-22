@@ -3,7 +3,6 @@ OBJS = Datapath.o Scratchpad.o
        asicCore.o
 #CXX = /group/brooks/shao/System/bin/g++
 DEBUG = -DDEBUG
-#DEBUG = -DPRINT1
 CFLAGS = -Wall -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
          -I/group/brooks/shao/System/include/igraph \
          -I../common-funcs/

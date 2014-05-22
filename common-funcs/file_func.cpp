@@ -30,7 +30,9 @@ void init_method_order(string bench, vector<string> &v_method_order,
 void read_file(string file_name, vector<int> &output)
 {
   ifstream file;
+#ifdef DEBUG
   cerr << file_name << endl;
+#endif
   file.open(file_name.c_str());
   string wholeline;
   if (file.is_open())
@@ -54,7 +56,9 @@ void read_file(string file_name, vector<int> &output)
 void read_string_file(string file_name, vector<string> &output)
 {
   ifstream file;
+#ifdef DEBUG
   cerr << file_name << endl;
+#endif
   file.open(file_name.c_str());
   string wholeline;
   if (file.is_open())
@@ -80,7 +84,9 @@ void read_gzip_string_file ( string gzip_file_name, unsigned size,
 {
   igzstream gzip_file;
   gzip_file.open(gzip_file_name.c_str());
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   unsigned i = 0;
   string wholeline;
   while(!gzip_file.eof() && i< size)
@@ -102,7 +108,9 @@ void read_gzip_float_file(string gzip_file_name, unsigned size, vector<float> &o
 {
   igzstream gzip_file;
   gzip_file.open(gzip_file_name.c_str());
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   unsigned i = 0;
   string wholeline;
   while(!gzip_file.eof() && i< size)
@@ -126,7 +134,9 @@ Input: gzip-file-name, size of elements, vector to write to
 void read_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
 {
   igzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   if (fileExists(gzip_file_name))
   {
     gzip_file.open(gzip_file_name.c_str());
@@ -141,7 +151,9 @@ void read_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
       i++;
     }
     gzip_file.close();
+#ifdef DEBUG
     cerr << "end of reading file" << gzip_file_name << endl;
+#endif
   }
   else
   {
@@ -153,7 +165,9 @@ void read_gzip_unsigned_file(string gzip_file_name, unsigned size,
   vector<unsigned> &output)
 {
   igzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   unsigned i = 0;
   string wholeline;
@@ -174,7 +188,9 @@ Input: gzip-file-name, size of elements, vector to write to
 void read_gzip_file_no_size(string gzip_file_name, vector<int> &output)
 {
   igzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   unsigned i = 0;
   string wholeline;
@@ -200,7 +216,9 @@ void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size,
   vector< pair<unsigned, unsigned> > &output)
 {
   igzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   unsigned i = 0;
   string wholeline;
@@ -230,7 +248,9 @@ void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size,
   vector<unsigned> &output)
 {
   igzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << "," << size << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   unsigned i = 0;
   string wholeline;
@@ -280,7 +300,9 @@ void write_string_file(string file_name, unsigned size, vector<string> &output)
 void write_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
 {
   ogzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   for (unsigned i = 0; i < size; ++i)
     gzip_file << output.at(i) << endl;
@@ -290,7 +312,9 @@ void write_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
 void write_gzip_bool_file(string gzip_file_name, unsigned size, vector<bool> &output)
 {
   ogzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   for (unsigned i = 0; i < size; ++i)
     gzip_file << output.at(i) << endl;
@@ -301,7 +325,9 @@ void write_gzip_unsigned_file(string gzip_file_name, unsigned size,
 vector<unsigned> &output)
 {
   ogzstream gzip_file;
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   gzip_file.open(gzip_file_name.c_str());
   for (unsigned i = 0; i < size; ++i)
     gzip_file << output.at(i) << endl;
@@ -312,7 +338,9 @@ void write_gzip_float_file(string gzip_file_name, unsigned size, vector<float> &
 {
   ogzstream gzip_file;
   gzip_file.open(gzip_file_name.c_str());
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   for (unsigned i = 0; i < size; ++i)
   {
     gzip_file << output.at(i) << endl;
@@ -324,7 +352,9 @@ void write_gzip_string_file(string gzip_file_name, unsigned size, vector<string>
 {
   ogzstream gzip_file;
   gzip_file.open(gzip_file_name.c_str());
+#ifdef DEBUG
   cerr << gzip_file_name << endl;
+#endif
   for (unsigned i = 0; i < size; ++i)
   {
     gzip_file << output.at(i) << endl;
@@ -475,7 +505,9 @@ bool fileExists (const string file_name)
 
 void update_method_latency (string bench, unordered_map<int, int> &call_latency)
 {
+#ifdef DEBUG
   std::cerr << "in update_method_latency " << endl;
+#endif
   string method_latency_file(bench + "_method_latency");
   
   if (fileExists(method_latency_file))
