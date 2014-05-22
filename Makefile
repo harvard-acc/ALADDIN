@@ -15,7 +15,6 @@ LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
 aladdin : $(OBJS)
 	$(CXX) -o ./aladdin $(OBJS) $(LFLAGS) 
 	rm *.o 
-	rm alaadin
 
 aladdin.o : aladdin.cpp
 	$(CXX) $(CFLAGS) aladdin.cpp

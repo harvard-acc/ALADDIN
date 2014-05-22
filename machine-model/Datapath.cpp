@@ -1839,7 +1839,59 @@ void Datapath::readGraph(igraph_t *tmp_g)
 //initFunctions
 void Datapath::writePerCycleActivity()
 {
-  
+  string bn(benchName);
+  std::vector<int> mul_activity(cycle, 0);
+  std::vector<int> add_activity(cycle, 0);
+  std::unordered_map< string, std::vector<int> > ld_activity;
+  std::unordered_map< string, std::vector<int> > st_activity;
+  std::vector<string> partition_names;
+  scratchpad->partitionNames(partition_names);
+  for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
+  {
+    string p_name = *it;
+    std::vector<int> tmp_activity(cycle, 0);
+    ld_activity[p_name] = tmp_activity;
+    st_activity[p_name] = tmp_activity;
+  }
+  //cerr <<  "start activity" << endl;
+  for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
+  {
+    if (globalIsolated.at(node_id))
+      continue;
+    int tmp_level = newLevel.at(node_id);
+    if (microop.at(node_id) == IRMUL || microop.at(node_id) == IRMULOVF ||
+        microop.at(node_id) == IRDIV)
+      mul_activity.at(tmp_level) += 1;
+    else if  (microop.at(node_id) == IRADD || microop.at(node_id) == IRADDOVF ||
+      microop.at(node_id) == IRSUB || microop.at(node_id) == IRSUBOVF)
+      add_activity.at(tmp_level) += 1;
+    else if (is_load_op(microop.at(node_id)))
+    {
+      string base_addr = baseAddress.at(node_id);
+      ld_activity[base_addr].at(tmp_level) += 1;
+    }
+    else if (is_store_op(microop.at(node_id)))
+    {
+      string base_addr = baseAddress.at(node_id);
+      st_activity[base_addr].at(tmp_level) += 1;
+    }
+  }
+  ofstream stats;
+  string tmp_name = bn + "_stats";
+  stats.open(tmp_name.c_str());
+  stats << "cycles," << cycle << "," << numTotalNodes << endl; 
+  stats << cycle << ",mul,add," ;
+  for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
+    stats << *it << "," ;
+  stats << endl;
+  for (unsigned tmp_level = 0; tmp_level < cycle ; ++tmp_level)
+  {
+    stats << tmp_level << "," << mul_activity.at(tmp_level) << "," << add_activity.at(tmp_level) << ","; 
+    for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
+      stats << ld_activity.at(*it).at(tmp_level) << "," << st_activity.at(*it).at(tmp_level) << "," ;
+    stats << endl;
+  }
+  stats.close();
 }
 void Datapath::writeGlobalIsolated()
 {
@@ -2063,7 +2115,7 @@ void Datapath::stepExecutedQueue()
   while (it != executedQueue.end())
   {
     //it->second is the number of cycles to execute current nodes
-    cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+    //cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
     if (it->second <= cycleTime)
     {
       unsigned node_id = it->first;
