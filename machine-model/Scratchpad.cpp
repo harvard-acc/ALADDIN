@@ -66,7 +66,7 @@ unsigned Scratchpad::findPartitionID(string baseName)
     return partition_it->second;
   else
   {
-    cerr << "Unknown Partition Name" << endl;
+    cerr << "Unknown Partition Name:" << baseName << endl;
     exit(0);
   }
 }

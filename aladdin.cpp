@@ -40,10 +40,13 @@ int main( int argc, const char *argv[])
   acc->globalOptimizationPass();
   
   acc->clearGlobalGraph();
+  cerr << "after clearing global graph" << endl;
   vector<string> v_method_order;
   unordered_map<string, int > map_method_2_callinst;
+  cerr << "before init method order " << endl;
   init_method_order(bench, v_method_order, map_method_2_callinst);
   
+  cerr << "start per graph computation" << endl;
   //return 0;
   ofstream method_latency;
   method_latency.open(bench+ "_method_latency", ofstream::out);

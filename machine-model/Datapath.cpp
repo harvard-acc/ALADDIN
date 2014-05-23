@@ -882,12 +882,11 @@ void Datapath::scratchpadPartition()
       unsigned abs_addr = address.at(node_id).first;
       unsigned data_size = address.at(node_id).second;
       unsigned rel_addr = (abs_addr - node_base ) / data_size; 
-      
       if (!p_type.compare("block"))  //block partition
       {
         ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
-        oss << node_base << "-" << (int) (rel_addr / ceil (num_of_elements_in_2 / p_factor)) ;
+        oss << node_base << "-" << (int) (rel_addr / ceil (num_of_elements_in_2  / p_factor)) ;
         baseAddress.at(node_id) = oss.str();
       }
       else // (!p_type.compare("cyclic")), cyclic partition

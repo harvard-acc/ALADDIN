@@ -9,6 +9,7 @@ void init_method_order(string bench, vector<string> &v_method_order,
   {
     string wholeline;
     getline(method_order_file, wholeline);
+    cerr << wholeline << endl;
     if (wholeline.size() == 0)
       break;
     int pos = 0;
