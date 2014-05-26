@@ -63,6 +63,7 @@ int main( int argc, const char *argv[])
     {
       current_dynamic_method = bench;
       graph_file = bench;
+      break;
     }
     
     unsigned base_method;

@@ -642,14 +642,19 @@ void Datapath::methodGraphSplitter()
     for (unsigned node_id = call_inst + 1; node_id < numTotalNodes; node_id++)
     {
       string node_dynamic_methodid = dynamic_methodid.at(node_id);
-      if (node_dynamic_methodid.compare(method_name) == 0 )
-      {
-        to_split_nodes.insert(node_id);
-        if (node_id > max_node)
-          max_node = node_id;
-      }
-      if (microop.at(node_id) == IRRET)
+      //if (node_dynamic_methodid.compare(method_name) == 0 )
+      //{
+        //to_split_nodes.insert(node_id);
+        //if (node_id > max_node)
+          //max_node = node_id;
+      //}
+      //if (microop.at(node_id) == IRRET)
+        //break;
+      if (node_dynamic_methodid.compare(method_name) != 0  || microop.at(node_id) == IRRET)
         break;
+      to_split_nodes.insert(node_id);
+      if (node_id > max_node)
+        max_node = node_id;
     }
     
     unordered_map<string, edgeAtt> current_graph;
