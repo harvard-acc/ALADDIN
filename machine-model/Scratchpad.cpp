@@ -4,6 +4,8 @@ Scratchpad::Scratchpad(float p_latency, unsigned p_ports_per_part)
   latency = p_latency;
   numOfPortsPerPartition = p_ports_per_part;
 }
+Scratchpad::~Scratchpad()
+{}
 
 void Scratchpad::setScratchpad(string baseName, unsigned size)
 {

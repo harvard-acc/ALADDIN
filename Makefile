@@ -2,13 +2,14 @@ OBJS = aladdin.o
 LIBS = libcommonfuncs.so libdddgbuild.so libprofiling.so libtraceprofiler.so libuncore.so
 EXE = aladdin
 CFLAGS = -Wall -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
-         -I/group/brooks/shao/System/include/igraph \
+         -I/group/brooks/shao/System/igraph/include/igraph \
          -I./common-funcs/ \
          -I./dddg-builder/ \
          -I./profiling/ \
          -I./machine-model/ \
          -I./profiling/init-stats/ 
-LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
+LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/igraph/lib/ \
+         -L/group/brooks/shao/System/lib/ \
          -L./lib/\
          -lcommonfuncs -ldddgbuild -lprofiling -ltraceprofiler \
 				 -ligraph -luncore -lz -lgzstream 

@@ -76,7 +76,7 @@ int main( int argc, const char *argv[])
     //graph, edgeLatency, edgeType fixed
     
     cerr << current_dynamic_method  << endl;
-    acc->setGraphForStepping(graph_file);
+    acc->setGraphForStepping(graph_file, map_method_2_callinst[current_dynamic_method] + 1);
     while(!acc->step())
       spad->step();
     int cycles = acc->clearGraph();
@@ -87,5 +87,6 @@ int main( int argc, const char *argv[])
   }
   method_latency.close();
   acc->dumpStats();
-  
+  delete acc;
+  delete spad;
 }

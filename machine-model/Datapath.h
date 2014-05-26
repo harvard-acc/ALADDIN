@@ -34,12 +34,18 @@ struct callDep
 {
   string caller;
   string callee;
-  unsigned callInstID;
+  int callInstID;
 };
 struct newEdge
 {
   unsigned from;
   unsigned to;
+  int varid;
+  int parid;
+  unsigned latency;
+};
+struct edgeAtt
+{
   int varid;
   int parid;
   unsigned latency;
@@ -108,9 +114,11 @@ class Datapath
   void writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
   void writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
   void writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
+  void writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name);
+  void initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph);
 
   void setGraphName(std::string graph_name);
-  void setGraphForStepping(std::string graph_name);
+  void setGraphForStepping(std::string graph_name, unsigned min_node);
   int clearGraph();
   bool step();
   void stepExecutedQueue();
@@ -152,13 +160,14 @@ class Datapath
   char* graphName;
   unsigned numGraphNodes;
   unsigned numGraphEdges;
+  unsigned minNode;
 
 
   igraph_t *g;
   std::vector<int> numParents;
   std::vector<bool> isolated;
   std::vector<int> edgeLatency;
-  std::unordered_map<int, int> callLatency;
+  /*std::unordered_map<int, int> callLatency;*/
   
   //stateful states
   unsigned totalConnectedNodes;

@@ -3,8 +3,8 @@ OBJS = file_func.o iljit_func.o generic_func.o graph_func.o
 #CXX = /group/brooks/shao/System/bin/g++
 #DEBUG = -DDEBUG
 #DEBUG = -g
-CFLAGS = -Wall -fPIC -O2 -std=c++0x -c $(DEBUG) -I/group/brooks/shao/System/include/ -I/group/brooks/shao/System/include/igraph 
-LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/lib/ -ligraph -lz -lgzstream
+CFLAGS = -Wall -fPIC -O2 -std=c++0x -c $(DEBUG) -I/group/brooks/shao/System/include/ -I/group/brooks/shao/System/igraph/include/igraph 
+LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/igraph/lib/ -L/group/brooks/shao/System/lib -ligraph -lz -lgzstream
 
 #file_func : $(OBJS) 
 #	$(CXX) -o ../bin/file_func $(OBJS) $(LFLAGS)  
