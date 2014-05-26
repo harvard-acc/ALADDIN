@@ -8,8 +8,8 @@ CFLAGS = -Wall -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/incl
          -I./profiling/ \
          -I./machine-model/ \
          -I./profiling/init-stats/ 
-LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/igraph/lib/ \
-         -L/group/brooks/shao/System/lib/ \
+LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
+         -L/group/brooks/shao/System/igraph/lib/ \
          -L./lib/\
          -lcommonfuncs -ldddgbuild -lprofiling -ltraceprofiler \
 				 -ligraph -luncore -lz -lgzstream 
