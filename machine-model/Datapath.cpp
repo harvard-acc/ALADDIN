@@ -856,7 +856,7 @@ void Datapath::scratchpadPartition()
     unsigned size = it->second.array_size;
     unsigned p_factor = it->second.part_factor;
 #ifdef DEBUG
-    cerr << base_addr << "," << size << "," << p_factor << endl;
+    //cerr << base_addr << "," << size << "," << p_factor << endl;
 #endif
     for ( unsigned i = 0; i < p_factor ; i++)
     {
@@ -2213,9 +2213,9 @@ void Datapath::setGraphForStepping(string graph_name, unsigned min)
     std::cerr << "no such file: " << graph_file_name << std::endl;
     exit(0);
   }
-#ifdef DEBUG
-  std::cerr << "========Setting Graph======" << std::endl;
-#endif
+//#ifdef DEBUG
+  //std::cerr << "========Setting Graph======" << std::endl;
+//#endif
   igraph_read_graph_edgelist(g, fp, 0, 1);
   fclose(fp);
   
@@ -2233,9 +2233,9 @@ void Datapath::setGraphForStepping(string graph_name, unsigned min)
   //update_method_latency(benchName, callLatency);
   numParents.assign(numGraphNodes, 0);
   totalConnectedNodes = initialized_num_of_parents(g, isolated, numParents);
-#ifdef DEBUG
-  cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
+//#endif
 
   executedNodes = 0;
 
@@ -2309,9 +2309,9 @@ void Datapath::updateRegStats()
 }
 bool Datapath::step()
 {
-#ifdef DEBUG
-  cerr << "===========Stepping============" << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "===========Stepping============" << endl;
+//#endif
   int firedNodes = fireNonMemNodes();
   firedNodes += fireMemNodes();
 
@@ -2328,22 +2328,15 @@ bool Datapath::step()
 
 void Datapath::stepExecutedQueue()
 {
-#ifdef DEBUG
-  cerr << "======stepping executed queue " << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "======stepping executed queue " << endl;
+//#endif
   
   auto it = executedQueue.begin();
   it = executedQueue.begin();
-  while (it != executedQueue.end())
-  {
-#ifdef DEBUG
-    //cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
-#endif
-    it++;
-  }
-#ifdef DEBUG
-  cerr << "======real stepping executed queue " << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "======real stepping executed queue " << endl;
+//#endif
   it = executedQueue.begin();
   while (it != executedQueue.end())
   {
@@ -2367,9 +2360,9 @@ void Datapath::stepExecutedQueue()
       it++;
     }
   }
-#ifdef DEBUG
-  cerr << "======End stepping executed queue " << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "======End stepping executed queue " << endl;
+//#endif
 }
 
 void Datapath::updateChildrenForNextStep(unsigned node_id)
@@ -2433,9 +2426,9 @@ void Datapath::updateChildrenForCurrentStep(unsigned node_id)
 
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
-#ifdef DEBUG
-  cerr << "updating the children of " << node_id << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "updating the children of " << node_id << endl;
+//#endif
   igraph_vs_t vs_children;
   igraph_vit_t vit_children;
   igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
@@ -2488,17 +2481,17 @@ int Datapath::fireMemNodes()
     else
       ++it;
   }
-#ifdef DEBUG
-  cerr << "fired Memory Nodes," << firedNodes << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "fired Memory Nodes," << firedNodes << endl;
+//#endif
   return firedNodes;
 }
 
 int Datapath::fireNonMemNodes()
 {
-#ifdef DEBUG
-  cerr << "=========Firing NonMemory Nodes========" << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "=========Firing NonMemory Nodes========" << endl;
+//#endif
   int firedNodes = 0;
   //assume the Queue is sorted by somehow
   //non considering user's constraints on num of functional units
@@ -2524,17 +2517,17 @@ int Datapath::fireNonMemNodes()
       //}
     it = nonMemReadyQueue.erase(it);
   }
-#ifdef DEBUG
-  cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
+//#endif
   return firedNodes;
 }
 
 void Datapath::initReadyQueue()
 {
-#ifdef DEBUG
-  cerr << "======Initializing Ready Queue=========" << endl;
-#endif
+//#ifdef DEBUG
+  //cerr << "======Initializing Ready Queue=========" << endl;
+//#endif
   for(unsigned i = 0; i < numGraphNodes; i++)
   {
     if (numParents[i] == 0 && isolated[i] != 1)
@@ -2545,8 +2538,8 @@ void Datapath::initReadyQueue()
         addNonMemReadyNode(i);
     }
   }
-#ifdef DEBUG
-  cerr << "InitialReadyQueueSize: Memory," << memReadyQueue.size() << ", Non-Mem," << nonMemReadyQueue.size() << endl;
+#ifdef debug
+  cerr << "initialreadyqueuesize: memory," << memreadyqueue.size() << ", non-mem," << nonmemreadyqueue.size() << endl;
 #endif
 }
 

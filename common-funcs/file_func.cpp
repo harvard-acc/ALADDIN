@@ -404,6 +404,7 @@ void parse_config(string bench, string config_file_name)
     
    else
     {
+      cerr << "what else? " << wholeline << endl;
       cerr << "what else? " << type << endl;
       exit(0);
     }

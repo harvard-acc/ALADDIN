@@ -41,6 +41,7 @@ aladdin.o : aladdin.cpp
 
 clean:
 	rm aladdin
+	rm lib/*
 
 
 
