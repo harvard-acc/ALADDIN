@@ -54,6 +54,12 @@ void dddg::output_methodid(string bench)
   write_gzip_string_file(output_file_name, v_methodid.size(),
     v_methodid);
 }
+void dddg::output_microop(string bench)
+{
+  string output_file_name(bench);
+  output_file_name += "_microop.gz";
+  write_gzip_file(output_file_name, v_microop.size(), v_microop);
+}
 void dddg::output_method_call_graph(string bench)
 {
   string output_file_name(bench);
@@ -72,12 +78,19 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
   edge_parid.open(edge_parid_file.c_str());
   edge_varid.open(edge_varid_file.c_str());
   edge_latency.open(edge_latency_file.c_str());
-
+  //write title
+  dddg << "digraph DDDG {" << endl;
+  dddg << "node[shape=circle];" << endl;
+  //format: dynamic id[label = "dynamic id | microop"];
+  for (int node_id = 0; node_id < num_of_instructions ; node_id++)
+    dddg << node_id << "[label = \"<f0> " << node_id << " | <f1> " << v_microop.at(node_id)  << " \"];" << endl;
+  
   //Register Dependency
   for(auto it = register_edge_table.begin(); 
     it != register_edge_table.end(); ++it)
   {
-    dddg << it->first << " " << it->second.sink_node << endl;
+    //dddg << it->first << " " << it->second.sink_node << endl;
+    dddg << it->first << ":f0 -> " << it->second.sink_node << ":f0;" << endl;
     edge_varid << it->second.var_id << endl;
     edge_parid << it->second.par_id << endl;
     edge_latency << "1" << endl;
@@ -86,7 +99,8 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
   for(auto it = memory_edge_table.begin();
     it != memory_edge_table.end(); ++it)
   {
-    dddg << it->first << " " << it->second.sink_node << endl;
+    //dddg << it->first << " " << it->second.sink_node << endl;
+    dddg << it->first << ":f0 -> " << it->second.sink_node << ":f0;" << endl;
     edge_varid << it->second.var_id << endl;
     edge_parid << it->second.par_id << endl;
     edge_latency << "1" << endl;
@@ -103,6 +117,7 @@ void dddg::parse_instruction_line(string line)
   char comma;
   istringstream parser(line, istringstream::in);
   parser >> node_method >> comma >> bblockid >> comma >> instid >> comma >> microop;
+  v_microop.push_back(microop);
 
   if (!active_method.empty())
   {
@@ -447,6 +462,7 @@ int build_initial_dddg(string bench, string trace_file_name)
   graph_dep.output_dddg(graph_file, edge_parid, edge_varid, edge_latency);
   graph_dep.output_method_call_graph(bench);
   graph_dep.output_methodid(bench);
+  graph_dep.output_microop(bench);
   std::cerr << "=====================END GENERATING DDG====================== " << std::endl;
   std::cerr << endl;
 	

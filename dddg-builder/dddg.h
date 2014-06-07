@@ -34,6 +34,7 @@ public:
   int num_of_memory_dependency();
   /*void init_to_ignore_method(string file_name);*/
   void output_methodid(string bench);
+  void output_microop(string bench);
   void output_method_call_graph(string bench);
   void output_dddg(string dddg_file, string edge_parid_file, 
    string edge_varid_file,
@@ -43,12 +44,13 @@ public:
   void parse_result(string line);
   void parse_call_parameter(string line, int param_tag);
 private:
-  string current_method;
+  std::string current_method;
   unsigned current_microop;
   unsigned current_instid;
-  vector<unsigned> parameter_value;
-  vector<string> method_call_graph;
-  vector<string> v_methodid;
+  std::vector<unsigned> parameter_value;
+  std::vector<string> method_call_graph;
+  std::vector<string> v_methodid;
+  std::vector<int> v_microop;
   /*unordered_map<unsigned, bool> to_ignore_methodid;*/
   int num_of_instructions;
   int num_of_reg_dep;
