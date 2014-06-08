@@ -24,10 +24,10 @@ int main( int argc, const char *argv[])
   /*Build Initial DDDG*/
   build_initial_dddg(bench, trace_file);
 
-  return 0;
   
   /*Profiling*/
   profile_init_stats(bench, trace_file);
+  return 0;
   profile_base_address(bench, base_addr_file);
   
   Datapath *acc;
