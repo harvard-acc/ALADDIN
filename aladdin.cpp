@@ -27,6 +27,7 @@ int main( int argc, const char *argv[])
   profile_init_stats(bench, trace_file);
   profile_base_address(bench, base_addr_file);
   
+  return 0;
   Datapath *acc;
   Scratchpad *spad;
 
