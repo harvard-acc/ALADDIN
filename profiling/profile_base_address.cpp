@@ -10,32 +10,36 @@ Output File:
 
 int profile_base_address(string bench, string base_addr_name)
 {
+  typedef boost::property < boost::vertex_name_t, int> VertexProperty;
+  typedef boost::property < boost::edge_name_t, int> EdgeProperty;
+  typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
 	
-  igraph_t g;
-	FILE *fp;
   string graph_file_name(bench);
-
   graph_file_name += "_graph";
-	fp = fopen(graph_file_name.c_str(), "r");
-	
-  if(!fp)
-  {
-		std::cerr << "file not opened" << std::endl;
-		return 1;
-	}
-	else
-  {
-    std::cerr << "=================Base Addr Profile===================" 
-              << std::endl; 
-  }
-	
-  igraph_read_graph_edgelist(&g, fp, 0, 1);
-	fclose(fp);	
-	
+  
+  Graph graph;
+  boost::dynamic_properties dp;
+  boost::property_map<Graph, boost::vertex_name_t>::type name = get(boost::vertex_name, graph);
+  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph);
+  
+  dp.property("node_id",name);
+  dp.property("e_id", e_name);   
+      
+  std::ifstream fin(graph_file_name.c_str());
+  bool status = boost::read_graphviz(fin, graph, dp, "node_id");
+  typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+  
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph, Graph) 
+    name_to_vertex[get(boost::vertex_name, graph, v)] = v;
+  
+  std::map<Vertex, int> vertex_to_name;
+  BGL_FORALL_VERTICES(v, graph, Graph) 
+    vertex_to_name[v] = get(boost::vertex_name, graph, v);
 
   /*Get basic graph stats*/
-  unsigned num_of_vertices = (unsigned) igraph_vcount(&g);
-  //unsigned num_of_edges  = (unsigned ) igraph_ecount(&g);
+  unsigned num_of_vertices = num_vertices(graph);
+  unsigned num_of_edges  = num_edges(graph);
 	
   ifstream base_addr_file;
   base_addr_file.open(base_addr_name);
@@ -76,62 +80,54 @@ int profile_base_address(string bench, string base_addr_name)
   using IGRAPH_IN we find the children with derived induction variable first
   then try to find their parents which define the basic induction variable
   */
-  igraph_vector_t v_topological;
-	igraph_vector_init(&v_topological, num_of_vertices);
-	igraph_topological_sorting(&g, &v_topological, IGRAPH_OUT);
+  typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
+  IndexMap index = get(boost::vertex_index, graph);
+  typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
 
-	for (unsigned i = 0; i < num_of_vertices ; i++)
+  for( int node_id = 0; node_id < num_of_vertices; node_id++)
   {
-    int updating_node				= (int) VECTOR(v_topological)[i];
-    int updating_node_microop 		= v_microop.at(updating_node);
+    Vertex v = name_to_vertex[node_id];
+    int updating_node_microop 		= v_microop.at(node_id);
     if (updating_node_microop == IRLOADREL || updating_node_microop == IRSTOREREL )
     {
       bool updated = 0;
-      igraph_vs_t vs_parent;
-      igraph_vit_t vit_parent_it;
-      igraph_vs_adj(&vs_parent, updating_node, IGRAPH_IN);	
-      igraph_vit_create(&g, vs_parent, &vit_parent_it);
-      while(!IGRAPH_VIT_END(vit_parent_it))
+      typedef typename boost::graph_traits<Graph> GraphTraits;
+      typename GraphTraits::in_edge_iterator in_i, in_end;
+      for (tie(in_i, in_end) = in_edges(v, graph); in_i != in_end; ++in_i)
       {
-        unsigned parent_id	= (unsigned) IGRAPH_VIT_GET(vit_parent_it);
+        typename GraphTraits::edge_descriptor ed;
+        ed = *in_i;
+        //source is parent
+        unsigned parent_id = vertex_to_name[source(ed, graph)];
         unsigned parent_microop	= v_microop.at(parent_id);
         if (parent_microop == IRGETADDRESS)
         {
           //not real memory operation
           updated = 1;
-          v_microop.at(updating_node) = IRSTORE;
+          v_microop.at(node_id) = IRSTORE;
           break;
         }
-        else 
-        {
-          unsigned abs_addr = v_par1value.at(updating_node);
-          for (unsigned i = 0; i < base_addr.size(); i++)
-          {
-            if ( i == 0)
-              assert(abs_addr >= base_addr.at(i));
-            else
-            {
-              if (abs_addr < base_addr.at(i) && abs_addr >= base_addr.at(i-1))
-              {
-                v_membase.at(updating_node) = base_addr.at(i-1);
-                break;
-              }
-              else if (i == base_addr.size() -1)
-                v_membase.at(updating_node) = base_addr.at(i);
-            }
-          }
-          updated = 1;
-        }
-        IGRAPH_VIT_NEXT(vit_parent_it);
       }
-      igraph_vs_destroy(&vs_parent);
-      igraph_vit_destroy(&vit_parent_it);
       if (!updated)
-        v_membase.at(updating_node) = v_par1value.at(updating_node);
+      {
+        unsigned abs_addr = v_par1value.at(node_id);
+        for (unsigned i = 0; i < base_addr.size(); i++)
+        {
+          if ( i == 0)
+            assert(abs_addr >= base_addr.at(i));
+          else if (abs_addr < base_addr.at(i) && abs_addr >= base_addr.at(i-1))
+          {
+            v_membase.at(node_id) = base_addr.at(i-1);
+            break;
+          }
+          else if (i == base_addr.size() -1)
+            v_membase.at(node_id) = base_addr.at(i);
+        }
+        updated = 1;
+      }
     }
-	}
-  igraph_vector_destroy(&v_topological);
-  igraph_destroy(&g);
+  }
+  
   string mem_base_file_name(bench);
   mem_base_file_name += "_membase.gz";
   write_gzip_unsigned_file(mem_base_file_name, num_of_vertices, v_membase);

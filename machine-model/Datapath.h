@@ -1,6 +1,13 @@
 #ifndef __DATAPATH__
 #define __DATAPATH__
 
+#include <boost/graph/graphviz.hpp>
+#include <boost/config.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/properties.hpp>
+#include <boost/graph/topological_sort.hpp>
+#include <boost/graph/iteration_macros.hpp>
 #include <iostream>
 #include <assert.h>
 #include <unordered_map>
@@ -10,11 +17,35 @@
 #include <set>
 #include "file_func.h"
 #include "iljit_func.h"
-#include "graph_func.h"
 #include "generic_func.h"
 #include "./Scratchpad.h"
 
 using namespace std;
+typedef boost::property < boost::vertex_name_t, int> VertexProperty;
+typedef boost::property < boost::edge_name_t, int> EdgeProperty;
+typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
+typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+typedef boost::graph_traits<Graph>::edge_descriptor Edge;
+typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
+typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
+typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iter;
+typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
+typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
+typedef boost::property_map<Graph, boost::vertex_name_t>::type VertexNameMap;
+typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexIndexMap;
+
+typedef boost::property < boost::vertex_name_t, string> MethodVertexProperty;
+typedef boost::property < boost::edge_name_t, int> MethodEdgeProperty;
+typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, MethodVertexProperty, MethodEdgeProperty> MethodGraph;
+typedef boost::graph_traits<MethodGraph>::vertex_descriptor MethodVertex;
+typedef boost::graph_traits<MethodGraph>::edge_descriptor MethodEdge;
+typedef boost::graph_traits<MethodGraph>::vertex_iterator method_vertex_iter;
+typedef boost::graph_traits<MethodGraph>::edge_iterator method_edge_iter;
+typedef boost::graph_traits<MethodGraph>::in_edge_iterator method_in_edge_iter;
+typedef boost::graph_traits<MethodGraph>::out_edge_iterator method_out_edge_iter;
+typedef boost::property_map<MethodGraph, boost::edge_name_t>::type MethodEdgeNameMap;
+typedef boost::property_map<MethodGraph, boost::vertex_name_t>::type MethodVertexNameMap;
+typedef boost::property_map<MethodGraph, boost::vertex_index_t>::type MethodVertexIndexMap;
 
 class Scratchpad;
 
@@ -38,8 +69,8 @@ struct callDep
 };
 struct newEdge
 {
-  unsigned from;
-  unsigned to;
+  int from;
+  int to;
   int varid;
   int parid;
   unsigned latency;
@@ -82,8 +113,10 @@ class Datapath
   partitionEntry> & partition_config);
   void readCompletePartitionConfig(std::unordered_set<unsigned> &config);
 
-  void readGraph(igraph_t *g);
-  void readMethodGraph(igraph_t *g);
+  /*void readGraph(igraph_t *g);*/
+  /*void readMethodGraph(igraph_t *g);*/
+  void readGraph(Graph &g);
+  void readMethodGraph(MethodGraph &g);
   void initMicroop(std::vector<int> &microop);
   void dumpStats();
   void writeFinalLevel();
@@ -111,9 +144,9 @@ class Datapath
   void writeMemBaseInNumber(std::vector<unsigned> &base);
   void initMemBaseInString(std::vector<string> &base);
 
-  void writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
-  void writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
-  void writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
+  int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
+  int writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges);
+  int writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
   void writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name);
   void initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph);
 
@@ -123,8 +156,6 @@ class Datapath
   bool step();
   void stepExecutedQueue();
   void updateChildren(unsigned node_id, float latencySoFar);
-  void updateChildrenForNextStep(unsigned node_id);
-  void updateChildrenForCurrentStep(unsigned node_id);
   int fireMemNodes();
   int fireNonMemNodes();
   void initReadyQueue();
@@ -133,7 +164,10 @@ class Datapath
   void setScratchpad(Scratchpad *spad);
   void updateGlobalIsolated();
   
-  void findAllAssociativeChildren(igraph_t *g, int node_id, 
+  /*void findAllAssociativeChildren(igraph_t *g, int node_id, */
+  /*unsigned lower_bound, list<int> &nodes, */
+  /*vector<int> &leaves, vector<int> &leaves_rank, vector<pair<int, int>> &remove_edges);*/
+  void findAllAssociativeChildren(Graph &g, int node_id, 
   unsigned lower_bound, list<int> &nodes, 
   vector<int> &leaves, vector<int> &leaves_rank, vector<pair<int, int>> &remove_edges);
 
@@ -162,8 +196,11 @@ class Datapath
   unsigned numGraphEdges;
   unsigned minNode;
 
-
-  igraph_t *g;
+  
+  /*igraph_t *g;*/
+  /*Graph global_graph_;*/
+  Graph graph_;
+  
   std::vector<int> numParents;
   std::vector<bool> isolated;
   std::vector<int> edgeLatency;

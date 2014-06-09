@@ -23,6 +23,8 @@ int main( int argc, const char *argv[])
   
   /*Build Initial DDDG*/
   build_initial_dddg(bench, trace_file);
+
+  
   /*Profiling*/
   profile_init_stats(bench, trace_file);
   profile_base_address(bench, base_addr_file);
@@ -91,4 +93,5 @@ int main( int argc, const char *argv[])
   acc->dumpStats();
   delete acc;
   delete spad;
+  return 0;
 }

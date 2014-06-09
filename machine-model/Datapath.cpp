@@ -11,7 +11,6 @@ Datapath::Datapath(string bench, float cycle_t)
   //also need to read address
   baseAddress.assign(numTotalNodes, "");
   cycle = 0;
-  g = new igraph_t;
   cerr << "End Initializing Datapath " << endl;
 }
 Datapath::~Datapath()
@@ -96,31 +95,26 @@ void Datapath::completePartition()
   initMemBaseInNumber(orig_base);
   
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
 #ifdef DEBUG
-  std::cerr << "num_edges," << num_edges << std::endl;
+  std::cerr << "num_edges," << num_of_edges << std::endl;
 #endif
   
-  std::vector<int> edge_parid (num_edges, 0);
+  std::vector<int> edge_parid (num_of_edges, 0);
   initEdgeParID(edge_parid);
   //read edgetype.second
-  std::vector<bool> to_remove_edges(num_edges, 0);
-  for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
+  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
   {
+    int node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
@@ -130,24 +124,15 @@ void Datapath::completePartition()
     if (comp_part_config.find(base_addr) == comp_part_config.end())
       continue;
     changed_nodes++;
-    
-    igraph_vs_t vs_parents;
-    igraph_vit_t vit_parents;
-    igraph_vs_adj(&vs_parents, node_id, IGRAPH_IN);
-    igraph_vit_create(tmp_g, vs_parents, &vit_parents);
-    while (!IGRAPH_VIT_END(vit_parents))
+    //iterate its parents
+    in_edge_iter in_i, in_end;
+    for (tie(in_i, in_end) = in_edges(*vi , tmp_graph); in_i != in_end; ++in_i)
     {
-      unsigned parent_id = (unsigned)IGRAPH_VIT_GET(vit_parents);
-      //find the address calculation chain
-      unsigned edge_id = check_edgeid(parent_id, node_id, tmp_g);
+      int edge_id = edge_to_name[*in_i];
       int parid = edge_parid.at(edge_id);
       if (parid ==1 )
         to_remove_edges.at(edge_id) = 1;
-
-      IGRAPH_VIT_NEXT(vit_parents);
     }
-    igraph_vs_destroy(&vs_parents);
-    igraph_vit_destroy(&vit_parents);
     orig_base.at(node_id) = 0;
     microop.at(node_id) = IRSTORE;
   }
@@ -157,8 +142,6 @@ void Datapath::completePartition()
   std::cerr << "=======ChangedNodes: " << changed_nodes << "=====" << std::endl;
 #endif
   cleanLeafNodes();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 void Datapath::cleanLeafNodes()
 {
@@ -166,33 +149,28 @@ void Datapath::cleanLeafNodes()
   std::cerr << "=======Clean Leaf Nodes=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(tmp_g, fp, 0, 1);
-  //fclose(fp);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   /*track the number of children each node has*/
   vector<int> num_of_children(numTotalNodes, 0);
-  initialized_num_of_children(tmp_g, num_of_children);
-
-  unordered_set<unsigned> to_remove_nodes;
-  igraph_vector_t v_topological;
-  igraph_vector_init(&v_topological, numTotalNodes);
-  igraph_topological_sorting(tmp_g, &v_topological, IGRAPH_IN);
-  for (unsigned i = 0; i < numTotalNodes; ++i)
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
   {
-    unsigned node_id = (unsigned)VECTOR(v_topological)[i];
+    int node_id = vertex_to_name[*vi];
+    num_of_children.at(node_id) = boost::out_degree(*vi, tmp_graph);
+  }
+  
+  unordered_set<unsigned> to_remove_nodes;
+  
+  std::vector< Vertex > topo_nodes;
+  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  //bottom nodes first
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
+  {
+    int node_id = vertex_to_name[*vi];
     assert(num_of_children.at(node_id) >= 0);
-
     if (num_of_children.at(node_id) == 0 
       && microop.at(node_id) != IRSTOREREL
       && microop.at(node_id) != IRRET 
@@ -201,31 +179,20 @@ void Datapath::cleanLeafNodes()
       && microop.at(node_id) != IRCALL)
     {
       to_remove_nodes.insert(node_id); 
-      
-      igraph_vs_t vs_parent;
-      igraph_vit_t vit_parent_it;
-      igraph_vs_adj(&vs_parent, node_id, IGRAPH_IN);
-      igraph_vit_create(tmp_g, vs_parent, &vit_parent_it);
-
-      while(!IGRAPH_VIT_END(vit_parent_it))
+      //iterate its parents
+      in_edge_iter in_edge_it, in_edge_end;
+      for (tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        int parent_id = (int)IGRAPH_VIT_GET(vit_parent_it);
+        int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
         assert(num_of_children.at(parent_id) != 0);
         num_of_children.at(parent_id)--;
-        IGRAPH_VIT_NEXT(vit_parent_it);
       }
-      igraph_vs_destroy(&vs_parent);
-      igraph_vit_destroy(&vit_parent_it);
     }
   }
-  igraph_vector_destroy(&v_topological);
   writeGraphWithIsolatedNodes(to_remove_nodes);
 #ifdef DEBUG
   std::cerr << "=======Cleaned Leaf Nodes:" << to_remove_nodes.size() << "=====" << std::endl;
 #endif
-
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 void Datapath::removeInductionDependence()
@@ -234,72 +201,52 @@ void Datapath::removeInductionDependence()
   std::cerr << "=======Remove Induction Dependence=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
+  
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
   std::vector<int> par4vid(numTotalNodes, 0);
   initParVid(par4vid, 4);
 
   std::vector<int> methodid(numTotalNodes, 0);
   initMethodID(methodid);
   
-  std::vector<unsigned> edge_latency(num_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
 
   std::unordered_set<string> induction_config;
   readInductionConfig(induction_config);
   
-  igraph_vector_t v_topological;
-  igraph_vector_init(&v_topological, numTotalNodes);
-  igraph_topological_sorting(tmp_g, &v_topological, IGRAPH_OUT);
-
   int removed_edges = 0;
-  for (unsigned i = 0; i < numTotalNodes; ++i)
+  
+  std::vector< Vertex > topo_nodes;
+  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  //nodes with no incoming edges to first
+  for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
   {
-    unsigned node_id = (unsigned)VECTOR(v_topological)[i];
+    int node_id = vertex_to_name[*vi];
     int node_resultid = par4vid.at(node_id);
     int node_methodid = methodid.at(node_id);
     ostringstream combined_id;
     combined_id << node_methodid << "-" << node_resultid;
     if (induction_config.find(combined_id.str()) == induction_config.end())
       continue;
-    
-    igraph_vs_t vs_child;
-    igraph_vit_t vit_child_it;
-    igraph_vs_adj(&vs_child, node_id, IGRAPH_OUT);
-    igraph_vit_create(tmp_g, vs_child, &vit_child_it);
-    while(!IGRAPH_VIT_END(vit_child_it))
+    //iterate its children
+    out_edge_iter out_edge_it, out_edge_end;
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      unsigned child_node = (unsigned) IGRAPH_VIT_GET(vit_child_it);
-      
-      int edge_id = check_edgeid(node_id, child_node, tmp_g);
+      int edge_id = edge_to_name[*out_edge_it];
       edge_latency.at(edge_id) = 0;
       removed_edges++;
-      IGRAPH_VIT_NEXT(vit_child_it);
     }
-    igraph_vs_destroy(&vs_child);
-    igraph_vit_destroy(&vit_child_it);
   }
 
-  writeEdgeLatency(edge_latency);
-  igraph_destroy(tmp_g);
-	igraph_vector_destroy(&v_topological);
 #ifdef DEBUG
   std::cerr << "=======Removed Induction Edges: " << removed_edges << "=====" << std::endl;
 #endif
-  delete tmp_g;
 }
 
 void Datapath::removeAddressCalculation()
@@ -308,25 +255,17 @@ void Datapath::removeAddressCalculation()
   std::cerr << "=======Remove Address Calculation=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  std::vector<bool> to_remove_edges(num_edges, 0);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  
+  std::vector<bool> to_remove_edges(num_of_edges, 0);
   std::vector<newEdge> to_add_edges;
 
-  std::vector<int> edge_parid(num_edges, 0);
+  std::vector<int> edge_parid(num_of_edges, 0);
   initEdgeParID(edge_parid);
 
   std::vector<int> par2vid(numTotalNodes, 0);
@@ -336,47 +275,41 @@ void Datapath::removeAddressCalculation()
   
   int address_cal_edges = 0;
 
-  igraph_vector_t v_topological;
-  igraph_vector_init(&v_topological, numTotalNodes);
-  igraph_topological_sorting(tmp_g, &v_topological, IGRAPH_IN);
-  for (unsigned i = 0; i < numTotalNodes; ++i)
+  std::vector< Vertex > topo_nodes;
+  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  
+  //nodes with no outgoing edges go first
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
-    unsigned node_id = (unsigned)VECTOR(v_topological)[i];
+    int node_id = vertex_to_name[*vi];
     if (updated.at(node_id))
       continue;
     updated.at(node_id) = 1;
     int node_microop = microop.at(node_id);
     if (node_microop != IRLOADREL && node_microop != IRSTOREREL)
       continue;
-    
-    igraph_vs_t vs_parent;
-    igraph_vit_t vit_parent_it;
-    igraph_vs_adj(&vs_parent, node_id, IGRAPH_IN);	
-    igraph_vit_create(tmp_g, vs_parent, &vit_parent_it);
-
-    while(!IGRAPH_VIT_END(vit_parent_it))
+    //iterate its parents
+    in_edge_iter in_i, in_end;
+    for (tie(in_i, in_end) = in_edges(*vi , tmp_graph); in_i != in_end; ++in_i)
     {
-      unsigned parent_id	= (unsigned) IGRAPH_VIT_GET(vit_parent_it);
+      int parent_id = vertex_to_name[source(*in_i, tmp_graph)];
       int parent_microop	= microop.at(parent_id);
       if (parent_microop == IRADD)
       {
-        int edge_id = check_edgeid(parent_id, node_id, tmp_g);
+        int edge_id = edge_to_name[*in_i];
         int load_add_edge_parid = edge_parid.at(edge_id);
         if(load_add_edge_parid == 1)
         {
           address_cal_edges++;
           //remove the edge between the laod and the add
           to_remove_edges.at(edge_id) = 1;
-          
-          igraph_vs_t vs_grandparent;
-          igraph_vit_t vit_grandparent_it;
-          igraph_vs_adj(&vs_grandparent, parent_id, IGRAPH_IN);
-          igraph_vit_create(tmp_g, vs_grandparent, &vit_grandparent_it);
-          while (!IGRAPH_VIT_END(vit_grandparent_it))
+          //iterate through grandparents
+          in_edge_iter in_grand_i, in_grand_end;
+          for(tie(in_grand_i, in_grand_end) = in_edges(source(*in_i, tmp_graph), tmp_graph); in_grand_i != in_grand_end; ++in_grand_i)
           {
-            unsigned grandparent_id = (unsigned) IGRAPH_VIT_GET(vit_grandparent_it);
+            int grandparent_id = vertex_to_name[source(*in_grand_i, tmp_graph)];   
             int grandparent_microop = microop.at(grandparent_id);
-            int p_edge_id = check_edgeid(grandparent_id, parent_id, tmp_g);
+            int p_edge_id = edge_to_name[*in_grand_i];
             int mul_add_edge_parid = edge_parid.at(p_edge_id);
             if (grandparent_microop == IRMUL && mul_add_edge_parid == 2)
             {
@@ -387,49 +320,33 @@ void Datapath::removeAddressCalculation()
               //if the second parameter of the mul is a constant
               if (grandparent_par2vid == -1)
               {
-                igraph_vs_t vs_mul_parent;
-                igraph_vit_t vit_mul_parent_it;
-                igraph_vs_adj(&vs_mul_parent, grandparent_id, IGRAPH_IN);	
-                igraph_vit_create(tmp_g, vs_mul_parent, &vit_mul_parent_it);
-                int num_parent = IGRAPH_VIT_SIZE(vit_mul_parent_it);
-                assert(num_parent == 1 || num_parent == 0);
-                if (num_parent == 1)
+                //iterate through grandparent's parent...
+                in_edge_iter in_mul_i, in_mul_end;
+                for (tie(in_mul_i, in_mul_end) = in_edges(source(*in_grand_i, tmp_graph), tmp_graph); in_mul_i != in_mul_end; ++in_mul_i)
                 {
-                  unsigned mul_parent = (unsigned) IGRAPH_VIT_GET(vit_mul_parent_it);
-                  int m_edge_id = check_edgeid(mul_parent, grandparent_id, tmp_g);
+                  int mul_parent = vertex_to_name[source(*in_mul_i, tmp_graph)];
+                  int m_edge_id = edge_to_name[*in_mul_i];
                   address_cal_edges++;
                   //remove the edge between the mul and its parent
                   to_remove_edges.at(m_edge_id) = 1;
                   //add an edge between mul's parent and the memory node
                   to_add_edges.push_back( {mul_parent, node_id, -1, load_add_edge_parid, 1} );
                 }
-                igraph_vs_destroy(&vs_mul_parent);
-                igraph_vit_destroy(&vit_mul_parent_it);
-                updated.at(grandparent_id) = 1;
               }
             }
-            IGRAPH_VIT_NEXT(vit_grandparent_it);
           }
-          igraph_vs_destroy(&vs_grandparent);
-          igraph_vit_destroy(&vit_grandparent_it);
           updated.at(parent_id) = 1;
         }
       }
-      IGRAPH_VIT_NEXT(vit_parent_it);
     }
-    igraph_vs_destroy(&vs_parent);
-    igraph_vit_destroy(&vit_parent_it);
   }
-	igraph_vector_destroy(&v_topological);
-  writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges);
+  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
+  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 
 #ifdef DEBUG
   std::cerr << "=======End of Address Calculation: " << address_cal_edges << "=====" << std::endl;
 #endif
   cleanLeafNodes();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 void Datapath::removeBranchEdges()
@@ -438,40 +355,26 @@ void Datapath::removeBranchEdges()
   std::cerr << "=======Remove Branch Edges=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  std::vector<unsigned> edge_latency(num_edges, 0);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
   
   int branch_edges = 0;
-  std::vector<bool> to_remove_edges(num_edges, 0);
+  std::vector<bool> to_remove_edges(num_of_edges, 0);
   
-  igraph_es_t es_edge;
-  igraph_eit_t eit_edge_it;
-  igraph_es_all(&es_edge, IGRAPH_EDGEORDER_ID);
-  igraph_eit_create(tmp_g, es_edge, &eit_edge_it);
-  IGRAPH_EIT_RESET(eit_edge_it);
-	while(!IGRAPH_EIT_END(eit_edge_it))
+  edge_iter ei, ei_end;
+  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
   {
-    igraph_integer_t edge_id = IGRAPH_EIT_GET(eit_edge_it);
-    igraph_integer_t from, to;
-    igraph_edge(tmp_g, edge_id, &from, &to);
-
-    int from_microop = microop.at((int)from);
-    int to_microop = microop.at((int)to);
+    int edge_id = edge_to_name[*ei];
+    int from = vertex_to_name[source(*ei, tmp_graph)];
+    int to   = vertex_to_name[target(*ei, tmp_graph)];
+    int from_microop = microop.at(from);
+    int to_microop = microop.at(to);
     if (is_compare_inst(from_microop) && is_branch_inst(to_microop))
     {
       to_remove_edges.at(edge_id) = 1;
@@ -484,18 +387,12 @@ void Datapath::removeBranchEdges()
       edge_latency.at(edge_id) = 0;
       branch_edges++;
     }
-    IGRAPH_EIT_NEXT(eit_edge_it);
   }
-  igraph_es_destroy(&es_edge);
-  igraph_eit_destroy(&eit_edge_it);
-  
   writeEdgeLatency(edge_latency);
   writeGraphWithIsolatedEdges(to_remove_edges);
 #ifdef DEBUG
   std::cerr << "=======Removed Branch Edges: " << branch_edges << "=====" << std::endl;
 #endif
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 void Datapath::methodGraphBuilder()
 {
@@ -508,7 +405,6 @@ void Datapath::methodGraphBuilder()
   call_file.open(call_file_name);
 
   std::vector<callDep> method_dep;
-  std::unordered_map<string, unsigned> node_id_map;
   std::vector<string> node_att;
   while (!call_file.eof())
   {
@@ -524,49 +420,30 @@ void Datapath::methodGraphBuilder()
     string caller_method(curr);
     string callee_method(next);
     
-    auto it = node_id_map.find(caller_method);
-    if (it == node_id_map.end())
-    {
-      unsigned size = node_id_map.size();
-      node_id_map[caller_method] = size;
-      node_att.push_back(caller_method);
-    }
-    it = node_id_map.find(callee_method);
-    if (it == node_id_map.end())
-    {
-      unsigned size = node_id_map.size();
-      node_id_map[callee_method] = size;
-      node_att.push_back(callee_method);
-    }
+    node_att.push_back(caller_method);
     method_dep.push_back({caller_method, callee_method, dynamic_id});
   }
   call_file.close();
   //write output
-  ofstream edgelist_file, edge_att_file, node_att_file;
+  ofstream edgelist_file;
+  //, edge_att_file, node_att_file;
 
   string graph_file(benchName);
-  string edge_file(benchName);
-  string node_file(benchName);
-  
   graph_file += "_method_graph";
-  edge_file += "_method_graph_edge";
-  node_file += "_method_graph_node";
   edgelist_file.open(graph_file);
-  edge_att_file.open(edge_file);
-  node_att_file.open(node_file);
-
+  edgelist_file << "digraph MethodGraph {" << std::endl;
+  
+  for(unsigned i = 0; i < node_att.size() ; i++)
+    edgelist_file << "\"" << node_att.at(i) << "\"" << ";" << std::endl;
+  
   for (auto it = method_dep.begin(); it != method_dep.end(); ++it)
   {
-    edgelist_file << node_id_map[it->caller] << " " << node_id_map[it->callee] <<endl;
-    edge_att_file << it->callInstID << endl;
+    edgelist_file << "\"" << it->caller  << "\"" << " -> " 
+                  << "\"" << it->callee  << "\"" 
+                  << " [e_inst = " << it->callInstID << "];" << std::endl;
   }
-
-  for(unsigned i = 0; i < node_att.size() ; i++)
-    node_att_file << node_att.at(i) << endl;
+  edgelist_file << "}" << endl;
   edgelist_file.close();
-  node_att_file.close();
-  edge_att_file.close();
-
 }
 void Datapath::methodGraphSplitter()
 {
@@ -574,91 +451,63 @@ void Datapath::methodGraphSplitter()
   std::cerr << "=======Method Graph Splitter=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_method_g;
-  tmp_method_g = new igraph_t;
-  readMethodGraph(tmp_method_g); 
-
-  unsigned num_method_nodes = (unsigned) igraph_vcount(tmp_method_g);
+  MethodGraph tmp_method_graph;
+  readMethodGraph(tmp_method_graph);
   
-  string bn(benchName);
-  std::vector<int> method_edge;
-  string edge_file(bn);
-  read_file(edge_file + "_method_graph_edge", method_edge);
+  MethodVertexNameMap vertex_to_name = get(boost::vertex_name, tmp_method_graph);
+  MethodEdgeNameMap edge_to_name = get(boost::edge_name, tmp_method_graph);
 
-  std::vector<string> method_node;
-  string node_file(bn);
-  read_string_file(node_file + "_method_graph_node", method_node);
+  unsigned num_method_nodes = num_vertices(tmp_method_graph);
   
   std::vector<string> dynamic_methodid(numTotalNodes, "");
   initDynamicMethodID(dynamic_methodid);
 
   std::vector<bool> updated(numTotalNodes, 0);
   
-  igraph_vector_t v_topological;
-  igraph_vector_init(&v_topological, num_method_nodes);
-  igraph_topological_sorting(tmp_method_g, &v_topological, IGRAPH_IN);
-  
+  std::vector< MethodVertex > topo_nodes;
+  boost::topological_sort(tmp_method_graph, std::back_inserter(topo_nodes));
   ofstream method_order;
+  string bn(benchName);
   method_order.open(bn + "_method_order");
   
   //set graph
   unordered_map<string, edgeAtt > full_graph ;
+  //FIXME
   initializeGraphInMap(full_graph);
-  // 
-  for(unsigned method_i = 0; method_i < num_method_nodes; method_i++)
+  //bottom node first
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
-    unsigned method_node_id = (unsigned) VECTOR(v_topological)[method_i];
-    string method_name = method_node.at(method_node_id);
+    string method_name = vertex_to_name[*vi]; 
 #ifdef DEBUG
     cerr << "current method: " << method_name << endl;
 #endif    
-    //find its ony parent
-    igraph_vs_t vs_method_parent;
-    igraph_vit_t vit_method_parent;
-    igraph_vs_adj(&vs_method_parent, method_node_id, IGRAPH_IN);
-    igraph_vit_create(tmp_method_g, vs_method_parent, &vit_method_parent);
-    if (IGRAPH_VIT_SIZE(vit_method_parent) == 0)
+    //only one caller for each dynamic function
+    assert (boost::in_degree(*vi, tmp_method_graph) <= 1);
+    if (boost::in_degree(*vi, tmp_method_graph) == 0)
       break;
-    assert(IGRAPH_VIT_SIZE(vit_method_parent) == 1);
-
-    unsigned parent_method = (unsigned) IGRAPH_VIT_GET(vit_method_parent);
     
-    int method_edgeid = check_edgeid(parent_method, method_node_id, tmp_method_g);
-    int call_inst = method_edge.at(method_edgeid);
-
+    method_in_edge_iter in_edge_it, in_edge_end;
+    tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_method_graph);
+    int call_inst = edge_to_name[*in_edge_it];
 #ifdef DEBUG
     cerr << "call_inst," << call_inst << endl;
-#endif    
+#endif 
     method_order << method_name << "," <<
-      method_node.at(parent_method) << "," << call_inst << endl;
-    
-    igraph_vs_destroy(&vs_method_parent);
-    igraph_vit_destroy(&vit_method_parent);
-    
+      vertex_to_name[source(*in_edge_it, tmp_method_graph)] << "," << call_inst << std::endl;
     std::unordered_set<int> to_split_nodes;
-  
+    
     unsigned min_node = call_inst + 1; 
     unsigned max_node = call_inst + 1;
     for (unsigned node_id = call_inst + 1; node_id < numTotalNodes; node_id++)
     {
       string node_dynamic_methodid = dynamic_methodid.at(node_id);
-      //if (node_dynamic_methodid.compare(method_name) == 0 )
-      //{
-        //to_split_nodes.insert(node_id);
-        //if (node_id > max_node)
-          //max_node = node_id;
-      //}
-      //if (microop.at(node_id) == IRRET)
-        //break;
       if (node_dynamic_methodid.compare(method_name) != 0  || microop.at(node_id) == IRRET)
         break;
       to_split_nodes.insert(node_id);
       if (node_id > max_node)
         max_node = node_id;
     }
-    
     unordered_map<string, edgeAtt> current_graph;
-
     auto graph_it = full_graph.begin(); 
     while (graph_it != full_graph.end())
     {
@@ -730,12 +579,9 @@ void Datapath::methodGraphSplitter()
     std::unordered_map<string, edgeAtt>().swap(current_graph);
     std::unordered_set<int>().swap(to_split_nodes);
   }
-  method_order.close();
-	igraph_vector_destroy(&v_topological);
-  igraph_destroy(tmp_method_g);
   
+  method_order.close();
   writeGraphInMap(full_graph, bn);
-  delete tmp_method_g;
 #ifdef DEBUG
   std::cerr << "=======Finally the End of Method Graph Splitter=====" << std::endl;
 #endif
@@ -746,40 +592,26 @@ void Datapath::addCallDependence()
   std::cerr << "=======Add Call Dependence=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(tmp_g, fp, 0, 1);
-  //fclose(fp);
+  Graph tmp_graph;
+  readGraph(tmp_graph);
+  
   std::vector<newEdge> to_add_edges;
   int last_call = -1;
-  for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
+  for(int node_id = 0; node_id < numTotalNodes; node_id++)
   {
     if (microop.at(node_id) == IRCALL)
     {
       if (last_call != -1)
-      {
-        to_add_edges.push_back({(unsigned)last_call, node_id, -1, -1, 1});
-      }
+        to_add_edges.push_back({last_call, node_id, -1, -1, 1});
       last_call = node_id;
     }
   }
-  writeGraphWithNewEdges(to_add_edges);
+  int num_of_edges = num_edges(tmp_graph);
+  writeGraphWithNewEdges(to_add_edges, num_of_edges);
 
 #ifdef DEBUG
   std::cerr << "=======End Add Call Dependence: " << to_add_edges.size() << "=====" << std::endl;
 #endif
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 /*
@@ -861,7 +693,7 @@ void Datapath::scratchpadPartition()
     unsigned size = it->second.array_size;
     unsigned p_factor = it->second.part_factor;
 #ifdef DEBUG
-    //cerr << base_addr << "," << size << "," << p_factor << endl;
+    cerr << base_addr << "," << size << "," << p_factor << endl;
 #endif
     for ( unsigned i = 0; i < p_factor ; i++)
     {
@@ -919,7 +751,6 @@ void Datapath::dumpStats()
   writeGlobalIsolated();
   writePerCycleActivity();
   writeRegStats();
-  delete g;
 }
 
 //localOptimizationFunctions
@@ -950,34 +781,35 @@ void Datapath::loopUnrolling()
   std::cerr << "=======Loop Unrolling=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  unsigned num_nodes = (unsigned) igraph_vcount(tmp_g);
-  std::vector<int> instid(num_nodes, 0);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
+  
+  std::vector<int> instid(num_of_nodes, 0);
   initInstID(instid);
 
-  std::vector<int> methodid(num_nodes, 0);
+  std::vector<int> methodid(num_of_nodes, 0);
   initMethodID(methodid);
   
-  std::vector<unsigned> edge_latency(num_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
   
-  std::vector<bool> tmp_isolated(num_nodes, 0);
-  isolated_nodes(tmp_g, num_nodes, tmp_isolated);
-
+  std::vector<bool> tmp_isolated(num_of_nodes, 0);
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, tmp_graph) == 0)
+      tmp_isolated.at(vertex_to_name[*vi]) = 1;
+  }
+  
   std::unordered_map<string, pair<int, int> > unrolling_config;
   readUnrollingConfig(unrolling_config);
 
@@ -988,7 +820,7 @@ void Datapath::loopUnrolling()
   file_name += "_loop_boundary";
   boundary.open(file_name.c_str());
   bool first = 0;
-  for(unsigned node_id = minNode; node_id < num_nodes; node_id++)
+  for(unsigned node_id = minNode; node_id < num_of_nodes; node_id++)
   {
     if(tmp_isolated.at(node_id))
       continue;
@@ -1011,40 +843,31 @@ void Datapath::loopUnrolling()
     {
       boundary << node_id << endl;
       
-      igraph_vs_t vs_child;
-      igraph_vit_t vit_child_it;
-      igraph_vs_adj(&vs_child, node_id, IGRAPH_OUT);
-      igraph_vit_create(tmp_g, vs_child, &vit_child_it);
-      
-      while(!IGRAPH_VIT_END(vit_child_it))
+      Vertex node = name_to_vertex[node_id];
+      out_edge_iter out_edge_it, out_edge_end;
+      for (tie(out_edge_it, out_edge_end) = out_edges(node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
       {
-        unsigned child_id = (unsigned)IGRAPH_VIT_GET(vit_child_it);
+        int child_id = target(*out_edge_it, tmp_graph);
         int child_instid = instid.at(child_id);
         int child_methodid = methodid.at(child_id);
-        IGRAPH_VIT_NEXT(vit_child_it);
-        
         if ((child_instid == node_instid) 
            && (child_methodid == node_methodid))
         {
-          int edge_id = check_edgeid(node_id, child_id, tmp_g);
+          int edge_id = edge_to_name[*out_edge_it];
           edge_latency[edge_id] = 1;
           microop.at(child_id) = IRINDEXADD;
           add_unrolling_edges++;
         }
       }
-      igraph_vs_destroy(&vs_child);
-      igraph_vit_destroy(&vit_child_it);
     }
     else if (microop.at(node_id) != IRINDEXADD)
       microop.at(node_id) = IRINDEXSTORE;
   }
-  boundary << num_nodes << endl;
+  boundary << num_of_nodes << endl;
   boundary.close();
 #ifdef DEBUG
   std::cerr << "=======End Loop Unrolling: "<< add_unrolling_edges << " =====" << std::endl;
 #endif
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 void Datapath::removeSharedLoads()
@@ -1053,28 +876,24 @@ void Datapath::removeSharedLoads()
   std::cerr << "=======Remove Shared Loads=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  unsigned num_nodes = (unsigned) igraph_vcount(tmp_g);
-  std::vector<unsigned> address(num_nodes, 0);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
+  
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  
+  std::vector<unsigned> address(num_of_nodes, 0);
   initAddress(address);
   
-  std::vector<unsigned> edge_latency(num_edges, 0);
-  std::vector<int> edge_parid(num_edges, 0);
-  std::vector<int> edge_varid(num_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<int> edge_varid(num_of_edges, 0);
 
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
@@ -1085,10 +904,15 @@ void Datapath::removeSharedLoads()
   file_name += "_loop_boundary";
   read_file(file_name, boundary);
 
-  std::vector<bool> tmp_isolated(num_nodes, 0);
-  isolated_nodes(tmp_g, num_nodes, tmp_isolated);
+  std::vector<bool> tmp_isolated(num_of_nodes, 0);
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, tmp_graph) == 0)
+      tmp_isolated.at(vertex_to_name[*vi]) = 1;
+  }
   
-  std::vector<bool> to_remove_edges(num_edges, 0);
+  std::vector<bool> to_remove_edges(num_of_edges, 0);
   std::vector<newEdge> to_add_edges;
 
   int shared_loads = 0;
@@ -1096,10 +920,10 @@ void Datapath::removeSharedLoads()
   int curr_boundary = boundary.at(boundary_id);
   
   int node_id = minNode;
-  while ( (unsigned)node_id < num_nodes)
+  while ( (unsigned)node_id < num_of_nodes)
   {
     std::unordered_map<unsigned, int> address_loaded;
-    while (node_id < curr_boundary &&  (unsigned) node_id < num_nodes)
+    while (node_id < curr_boundary &&  (unsigned) node_id < num_of_nodes)
     {
       if(tmp_isolated.at(node_id))
       {
@@ -1118,43 +942,32 @@ void Datapath::removeSharedLoads()
         else
         {
           shared_loads++;
-          unsigned prev_load = addr_it->second;
+          int prev_load = addr_it->second;
+          //iterate throught its children
+          Vertex node = name_to_vertex[node_id];
           
-          igraph_vs_t vs_child;
-          igraph_vit_t vit_child;
-          igraph_vs_adj(&vs_child, node_id, IGRAPH_OUT);
-          igraph_vit_create(tmp_g, vs_child, &vit_child);
-          while (!IGRAPH_VIT_END(vit_child))
+          out_edge_iter out_edge_it, out_edge_end;
+          for (tie(out_edge_it, out_edge_end) = out_edges(node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
           {
-            unsigned child_id = (int)IGRAPH_VIT_GET(vit_child);
-            igraph_bool_t existed;
-            igraph_are_connected(tmp_g, prev_load, child_id, &existed);
-            int edge_id = check_edgeid(node_id, child_id, tmp_g);
-            if (!existed)
-            {
+            int child_id = target(*out_edge_it, tmp_graph);
+            int edge_id = edge_to_name[*out_edge_it];
+            std::pair<Edge, bool> existed;
+            existed = edge(name_to_vertex[prev_load], name_to_vertex[node_id], tmp_graph);
+            if (existed.second == false)
               to_add_edges.push_back({prev_load, child_id, edge_varid.at(edge_id), edge_parid.at(edge_id), edge_latency.at(edge_id)});
-            }
             to_remove_edges[edge_id] = 1;
-            IGRAPH_VIT_NEXT(vit_child);
           }
-          igraph_vs_destroy(&vs_child);
-          igraph_vit_destroy(&vit_child);
-
-          igraph_vs_t vs_parent;
-          igraph_vit_t vit_parent;
-          igraph_vs_adj(&vs_parent, node_id, IGRAPH_IN);
-          igraph_vit_create(tmp_g, vs_parent, &vit_parent);
-          while(!IGRAPH_VIT_END(vit_parent))
+          
+          //iterate through its parents
+          in_edge_iter in_edge_it, in_edge_end;
+          for (tie(in_edge_it, in_edge_end) = in_edges(node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
           {
-            int parent_id = (int)IGRAPH_VIT_GET(vit_parent);
+            int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
             if (microop.at(parent_id) == IRADD ||
                 microop.at(parent_id) == IRINDEXADD ||
                 microop.at(parent_id) == IRINDEXSHIFT)
               microop.at(parent_id) = IRINDEXSTORE;
-            IGRAPH_VIT_NEXT(vit_parent);
           }
-          igraph_vs_destroy(&vs_parent);
-          igraph_vit_destroy(&vit_parent);
         }
       }
       node_id++;
@@ -1167,15 +980,12 @@ void Datapath::removeSharedLoads()
   edge_latency.clear();
   edge_parid.clear();
   edge_varid.clear();
-  writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges);
+  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
+  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 #ifdef DEBUG
   std::cerr << "=======End of Shared Loads: " << shared_loads << "=====" << std::endl;
 #endif
   cleanLeafNodes();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
-
 }
 
 void Datapath::storeBuffer()
@@ -1184,26 +994,21 @@ void Datapath::storeBuffer()
   std::cerr << "=======Store Buffer=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  int num_nodes = (int) igraph_vcount(tmp_g);
-
-  std::vector<int> edge_parid(num_edges, 0);
-  std::vector<int> edge_varid(num_edges, 0);
-  std::vector<unsigned> edge_latency(num_edges, 0);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
+  
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<int> edge_varid(num_of_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   initEdgeVarID(edge_varid);
@@ -1213,10 +1018,15 @@ void Datapath::storeBuffer()
   file_name += "_loop_boundary";
   read_file(file_name, boundary);
   
-  std::vector<bool> tmp_isolated(num_nodes, 0);
-  isolated_nodes(tmp_g, num_nodes, tmp_isolated);
+  std::vector<bool> tmp_isolated(num_of_nodes, 0);
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, tmp_graph) == 0)
+      tmp_isolated.at(vertex_to_name[*vi]) = 1;
+  }
   
-  std::vector<bool> to_remove_edges(num_edges, 0);
+  std::vector<bool> to_remove_edges(num_of_edges, 0);
   std::vector<newEdge> to_add_edges;
 
   int buffered_stores = 0;
@@ -1224,9 +1034,9 @@ void Datapath::storeBuffer()
   int curr_boundary = boundary.at(boundary_id);
   
   int node_id = minNode;
-  while (node_id < num_nodes)
+  while (node_id < num_of_nodes)
   {
-    while (node_id < curr_boundary && node_id < num_nodes)
+    while (node_id < curr_boundary && node_id < num_of_nodes)
     {
       if(tmp_isolated.at(node_id))
       {
@@ -1236,16 +1046,12 @@ void Datapath::storeBuffer()
       int node_microop = microop.at(node_id);
       if (is_store_op(node_microop))
       {
-        igraph_vs_t vs_child;
-        igraph_vit_t vit_child;
-        igraph_vs_adj(&vs_child, node_id, IGRAPH_OUT);
-        igraph_vit_create(tmp_g, vs_child, &vit_child);
-        
+        Vertex node = name_to_vertex[node_id];
+        out_edge_iter out_edge_it, out_edge_end;
         std::vector<unsigned> load_child;
-        while (!IGRAPH_VIT_END(vit_child))
+        for (tie(out_edge_it, out_edge_end) = out_edges(node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
         {
-          unsigned child_id = (int)IGRAPH_VIT_GET(vit_child);
-          IGRAPH_VIT_NEXT(vit_child);
+          int child_id = target(*out_edge_it, tmp_graph);
           int child_microop = microop.at(child_id);
           if (is_load_op(child_microop))
           {
@@ -1255,22 +1061,17 @@ void Datapath::storeBuffer()
               load_child.push_back(child_id);
           }
         }
-        igraph_vs_destroy(&vs_child);
-        igraph_vit_destroy(&vit_child);
         
         if (load_child.size() > 0)
         {
           buffered_stores++;
-          igraph_vs_t vs_parents;
-          igraph_vit_t vit_parents;
-          igraph_vs_adj(&vs_parents, node_id, IGRAPH_IN);
-          igraph_vit_create(tmp_g, vs_parents, &vit_parents);
           
-          unsigned store_parent = num_nodes;
-          while (!IGRAPH_VIT_END(vit_parents))
+          in_edge_iter in_edge_it, in_edge_end;
+          int store_parent = num_of_nodes;
+          for (tie(in_edge_it, in_edge_end) = in_edges(node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
           {
-            unsigned parent_id = (int)IGRAPH_VIT_GET(vit_parents);
-            int edge_id = check_edgeid(parent_id,  node_id, tmp_g);
+            int edge_id = edge_to_name[*in_edge_it];
+            int parent_id = source(*in_edge_it, tmp_graph);
             int parid = edge_parid.at(edge_id);
             //parent node that generates value
             if (parid == 3)
@@ -1278,45 +1079,30 @@ void Datapath::storeBuffer()
               store_parent = parent_id;
               break;
             }
-            IGRAPH_VIT_NEXT(vit_parents);
           }
-          igraph_vs_destroy(&vs_parents);
-          igraph_vit_destroy(&vit_parents);
           
-          if (store_parent != num_nodes)
+          if (store_parent != num_of_nodes)
           {
             for (unsigned i = 0; i < load_child.size(); ++i)
             {
               unsigned load_id = load_child.at(i);
-              igraph_vs_t vs_child;
-              igraph_vit_t vit_child;
-              igraph_vs_adj(&vs_child, load_id, IGRAPH_OUT);
-              igraph_vit_create(tmp_g, vs_child, &vit_child);
-              while(!IGRAPH_VIT_END(vit_child))
+              
+              Vertex load_node = name_to_vertex[load_id];
+              
+              out_edge_iter out_edge_it, out_edge_end;
+              for (tie(out_edge_it, out_edge_end) = out_edges(load_node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
               {
-                unsigned child_id = (unsigned)IGRAPH_VIT_GET(vit_child);
-                int edge_id = check_edgeid(load_id, child_id, tmp_g);
-                
+                int edge_id = edge_to_name[*out_edge_it];
+                int child_id = target(*out_edge_it, tmp_graph);
                 to_remove_edges.at(edge_id) = 1;
                 to_add_edges.push_back({store_parent, child_id, edge_varid.at(edge_id), edge_parid.at(edge_id), edge_latency.at(edge_id)});
-                IGRAPH_VIT_NEXT(vit_child);
               }
-              igraph_vs_destroy(&vs_child);
-              igraph_vit_destroy(&vit_child);
-
-              igraph_vs_t vs_ld_parents;
-              igraph_vit_t vit_ld_parents;
-              igraph_vs_adj(&vs_ld_parents, load_id, IGRAPH_IN);
-              igraph_vit_create(tmp_g, vs_ld_parents, &vit_ld_parents);
-              while(!IGRAPH_VIT_END(vit_ld_parents))
+              
+              for (tie(in_edge_it, in_edge_end) = in_edges(load_node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
               {
-                unsigned ld_parent_id = (unsigned)IGRAPH_VIT_GET(vit_ld_parents);
-                int edge_id = check_edgeid(ld_parent_id, load_id, tmp_g);
+                int edge_id = edge_to_name[*in_edge_it];
                 to_remove_edges.at(edge_id) = 1;
-                IGRAPH_VIT_NEXT(vit_ld_parents);
               }
-              igraph_vs_destroy(&vs_ld_parents);
-              igraph_vit_destroy(&vit_ld_parents);
             }
           }
         }
@@ -1331,14 +1117,12 @@ void Datapath::storeBuffer()
   edge_latency.clear();
   edge_parid.clear();
   edge_varid.clear();
-  writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges);
+  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
+  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 #ifdef DEBUG
   std::cerr << "=======End of Buffered Stores: " << buffered_stores << "=====" << std::endl;
 #endif
   cleanLeafNodes();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 void Datapath::removeRepeatedStores()
@@ -1347,27 +1131,26 @@ void Datapath::removeRepeatedStores()
   std::cerr << "=======Remove Repeated Stores=====" << std::endl;
 #endif
   //set graph
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_nodes = (unsigned) igraph_vcount(tmp_g);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  
+  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
 
-  std::vector<unsigned> address(num_nodes, 0);
+  std::vector<unsigned> address(num_of_nodes, 0);
   initAddress(address);
   
-  std::vector<bool> tmp_isolated(num_nodes, 0);
-  isolated_nodes(tmp_g, num_nodes, tmp_isolated);
+  std::vector<bool> tmp_isolated(num_of_nodes, 0);
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, tmp_graph) == 0)
+      tmp_isolated.at(vertex_to_name[*vi]) = 1;
+  }
   
   std::vector<int> boundary;
   string file_name(graphName);
@@ -1376,9 +1159,10 @@ void Datapath::removeRepeatedStores()
   if (boundary.size() < 1)
     return;
   unordered_set<unsigned> to_remove_nodes;
+  
   int shared_stores = 0;
   int boundary_id = boundary.size() - 1;
-  int node_id = num_nodes -1;
+  int node_id = num_of_nodes -1;
   int next_boundary = boundary.at(boundary_id - 1);
   while (node_id >=minNode )
   {
@@ -1401,17 +1185,13 @@ void Datapath::removeRepeatedStores()
         {
           //remove this store
           //if it has children, ignore it
-          igraph_vs_t vs_child;
-          igraph_vit_t vit_child;
-          igraph_vs_adj(&vs_child, node_id, IGRAPH_OUT);
-          igraph_vit_create(tmp_g, vs_child, &vit_child);
-          if (IGRAPH_VIT_SIZE(vit_child) == 0)
+          Vertex node = name_to_vertex[node_id];
+          
+          if (boost::out_degree(node, tmp_graph)== 0)
           {
             to_remove_nodes.insert(node_id);
             shared_stores++;
           }
-          igraph_vs_destroy(&vs_child);
-          igraph_vit_destroy(&vit_child);
         }
       }
       node_id--; 
@@ -1428,8 +1208,6 @@ void Datapath::removeRepeatedStores()
 #ifdef DEBUG
   std::cerr << "=======End of Remove Repeated Stores " << shared_stores << "=====" << std::endl;
 #endif
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 /*
 void Datapath::treeHeightReduction()
@@ -1483,6 +1261,12 @@ void Datapath::treeHeightReduction()
   
   std::vector<bool> tmp_isolated(num_nodes, 0);
   isolated_nodes(tmp_g, num_nodes, tmp_isolated);
+  //vertex_iter vi, vi_end;
+  //for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  //{
+    //if (boost::degree(*vi, tmp_graph) == 0)
+      //tmp_isolated.at(vertex_to_name[*vi]) = 1;
+  //}
   
   std::vector<bool> to_remove_edges(num_edges, 0);
   std::vector<newEdge> to_add_edges;
@@ -1662,8 +1446,8 @@ void Datapath::treeHeightReduction()
     }
     boundary_id++;
   }
-  writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges);
+  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
+  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 
   writeParType(new_par1type, 1);
   writeParType(new_par2type, 2);
@@ -1686,7 +1470,7 @@ void Datapath::treeHeightReduction()
 
 
 //readWriteGraph
-void Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
+int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges)
 {
   string gn(graphName);
   string graph_file, edge_varid_file, edge_parid_file, edge_latency_file;
@@ -1695,58 +1479,68 @@ void Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
   edge_parid_file = gn + "_edgeparid.gz";
   edge_latency_file = gn + "_edgelatency.gz";
   
+  ifstream orig_graph;
   ofstream new_graph;
   ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
-  new_graph.open(graph_file.c_str(), std::ofstream::app);
+  
+  orig_graph.open(graph_file.c_str());
+  std::filebuf *pbuf = orig_graph.rdbuf();
+  std::size_t size = pbuf->pubseekoff(0, orig_graph.end, orig_graph.in);
+  pbuf->pubseekpos(0, orig_graph.in);
+  char *buffer = new char[size];
+  pbuf->sgetn (buffer, size);
+  orig_graph.close();
+  
+  new_graph.open(graph_file.c_str());
+  new_graph.write(buffer, size);
+  delete[] buffer;
+
+  long pos = new_graph.tellp();
+  new_graph.seekp(pos-2);
+
   new_edgelatency.open(edge_latency_file.c_str(), std::ofstream::app);
   new_edgeparid.open(edge_parid_file.c_str(), std::ofstream::app);
   new_edgevarid.open(edge_varid_file.c_str(), std::ofstream::app);
-
+  
+  int new_edge_id = curr_num_of_edges;
+  
   for(auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it)
   {
-    new_graph << it->from << " " << it->to << endl;
+    new_graph << it->from << " -> " 
+              << it->to
+              << " [e_id = " << new_edge_id << "];" << endl;
+    new_edge_id++;
     new_edgelatency << it->latency << endl;
     new_edgeparid << it->parid << endl;
     new_edgevarid << it->varid << endl;
   }
+  new_graph << "}" << endl;
   new_graph.close();
   new_edgelatency.close();
   new_edgeparid.close();
   new_edgevarid.close();
+
+  return new_edge_id;
 }
-void Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes)
+int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes)
 {
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g);
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
+  Graph tmp_graph;
+  readGraph(tmp_graph);
   
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  std::vector<unsigned> edge_latency(num_edges, 0);
-  std::vector<int> edge_parid(num_edges, 0);
-  std::vector<int> edge_varid(num_edges, 0);
+  unsigned num_of_edges = num_edges(tmp_graph);
+  unsigned num_of_nodes = num_vertices(tmp_graph);
+  
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<int> edge_varid(num_of_edges, 0);
 
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   initEdgeVarID(edge_varid);
-
-  igraph_es_t es_edge;
-  igraph_eit_t eit_edge_it;
-
-  igraph_es_all(&es_edge, IGRAPH_EDGEORDER_ID);
-  igraph_eit_create(tmp_g, es_edge, &eit_edge_it);
-  IGRAPH_EIT_RESET(eit_edge_it);
   
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+
   ofstream new_graph;
   ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
   
@@ -1761,68 +1555,63 @@ void Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remo
   new_edgelatency.open(edge_latency_file.c_str());
   new_edgeparid.open(edge_parid_file.c_str());
   new_edgevarid.open(edge_varid_file.c_str());
+  
+  new_graph << "digraph DDDG {" << std::endl;
 
-  while(!IGRAPH_EIT_END(eit_edge_it))
+  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
+     new_graph << node_id << ";" << std::endl; 
+  
+  edge_iter ei, ei_end;
+  int new_edge_id = 0;
+  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
   {
-    igraph_integer_t edge_id = IGRAPH_EIT_GET(eit_edge_it);
-    IGRAPH_EIT_NEXT(eit_edge_it); 
-    igraph_integer_t from, to;
-    igraph_edge(tmp_g, edge_id, &from, &to);
-    if (to_remove_nodes.find((int)from) != to_remove_nodes.end()
-       || to_remove_nodes.find((int)to) != to_remove_nodes.end())
-       continue;
-    
-    new_graph << (unsigned) from << " " << (unsigned) to << endl;
+    int edge_id = edge_to_name[*ei];
+    int from = vertex_to_name[source(*ei, tmp_graph)];
+    int to   = vertex_to_name[target(*ei, tmp_graph)];
+    if (to_remove_nodes.find(from) != to_remove_nodes.end() 
+     || to_remove_nodes.find(to) != to_remove_nodes.end())
+      continue;
+
+    //FIXME   
+    new_graph << from << " -> " 
+              << to
+              << " [e_id = " << new_edge_id << "];" << endl;
+    new_edge_id++;
     new_edgelatency << edge_latency.at(edge_id) << endl;
     new_edgeparid << edge_parid.at(edge_id) << endl;
     new_edgevarid << edge_varid.at(edge_id) << endl;
   }
-  igraph_es_destroy(&es_edge);
-  igraph_eit_destroy(&eit_edge_it);
 
+  new_graph << "}" << endl;
   new_graph.close();
   new_edgelatency.close();
   new_edgeparid.close();
   new_edgevarid.close();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
-}
-void Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
-{
-//#ifdef DEBUG
-  //std::cerr << "=======Write Graph With Isolated Edges=====" << std::endl;
-//#endif
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g);
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
   
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
-  std::vector<unsigned> edge_latency(num_edges, 0);
-  std::vector<int> edge_parid(num_edges, 0);
-  std::vector<int> edge_varid(num_edges, 0);
+  return new_edge_id;
+}
+int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
+{
+#ifdef DEBUG
+  std::cerr << "=======Write Graph With Isolated Edges=====" << std::endl;
+#endif
+  Graph tmp_graph;
+  readGraph(tmp_graph);
+  
+  unsigned num_of_edges = num_edges(tmp_graph);
+  unsigned num_of_nodes = num_vertices(tmp_graph);
+
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<int> edge_varid(num_of_edges, 0);
 
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   initEdgeVarID(edge_varid);
-
-  igraph_es_t es_edge;
-  igraph_eit_t eit_edge_it;
-
-  igraph_es_all(&es_edge, IGRAPH_EDGEORDER_ID);
-  igraph_eit_create(tmp_g, es_edge, &eit_edge_it);
-  IGRAPH_EIT_RESET(eit_edge_it);
   
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+
   ofstream new_graph;
   ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
   
@@ -1838,74 +1627,79 @@ void Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
   new_edgeparid.open(edge_parid_file.c_str());
   new_edgevarid.open(edge_varid_file.c_str());
 
-  while(!IGRAPH_EIT_END(eit_edge_it))
+  new_graph << "digraph DDDG {" << std::endl;
+
+  for (unsigned node_id = 0; node_id < num_of_nodes; node_id++)
+     new_graph << node_id << ";" << std::endl; 
+  
+  edge_iter ei, ei_end;
+  int new_edge_id = 0;
+  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
   {
-    igraph_integer_t edge_id = IGRAPH_EIT_GET(eit_edge_it);
-    IGRAPH_EIT_NEXT(eit_edge_it); 
+    int edge_id = edge_to_name[*ei];
     if (to_remove_edges.at(edge_id))
       continue;
-    igraph_integer_t from, to;
-    igraph_edge(tmp_g, edge_id, &from, &to);
-    new_graph << (unsigned) from << " " << (unsigned) to << endl;
+    new_graph << vertex_to_name[source(*ei, tmp_graph)] << " -> " 
+              << vertex_to_name[target(*ei, tmp_graph)] 
+              << " [e_id = " << new_edge_id << "];" << endl;
+    new_edge_id++;
     new_edgelatency << edge_latency.at(edge_id) << endl;
     new_edgeparid << edge_parid.at(edge_id) << endl;
     new_edgevarid << edge_varid.at(edge_id) << endl;
   }
-  igraph_es_destroy(&es_edge);
-  igraph_eit_destroy(&eit_edge_it);
-
+  
+  new_graph << "}" << endl;
   new_graph.close();
   new_edgelatency.close();
   new_edgeparid.close();
   new_edgevarid.close();
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 #ifdef DEBUG
   std::cerr << "=======End Write Graph With Isolated Edges=====" << std::endl;
 #endif
+  return new_edge_id;
 }
 
-void Datapath::readMethodGraph(igraph_t *tmp_g)
+void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
 {
-//#ifdef DEBUG
-  //std::cerr << "=======Read Graph=====" << std::endl;
-//#endif
+#ifdef DEBUG
+  std::cerr << "=======Read Graph=====" << std::endl;
+#endif
   string gn(graphName);
-  FILE *fp;
   string graph_file_name(gn + "_method_graph");
-  fp = fopen(graph_file_name.c_str(), "r");
-  if (!fp)
-  {
-    std::cerr << "no such file: " << graph_file_name << std::endl;
-    exit(0);
-  }
-  igraph_read_graph_edgelist(tmp_g, fp, 0, 1);
-  fclose(fp);
-//#ifdef DEBUG
-  //std::cerr << "=======End Read Graph=====" << std::endl;
-//#endif
+  
+  boost::dynamic_properties dp;
+  boost::property_map<MethodGraph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, tmp_method_graph);
+  boost::property_map<MethodGraph, boost::edge_name_t>::type e_name = get(boost::edge_name, tmp_method_graph);
+  dp.property("n_id", v_name);
+  dp.property("e_inst", e_name);
+  std::ifstream fin(graph_file_name.c_str());
+  boost::read_graphviz(fin, tmp_method_graph, dp, "n_id");
+  
+#ifdef DEBUG
+  std::cerr << "=======End Read Graph=====" << std::endl;
+#endif
 }
 
 
-void Datapath::readGraph(igraph_t *tmp_g)
+void Datapath::readGraph(Graph &tmp_graph)
 {
-//#ifdef DEBUG
-  //std::cerr << "=======Read Graph=====" << std::endl;
-//#endif
+#ifdef DEBUG
+  std::cerr << "=======Read Graph=====" << std::endl;
+#endif
   string gn(graphName);
-  FILE *fp;
   string graph_file_name(gn + "_graph");
-  fp = fopen(graph_file_name.c_str(), "r");
-  if (!fp)
-  {
-    std::cerr << "no such file: " << graph_file_name << std::endl;
-    exit(0);
-  }
-  igraph_read_graph_edgelist(tmp_g, fp, 0, 1);
-  fclose(fp);
-//#ifdef DEBUG
-  //std::cerr << "=======End Read Graph=====" << std::endl;
-//#endif
+  
+  boost::dynamic_properties dp;
+  boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, tmp_graph);
+  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, tmp_graph);
+  dp.property("n_id", v_name);
+  dp.property("e_id", e_name);
+  std::ifstream fin(graph_file_name.c_str());
+  boost::read_graphviz(fin, tmp_graph, dp, "n_id");
+
+#ifdef DEBUG
+  std::cerr << "=======End Read Graph=====" << std::endl;
+#endif
 }
 
 //initFunctions
@@ -2034,54 +1828,31 @@ void Datapath::initAddressAndSize(std::vector<pair<unsigned, unsigned> > &addres
 
 void Datapath::initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph)
 {
-  igraph_t *tmp_g;
-  tmp_g = new igraph_t;
-  readGraph(tmp_g); 
-  //string gn(graphName);
-  //FILE *fp;
-  //string graph_file_name(gn + "_graph");
-  //fp = fopen(graph_file_name.c_str(), "r");
-  //if (!fp)
-  //{
-    //std::cerr << "no such file: " << graph_file_name << std::endl;
-    //exit(0);
-  //}
-  //igraph_read_graph_edgelist(&tmp_g, fp, 0, 1);
-  //fclose(fp);
-  unsigned num_edges = (unsigned) igraph_ecount(tmp_g);
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
-  std::vector<unsigned> edge_latency(num_edges, 0);
-  std::vector<int> edge_parid(num_edges, 0);
-  std::vector<int> edge_varid(num_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<int> edge_varid(num_of_edges, 0);
 
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   initEdgeVarID(edge_varid);
   
   //initialize full_graph
-  igraph_es_t es_edge;
-  igraph_eit_t eit_edge_it;
-  igraph_es_all(&es_edge, IGRAPH_EDGEORDER_ID);
-  igraph_eit_create(tmp_g, es_edge, &eit_edge_it);
-  IGRAPH_EIT_RESET(eit_edge_it);
-  
-  while(!IGRAPH_EIT_END(eit_edge_it))
+  edge_iter ei, ei_end;
+  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
   {
-    igraph_integer_t edge_id = IGRAPH_EIT_GET(eit_edge_it);
-    IGRAPH_EIT_NEXT(eit_edge_it); 
-    
-    igraph_integer_t from, to;
-    igraph_edge(tmp_g, edge_id, &from, &to);
-    
+    int edge_id = edge_to_name[*ei];
+    int from = vertex_to_name[source(*ei, tmp_graph)];
+    int to   = vertex_to_name[target(*ei, tmp_graph)];
     ostringstream oss;
-    oss << (int) from << "-" << (int)to;
+    oss << from << "-" << to;
     full_graph[oss.str()] = {edge_varid.at(edge_id), edge_parid.at(edge_id), edge_latency.at(edge_id)};
   }
-  igraph_es_destroy(&es_edge);
-  igraph_eit_destroy(&eit_edge_it);
-
-  igraph_destroy(tmp_g);
-  delete tmp_g;
 }
 
 void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name)
@@ -2101,15 +1872,24 @@ void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, 
   file_name = name + "_edgelatency.gz";
   edgelatency_file.open(file_name.c_str());
   
+  graph_file << "digraph DDDG {" << std::endl;
+  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
+     graph_file << node_id << ";" << std::endl; 
+  int new_edge_id = 0; 
   for(auto it = full_graph.begin(); it != full_graph.end(); it++)
   {
     int from, to;
     sscanf(it->first.c_str(), "%d-%d", &from, &to);
-    graph_file << from << " " << to  << endl;
+    
+    graph_file << from << " -> " 
+              << to
+              << " [e_id = " << new_edge_id << "];" << endl;
+    new_edge_id++;
     edgevarid_file << it->second.varid << endl;
     edgeparid_file << it->second.parid << endl;
     edgelatency_file << it->second.latency << endl;
   }
+  graph_file << "}" << endl;
   graph_file.close();
   edgevarid_file.close();
   edgeparid_file.close();
@@ -2208,39 +1988,49 @@ void Datapath::setGraphForStepping(string graph_name, unsigned min)
   graphName = (char*)graph_name.c_str();
   minNode = min;
   string gn(graphName);
-
-
-  FILE *fp;
-  string graph_file_name(gn + "_graph");
-  fp = fopen(graph_file_name.c_str(), "r");
-  if (!fp)
-  {
-    std::cerr << "no such file: " << graph_file_name << std::endl;
-    exit(0);
-  }
-//#ifdef DEBUG
-  //std::cerr << "========Setting Graph======" << std::endl;
-//#endif
-  igraph_read_graph_edgelist(g, fp, 0, 1);
-  fclose(fp);
   
-  numGraphNodes = (unsigned) igraph_vcount(g);
-  numGraphEdges = (unsigned) igraph_ecount(g);
+  string graph_file_name(gn + "_graph");
+
+#ifdef DEBUG
+  std::cerr << "========Setting Graph======" << std::endl;
+#endif
+  boost::dynamic_properties dp;
+  boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, graph_);
+  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph_);
+  dp.property("n_id", v_name);
+  dp.property("e_id", e_name);
+  std::ifstream fin(graph_file_name.c_str());
+  boost::read_graphviz(fin, graph_, dp, "n_id");
+  
+  numGraphEdges = boost::num_edges(graph_);
+  numGraphNodes = boost::num_vertices(graph_);
+  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
   edgeLatency.assign(numGraphEdges, 0);
   read_gzip_file(gn + "_edgelatency.gz", numGraphEdges, edgeLatency);
   
   isolated.assign(numGraphNodes, 0);
-  isolated_nodes(g, numGraphNodes, isolated);
+  numParents.assign(numGraphNodes, 0);
+  
+  totalConnectedNodes = 0;
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, graph_) == 0)
+      isolated.at(vertex_to_name[*vi]) = 1;
+    else
+    {
+      numParents.at(vertex_to_name[*vi]) = boost::in_degree(*vi, graph_);
+      totalConnectedNodes++;
+    }
+  }
   
   updateGlobalIsolated();
 
-  //update_method_latency(benchName, callLatency);
-  numParents.assign(numGraphNodes, 0);
-  totalConnectedNodes = initialized_num_of_parents(g, isolated, numParents);
-//#ifdef DEBUG
-  //cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
+#endif
 
   executedNodes = 0;
 
@@ -2275,26 +2065,27 @@ int Datapath::clearGraph()
   std::vector<bool>().swap(isolated);
   std::vector<int>().swap(numParents);
 
-  igraph_destroy(g);
+  graph_.clear();
   return cycle-prevCycle;
 }
 void Datapath::updateRegStats()
 {
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
+  
   for(unsigned node_id = 0; node_id < numGraphNodes; node_id++)
   {
     if (isolated.at(node_id))
       continue;
     int node_level = newLevel.at(node_id);
-    igraph_vs_t 	vs_children;
-    igraph_vit_t 	vit_children_it; 
-    igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
-    igraph_vit_create(g, vs_children, &vit_children_it);
-    
     int max_children_level 		= node_level;
-    while (!IGRAPH_VIT_END(vit_children_it))
+    
+    Vertex node = name_to_vertex[node_id];
+    out_edge_iter out_edge_it, out_edge_end;
+    for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      int child_id = (int)IGRAPH_VIT_GET(vit_children_it);
-      IGRAPH_VIT_NEXT(vit_children_it);
+      int child_id = target(*out_edge_it, graph_);
       if (is_memory_op(microop.at(child_id)) && 
           (!is_store_op(microop.at(node_id))))
         continue;
@@ -2304,8 +2095,7 @@ void Datapath::updateRegStats()
       if (child_level > node_level )
         regStats.at(child_level).reads++;
     }
-    igraph_vs_destroy(&vs_children);
-    igraph_vit_destroy(&vit_children_it);
+    
     if (max_children_level > node_level)
       regStats.at(node_level).writes++;
     for (int i = node_level; i < max_children_level; ++i)
@@ -2323,7 +2113,7 @@ bool Datapath::step()
   stepExecutedQueue();
 
 #ifdef DEBUG
-  cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
+  //cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
 #endif
   cycle++;
   if (executedNodes == totalConnectedNodes)
@@ -2333,9 +2123,9 @@ bool Datapath::step()
 
 void Datapath::stepExecutedQueue()
 {
-//#ifdef DEBUG
-  //cerr << "======stepping executed queue " << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "======stepping executed queue " << endl;
+#endif
   
   auto it = executedQueue.begin();
   it = executedQueue.begin();
@@ -2347,7 +2137,7 @@ void Datapath::stepExecutedQueue()
   {
     //it->second is the number of cycles to execute current nodes
 #ifdef DEBUG
-    //cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+    cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
 #endif
     if (it->second <= cycleTime)
     {
@@ -2365,84 +2155,29 @@ void Datapath::stepExecutedQueue()
       it++;
     }
   }
-//#ifdef DEBUG
-  //cerr << "======End stepping executed queue " << endl;
-//#endif
-}
-
-void Datapath::updateChildrenForNextStep(unsigned node_id)
-{
-  igraph_vs_t vs_children;
-  igraph_vit_t vit_children;
-  igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
-  igraph_vit_create(g, vs_children, &vit_children);
-  while (!IGRAPH_VIT_END(vit_children))
-  {
-    unsigned child_id = (unsigned) IGRAPH_VIT_GET(vit_children);
-    if (numParents[child_id] > 0)
-    {
-      numParents[child_id]--;
-      if (numParents[child_id] == 0)
-      {
-        if (is_memory_op(microop.at(child_id)))
-          addMemReadyNode(child_id);
-        else
-          addNonMemReadyNode(child_id);
-      }
-    }
-    IGRAPH_VIT_NEXT(vit_children);
-  }
-  igraph_vs_destroy(&vs_children);
-  igraph_vit_destroy(&vit_children);
-}
-
-
-void Datapath::updateChildrenForCurrentStep(unsigned node_id)
-{
-  igraph_vs_t vs_children;
-  igraph_vit_t vit_children;
-  igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
-  igraph_vit_create(g, vs_children, &vit_children);
-  while (!IGRAPH_VIT_END(vit_children))
-  {
-    unsigned child_id = (unsigned) IGRAPH_VIT_GET(vit_children);
-    if (numParents[child_id] == 1)
-    {
-      int edge_id = check_edgeid(node_id, child_id, g);
-      if (edgeLatency.at(edge_id) == 0)
-      {
-        //If doable in current cycle, do it; otherwise, don't touch
-        //anything
-        numParents[child_id] = 0;
-        //child node latency
-        //currently assuming everyone is one cycle
-        if (is_memory_op(microop.at(child_id)))
-          addMemReadyNode(child_id);
-        else
-          addNonMemReadyNode(child_id);
-      }
-    }
-    IGRAPH_VIT_NEXT(vit_children);
-  }
-  igraph_vs_destroy(&vs_children);
-  igraph_vit_destroy(&vit_children);
-
+#ifdef DEBUG
+  cerr << "======End stepping executed queue " << endl;
+#endif
 }
 
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
-//#ifdef DEBUG
-  //cerr << "updating the children of " << node_id << endl;
-//#endif
-  igraph_vs_t vs_children;
-  igraph_vit_t vit_children;
-  igraph_vs_adj(&vs_children, node_id, IGRAPH_OUT);
-  igraph_vit_create(g, vs_children, &vit_children);
-  while (!IGRAPH_VIT_END(vit_children))
-  {
-    unsigned child_id = (unsigned) IGRAPH_VIT_GET(vit_children);
 #ifdef DEBUG
-    //cerr << "child_id, numParents: " << child_id << "," << numParents[child_id] << endl;
+  cerr << "updating the children of " << node_id << endl;
+#endif
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
+
+  Vertex node = name_to_vertex[node_id];
+  
+  out_edge_iter out_edge_it, out_edge_end;
+  for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
+  {
+    int child_id = vertex_to_name[target(*out_edge_it, graph_)];
+#ifdef DEBUG
+    cerr << "child_id, numParents: " << child_id << "," << numParents[child_id] << endl;
 #endif
     if (numParents[child_id] > 0)
     {
@@ -2458,11 +2193,7 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
         }
       }
     }
-    IGRAPH_VIT_NEXT(vit_children);
   }
-  igraph_vs_destroy(&vs_children);
-  igraph_vit_destroy(&vit_children);
-
 }
 int Datapath::fireMemNodes()
 {
@@ -2486,17 +2217,17 @@ int Datapath::fireMemNodes()
     else
       ++it;
   }
-//#ifdef DEBUG
-  //cerr << "fired Memory Nodes," << firedNodes << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "fired Memory Nodes," << firedNodes << endl;
+#endif
   return firedNodes;
 }
 
 int Datapath::fireNonMemNodes()
 {
-//#ifdef DEBUG
-  //cerr << "=========Firing NonMemory Nodes========" << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "=========Firing NonMemory Nodes========" << endl;
+#endif
   int firedNodes = 0;
   //assume the Queue is sorted by somehow
   //non considering user's constraints on num of functional units
@@ -2522,17 +2253,17 @@ int Datapath::fireNonMemNodes()
       //}
     it = nonMemReadyQueue.erase(it);
   }
-//#ifdef DEBUG
-  //cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
+#endif
   return firedNodes;
 }
 
 void Datapath::initReadyQueue()
 {
-//#ifdef DEBUG
-  //cerr << "======Initializing Ready Queue=========" << endl;
-//#endif
+#ifdef DEBUG
+  cerr << "======Initializing Ready Queue=========" << endl;
+#endif
   for(unsigned i = 0; i < numGraphNodes; i++)
   {
     if (numParents[i] == 0 && isolated[i] != 1)
@@ -2543,8 +2274,8 @@ void Datapath::initReadyQueue()
         addNonMemReadyNode(i);
     }
   }
-#ifdef debug
-  cerr << "initialreadyqueuesize: memory," << memreadyqueue.size() << ", non-mem," << nonmemreadyqueue.size() << endl;
+#ifdef DEBUG
+  cerr << "initialreadyqueuesize: memory," << memReadyQueue.size() << ", non-mem," << nonMemReadyQueue.size() << endl;
 #endif
 }
 

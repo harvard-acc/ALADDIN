@@ -8,7 +8,7 @@
 
 using namespace std;
 int check_edgeid(long int parent, long int updating_node, igraph_t *g);
-bool is_edge_existed( int parent, int updating_node, igraph_t &g);
+bool is_edge_existed( int parent, int updating_node, igraph_t &g);//not used
 bool has_one_child(igraph_t *g, int node_id);
 int isolated_nodes (igraph_t *g, unsigned num_of_vertices, vector<bool> &v_isolated);
 
