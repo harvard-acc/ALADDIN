@@ -10,8 +10,9 @@ Output File:
 
 int profile_base_address(string bench, string base_addr_name)
 {
-  typedef boost::property < boost::vertex_name_t, std::string> VertexProperty;
-  typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperty> Graph;
+  typedef boost::property < boost::vertex_name_t, int> VertexProperty;
+  typedef boost::property < boost::edge_name_t, int> EdgeProperty;
+  typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
 	
   string graph_file_name(bench);
   graph_file_name += "_graph";
@@ -19,11 +20,22 @@ int profile_base_address(string bench, string base_addr_name)
   Graph graph;
   boost::dynamic_properties dp;
   boost::property_map<Graph, boost::vertex_name_t>::type name = get(boost::vertex_name, graph);
+  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph);
+  
   dp.property("node_id",name);
+  dp.property("e_id", e_name);   
       
   std::ifstream fin(graph_file_name.c_str());
   bool status = boost::read_graphviz(fin, graph, dp, "node_id");
+  typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
   
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph, Graph) 
+    name_to_vertex[get(boost::vertex_name, graph, v)] = v;
+  
+  std::map<Vertex, int> vertex_to_name;
+  BGL_FORALL_VERTICES(v, graph, Graph) 
+    vertex_to_name[v] = get(boost::vertex_name, graph, v);
 
   /*Get basic graph stats*/
   unsigned num_of_vertices = num_vertices(graph);
@@ -70,56 +82,49 @@ int profile_base_address(string bench, string base_addr_name)
   */
   typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
   IndexMap index = get(boost::vertex_index, graph);
-  typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-  typedef std::vector< Vertex > container; 
-  container sorted_nodes;
-  boost::topological_sort(graph, std::back_inserter(sorted_nodes));
-  for (container::reverse_iterator ii=sorted_nodes.rbegin(); ii!=sorted_nodes.rend(); ++ii)
+  typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
+
+  for( int node_id = 0; node_id < num_of_vertices; node_id++)
   {
-    int updating_node = index(*ii);
-    int updating_node_microop 		= v_microop.at(updating_node);
+    Vertex v = name_to_vertex[node_id];
+    int updating_node_microop 		= v_microop.at(node_id);
     if (updating_node_microop == IRLOADREL || updating_node_microop == IRSTOREREL )
     {
       bool updated = 0;
       typedef typename boost::graph_traits<Graph> GraphTraits;
       typename GraphTraits::in_edge_iterator in_i, in_end;
-      for (tie(in_i, in_end) = in_edges(*ii, graph); in_i != in_end; ++in_i)
+      for (tie(in_i, in_end) = in_edges(v, graph); in_i != in_end; ++in_i)
       {
         typename GraphTraits::edge_descriptor ed;
         ed = *in_i;
         //source is parent
-        unsigned parent_id = index[source(ed, graph)];
+        unsigned parent_id = vertex_to_name[source(ed, graph)];
         unsigned parent_microop	= v_microop.at(parent_id);
         if (parent_microop == IRGETADDRESS)
         {
           //not real memory operation
           updated = 1;
-          v_microop.at(updating_node) = IRSTORE;
+          v_microop.at(node_id) = IRSTORE;
           break;
-        }
-        else 
-        {
-          unsigned abs_addr = v_par1value.at(updating_node);
-          for (unsigned i = 0; i < base_addr.size(); i++)
-          {
-            if ( i == 0)
-              assert(abs_addr >= base_addr.at(i));
-            else
-            {
-              if (abs_addr < base_addr.at(i) && abs_addr >= base_addr.at(i-1))
-              {
-                v_membase.at(updating_node) = base_addr.at(i-1);
-                break;
-              }
-              else if (i == base_addr.size() -1)
-                v_membase.at(updating_node) = base_addr.at(i);
-            }
-          }
-          updated = 1;
         }
       }
       if (!updated)
-        v_membase.at(updating_node) = v_par1value.at(updating_node);
+      {
+        unsigned abs_addr = v_par1value.at(node_id);
+        for (unsigned i = 0; i < base_addr.size(); i++)
+        {
+          if ( i == 0)
+            assert(abs_addr >= base_addr.at(i));
+          else if (abs_addr < base_addr.at(i) && abs_addr >= base_addr.at(i-1))
+          {
+            v_membase.at(node_id) = base_addr.at(i-1);
+            break;
+          }
+          else if (i == base_addr.size() -1)
+            v_membase.at(node_id) = base_addr.at(i);
+        }
+        updated = 1;
+      }
     }
   }
   

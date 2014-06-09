@@ -80,18 +80,20 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
   edge_latency.open(edge_latency_file.c_str());
   //write title
   dddg << "digraph DDDG {" << endl;
-  dddg << "node[shape=record];" << endl;
+  //dddg << "node[shape=record];" << endl;
   //format: dynamic id[label = "dynamic id | microop"];
   for (int node_id = 0; node_id < num_of_instructions ; node_id++)
-    //dddg << "\"" << node_id << "\" " << endl;
-    dddg << node_id  << "[label = \"<f0> " << node_id << " | <f1> " << v_microop.at(node_id)  << " \"];" << endl;
+    dddg << node_id << endl;
+  //dddg << node_id  << "[node_id = \"<f0> " << node_id << " | <f1> " << v_microop.at(node_id)  << " \"];" << endl;
   
   //Register Dependency
+  int edge_id = 0;
   for(auto it = register_edge_table.begin(); 
     it != register_edge_table.end(); ++it)
   {
     //dddg << it->first << " " << it->second.sink_node << endl;
-    dddg << it->first << " -> " << it->second.sink_node << ";" << endl;
+    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
+    edge_id++;
     edge_varid << it->second.var_id << endl;
     edge_parid << it->second.par_id << endl;
     edge_latency << "1" << endl;
@@ -101,7 +103,9 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
     it != memory_edge_table.end(); ++it)
   {
     //dddg << it->first << " " << it->second.sink_node << endl;
-    dddg << it->first << " -> " << it->second.sink_node << ";" << endl;
+    //dddg << it->first << " -> " << it->second.sink_node << ";" << endl;
+    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
+    edge_id++;
     edge_varid << it->second.var_id << endl;
     edge_parid << it->second.par_id << endl;
     edge_latency << "1" << endl;
