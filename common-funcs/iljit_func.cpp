@@ -21,6 +21,16 @@ bool is_branch_inst(unsigned microop)
       return 0;
   }
 }
+bool is_index_inst(unsigned microop)
+{ 
+  switch(microop)
+  {
+    case IRINDEXADD: case IRINDEXSHIFT: case IRINDEXSTORE: case IRSTORE:
+      return 1;
+    default:
+      return 0;
+  }
+}
 
 bool is_compare_inst(unsigned microop)
 {

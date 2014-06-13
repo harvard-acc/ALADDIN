@@ -100,6 +100,7 @@ class Datapath
   void methodGraphBuilder();
   void methodGraphSplitter();
   void nodeStrengthReduction();
+  void loopFlatten();
   void loopUnrolling();
   void removeSharedLoads();
   void storeBuffer();
@@ -107,8 +108,9 @@ class Datapath
   void treeHeightReduction();
   void scratchpadPartition();
   
-  void readUnrollingConfig(std::unordered_map<string, pair<int, int> > &unrolling_config);
-  void readInductionConfig(std::unordered_set<string> &ind_config);
+  bool readUnrollingConfig(std::unordered_map<string, pair<int, int> > &unrolling_config);
+  bool readInductionConfig(std::unordered_set<string> &ind_config);
+  bool readFlattenConfig(std::unordered_set<string> &flatten_config);
   void readPartitionConfig(std::unordered_map<unsigned,
   partitionEntry> & partition_config);
   void readCompletePartitionConfig(std::unordered_set<unsigned> &config);
@@ -150,8 +152,8 @@ class Datapath
   void writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name);
   void initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph);
 
-  void setGraphName(std::string graph_name);
-  void setGraphForStepping(std::string graph_name, unsigned min_node);
+  void setGraphName(std::string graph_name, int min);
+  void setGraphForStepping(std::string graph_name);
   int clearGraph();
   bool step();
   void stepExecutedQueue();
@@ -200,7 +202,9 @@ class Datapath
   /*igraph_t *g;*/
   /*Graph global_graph_;*/
   Graph graph_;
-  
+  VertexNameMap vertexToName;
+  std::map<int, Vertex> nameToVertex;
+
   std::vector<int> numParents;
   std::vector<bool> isolated;
   std::vector<int> edgeLatency;

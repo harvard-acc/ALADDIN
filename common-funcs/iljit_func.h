@@ -18,7 +18,7 @@
 #define IRINDEXSTORE 102
 using namespace std;
 
-
+bool is_index_inst(unsigned microop);
 bool is_associative (unsigned microop);
 bool is_branch_inst(unsigned microop);
 bool is_compare_inst(unsigned microop);
