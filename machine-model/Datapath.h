@@ -202,8 +202,8 @@ class Datapath
   /*igraph_t *g;*/
   /*Graph global_graph_;*/
   Graph graph_;
+  std::unordered_map<int, Vertex> nameToVertex;
   VertexNameMap vertexToName;
-  std::map<int, Vertex> nameToVertex;
 
   std::vector<int> numParents;
   std::vector<bool> isolated;

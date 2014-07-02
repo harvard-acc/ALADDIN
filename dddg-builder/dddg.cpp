@@ -26,27 +26,6 @@ int dddg::num_of_memory_dependency()
 {
   return num_of_mem_dep;
 }
-//void dddg::init_to_ignore_method(string file_name)
-//{
-  //ifstream input;
-  //input.open(file_name);
-  //while (!input.eof())
-  //{
-    //string wholeline;
-    //getline(input, wholeline);
-    //if (wholeline.size() == 0)
-      //break;
-    //unsigned pos = wholeline.find("ignore,");
-    //if (pos == std::string::npos)
-      //continue;
-    //else
-    //{
-      //int methodid = atoi(wholeline.substr(pos+1).c_str());
-      //to_ignore_methodid[method_id] = 1;
-    //}
-  //}
-  //input.close();
-//}
 void dddg::output_methodid(string bench)
 {
   string output_file_name(bench);
@@ -72,49 +51,42 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
    string edge_latency_file)
 {
   ofstream dddg;
-  ogzstream edge_parid, edge_varid, edge_latency;
+  gzFile edge_parid, edge_varid, edge_latency;
 
   dddg.open(dddg_file.c_str());
-  edge_parid.open(edge_parid_file.c_str());
-  edge_varid.open(edge_varid_file.c_str());
-  edge_latency.open(edge_latency_file.c_str());
+  edge_parid = gzopen(edge_parid_file.c_str(), "w");
+  edge_varid = gzopen(edge_varid_file.c_str(), "w");
+  edge_latency = gzopen(edge_latency_file.c_str(), "w");
   //write title
   dddg << "digraph DDDG {" << endl;
-  //dddg << "node[shape=record];" << endl;
-  //format: dynamic id[label = "dynamic id | microop"];
   for (int node_id = 0; node_id < num_of_instructions ; node_id++)
     dddg << node_id << endl;
-  //dddg << node_id  << "[node_id = \"<f0> " << node_id << " | <f1> " << v_microop.at(node_id)  << " \"];" << endl;
   
-  //Register Dependency
   int edge_id = 0;
   for(auto it = register_edge_table.begin(); 
     it != register_edge_table.end(); ++it)
   {
-    //dddg << it->first << " " << it->second.sink_node << endl;
     dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
     edge_id++;
-    edge_varid << it->second.var_id << endl;
-    edge_parid << it->second.par_id << endl;
-    edge_latency << "1" << endl;
+    gzprintf(edge_varid, "%d\n", it->second.var_id);
+    gzprintf(edge_parid, "%d\n", it->second.par_id);
+    gzprintf(edge_latency, "1\n");
   }
   //Memory Dependency
   for(auto it = memory_edge_table.begin();
     it != memory_edge_table.end(); ++it)
   {
-    //dddg << it->first << " " << it->second.sink_node << endl;
-    //dddg << it->first << " -> " << it->second.sink_node << ";" << endl;
     dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
     edge_id++;
-    edge_varid << it->second.var_id << endl;
-    edge_parid << it->second.par_id << endl;
-    edge_latency << "1" << endl;
+    gzprintf(edge_varid, "%d\n", it->second.var_id);
+    gzprintf(edge_parid, "%d\n", it->second.par_id);
+    gzprintf(edge_latency, "1\n");
   }
   dddg << "}" << endl;
   dddg.close();
-  edge_parid.close();
-  edge_varid.close();
-  edge_latency.close();
+  gzclose(edge_parid);
+  gzclose(edge_varid);
+  gzclose(edge_latency);
 }
 void dddg::parse_instruction_line(string line)
 {
@@ -407,10 +379,9 @@ int build_initial_dddg(string bench, string trace_file_name)
   //int build_initial_dddg(string bench, string trace_file_name, string config_file)
 {
 	dddg graph_dep;
-  //graph_dep.init_to_ignore_method(config);
 
-	igzstream 			tracefile;
-	tracefile.open(trace_file_name.c_str());
+  gzFile tracefile;
+  tracefile = gzopen(trace_file_name.c_str(), "r");
 
 	if (!tracefile)
   {
@@ -425,12 +396,13 @@ int build_initial_dddg(string bench, string trace_file_name)
       << trace_file_name << std::endl; 
   } 
   
-  string wholeline; 
   int lineid = 0;
-  while(!tracefile.eof()) 
+  while(!gzeof(tracefile)) 
   {
-    wholeline.clear(); 
-    getline(tracefile, wholeline);
+    char buffer[256];
+    gzgets(tracefile, buffer, 256);
+    string wholeline(buffer); 
+    
     size_t pos_end_tag = wholeline.find(","); 
     
     if(pos_end_tag == std::string::npos) { continue; }
@@ -452,7 +424,7 @@ int build_initial_dddg(string bench, string trace_file_name)
       graph_dep.parse_call_parameter(line_left, tag);	
  }
 
-  tracefile.close();
+  gzclose(tracefile);
 
   std::cerr << "num of nodes " << graph_dep.num_nodes() << std::endl; 
   std::cerr << "num of edges " << graph_dep.num_edges() << std::endl; 

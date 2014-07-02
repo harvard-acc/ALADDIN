@@ -5,13 +5,12 @@
 #include <sstream> // std::istringstream
 #include <fstream>
 #include <stdlib.h>
-#include <gzstream.h>
 #include <string> 
 #include <vector>
 #include <assert.h>
 #include <unordered_map>
 #include "./node_latency.h"
-#include "/group/brooks/ildjit/src/libiljitu/src/ir_language.h"
+#include "./ir_language.h"
 
 #define IRINDEXADD 100
 #define IRINDEXSHIFT 101

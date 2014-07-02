@@ -1,19 +1,18 @@
 OBJS = aladdin.o
-LIBS = libcommonfuncs.so libdddgbuild.so libprofiling.so libtraceprofiler.so libuncore.so
+LIBS = libcommonfuncs.so libdddgbuild.so libprofiling.so libmachinemodel.so
 EXE = aladdin
-CFLAGS = -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
-         -I./common-funcs/ \
-         -I./dddg-builder/ \
-         -I./profiling/ \
-         -I./machine-model/ \
-         -I./profiling/init-stats/  -I$(BOOST_ROOT)
-LFLAGS = $(DEBUG) -L/group/brooks/shao/System/lib/ \
-         -L./lib/\
+#export DEBUG = -DDEBUG -DDDEBUG
+export CFLAGS = -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
+         -I$(ALADDIN_HOME)/common-funcs/ \
+         -I$(ALADDIN_HOME)/dddg-builder/ \
+         -I$(ALADDIN_HOME)/profiling/ \
+         -I$(ALADDIN_HOME)/machine-model/ \
+				 -I$(BOOST_ROOT)
+export LFLAGS = $(DEBUG) -L/group/brooks/shao/System/lib/ \
+         -L$(ALADDIN_HOME)/lib/\
          -L$(BOOST_ROOT)/bin.v2/libs/regex/build/gcc-4.8.1/release/threading-multi \
          -L$(BOOST_ROOT)/bin.v2/libs/graph/build/gcc-4.8.1/release/threading-multi -lboost_graph \
-         -lcommonfuncs -ldddgbuild -lprofiling -ltraceprofiler \
-				 -luncore -lz -lgzstream 
-				 #-lmethodddg -ldramsim -lscheduling -ltransformation 
+         -lcommonfuncs -ldddgbuild -lprofiling -lmachinemodel -lz 
 
 all : $(EXE)
 
@@ -30,18 +29,14 @@ libdddgbuild.so :
 libprofiling.so :
 	cd profiling && $(MAKE)
 
-libtraceprofiler.so :
-	cd profiling/init-stats && $(MAKE)
-
-libuncore.so :
+libmachinemodel.so :
 	cd machine-model && $(MAKE)
 
 aladdin.o : aladdin.cpp
 	$(CXX) $(CFLAGS) aladdin.cpp
 
 clean:
-	rm aladdin
 	rm lib/*
-
+	rm aladdin
 
 

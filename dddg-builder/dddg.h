@@ -3,6 +3,7 @@
 
 #include "file_func.h"
 #include "iljit_func.h"
+#include "zlib.h"
 #include <stack>
 
 using namespace std;

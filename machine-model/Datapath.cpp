@@ -67,6 +67,7 @@ void Datapath::globalOptimizationPass()
   nodeStrengthReduction();
   //loop flattening
   loopFlatten();
+  
   addCallDependence();
   methodGraphBuilder();
   methodGraphSplitter();
@@ -237,6 +238,7 @@ void Datapath::removeInductionDependence()
   
   Graph tmp_graph;
   readGraph(tmp_graph); 
+  
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
@@ -356,8 +358,6 @@ void Datapath::removeAddressCalculation()
               for (tie(in_mul_i, in_mul_end) = in_edges(source(*in_grand_i, tmp_graph), tmp_graph); in_mul_i != in_mul_end; ++in_mul_i)
               {
                 int mul_parent = vertex_to_name[source(*in_mul_i, tmp_graph)];
-                //if (microop.at(mul_parent) == IRADD)
-                  //microop.at(mul_parent) = IRINDEXADD;
                 int m_edge_id = edge_to_name[*in_mul_i];
                 address_cal_edges++;
                 //remove the edge between the mul and its parent
@@ -389,6 +389,7 @@ void Datapath::removeBranchEdges()
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
+
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
@@ -539,6 +540,7 @@ void Datapath::methodGraphSplitter()
       if (node_id > max_node)
         max_node = node_id;
     }
+    cerr << "to_split_nodes," << to_split_nodes.size() << endl;
     unordered_map<string, edgeAtt> current_graph;
     auto graph_it = full_graph.begin(); 
     while (graph_it != full_graph.end())
@@ -817,10 +819,13 @@ void Datapath::loopUnrolling()
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
+  
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
 
-  std::map<int, Vertex> name_to_vertex;
+  //unordered_map
+  //custom allocator, boost::slab allocator 
+  std::unordered_map<int, Vertex> name_to_vertex;
   BGL_FORALL_VERTICES(v, tmp_graph, Graph)
     name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
   
@@ -1045,6 +1050,7 @@ void Datapath::storeBuffer()
   std::vector<int> edge_parid(num_of_edges, 0);
   std::vector<int> edge_varid(num_of_edges, 0);
   std::vector<unsigned> edge_latency(num_of_edges, 0);
+  
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   initEdgeVarID(edge_varid);
@@ -1521,7 +1527,7 @@ int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int cur
   
   ifstream orig_graph;
   ofstream new_graph;
-  ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
+  gzFile new_edgelatency, new_edgeparid, new_edgevarid;
   
   orig_graph.open(graph_file.c_str());
   std::filebuf *pbuf = orig_graph.rdbuf();
@@ -1538,9 +1544,9 @@ int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int cur
   long pos = new_graph.tellp();
   new_graph.seekp(pos-2);
 
-  new_edgelatency.open(edge_latency_file.c_str(), std::ofstream::app);
-  new_edgeparid.open(edge_parid_file.c_str(), std::ofstream::app);
-  new_edgevarid.open(edge_varid_file.c_str(), std::ofstream::app);
+  new_edgelatency = gzopen(edge_latency_file.c_str(), "a");
+  new_edgeparid = gzopen(edge_parid_file.c_str(), "a");
+  new_edgevarid = gzopen(edge_varid_file.c_str(), "a");
   
   int new_edge_id = curr_num_of_edges;
   
@@ -1550,15 +1556,15 @@ int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int cur
               << it->to
               << " [e_id = " << new_edge_id << "];" << endl;
     new_edge_id++;
-    new_edgelatency << it->latency << endl;
-    new_edgeparid << it->parid << endl;
-    new_edgevarid << it->varid << endl;
+    gzprintf(new_edgelatency, "%d\n", it->latency);
+    gzprintf(new_edgeparid, "%d\n", it->parid);
+    gzprintf(new_edgevarid, "%d\n", it->varid);
   }
   new_graph << "}" << endl;
   new_graph.close();
-  new_edgelatency.close();
-  new_edgeparid.close();
-  new_edgevarid.close();
+  gzclose(new_edgelatency);
+  gzclose(new_edgeparid);
+  gzclose(new_edgevarid);
 
   return new_edge_id;
 }
@@ -1582,7 +1588,7 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
 
   ofstream new_graph;
-  ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
+  gzFile new_edgelatency, new_edgeparid, new_edgevarid;
   
   string gn(graphName);
   string graph_file, edge_varid_file, edge_parid_file, edge_latency_file;
@@ -1592,9 +1598,9 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
   edge_latency_file = gn + "_edgelatency.gz";
   
   new_graph.open(graph_file.c_str());
-  new_edgelatency.open(edge_latency_file.c_str());
-  new_edgeparid.open(edge_parid_file.c_str());
-  new_edgevarid.open(edge_varid_file.c_str());
+  new_edgelatency = gzopen(edge_latency_file.c_str(), "a");
+  new_edgeparid = gzopen(edge_parid_file.c_str(), "a");
+  new_edgevarid = gzopen(edge_varid_file.c_str(), "a");
   
   new_graph << "digraph DDDG {" << std::endl;
 
@@ -1617,22 +1623,22 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
               << to
               << " [e_id = " << new_edge_id << "];" << endl;
     new_edge_id++;
-    new_edgelatency << edge_latency.at(edge_id) << endl;
-    new_edgeparid << edge_parid.at(edge_id) << endl;
-    new_edgevarid << edge_varid.at(edge_id) << endl;
+    gzprintf(new_edgelatency, "%d\n", edge_latency.at(edge_id) );
+    gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
+    gzprintf(new_edgevarid, "%d\n", edge_varid.at(edge_id));
   }
 
   new_graph << "}" << endl;
   new_graph.close();
-  new_edgelatency.close();
-  new_edgeparid.close();
-  new_edgevarid.close();
+  gzclose(new_edgelatency);
+  gzclose(new_edgeparid);
+  gzclose(new_edgevarid);
   
   return new_edge_id;
 }
 int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cerr << "=======Write Graph With Isolated Edges=====" << std::endl;
 #endif
   Graph tmp_graph;
@@ -1653,7 +1659,7 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
 
   ofstream new_graph;
-  ogzstream new_edgelatency, new_edgeparid, new_edgevarid;
+  gzFile new_edgelatency, new_edgeparid, new_edgevarid;
   
   string gn(graphName);
   string graph_file, edge_varid_file, edge_parid_file, edge_latency_file;
@@ -1663,9 +1669,9 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
   edge_latency_file = gn + "_edgelatency.gz";
   
   new_graph.open(graph_file.c_str());
-  new_edgelatency.open(edge_latency_file.c_str());
-  new_edgeparid.open(edge_parid_file.c_str());
-  new_edgevarid.open(edge_varid_file.c_str());
+  new_edgelatency = gzopen(edge_latency_file.c_str(), "a");
+  new_edgeparid = gzopen(edge_parid_file.c_str(), "a");
+  new_edgevarid = gzopen(edge_varid_file.c_str(), "a");
 
   new_graph << "digraph DDDG {" << std::endl;
 
@@ -1683,17 +1689,17 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
               << vertex_to_name[target(*ei, tmp_graph)] 
               << " [e_id = " << new_edge_id << "];" << endl;
     new_edge_id++;
-    new_edgelatency << edge_latency.at(edge_id) << endl;
-    new_edgeparid << edge_parid.at(edge_id) << endl;
-    new_edgevarid << edge_varid.at(edge_id) << endl;
+    gzprintf(new_edgelatency, "%d\n", edge_latency.at(edge_id) );
+    gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
+    gzprintf(new_edgevarid, "%d\n", edge_varid.at(edge_id));
   }
   
   new_graph << "}" << endl;
   new_graph.close();
-  new_edgelatency.close();
-  new_edgeparid.close();
-  new_edgevarid.close();
-#ifdef DEBUG
+  gzclose(new_edgelatency);
+  gzclose(new_edgeparid);
+  gzclose(new_edgevarid);
+#ifdef DDEBUG
   std::cerr << "=======End Write Graph With Isolated Edges=====" << std::endl;
 #endif
   return new_edge_id;
@@ -1701,7 +1707,7 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
 
 void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cerr << "=======Read Graph=====" << std::endl;
 #endif
   string gn(graphName);
@@ -1715,7 +1721,7 @@ void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
   std::ifstream fin(graph_file_name.c_str());
   boost::read_graphviz(fin, tmp_method_graph, dp, "n_id");
   
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cerr << "=======End Read Graph=====" << std::endl;
 #endif
 }
@@ -1723,7 +1729,7 @@ void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
 
 void Datapath::readGraph(Graph &tmp_graph)
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cerr << "=======Read Graph=====" << std::endl;
 #endif
   string gn(graphName);
@@ -1737,7 +1743,7 @@ void Datapath::readGraph(Graph &tmp_graph)
   std::ifstream fin(graph_file_name.c_str());
   boost::read_graphviz(fin, tmp_graph, dp, "n_id");
 
-#ifdef DEBUG
+#ifdef DDEBUG
   std::cerr << "=======End Read Graph=====" << std::endl;
 #endif
 }
@@ -1871,6 +1877,7 @@ void Datapath::initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_gr
   Graph tmp_graph;
   readGraph(tmp_graph); 
   unsigned num_of_edges = boost::num_edges(tmp_graph);
+  
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
@@ -1901,17 +1908,21 @@ void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, 
   std::cerr << "=======Write Graph In Map: " << name << "," << full_graph.size() << "=====" << std::endl;
 #endif
   ofstream graph_file;
-  ogzstream edgeparid_file, edgevarid_file, edgelatency_file;
-  string file_name;
-
-  graph_file.open(name + "_graph");
-  file_name = name + "_edgevarid.gz";
-  edgevarid_file.open(file_name.c_str());
-  file_name = name + "_edgeparid.gz";
-  edgeparid_file.open(file_name.c_str());
-  file_name = name + "_edgelatency.gz";
-  edgelatency_file.open(file_name.c_str());
+  gzFile new_edgelatency, new_edgeparid, new_edgevarid;
   
+  string graph_name;
+  string edge_varid_file, edge_parid_file, edge_latency_file;
+
+  edge_varid_file = name + "_edgevarid.gz";
+  edge_parid_file = name + "_edgeparid.gz";
+  edge_latency_file = name + "_edgelatency.gz";
+  graph_name = name + "_graph";
+  
+  new_edgelatency = gzopen(edge_latency_file.c_str(), "w");
+  new_edgeparid = gzopen(edge_parid_file.c_str(), "w");
+  new_edgevarid = gzopen(edge_varid_file.c_str(), "w");
+  
+  graph_file.open(graph_name.c_str());
   graph_file << "digraph DDDG {" << std::endl;
   for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
      graph_file << node_id << ";" << std::endl; 
@@ -1925,16 +1936,16 @@ void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, 
               << to
               << " [e_id = " << new_edge_id << "];" << endl;
     new_edge_id++;
-    edgevarid_file << it->second.varid << endl;
-    edgeparid_file << it->second.parid << endl;
-    edgelatency_file << it->second.latency << endl;
+    gzprintf(new_edgelatency, "%d\n", it->second.latency);
+    gzprintf(new_edgeparid, "%d\n", it->second.parid);
+    gzprintf(new_edgevarid, "%d\n", it->second.varid);
   }
   graph_file << "}" << endl;
   graph_file.close();
-  edgevarid_file.close();
-  edgeparid_file.close();
-  edgelatency_file.close();
-#ifdef DEBUG
+  gzclose(new_edgelatency);
+  gzclose(new_edgeparid);
+  gzclose(new_edgevarid);
+#ifdef DDEBUG
   //std::cerr << "=======End Write Graph In Map=====" << std::endl;
 #endif
 }
@@ -2031,7 +2042,7 @@ void Datapath::setGraphForStepping(string graph_name)
   string graph_file_name(gn + "_graph");
 
 #ifdef DEBUG
-  std::cerr << "========Setting Graph======" << std::endl;
+  std::cerr << "========Setting Graph for Stepping======" << std::endl;
 #endif
   boost::dynamic_properties dp;
   boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, graph_);
@@ -2045,8 +2056,6 @@ void Datapath::setGraphForStepping(string graph_name)
   numGraphNodes = boost::num_vertices(graph_);
   
   vertexToName = get(boost::vertex_name, graph_);
-  
-  std::map<int, Vertex> nameToVertex;
   BGL_FORALL_VERTICES(v, graph_, Graph)
     nameToVertex[get(boost::vertex_name, graph_, v)] = v;
   
@@ -2087,7 +2096,7 @@ void Datapath::setGraphForStepping(string graph_name)
   std::vector<pair<unsigned,float> >().swap(executedQueue);
 
   initReadyQueue();
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "End of Setting Graph: " << graph_name << endl;
 #endif
 }
@@ -2127,13 +2136,13 @@ int Datapath::clearGraph()
   //callLatency.clear();
   numParents.clear();
   isolated.clear();
+  nameToVertex.clear();
+  //vertexToName.clear();
   std::vector<int>().swap(edgeLatency);
   std::vector<bool>().swap(isolated);
   std::vector<int>().swap(numParents);
-
+  
   graph_.clear();
-  nameToVertex.clear();
-  //vertexToName.clear();
   return cycle-prevCycle;
 }
 void Datapath::updateRegStats()
@@ -2142,7 +2151,6 @@ void Datapath::updateRegStats()
   BGL_FORALL_VERTICES(v, graph_, Graph)
     name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   for(unsigned node_id = 0; node_id < numGraphNodes; node_id++)
   {
     if (isolated.at(node_id))
@@ -2158,28 +2166,28 @@ void Datapath::updateRegStats()
     std::set<int> children_levels;
     for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      int child_id = vertex_to_name[target(*out_edge_it, graph_)];
+      int child_id = vertexToName[target(*out_edge_it, graph_)];
       //if (!is_memory_op(microop.at(child_id)))
         //continue;
       
       if (is_memory_op(microop.at(child_id)) && 
           (!is_store_op(microop.at(node_id))))
         continue;
-      if (is_branch_inst(microop.at(child_id)) ||
-          is_index_inst(microop.at(child_id)) )
-        continue;
+      //if (is_branch_inst(microop.at(child_id)) ||
+      //    is_index_inst(microop.at(child_id)) )
+      //  continue;
       
       int child_level = newLevel.at(child_id);
       if (child_level > max_children_level)
         max_children_level = child_level;
-      if (child_level > node_level  + 1 && child_level != cycle - 1)
+      if (child_level > node_level  && child_level != cycle - 1)
         children_levels.insert(child_level);
         
     }
     for (auto it = children_levels.begin(); it != children_levels.end(); it++)
         regStats.at(*it).reads++;
     
-    if (max_children_level > node_level + 1)
+    if (max_children_level > node_level )
       regStats.at(node_level).writes++;
     //for (int i = node_level; i < max_children_level; ++i)
       //regStats.at(i).size++;
@@ -2195,8 +2203,8 @@ bool Datapath::step()
 
   stepExecutedQueue();
 
-#ifdef DEBUG
-  //cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
+#ifdef DDEBUG
+  cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
 #endif
   cycle++;
   if (executedNodes == totalConnectedNodes)
@@ -2206,48 +2214,24 @@ bool Datapath::step()
 
 void Datapath::stepExecutedQueue()
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "======stepping executed queue " << endl;
 #endif
   
   auto it = executedQueue.begin();
-  it = executedQueue.begin();
-//#ifdef DEBUG
-  //cerr << "======real stepping executed queue " << endl;
-//#endif
-  it = executedQueue.begin();
   while (it != executedQueue.end())
   {
     //it->second is the number of cycles to execute current nodes
 #ifdef DEBUG
-    cerr << "executing," << it->first << "," << microop.at(it->first) << "," << it->second << endl;
+    cerr << "executing," << it->first << "," << microop.at(it->first) << "," <<
+    cycle<< endl;
 #endif
     if (it->second <= cycleTime)
     {
       unsigned node_id = it->first;
       executedNodes++;
       newLevel.at(node_id) = cycle;
-      /*
-      if (is_memory_op(microop.at(node_id)))
-      {
-        Vertex node = nameToVertex[node_id];
-        in_edge_iter in_i, in_end;
-        for (tie(in_i, in_end) = in_edges(node , graph_); in_i != in_end; ++in_i)
-        {
-          int parent_id = vertexToName[source(*in_i, graph_)];
-          Vertex p_node = nameToVertex[parent_id];
-          if (boost::out_degree(p_node, graph_)== 1)
-          {
-            if (newLevel.at(parent_id) < cycle -1)
-              newLevel.at(parent_id) = cycle -1;
-          }
-        }
-      }
-      */
-      //updateChildren(node_id, it->second);
       it = executedQueue.erase(it);
-      //it->second = 0;
-      //it++;
     }
     else
     {
@@ -2262,21 +2246,15 @@ void Datapath::stepExecutedQueue()
 
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "updating the children of " << node_id << endl;
 #endif
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, graph_, Graph)
-    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
-  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
-
-  Vertex node = name_to_vertex[node_id];
-  
+  Vertex node = nameToVertex[node_id];
   out_edge_iter out_edge_it, out_edge_end;
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
   {
-    int child_id = vertex_to_name[target(*out_edge_it, graph_)];
-#ifdef DEBUG
+    int child_id = vertexToName[target(*out_edge_it, graph_)];
+#ifdef DDEBUG
     cerr << "child_id, numParents: " << child_id << "," << numParents[child_id] << endl;
 #endif
     if (numParents[child_id] > 0)
@@ -2336,21 +2314,8 @@ int Datapath::fireNonMemNodes()
   {
     unsigned node_id = *it;
     firedNodes++;
-    //if call instruction, put in executedQueue and start countdown
-    //else update its children
-    //if (callLatency.find(node_id) != callLatency.end())
-    //{
-      //int method_cycle = callLatency[node_id];
-      //executedQueue.push_back(make_pair(node_id, cycleTime * (method_cycle-1)));
-      //updateChildren(node_id, cycleTime * (method_cycle -1));
-    //}
-    //else
-    //{
-      //find its children that can execute in the same cycle
-      //FIXME floating point node latency, check cycle boundary
-      executedQueue.push_back(make_pair(node_id, node_latency(microop.at(node_id))));
-      updateChildren(node_id, node_latency(microop.at(node_id)));
-      //}
+    executedQueue.push_back(make_pair(node_id, node_latency(microop.at(node_id))));
+    updateChildren(node_id, node_latency(microop.at(node_id)));
     it = nonMemReadyQueue.erase(it);
   }
 #ifdef DEBUG
@@ -2530,50 +2495,3 @@ void Datapath::readPartitionConfig(std::unordered_map<unsigned, partitionEntry> 
     exit(0);
   }
 }
-/*
-void Datapath::findAllAssociativeChildren(igraph_t *g, int node_id, 
-  unsigned lower_bound, list<int> &nodes, 
-  vector<int> &leaves, vector<int> &leaves_rank, vector<pair<int, int>> &remove_edges)
-{
-  if (is_associative(v_microop.at(node_id)))
-  {
-    nodes.push_front(node_id);
-    igraph_vs_t vs_parents;
-    igraph_vit_t vit_parents;
-    igraph_vs_adj(&vs_parents, node_id, IGRAPH_IN);
-    igraph_vit_create(g, vs_parents, &vit_parents);
-    while(!IGRAPH_VIT_END(vit_parents))
-    {
-      unsigned parent_id = (int)IGRAPH_VIT_GET(vit_parents);
-      if (parent_id >= lower_bound)
-      {
-        int parent_microop = v_microop.at(parent_id);
-        if (is_associative(parent_microop) && has_one_child(g, parent_id))
-        {
-          remove_edges.push_back(make_pair(parent_id, node_id));
-          findAllAssociativeChildren(g, parent_id, lower_bound,
-            nodes, leaves, leaves_rank, remove_edges);
-        }
-        else
-        {
-          remove_edges.push_back(make_pair(parent_id, node_id));
-          leaves.push_back(parent_id);
-          leaves_rank.push_back(0);
-        }
-      }
-      else
-      {
-        remove_edges.push_back(make_pair(parent_id, node_id));
-        leaves.push_back(parent_id);
-        leaves_rank.push_back(1);
-      }
-      IGRAPH_VIT_NEXT(vit_parents);
-    }
-  }
-  else
-  {
-    leaves.push_back(node_id);
-    leaves_rank.push_back(0);
-  }
-}
-*/

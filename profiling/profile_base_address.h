@@ -11,6 +11,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
+#include <boost/graph/iteration_macros.hpp>
 #include <iostream>
 #include <fstream>
 #include <vector>

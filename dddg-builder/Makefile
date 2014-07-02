@@ -8,11 +8,11 @@ DEBUG =
 #LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
          #-L../lib/\
          #-lcommonfuncs -ligraph -lz -lgzstream
-CFLAGS = -Wall -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
-         -I../common-funcs/
-LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
-         -L../lib/\
-         -lcommonfuncs -lz -lgzstream
+#CFLAGS = -Wall -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
+         #-I../common-funcs/
+#LFLAGS = -Wall $(DEBUG) -L/group/brooks/shao/System/lib/ \
+         #-L../lib/\
+         #-lcommonfuncs -lz -lgzstream
 libdddgbuild : $(OBJS)
 	$(CXX) -shared -fPIC -o ../lib/libdddgbuild.so $(OBJS)
 	rm *.o

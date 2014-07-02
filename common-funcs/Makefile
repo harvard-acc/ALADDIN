@@ -9,10 +9,10 @@ OBJS = file_func.o iljit_func.o generic_func.o
 				 #-I/group/brooks/shao/System/include/igraph 
 #LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/lib/ \
          #-ligraph -lz -lgzstream
-CFLAGS = -Wall -fPIC -O2 -std=c++0x -c $(DEBUG) \
-         -I/group/brooks/shao/System/include/ 
-LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/lib/ \
-         -lz -lgzstream
+#CFLAGS = -Wall -fPIC -O2 -std=c++0x -c $(DEBUG) \
+         #-I/group/brooks/shao/System/include/ 
+#LFLAGS = -Wall -std=c++0x $(DEBUG) -L/group/brooks/shao/System/lib/ \
+         #-lz 
 
 #file_func : $(OBJS) 
 #	$(CXX) -o ../bin/file_func $(OBJS) $(LFLAGS)  
