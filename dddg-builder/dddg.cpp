@@ -128,7 +128,7 @@ void dddg::parse_instruction_line(string line)
        if (current_microop == IRCALL)
        {
          unsigned calling_method = parameter_value.at(0);
-         //cerr << "calling," << calling_method << ",node-method," << node_method << endl;
+         cerr << "calling," << calling_method << ",node-method," << node_method << endl;
          assert(calling_method == node_method);
          auto method_it = method_appearance_table.find(calling_method);
          assert (method_it != method_appearance_table.end());
