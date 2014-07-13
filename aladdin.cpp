@@ -8,10 +8,10 @@
 
 int main( int argc, const char *argv[])
 {
-  if(argc < 5)
+  if(argc < 4)
   {
     cout << "Aladdin" << endl;
-    cout << "./aladdin <bench> <trace name> <config file> <base_addr>" << endl;
+    cout << "./aladdin <bench> <dynamic trace> <config file>" << endl;
     exit(0);
   }
 
@@ -24,7 +24,7 @@ int main( int argc, const char *argv[])
   /*Build Initial DDDG*/
   build_initial_dddg(bench, trace_file);
 
-  
+  return 0; 
   /*Profiling*/
   profile_init_stats(bench, trace_file);
   profile_base_address(bench, base_addr_file);

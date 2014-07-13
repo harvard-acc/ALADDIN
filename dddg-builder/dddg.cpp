@@ -5,10 +5,6 @@ dddg::dddg()
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
-  current_microop = 0;
-  parameter_value.push_back(0) ;
-  parameter_value.push_back(0) ;
-  parameter_value.push_back(0) ;
 }
 int dddg::num_edges()
 {
@@ -90,170 +86,137 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
 }
 void dddg::parse_instruction_line(string line)
 {
-  unsigned node_method;
-  unsigned instid, microop, bblockid;
+  char curr_static_function[256];
+  int microop, bblockid;
+  char instid[256];
   char comma;
-  istringstream parser(line, istringstream::in);
-  parser >> node_method >> comma >> bblockid >> comma >> instid >> comma >> microop;
+  
+  sscanf(line.c_str(), "%[^,],%d,%[^,],%d\n", curr_function, &bblockid, instid, microop);
+  
+  prev_microop = curr_microop;
+  curr_microop = microop;
   v_microop.push_back(microop);
 
   if (!active_method.empty())
   {
-     unsigned last_method_id, counts;
+     char prev_static_function[256];
+     unsigned prev_counts;
      char dash;
-     istringstream top_stack_method(active_method.top(), istringstream::in);
-     top_stack_method >> last_method_id >> dash >> counts;
+     
+     sscanf(active_method.top().c_str(), "%[^-]-%u", prev_static_function, prev_counts;)
 
-     if (node_method != last_method_id)
+     if (strcmp(curr_static_function, prev_static_function) != 0)
      {
-       auto method_it = method_appearance_table.find(node_method);
-       if (method_it == method_appearance_table.end())
+       auto func_it = function_counter.find(curr_static_function);
+       if (func_it == function_counter.end())
        {
-         method_appearance_table.insert(make_pair(node_method, 0));
+         function_counter.insert(make_pair(curr_static_function, 0));
          ostringstream oss;
-         oss << node_method << "-0" ;
-         current_method = oss.str();
+         oss << curr_static_function << "-0" ;
+         curr_dynamic_function = oss.str();
        }
        else
        {
-         method_it->second++;
+         func_it->second++;
          ostringstream oss;
-         oss << node_method << "-" << method_it->second;
-         current_method = oss.str();
+         oss << curr_static_function << "-" << func_it->second;
+         curr_dynamic_function = oss.str();
        }
-       active_method.push(current_method);
+       active_method.push(curr_dynamic_function);
        
-        // FIXME
         // if prev inst is a IRCALL instruction
-       if (current_microop == IRCALL)
+       if (prev_microop == LLVM_IR_Call)
        {
-         unsigned calling_method = parameter_value.at(0);
-         cerr << "calling," << calling_method << ",node-method," << node_method << endl;
-         assert(calling_method == node_method);
-         auto method_it = method_appearance_table.find(calling_method);
-         assert (method_it != method_appearance_table.end());
-         
-         string next_method_id;
-         int count = method_it->second;
-         ostringstream oss1;
-         oss1 << calling_method << "-" <<count; 
-         next_method_id = oss1.str();
+         //FIXME: define callee_function somewhere
+         cerr << "calling," << callee_function << ",curr func," << curr_static_function << endl;
+         assert(callee_function == curr_static_function);
          
          ostringstream oss;
-         oss << num_of_instructions << "," << last_method_id << "-" << counts  << "," << current_instid << "," << next_method_id;
+         oss << num_of_instructions << "," << prev_static_function << "-" << prev_counts  << "," << curr_instid << "," << active_method.top();
          method_call_graph.push_back(oss.str());
        }
      }
      else
      //the same as last method
      {
-       if (instid == 0)
+       //calling it self
+       if (prev_microop == LLVM_IR_Call && callee_function == curr_static_function)
        { 
          //a new instantiation
-         auto method_it = method_appearance_table.find(node_method);
-         assert(method_it != method_appearance_table.end());
-         method_it->second++;
+         auto func_it = function_counter.find(curr_static_function);
+         assert(func_it != function_counter.end());
+         func_it->second++;
          ostringstream oss;
-         oss << node_method << "-" << method_it->second;
-         current_method = oss.str();
-         active_method.push(current_method);
+         oss << curr_static_function << "-" << func_it->second;
+         curr_dynamic_function = oss.str();
+         active_method.push(curr_dynamic_function);
        }
        else
-         current_method = active_method.top();
+         curr_dynamic_function = active_method.top();
      }
-     if (microop == IRRET)
+     if (microop == LLVM_IR_Ret)
        active_method.pop();
   }
   else
   {
-    auto method_it = method_appearance_table.find(node_method);
-    if (method_it != method_appearance_table.end())
+    auto func_it = function_counter.find(curr_static_function);
+    if (func_it != function_counter.end())
     {
-      method_it->second++;
+      func_it->second++;
       ostringstream oss;
-      oss << node_method << "-" << method_it->second;
-      current_method = oss.str();
+      oss << curr_static_function << "-" << func_it->second;
+      curr_dynamic_function = oss.str();
     }
     else
     {
-      method_appearance_table.insert(make_pair(node_method, 0));
+      function_counter.insert(make_pair(curr_static_function, 0));
       ostringstream oss;
-      oss << node_method << "-0" ;
-      current_method = oss.str();
+      oss << curr_static_function << "-0" ;
+      curr_dynamic_function = oss.str();
     }
-    active_method.push(current_method);
+    active_method.push(curr_dynamic_function);
   }
-  v_methodid.push_back(current_method);
-  current_microop = microop;
-  current_instid = instid;
+  v_methodid.push_back(curr_dynamic_function);
+  curr_instid = instid;
   num_of_instructions++;
 }
 void dddg::parse_parameter(string line, int param_tag)
 {
-  int par_type;
-  int pos_end_par_type = line.find(",");
-  par_type = atoi(line.substr(0,pos_end_par_type).c_str());
-  string rest_line;
-  rest_line = line.substr(pos_end_par_type + 1);
+  int size, value, is_reg;
+  char label[256];
   
-  if (par_type == IROFFSET)
+  sscanf(line.c_str(), "%d,%d,%b,%[^,]\n", &size, &value, &is_reg, label);
+  if (is_reg)
   {
-    istringstream parser(rest_line, istringstream::in);
-    int var_id, internal_type, size;
-    unsigned value;
-    char comma;
-    parser >> var_id >> comma >> internal_type >> comma >> size >> comma 
-           >> value;
-    parameter_value.at(param_tag-1) = (unsigned)value;
-    auto method_it = method_register_table.find(current_method);
-    if (method_it != method_register_table.end())
+    string unique_reg_id (label);
+    unique_reg_id += curr_dynamic_function;
+    auto reg_it = register_last_written.find(unique_reg_id);
+    if (reg_it != register_last_written.end())
     {
-      auto register_it = (method_it->second).find(var_id);
-      if (register_it != method_it->second.end())
-      {
-        edge_node_info temp_edge;
-        temp_edge.sink_node = (unsigned)num_of_instructions;
-        temp_edge.var_id = var_id;
-        temp_edge.par_id = param_tag;
-        register_edge_table.insert(make_pair(register_it->second, temp_edge));
-        num_of_reg_dep++;
-      }
+      edge_node_info tmp_edge;
+      tmp_edge.sink_node = num_of_instructions;
+      tmp_edge.var_id = label;
+      tmp_edge.par_id = param_tag;
+      register_edge_table.insert(make_pair(reg_it->second, tmp_edge));
+      num_of_reg_dep++;
     }
   }
-  else
+  if (curr_microop == LLVM_IR_Load && curr_microop == LLVM_IR_Store)
   {
-    istringstream parser(rest_line, istringstream::in);
-    unsigned value, size;
-    char comma;
-    parser >> size >> comma >> value;
-    parameter_value.at(param_tag-1) = (unsigned) value;
-  }
-  
-  //Finish parsing the general cases, now specifically for memory ops
-  if (param_tag == 2)
-  {
-    if (current_microop == IRSTOREREL)
+    parameter_value.inster(parameter_value.begin(), value);
+    //last parameter
+    if (parag_tag == 1 && curr_microop == LLVM_IR_Load)
     {
-      unsigned mem_address = parameter_value.at(0) + parameter_value.at(1);
-      auto address_it = address_dependency_table.find(mem_address);
-      if (address_it != address_dependency_table.end())
-        address_it->second = (unsigned)num_of_instructions;
-      else
-        address_dependency_table.insert(make_pair(mem_address,(unsigned)num_of_instructions));
-    }
-    else if (current_microop == IRLOADREL)
-    {
-      unsigned mem_address = parameter_value.at(0) + parameter_value.at(1);
-      auto address_it = address_dependency_table.find(mem_address);
-      if (address_it != address_dependency_table.end())
+      unsigned mem_address = parameter_value.at(0);
+      auto addr_it = address_last_written.find(mem_address);
+      if (addr_it != address_last_written.end())
       {
-        unsigned source_inst = address_it->second;
-        auto same_source_nodes = memory_edge_table.equal_range(source_inst);
+        unsigned source_inst = addr_it->second;
+        auto same_source_inst = memory_edge_table.equal_range(source_inst);
         bool edge_existed = 0;
-        for (auto each_sink_node = same_source_nodes.first; 
-          each_sink_node != same_source_nodes.second; each_sink_node++)
+        for (auto sink_it = same_source_inst.first; sink_it != same_source_inst.second; sink_it++)
         {
-          if (each_sink_node->second.sink_node == (unsigned)num_of_instructions)
+          if (sink_it->second.sink_node == num_of_instructions)
           {
             edge_existed = 1;
             break;
@@ -261,78 +224,53 @@ void dddg::parse_parameter(string line, int param_tag)
         }
         if (!edge_existed)
         {
-          edge_node_info temp_edge;
-          temp_edge.sink_node = (unsigned)num_of_instructions;
-          temp_edge.var_id = -1;
-          temp_edge.par_id = -1;
-          memory_edge_table.insert(make_pair(source_inst, temp_edge));
+          edge_node_info tmp_edge;
+          tmp_edge.sink_node = num_of_instructions;
+          tmp_edge.var_id = "";
+          tmp_edge.par_id = -1;
+          memory_edge_table.insert(make_pair(source_inst, tmp_edge));
           num_of_mem_dep++;
         }
       }
+    }
+    else if (parag_tag == 1 && curr_microop == LLVM_IR_Store)
+    {
+      unsigned mem_address = parameter_value.at(1);
+      auto addr_it = address_last_written.find(mem_address);
+      if (addr_it != address_last_written.end())
+        addr_it->second = num_of_instructions;
+      else
+        address_last_written.insert(make_pair(mem_address, num_of_instructions));
     }
   }
 }
 
 void dddg::parse_result(string line)
 {
-  int par_type;
-  int pos_end_par_type = line.find(",");
-  par_type = atoi(line.substr(0,pos_end_par_type).c_str());
-  string rest_line;
-  rest_line = line.substr(pos_end_par_type + 1);
+  int size, value, is_reg;
+  char label[256];
   
-  if (par_type == IROFFSET)
-  {
-    istringstream parser(rest_line, istringstream::in);
-    int var_id, internal_type, value, size;
-    char comma;
-    parser >> var_id >> comma >> internal_type >> comma >> size >> comma 
-           >> value;
-    auto method_it = method_register_table.find(current_method);
-    if (method_it != method_register_table.end())
-      (method_it->second)[var_id] = (unsigned)num_of_instructions;
-    else
-    {
-      hash_uint_to_uint register_update_table_per_method;
-      register_update_table_per_method[var_id] = (unsigned)num_of_instructions;
-      method_register_table[current_method] = register_update_table_per_method;
-    }
-  }
-  /*
+  sscanf(line.c_str(), "%d,%d,%b,%[^,]\n", &size, &value, &is_reg, label);
+  
+  assert(is_reg);
+  string unique_reg_id (label);
+  unique_reg_id += curr_dynamic_function;
+  
+  auto reg_it = register_last_written.find(unique_reg_id);
+  if (reg_it != register_last_written.end())
+    reg_it->second = num_of_instructions;
   else
-  {
-    istringstream parser(rest_line, istringstream::in);
-    int value;
-    char comma;
-    parser >> size >> comma >> value;
-  }
-  */
+    register_last_written[unique_reg_id] = num_of_instructions;
 
-  //finish the general cases
-  /*
-  if (current_microop == IRRET && !(active_method.empty()))
-  {
-    string next_method_id = active_method.top();
-    auto method_it = method_register_table.find(next_method_id);
-    if (method_it != method_register_table.end())
-      (method_it->second)[var_id] = num_of_instructions;
-    else
-    {
-      hash_uint_to_uint register_update_table_per_method;
-      register_update_table_per_method[var_id] = num_of_instructions;
-      method_register_table[next_method_id] = register_update_table_per_method;
-    }
-  }
-  */
 }
 void dddg::parse_call_parameter(string line, int param_tag)
 {
   unsigned next_method = (unsigned) parameter_value.at(0);
-  auto method_it = method_appearance_table.find(next_method);
+  auto func_it = function_counter.find(next_method);
   string next_method_id;
-  if (method_it != method_appearance_table.end())
+  if (func_it != function_counter.end())
   {
-    int count = method_it->second;
+    int count = func_it->second;
     ostringstream oss;
     oss << next_method << "-" <<++count; 
     next_method_id = oss.str();
@@ -355,17 +293,17 @@ void dddg::parse_call_parameter(string line, int param_tag)
     char comma;
     parser >> var_id >> comma >> internal_type >> comma >> size >> comma 
            >> value;
-    auto method_it = method_register_table.find(current_method);
+    auto func_it = method_register_table.find(curr_dynamic_function);
     int original_source = num_of_instructions;
-    if (method_it != method_register_table.end())
+    if (func_it != method_register_table.end())
     {
-      auto register_it = method_it->second.find(var_id);
-      if (register_it != method_it->second.end())
+      auto register_it = func_it->second.find(var_id);
+      if (register_it != func_it->second.end())
         original_source = register_it->second;
     }
-      method_it = method_register_table.find(next_method_id);
-      if (method_it != method_register_table.end())
-        method_it->second[param_tag - 5] = original_source;
+      func_it = method_register_table.find(next_method_id);
+      if (func_it != method_register_table.end())
+        func_it->second[param_tag - 5] = original_source;
       else
       {
         hash_uint_to_uint register_update_table_per_method;
@@ -380,8 +318,8 @@ int build_initial_dddg(string bench, string trace_file_name)
 {
 	dddg graph_dep;
 
-  gzFile tracefile;
-  tracefile = gzopen(trace_file_name.c_str(), "r");
+  FILE *tracefile;
+  tracefile = fopen(trace_file_name.c_str(), "r");
 
 	if (!tracefile)
   {
@@ -397,34 +335,35 @@ int build_initial_dddg(string bench, string trace_file_name)
   } 
   
   int lineid = 0;
-  while(!gzeof(tracefile)) 
+  while(!feof(tracefile)) 
   {
     char buffer[256];
-    gzgets(tracefile, buffer, 256);
+    fgets(tracefile, buffer, 256);
     string wholeline(buffer); 
     
     size_t pos_end_tag = wholeline.find(","); 
     
     if(pos_end_tag == std::string::npos) { continue; }
-    unsigned int tag; 
+    char tag; 
     string line_left; 
-    tag = atoi(wholeline.substr(0,pos_end_tag).c_str()); 
+    tag = wholeline.substr(0,pos_end_tag).c_str(); 
     line_left = wholeline.substr(pos_end_tag + 1);
     
-    if (tag == 0)
+    if (strcmp(tag, "0") == 0)
     {
       graph_dep.parse_instruction_line(line_left); 
       lineid++;
     }
-    else if (tag > 0 && tag < 4)
-      graph_dep.parse_parameter(line_left, tag);	
-    else if (tag == 4)
+    else if (strcmp(tag, "r")  == 0)
       graph_dep.parse_result(line_left);	
-    else
-      graph_dep.parse_call_parameter(line_left, tag);	
+    else 
+      //if (tag > 0 && tag < 4)
+      graph_dep.parse_parameter(line_left, tag);	
+    //else
+      //graph_dep.parse_call_parameter(line_left, tag);	
  }
 
-  gzclose(tracefile);
+  fclose(tracefile);
 
   std::cerr << "num of nodes " << graph_dep.num_nodes() << std::endl; 
   std::cerr << "num of edges " << graph_dep.num_edges() << std::endl; 
