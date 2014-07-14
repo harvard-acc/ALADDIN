@@ -108,11 +108,11 @@ class Datapath
   void treeHeightReduction();
   void scratchpadPartition();
   
-  bool readUnrollingConfig(std::unordered_map<string, pair<int, int> > &unrolling_config);
-  bool readFlattenConfig(std::unordered_set<string> &flatten_config);
-  void readPartitionConfig(std::unordered_map<string,
+  bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
+  bool readFlattenConfig(std::unordered_set<int> &flatten_config);
+  bool readPartitionConfig(std::unordered_map<std::string,
   partitionEntry> & partition_config);
-  void readCompletePartitionConfig(std::unordered_set<string> &config);
+  bool readCompletePartitionConfig(std::unordered_set<std::string> &config);
 
   /*void readGraph(igraph_t *g);*/
   /*void readMethodGraph(igraph_t *g);*/
@@ -128,13 +128,14 @@ class Datapath
   void writeMicroop(std::vector<int> &microop);
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
-  void initInstID(std::vector<int> &instid);
+  void initInstID(std::vector<std::string> &instid);
   void initAddressAndSize(std::vector<pair<unsigned, unsigned> > &address);
   void initAddress(std::vector<unsigned > &address);
   void initParType(std::vector<int> &partype, int id);
   void initParValue(std::vector<string> &parvalue, int id);
   void initParVid(std::vector<int> &parvid, int id);
   void initResultVid(std::vector<std::string> &parvid);
+  void initLineNum(std::vector<int> &lineNum);
   void writeParType(std::vector<int> &partype, int id);
   void writeParValue(std::vector<string> &parvalue, int id);
   void writeParVid(std::vector<int> &parvid, int id);

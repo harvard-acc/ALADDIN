@@ -3,6 +3,7 @@
 gzFile dynamic_func_file;
 gzFile microop_file;
 gzFile instid_file;
+gzFile line_num_file;
 gzFile memory_trace;
 gzFile getElementPtr_trace;
 gzFile resultVar_trace;
@@ -86,8 +87,9 @@ void dddg::parse_instruction_line(string line)
   char curr_static_function[256];
   int microop, bblockid;
   char instid[256];
+  int line_num;
   char comma;
-  sscanf(line.c_str(), "%[^,],%d,%[^,],%d\n", curr_static_function, &bblockid, instid, &microop);
+  sscanf(line.c_str(), "%d,%[^,],%d,%[^,],%d\n", &line_num, curr_static_function, &bblockid, instid, &microop);
   
   prev_microop = curr_microop;
   curr_microop = microop;
@@ -173,6 +175,7 @@ void dddg::parse_instruction_line(string line)
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
   gzprintf(microop_file, "%d\n", curr_microop);
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
+  gzprintf(line_num_file, "%d\n", line_num);
   num_of_instructions++;
   last_parameter = 0;
   if (print_result == 0)
@@ -296,11 +299,12 @@ int build_initial_dddg(string bench, string trace_file_name)
 
   string func_file_name, microop_file_name, instid_file_name;
   string memory_trace_name, getElementPtr_trace_name;
-  string resultVar_trace_name;
+  string resultVar_trace_name, line_num_file_name;
   
   func_file_name = bench + "_dynamic_funcid.gz";
   microop_file_name = bench + "_microop.gz";
   instid_file_name = bench + "_instid.gz";
+  line_num_file_name = bench + "_linenum.gz";
   memory_trace_name = bench + "_memaddr.gz";
   getElementPtr_trace_name = bench + "_getElementPtr.gz";
   resultVar_trace_name = bench + "_result_varid.gz";
@@ -308,6 +312,7 @@ int build_initial_dddg(string bench, string trace_file_name)
   dynamic_func_file  = gzopen(func_file_name.c_str(), "w");
   microop_file = gzopen(microop_file_name.c_str(), "w");
 	instid_file = gzopen(instid_file_name.c_str(), "w");
+	line_num_file = gzopen(line_num_file_name.c_str(), "w");
   memory_trace = gzopen(memory_trace_name.c_str(), "w");
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
   resultVar_trace = gzopen(resultVar_trace_name.c_str(), "w");
@@ -349,6 +354,7 @@ int build_initial_dddg(string bench, string trace_file_name)
   gzclose(dynamic_func_file);
   gzclose(microop_file);
   gzclose(instid_file);
+  gzclose(line_num_file);
   gzclose(memory_trace);
   gzclose(getElementPtr_trace);
   gzclose(resultVar_trace);

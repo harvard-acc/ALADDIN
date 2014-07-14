@@ -60,19 +60,12 @@ void Datapath::globalOptimizationPass()
   completePartition();
   //partition
   scratchpadPartition();
-  /* 
   //node strength reduction
-  ////remove address calculation
-  removeAddressCalculation();
-  ////remove branch edges
-  removeBranchEdges();
-  //have to happen after address calculation:FIXME
-  nodeStrengthReduction();
   //loop flattening
   loopFlatten();
-  
   addCallDependence();
   methodGraphBuilder();
+  /* 
   methodGraphSplitter();
   */
 }
@@ -84,6 +77,9 @@ void Datapath::initBaseAddress()
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  initEdgeLatency(edge_latency);
 
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
 
@@ -95,7 +91,7 @@ void Datapath::initBaseAddress()
   {
     int node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
-    if (node_microop != LLVM_IR_Load && node_microop != LLVM_IR_Store)
+    if (!is_memory_op(node_microop))
       continue;
     //iterate its parents
     in_edge_iter in_edge_it, in_edge_end;
@@ -104,11 +100,17 @@ void Datapath::initBaseAddress()
       int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
       int parent_microop = microop.at(parent_id);
       if (parent_microop == LLVM_IR_GetElementPtr)
+      {
         baseAddress[node_id] = getElementPtr[parent_id];
-          //make_pair<getElementPtr[parent_id].first, getElementPtr[parent_id].second >;
+        //remove address calculation directly
+        int edge_id = edge_to_name[*in_edge_it];
+        edge_latency.at(edge_id) = 0;
+      }
     }
   }
+  writeEdgeLatency(edge_latency);
 }
+
 void Datapath::loopFlatten()
 {
   std::unordered_set<string> flatten_config;
@@ -117,25 +119,22 @@ void Datapath::loopFlatten()
 #ifdef DEBUG
   std::cerr << "=======Flatten Loops=====" << std::endl;
 #endif
-  std::vector<int> methodid(numTotalNodes, 0);
-  initMethodID(methodid);
-  
-  std::vector<int> instid(numTotalNodes, 0);
-  initInstID(instid);
+  std::vector<int> lineNum(numTotalNodes, -1);
+  initLineNum(lineNum);
   
   int num_of_conversion= 0;
 
   for(int node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    int node_instid = instid.at(node_id);
-    int node_methodid = methodid.at(node_id);
-    ostringstream oss;
-    oss << node_methodid << "-" << node_instid ;
-    auto it = flatten_config.find(oss.str());
+    int node_linenum = lineNum.at(node_id);
+    auto it = flatten_config.find(node_linenum);
     if (it == flatten_config.end())
       continue;
-    microop.at(node_id) = IRINDEXSTORE;
-    num_of_conversion++;
+    if (is_compute_op(microop.at(node_id)))
+    {
+      microop.at(node_id) = LLVM_IR_Move;
+      num_of_convresion++;
+    }
   }
 }
 /*
@@ -146,17 +145,12 @@ void Datapath::completePartition()
 #ifdef DEBUG
   std::cerr << "=======Complete Partition=====" << std::endl;
 #endif
-  int changed_nodes = 0;
-  
-  string bn(benchName);
-  string comp_partition_file;
-  comp_partition_file = bn + "_complete_partition_config";
-  if (!fileExists(comp_partition_file))
-    return;
   
   std::unordered_set<string> comp_part_config;
-  readCompletePartitionConfig(comp_part_config);
+  if (!readCompletePartitionConfig(comp_part_config))
+    return;
   
+  int changed_nodes = 0;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -177,8 +171,9 @@ void Datapath::completePartition()
   {
     int node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
-    if (node_microop != LLVM_IR_Load && node_microop != LLVM_IR_Store)
+    if (!is_memory_op(node_microop))
       continue;
+    assert(baseAddress.find(node_id) != baseAddress.end());
     string base_label = baseAddress[node_id].first;
 
     if (comp_part_config.find(base_label) == comp_part_config.end())
@@ -197,7 +192,7 @@ void Datapath::completePartition()
       }
     }
     baseAddress.erase(node_id);
-    microop.at(node_id) = IRSTORE;
+    microop.at(node_id) = LLVM_IR_Move;
   }
   writeGraphWithIsolatedEdges(to_remove_edges);
 #ifdef DEBUG
@@ -306,150 +301,6 @@ void Datapath::removeInductionDependence()
 #endif
 }
 
-void Datapath::removeAddressCalculation()
-{
-#ifdef DEBUG
-  std::cerr << "=======Remove Address Calculation=====" << std::endl;
-#endif
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
-  std::vector<newEdge> to_add_edges;
-
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
-
-  std::vector<int> par2vid(numTotalNodes, 0);
-  initParVid(par2vid, 2);
-
-  std::vector<bool> updated(numTotalNodes, 0);
-  
-  int address_cal_edges = 0;
-
-  std::vector< Vertex > topo_nodes;
-  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
-  
-  //nodes with no outgoing edges go first
-  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
-  {
-    int node_id = vertex_to_name[*vi];
-    if (updated.at(node_id))
-      continue;
-    updated.at(node_id) = 1;
-    int node_microop = microop.at(node_id);
-    if (node_microop != IRLOADREL && node_microop != IRSTOREREL)
-      continue;
-    //iterate its parents
-    in_edge_iter in_i, in_end;
-    for (tie(in_i, in_end) = in_edges(*vi , tmp_graph); in_i != in_end; ++in_i)
-    {
-      int parent_id = vertex_to_name[source(*in_i, tmp_graph)];
-      int parent_microop	= microop.at(parent_id);
-      int edge_id = edge_to_name[*in_i];
-      int load_add_edge_parid = edge_parid.at(edge_id);
-      if (parent_microop == IRADD && load_add_edge_parid == 1)
-      {
-        address_cal_edges++;
-        microop.at(parent_id) = IRINDEXADD;
-        //remove the edge between the laod and the add
-        to_remove_edges.at(edge_id) = 1;
-        //iterate through grandparents
-        in_edge_iter in_grand_i, in_grand_end;
-        for(tie(in_grand_i, in_grand_end) = in_edges(source(*in_i, tmp_graph), tmp_graph); in_grand_i != in_grand_end; ++in_grand_i)
-        {
-          int grandparent_id = vertex_to_name[source(*in_grand_i, tmp_graph)];   
-          int grandparent_microop = microop.at(grandparent_id);
-          int p_edge_id = edge_to_name[*in_grand_i];
-          int mul_add_edge_parid = edge_parid.at(p_edge_id);
-          if (grandparent_microop == IRMUL && mul_add_edge_parid == 2)
-          {
-            address_cal_edges++;
-            //remove the edge between the add and the mul
-            to_remove_edges.at(p_edge_id) = 1;
-            int grandparent_par2vid = par2vid.at(grandparent_id);
-            //if the second parameter of the mul is a constant
-            if (grandparent_par2vid == -1)
-            {
-              //iterate through grandparent's parent...
-              in_edge_iter in_mul_i, in_mul_end;
-              for (tie(in_mul_i, in_mul_end) = in_edges(source(*in_grand_i, tmp_graph), tmp_graph); in_mul_i != in_mul_end; ++in_mul_i)
-              {
-                int mul_parent = vertex_to_name[source(*in_mul_i, tmp_graph)];
-                int m_edge_id = edge_to_name[*in_mul_i];
-                address_cal_edges++;
-                //remove the edge between the mul and its parent
-                to_remove_edges.at(m_edge_id) = 1;
-                //add an edge between mul's parent and the memory node
-                to_add_edges.push_back( {mul_parent, node_id, load_add_edge_parid, 1} );
-              }
-            }
-          }
-        }
-        updated.at(parent_id) = 1;
-      }
-    }
-  }
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
-
-#ifdef DEBUG
-  std::cerr << "=======End of Address Calculation: " << address_cal_edges << "=====" << std::endl;
-#endif
-  cleanLeafNodes();
-}
-
-void Datapath::removeBranchEdges()
-{
-#ifdef DEBUG
-  std::cerr << "=======Remove Branch Edges=====" << std::endl;
-#endif
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  std::vector<unsigned> edge_latency(num_of_edges, 0);
-  initEdgeLatency(edge_latency);
-  
-  int branch_edges = 0;
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
-  
-  edge_iter ei, ei_end;
-  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
-  {
-    int edge_id = edge_to_name[*ei];
-    int from = vertex_to_name[source(*ei, tmp_graph)];
-    int to   = vertex_to_name[target(*ei, tmp_graph)];
-    int from_microop = microop.at(from);
-    int to_microop = microop.at(to);
-    if (is_compare_inst(from_microop) && is_branch_inst(to_microop))
-    {
-      to_remove_edges.at(edge_id) = 1;
-      branch_edges++;
-    }
-    else if ( from_microop == IRSTORE || to_microop == IRSTORE 
-       || from_microop == IRCONV || to_microop == IRCONV
-       || from_microop == IRGETADDRESS || to_microop == IRGETADDRESS)
-    {
-      edge_latency.at(edge_id) = 0;
-      branch_edges++;
-    }
-  }
-  writeEdgeLatency(edge_latency);
-  writeGraphWithIsolatedEdges(to_remove_edges);
-#ifdef DEBUG
-  std::cerr << "=======Removed Branch Edges: " << branch_edges << "=====" << std::endl;
-#endif
-}
 void Datapath::methodGraphBuilder()
 {
 #ifdef DEBUG
@@ -557,7 +408,9 @@ void Datapath::methodGraphSplitter()
     for (unsigned node_id = call_inst + 1; node_id < numTotalNodes; node_id++)
     {
       string node_dynamic_methodid = dynamic_methodid.at(node_id);
-      if (node_dynamic_methodid.compare(method_name) != 0  || microop.at(node_id) == IRRET)
+      if (node_dynamic_methodid.compare(method_name) != 0  )
+        continue;
+      if (microop.at(node_id) == LLVM_IR_Ret)
         break;
       to_split_nodes.insert(node_id);
       if (node_id > max_node)
@@ -656,7 +509,7 @@ void Datapath::addCallDependence()
   int last_call = -1;
   for(int node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    if (microop.at(node_id) == IRCALL)
+    if (microop.at(node_id) == LLVM_IR_Call)
     {
       if (last_call != -1)
         to_add_edges.push_back({last_call, node_id, -1, 1});
@@ -672,59 +525,15 @@ void Datapath::addCallDependence()
 }
 
 /*
- * Modify: microop.gz
- * */
-void Datapath::nodeStrengthReduction()
-{
-#ifdef DEBUG
-  std::cerr << "=======Node Strength Reduction=====" << std::endl;
-#endif
-  int changed_nodes = 0;
-  //need par1/2
-  string bn(benchName);
-  std::vector<int> par1type(numTotalNodes, 0);
-  std::vector<int> par2type(numTotalNodes, 0);
-  std::vector<int> par1vid(numTotalNodes, 0);
-  std::vector<int> par2vid(numTotalNodes, 0);
-
-  initParType(par1type, 1);
-  initParType(par2type, 2);
-  initParVid(par1vid, 1);
-  initParVid(par2vid, 2);
-  
-  for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
-  {
-    int node_microop = microop.at(node_id);
-    if (node_microop != IRMUL && node_microop != IRDIV)
-      continue;
-    int node_par1type = par1type.at(node_id);
-    int node_par2type = par2type.at(node_id);
-    int node_par1vid = par1vid.at(node_id);
-    int node_par2vid = par2vid.at(node_id);
-    
-    //if both operands are integer/unsigned integer, and at least one of the
-    //operands is constant (not a variable)
-    if ( (is_integer(node_par1type) || is_unsigned_integer(node_par1type)) 
-      && (is_integer(node_par2type) || is_unsigned_integer(node_par2type)) 
-      && (node_par1vid == -1 || node_par2vid == -1 ) )
-    {
-      //found mul/div nodes to be replaced
-      if (node_microop == IRMUL)
-        microop.at(node_id) =  IRSHL;
-      else
-        microop.at(node_id) =  IRSHR;
-      changed_nodes++;
-    }
-  }
-#ifdef DEBUG
-  std::cerr << "=======ChangedNodes: " << changed_nodes << "=====" << std::endl;
-#endif
-}
-/*
  * Modify: benchName_membase.gz
  * */
 void Datapath::scratchpadPartition()
 {
+  //read the partition config file to get the address range
+  // <base addr, <type, part_factor> > 
+  std::unordered_map<string, partitionEntry> part_config;
+  if (!readPartitionConfig(part_config))
+    return;
 
 #ifdef DEBUG
   std::cerr << "=======ScratchPad Partition=====" << std::endl;
@@ -733,28 +542,16 @@ void Datapath::scratchpadPartition()
   
   string partition_file;
   partition_file = bn + "_partition_config";
-  if (!fileExists(comp_partition_file))
-    return;
-
 
   std::vector<pair<unsigned, unsigned> > address(numTotalNodes, make_pair(0,0));
-  cerr << "before init address" << endl;
   initAddressAndSize(address);
-  cerr << "after init address" << endl;
-
-  //read the partition config file to get the address range
-  // <base addr, <type, part_factor> > 
-  cerr << "before read partition" << endl;
-  
-  std::unordered_map<string, partitionEntry> part_config;
-  readPartitionConfig(part_config);
-  cerr << "after read partition" << endl;
   //set scratchpad
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
-    unsigned base_addr = it->first;
+    string base_addr = it->first;
     unsigned size = it->second.array_size;
     unsigned p_factor = it->second.part_factor;
+    unsigned per_size = ceil(size / p_factor);
 #ifdef DEBUG
     cerr << base_addr << "," << size << "," << p_factor << endl;
 #endif
@@ -762,7 +559,7 @@ void Datapath::scratchpadPartition()
     {
       ostringstream oss;
       oss << base_addr << "-" << i;
-      scratchpad->setScratchpad(oss.str(), size);
+      scratchpad->setScratchpad(oss.str(), per_size);
     }
   }
 #ifdef DEBUG
@@ -770,37 +567,37 @@ void Datapath::scratchpadPartition()
 #endif
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    unsigned node_base = orig_base.at(node_id);
-    if (node_base == 0) //not memory operation
+    int node_microop = microop.at(node_id);
+    if (!is_memory_op(node_microop))
       continue;
-    auto part_it = part_config.find(node_base);
-    if (part_it == part_config.end())
-    {
-      ostringstream oss;
-      oss << node_base;
-      baseAddress[node_id].second = oss.str();
-    }
-    else
+    
+    assert(baseAddress.find(node_id) != baseAddress.end());
+    string base_label  = baseAddress[node_id].first;
+    unsigned base_addr = baseAddress[node_id].first;
+    
+    auto part_it = part_config.find(base_label);
+    if (part_it != part_config.end())
     {
       string p_type = part_it->second.type;
       assert((!p_type.compare("block")) || (!p_type.compare("cyclic")));
+      
       unsigned num_of_elements = part_it->second.array_size;
-      unsigned p_factor = part_it->second.part_factor;
-      unsigned abs_addr = address.at(node_id).first;
-      unsigned data_size = address.at(node_id).second;
-      unsigned rel_addr = (abs_addr - node_base ) / data_size; 
+      unsigned p_factor        = part_it->second.part_factor;
+      unsigned abs_addr        = address.at(node_id).first;
+      unsigned data_size       = address.at(node_id).second;
+      unsigned rel_addr        = (abs_addr - base_addr ) / data_size; 
       if (!p_type.compare("block"))  //block partition
       {
         ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << node_base << "-" << (int) (rel_addr / ceil (num_of_elements_in_2  / p_factor)) ;
-        baseAddress.at(node_id) = oss.str();
+        baseAddress[node_id].first = oss.str();
       }
       else // (!p_type.compare("cyclic")), cyclic partition
       {
         ostringstream oss;
         oss << node_base << "-" << (rel_addr) % p_factor;
-        baseAddress.at(node_id) = oss.str();
+        baseAddress[node_id].first = oss.str();
       }
     }
   }
@@ -843,6 +640,13 @@ void Datapath::optimizationPass()
 
 void Datapath::loopUnrolling()
 {
+  std::unordered_map<int, int > unrolling_config;
+  if (!readUnrollingConfig(unrolling_config))
+  {
+    std::cerr << "Loop Unrolling is undefined. Default unroll all the loops completely" << endl;
+    return ;
+  }
+
 #ifdef DEBUG
   std::cerr << "=======Loop Unrolling=====" << std::endl;
 #endif
@@ -862,25 +666,26 @@ void Datapath::loopUnrolling()
   unsigned num_of_edges = boost::num_edges(tmp_graph);
   unsigned num_of_nodes = boost::num_vertices(tmp_graph);
   
-  std::vector<int> instid(num_of_nodes, 0);
+  std::vector<string> instid(num_of_nodes, "");
   initInstID(instid);
+  std::vector<int> lineNum(num_of_nodes, -1);
+  initLineNum(lineNum);
 
-  std::vector<int> methodid(num_of_nodes, 0);
-  initMethodID(methodid);
-  
   std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
   
   std::vector<bool> tmp_isolated(num_of_nodes, 0);
+  unsigned max_node_id = minNode;
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
   {
+    unsigned node_id = vertex_to_name[*vi];
     if (boost::degree(*vi, tmp_graph) == 0)
-      tmp_isolated.at(vertex_to_name[*vi]) = 1;
+      tmp_isolated.at(node_id) = 1;
+    else
+      if (node_id > max_node_id)
+        max_node_id = node_id;
   }
-  
-  std::unordered_map<string, pair<int, int> > unrolling_config;
-  readUnrollingConfig(unrolling_config);
 
   int add_unrolling_edges = 0;
   
@@ -890,7 +695,7 @@ void Datapath::loopUnrolling()
   boundary.open(file_name.c_str());
   bool first = 0;
   //cerr << "minNode, num_of_nodes" << minNode << "," << num_of_nodes << endl;
-  for(unsigned node_id = minNode; node_id < num_of_nodes; node_id++)
+  for(unsigned node_id = minNode; node_id < max_node_id; node_id++)
   {
     if(tmp_isolated.at(node_id))
       continue;
@@ -899,14 +704,11 @@ void Datapath::loopUnrolling()
       first = 1;
       boundary << node_id << endl;
     }
-    int node_instid = instid.at(node_id);
-    int node_methodid = methodid.at(node_id);
-    ostringstream oss;
-    oss << node_methodid << "-" << node_instid;
-    auto unroll_it = unrolling_config.find(oss.str());
+    int node_linenum = lineNum.at(node_id);
+    auto unroll_it = unrolling_config.find(node_linenum);
     if (unroll_it == unrolling_config.end())
       continue;
-    int factor = unroll_it->second.first;
+    int factor = unroll_it->second;
     unroll_it->second.second++;
     //time to roll
     if (unroll_it->second.second % factor == 0)
@@ -1861,11 +1663,11 @@ void Datapath::initMethodID(std::vector<int> &methodid)
   file_name += "_methodid.gz";
   read_gzip_file(file_name, methodid.size(), methodid);
 }
-void Datapath::initInstID(std::vector<int> &instid)
+void Datapath::initInstID(std::vector<std::string> &instid)
 {
   string file_name(benchName);
   file_name += "_instid.gz";
-  read_gzip_file(file_name, instid.size(), instid);
+  read_gzip_string_file(file_name, instid.size(), instid);
 }
 void Datapath::initAddress(std::vector<unsigned> &address)
 {
@@ -1981,6 +1783,12 @@ void Datapath::initParVid(std::vector<int> &parvid, int id)
   ostringstream file_name;
   file_name << benchName << "_par" << id << "vid.gz";
   read_gzip_file(file_name.str(), parvid.size(), parvid);
+}
+void Datapath::initLineNum(std::vector<int> &line_num)
+{
+  ostringstream file_name;
+  file_name << benchName << "_linenum.gz";
+  read_gzip_file(file_name.str(), line_num.size(), line_num);
 }
 void Datapath::initResultVid(std::vector<string> &parvid)
 {
@@ -2378,36 +2186,30 @@ void Datapath::updateGlobalIsolated()
 }
 
 //readConfigs
-bool Datapath::readUnrollingConfig(std::unordered_map<string, pair<int, int> > &unrolling_config)
+bool Datapath::readUnrollingConfig(std::unordered_map<int, int > &unrolling_config)
 {
   ifstream config_file;
   string file_name(benchName);
   file_name += "_unrolling_config";
   config_file.open(file_name.c_str());
   if (!config_file.is_open())
-  {
-    //FIXME: if undefined, should assume no partition
-    std::cerr << "unrolling config file undefined" << endl;
-    exit(0);
-  }
+    return 0;
   while(!config_file.eof())
   {
     string wholeline;
     getline(config_file, wholeline);
     if (wholeline.size() == 0)
       break;
-    int methodid, instid, factor;
-    sscanf(wholeline.c_str(), "%d,%d,%d\n", &methodid, &instid, &factor);
-    ostringstream oss;
-    oss << methodid << "-" << instid;
-    unrolling_config[oss.str()] = make_pair(factor, 0);
-    //cerr << oss.str() << "," << factor << endl;
+    char func[256];
+    int line_num, factor;
+    sscanf(wholeline.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
+    unrolling_config[line_num] =factor;
   }
   config_file.close();
   return 1;
 }
 
-bool Datapath::readFlattenConfig(std::unordered_set<string> &flatten_config)
+bool Datapath::readFlattenConfig(std::unordered_set<int> &flatten_config)
 {
   ifstream config_file;
   string file_name(benchName);
@@ -2421,22 +2223,24 @@ bool Datapath::readFlattenConfig(std::unordered_set<string> &flatten_config)
     getline(config_file, wholeline);
     if (wholeline.size() == 0)
       break;
-    int methodid, instid;
-    sscanf(wholeline.c_str(), "%d,%d\n", &methodid, &instid);
-    ostringstream oss;
-    oss << methodid << "-" << instid;
-    flatten_config.insert(oss.str());
+    char func[256];
+    int line_num;
+    sscanf(wholeline.c_str(), "%[^,],%d\n", func, &line_num);
+    flatten_config.insert(line_num);
   }
   config_file.close();
   return 1;
 }
 
 
-void Datapath::readCompletePartitionConfig(std::unordered_set<string> &config)
+bool Datapath::readCompletePartitionConfig(std::unordered_set<string> &config)
 {
   string bn(benchName);
   string comp_partition_file;
   comp_partition_file = bn + "_complete_partition_config";
+  
+  if (!fileExists(comp_partition_file))
+    return 0;
   
   ifstream config_file;
   config_file.open(comp_partition_file);
@@ -2450,6 +2254,7 @@ void Datapath::readCompletePartitionConfig(std::unordered_set<string> &config)
     config.insert(wholeline.substr(0,pos));
   }
   config_file.close();
+  return 1;
 }
 
 void Datapath::readPartitionConfig(std::unordered_map<string, partitionEntry> & partition_config)
@@ -2457,27 +2262,22 @@ void Datapath::readPartitionConfig(std::unordered_map<string, partitionEntry> & 
   ifstream config_file;
   string file_name(benchName);
   file_name += "_partition_config";
+  if (!fileExists(file_name))
+    return 0;
+
   config_file.open(file_name.c_str());
   string wholeline;
-  if (config_file.is_open())
+  while (!config_file.eof())
   {
-    while (!config_file.eof())
-    {
-      getline(config_file, wholeline);
-      if (wholeline.size() == 0) break;
-      unsigned size, p_factor;
-      char type[256];
-      char base_addr[256];
-      sscanf(wholeline.c_str(), "%[^,],%[^,],%d,%d,\n", base_addr, type, &size, &p_factor);
-      string p_type(type);
-      partition_config[base_addr] = {p_type, size, p_factor};
-    }
-    config_file.close();
+    getline(config_file, wholeline);
+    if (wholeline.size() == 0) break;
+    unsigned size, p_factor;
+    char type[256];
+    char base_addr[256];
+    sscanf(wholeline.c_str(), "%[^,],%[^,],%d,%d,\n", base_addr, type, &size, &p_factor);
+    string p_type(type);
+    partition_config[base_addr] = {p_type, size, p_factor};
   }
-  else
-  {
-    //FIXME: if undefined, should assume no partition
-    std::cerr << "partition config file undefined" << endl;
-    exit(0);
-  }
+  config_file.close();
+  return 1;
 }

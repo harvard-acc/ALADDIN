@@ -37,7 +37,7 @@ int main( int argc, const char *argv[])
   
   /*Profiling*/
   return 0; 
-  /*
+  
   acc->clearGlobalGraph();
   cerr << "after clearing global graph" << endl;
   vector<string> v_method_order;
@@ -97,5 +97,5 @@ int main( int argc, const char *argv[])
   delete acc;
   delete spad;
   return 0;
-  */
+
 }
