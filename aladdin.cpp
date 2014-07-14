@@ -2,8 +2,6 @@
 #include "Datapath.h"
 #include "Scratchpad.h"
 #include "dddg.h"
-#include "traceProfiler.h"
-#include "profile_base_address.h"
 #include <stdio.h>
 
 int main( int argc, const char *argv[])
@@ -18,16 +16,12 @@ int main( int argc, const char *argv[])
   string bench(argv[1]);
   string trace_file(argv[2]);
   string config_file(argv[3]);
-  string base_addr_file(argv[4]);
-  parse_config(bench, config_file);
+  cout << bench << "," << trace_file << "," << config_file <<  endl;
+  //parse_config(bench, config_file);
   
   /*Build Initial DDDG*/
   build_initial_dddg(bench, trace_file);
 
-  return 0; 
-  /*Profiling*/
-  profile_init_stats(bench, trace_file);
-  profile_base_address(bench, base_addr_file);
   
   Datapath *acc;
   Scratchpad *spad;
@@ -41,6 +35,9 @@ int main( int argc, const char *argv[])
   acc->setGlobalGraph();
   acc->globalOptimizationPass();
   
+  /*Profiling*/
+  return 0; 
+  /*
   acc->clearGlobalGraph();
   cerr << "after clearing global graph" << endl;
   vector<string> v_method_order;
@@ -100,4 +97,5 @@ int main( int argc, const char *argv[])
   delete acc;
   delete spad;
   return 0;
+  */
 }

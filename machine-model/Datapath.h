@@ -135,6 +135,7 @@ class Datapath
   void initParType(std::vector<int> &partype, int id);
   void initParValue(std::vector<string> &parvalue, int id);
   void initParVid(std::vector<int> &parvid, int id);
+  void initResultVid(std::vector<std::string> &parvid);
   void writeParType(std::vector<int> &partype, int id);
   void writeParValue(std::vector<string> &parvalue, int id);
   void writeParVid(std::vector<int> &parvid, int id);
@@ -181,7 +182,7 @@ class Datapath
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
   std::vector<int> microop;
-  std::vector<string> baseAddress;
+  std::unordered_map<unsigned int, string> baseAddress;
 
   unsigned numTotalNodes;
 

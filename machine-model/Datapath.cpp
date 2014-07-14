@@ -9,7 +9,7 @@ Datapath::Datapath(string bench, float cycle_t)
   read_gzip_file_no_size(bn + "_microop.gz", microop);
   numTotalNodes = microop.size();
   //also need to read address
-  baseAddress.assign(numTotalNodes, "");
+  //baseAddress.assign(numTotalNodes, "");
   cycle = 0;
   cerr << "End Initializing Datapath " << endl;
 }
@@ -54,6 +54,7 @@ void Datapath::globalOptimizationPass()
   //graph independent
   ////remove induction variables
   removeInductionDependence();
+  /* 
   ////complete partition
   completePartition();
   //partition
@@ -71,6 +72,7 @@ void Datapath::globalOptimizationPass()
   addCallDependence();
   methodGraphBuilder();
   methodGraphSplitter();
+  */
 }
 void Datapath::loopFlatten()
 {
@@ -227,11 +229,8 @@ void Datapath::cleanLeafNodes()
 void Datapath::removeInductionDependence()
 {
   //set graph
+  //std::cerr << "=======Remove Induction Dependence=====" << std::endl;
   
-  std::unordered_set<string> induction_config;
-  if (!readInductionConfig(induction_config))
-    return;
-
 #ifdef DEBUG
   std::cerr << "=======Remove Induction Dependence=====" << std::endl;
 #endif
@@ -243,12 +242,9 @@ void Datapath::removeInductionDependence()
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
   unsigned num_of_edges = boost::num_edges(tmp_graph);
-  std::vector<int> par4vid(numTotalNodes, 0);
-  initParVid(par4vid, 4);
+  std::vector<string> resultVid(numTotalNodes, "");
+  initResultVid(resultVid);
 
-  std::vector<int> methodid(numTotalNodes, 0);
-  initMethodID(methodid);
-  
   std::vector<unsigned> edge_latency(num_of_edges, 0);
   initEdgeLatency(edge_latency);
   
@@ -260,14 +256,11 @@ void Datapath::removeInductionDependence()
   for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
   {
     int node_id = vertex_to_name[*vi];
-    int node_resultid = par4vid.at(node_id);
-    int node_methodid = methodid.at(node_id);
-    ostringstream combined_id;
-    combined_id << node_methodid << "-" << node_resultid;
-    if (induction_config.find(combined_id.str()) == induction_config.end())
+    string node_resultVid = resultVid.at(node_id);
+    
+    if (node_resultVid.find("indvars") != 0)
       continue;
-    //cerr << node_methodid << "-" << node_resultid << endl;
-    //iterate its children
+    //cerr << "found an induction var " << node_id << ", " << node_resultVid << endl;   
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
@@ -277,6 +270,7 @@ void Datapath::removeInductionDependence()
       removed_edges++;
     }
   }
+  writeEdgeLatency(edge_latency);
 
 #ifdef DEBUG
   std::cerr << "=======Removed Induction Edges: " << removed_edges << "=====" << std::endl;
@@ -776,7 +770,7 @@ void Datapath::scratchpadPartition()
     }
   }
   //FIXME
-  write_gzip_string_file(bn + "_new_membase.gz", numTotalNodes, baseAddress);
+  //write_gzip_string_file(bn + "_new_membase.gz", numTotalNodes, baseAddress);
 }
 //called in the end of the whole flow
 void Datapath::dumpStats()
@@ -1979,6 +1973,12 @@ void Datapath::initParVid(std::vector<int> &parvid, int id)
   ostringstream file_name;
   file_name << benchName << "_par" << id << "vid.gz";
   read_gzip_file(file_name.str(), parvid.size(), parvid);
+}
+void Datapath::initResultVid(std::vector<string> &parvid)
+{
+  ostringstream file_name;
+  file_name << benchName << "_result_varid.gz";
+  read_gzip_string_file(file_name.str(), parvid.size(), parvid);
 }
 void Datapath::initParValue(std::vector<string> &parvalue, int id)
 {
