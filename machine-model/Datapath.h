@@ -17,6 +17,7 @@
 #include <set>
 #include "file_func.h"
 #include "iljit_func.h"
+#include "llvm_ir.h"
 #include "generic_func.h"
 #include "./Scratchpad.h"
 
@@ -71,13 +72,11 @@ struct newEdge
 {
   int from;
   int to;
-  int varid;
   int parid;
   unsigned latency;
 };
 struct edgeAtt
 {
-  int varid;
   int parid;
   unsigned latency;
 };
@@ -90,6 +89,7 @@ class Datapath
   void setGlobalGraph();
   void clearGlobalGraph();
   void globalOptimizationPass();
+  void initBaseAddress();
   void optimizationPass();
   void cleanLeafNodes();
   void completePartition();
@@ -109,11 +109,10 @@ class Datapath
   void scratchpadPartition();
   
   bool readUnrollingConfig(std::unordered_map<string, pair<int, int> > &unrolling_config);
-  bool readInductionConfig(std::unordered_set<string> &ind_config);
   bool readFlattenConfig(std::unordered_set<string> &flatten_config);
-  void readPartitionConfig(std::unordered_map<unsigned,
+  void readPartitionConfig(std::unordered_map<string,
   partitionEntry> & partition_config);
-  void readCompletePartitionConfig(std::unordered_set<unsigned> &config);
+  void readCompletePartitionConfig(std::unordered_set<string> &config);
 
   /*void readGraph(igraph_t *g);*/
   /*void readMethodGraph(igraph_t *g);*/
@@ -140,12 +139,12 @@ class Datapath
   void writeParValue(std::vector<string> &parvalue, int id);
   void writeParVid(std::vector<int> &parvid, int id);
   void initEdgeParID(std::vector<int> &parid);
-  void initEdgeVarID(std::vector<int> &varid);
   void initEdgeLatency(std::vector<unsigned> &edge_latency);
   void writeEdgeLatency(std::vector<unsigned> &edge_latency);
   void initMemBaseInNumber(std::vector<unsigned> &base);
   void writeMemBaseInNumber(std::vector<unsigned> &base);
   void initMemBaseInString(std::vector<string> &base);
+  void initGetElementPtr(std::unordered_map<unsigned, pair<string, unsigned> > &get_element_ptr);
 
   int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
   int writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges);
@@ -182,7 +181,7 @@ class Datapath
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
   std::vector<int> microop;
-  std::unordered_map<unsigned int, string> baseAddress;
+  std::unordered_map<unsigned, pair<string, unsigned> > baseAddress;
 
   unsigned numTotalNodes;
 
