@@ -2,10 +2,9 @@
 #define DDDG_H
 
 #include "file_func.h"
-#include "iljit_func.h"
 #include "zlib.h"
 #include <stack>
-#include "llvm_ir.h"
+#include "opcode_func.h"
 #include <string.h>
 /*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
 using namespace std;
@@ -45,7 +44,6 @@ private:
   int prev_microop;
   std::string callee_function;
   bool last_parameter;
-  bool print_result;
   int num_of_parameters;
 
   std::string curr_instid;

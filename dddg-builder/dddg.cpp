@@ -6,14 +6,12 @@ gzFile instid_file;
 gzFile line_num_file;
 gzFile memory_trace;
 gzFile getElementPtr_trace;
-gzFile resultVar_trace;
 
 dddg::dddg()
 {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
-  print_result = 1;
   last_parameter = 0;
 }
 int dddg::num_edges()
@@ -178,9 +176,6 @@ void dddg::parse_instruction_line(string line)
   gzprintf(line_num_file, "%d\n", line_num);
   num_of_instructions++;
   last_parameter = 0;
-  if (print_result == 0)
-    gzprintf(resultVar_trace, "\n");
-  print_result = 0;
 }
 void dddg::parse_parameter(string line, int param_tag)
 {
@@ -276,8 +271,6 @@ void dddg::parse_result(string line)
   sscanf(line.c_str(), "%d,%d,%d,%[^\n]\n", &size, &value, &is_reg, label);
   
   assert(is_reg);
-  gzprintf(resultVar_trace, "%s\n", label);
-  print_result = 1;
   
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
@@ -307,7 +300,6 @@ int build_initial_dddg(string bench, string trace_file_name)
   line_num_file_name = bench + "_linenum.gz";
   memory_trace_name = bench + "_memaddr.gz";
   getElementPtr_trace_name = bench + "_getElementPtr.gz";
-  resultVar_trace_name = bench + "_result_varid.gz";
 
   dynamic_func_file  = gzopen(func_file_name.c_str(), "w");
   microop_file = gzopen(microop_file_name.c_str(), "w");
@@ -315,7 +307,6 @@ int build_initial_dddg(string bench, string trace_file_name)
 	line_num_file = gzopen(line_num_file_name.c_str(), "w");
   memory_trace = gzopen(memory_trace_name.c_str(), "w");
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
-  resultVar_trace = gzopen(resultVar_trace_name.c_str(), "w");
 
   if (!tracefile)
   {
@@ -357,7 +348,6 @@ int build_initial_dddg(string bench, string trace_file_name)
   gzclose(line_num_file);
   gzclose(memory_trace);
   gzclose(getElementPtr_trace);
-  gzclose(resultVar_trace);
   
   std::cerr << "num of nodes " << graph_dep.num_nodes() << std::endl; 
   std::cerr << "num of edges " << graph_dep.num_edges() << std::endl; 

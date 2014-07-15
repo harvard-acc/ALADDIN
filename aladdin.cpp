@@ -36,7 +36,6 @@ int main( int argc, const char *argv[])
   acc->globalOptimizationPass();
   
   /*Profiling*/
-  return 0; 
   
   acc->clearGlobalGraph();
   cerr << "after clearing global graph" << endl;
@@ -46,7 +45,7 @@ int main( int argc, const char *argv[])
   init_method_order(bench, v_method_order, map_method_2_callinst);
   
   cerr << "start per graph computation" << endl;
-  //return 0;
+  
   ofstream method_latency;
   method_latency.open(bench+ "_method_latency", ofstream::out);
   if (v_method_order.size() == 0)

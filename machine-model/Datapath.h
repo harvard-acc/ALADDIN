@@ -16,8 +16,7 @@
 #include <list>
 #include <set>
 #include "file_func.h"
-#include "iljit_func.h"
-#include "llvm_ir.h"
+#include "opcode_func.h"
 #include "generic_func.h"
 #include "./Scratchpad.h"
 
@@ -111,7 +110,7 @@ class Datapath
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
   bool readPartitionConfig(std::unordered_map<std::string,
-  partitionEntry> & partition_config);
+         partitionEntry> & partition_config);
   bool readCompletePartitionConfig(std::unordered_set<std::string> &config);
 
   /*void readGraph(igraph_t *g);*/
@@ -131,20 +130,10 @@ class Datapath
   void initInstID(std::vector<std::string> &instid);
   void initAddressAndSize(std::vector<pair<unsigned, unsigned> > &address);
   void initAddress(std::vector<unsigned > &address);
-  void initParType(std::vector<int> &partype, int id);
-  void initParValue(std::vector<string> &parvalue, int id);
-  void initParVid(std::vector<int> &parvid, int id);
-  void initResultVid(std::vector<std::string> &parvid);
   void initLineNum(std::vector<int> &lineNum);
-  void writeParType(std::vector<int> &partype, int id);
-  void writeParValue(std::vector<string> &parvalue, int id);
-  void writeParVid(std::vector<int> &parvid, int id);
   void initEdgeParID(std::vector<int> &parid);
   void initEdgeLatency(std::vector<unsigned> &edge_latency);
   void writeEdgeLatency(std::vector<unsigned> &edge_latency);
-  void initMemBaseInNumber(std::vector<unsigned> &base);
-  void writeMemBaseInNumber(std::vector<unsigned> &base);
-  void initMemBaseInString(std::vector<string> &base);
   void initGetElementPtr(std::unordered_map<unsigned, pair<string, unsigned> > &get_element_ptr);
 
   int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
@@ -167,12 +156,7 @@ class Datapath
   void setScratchpad(Scratchpad *spad);
   void updateGlobalIsolated();
   
-  /*void findAllAssociativeChildren(igraph_t *g, int node_id, */
-  /*unsigned lower_bound, list<int> &nodes, */
-  /*vector<int> &leaves, vector<int> &leaves_rank, vector<pair<int, int>> &remove_edges);*/
-  void findAllAssociativeChildren(Graph &g, int node_id, 
-  unsigned lower_bound, list<int> &nodes, 
-  vector<int> &leaves, vector<int> &leaves_rank, vector<pair<int, int>> &remove_edges);
+  void findMinRankNodes(int *node1, int *node2, std::unordered_map<unsigned, unsigned> rank_map);
 
  private:
   
