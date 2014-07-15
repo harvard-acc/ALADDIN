@@ -93,6 +93,7 @@ class Datapath
   void cleanLeafNodes();
   void completePartition();
   void removeInductionDependence();
+  void removePhiNodes();
   void removeAddressCalculation();
   void removeBranchEdges();
   void addCallDependence();
@@ -128,8 +129,8 @@ class Datapath
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
   void initInstID(std::vector<std::string> &instid);
-  void initAddressAndSize(std::vector<pair<unsigned, unsigned> > &address);
-  void initAddress(std::vector<unsigned > &address);
+  void initAddressAndSize(std::unordered_map<unsigned, pair<unsigned, unsigned> > &address);
+  void initAddress(std::unordered_map<unsigned, unsigned> &address);
   void initLineNum(std::vector<int> &lineNum);
   void initEdgeParID(std::vector<int> &parid);
   void initEdgeLatency(std::vector<unsigned> &edge_latency);
@@ -156,7 +157,7 @@ class Datapath
   void setScratchpad(Scratchpad *spad);
   void updateGlobalIsolated();
   
-  void findMinRankNodes(int *node1, int *node2, std::unordered_map<unsigned, unsigned> rank_map);
+  void findMinRankNodes(int &node1, int &node2, std::unordered_map<unsigned, unsigned> &rank_map);
 
  private:
   

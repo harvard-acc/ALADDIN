@@ -83,12 +83,11 @@ void dddg::output_dddg(string dddg_file, string edge_parid_file,
 void dddg::parse_instruction_line(string line)
 {
   char curr_static_function[256];
-  int microop, bblockid;
-  char instid[256];
+  int microop;
+  char instid[256], bblockid[256];
   int line_num;
   char comma;
-  sscanf(line.c_str(), "%d,%[^,],%d,%[^,],%d\n", &line_num, curr_static_function, &bblockid, instid, &microop);
-  
+  sscanf(line.c_str(), "%d,%[^,],%[^,],%[^,],%d\n", &line_num, curr_static_function, bblockid, instid, &microop);
   prev_microop = curr_microop;
   curr_microop = microop;
   curr_instid = instid;
@@ -242,6 +241,9 @@ void dddg::parse_parameter(string line, int param_tag)
           num_of_mem_dep++;
         }
       }
+      unsigned base_address = parameter_value.at(0);
+      string base_label = parameter_label.at(0);
+      gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_Store)
     {
@@ -253,6 +255,9 @@ void dddg::parse_parameter(string line, int param_tag)
         addr_it->second = num_of_instructions;
       else
         address_last_written.insert(make_pair(mem_address, num_of_instructions));
+      unsigned base_address = parameter_value.at(1);
+      string base_label = parameter_label.at(1);
+      gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr)
     {

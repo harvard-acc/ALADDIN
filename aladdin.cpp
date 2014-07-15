@@ -17,11 +17,10 @@ int main( int argc, const char *argv[])
   string trace_file(argv[2]);
   string config_file(argv[3]);
   cout << bench << "," << trace_file << "," << config_file <<  endl;
-  //parse_config(bench, config_file);
+  parse_config(bench, config_file);
   
   /*Build Initial DDDG*/
   build_initial_dddg(bench, trace_file);
-
   
   Datapath *acc;
   Scratchpad *spad;
