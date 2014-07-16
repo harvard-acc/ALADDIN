@@ -141,7 +141,7 @@ void Datapath::memoryAmbiguation()
       if (!found_store)
       {
         pair_per_load.insert(make_pair(load_unique_id,store_unique_id));
-        fprintf(stderr, "pair_per_load[%s] = %s\n", load_unique_id.c_str(), store_unique_id.c_str());
+        //fprintf(stderr, "pair_per_load[%s] = %s\n", load_unique_id.c_str(), store_unique_id.c_str());
       }
     }
   }
@@ -163,7 +163,7 @@ void Datapath::memoryAmbiguation()
       if (store_it == paired_store.end())
         continue;
       last_store[unique_id] = node_id;
-      fprintf(stderr, "last_store[%s] = %d\n", unique_id.c_str(), node_id);
+      //fprintf(stderr, "last_store[%s] = %d\n", unique_id.c_str(), node_id);
     }
     else
     {
@@ -180,7 +180,7 @@ void Datapath::memoryAmbiguation()
         existed = edge(name_to_vertex[prev_store_id], name_to_vertex[node_id], tmp_graph);
         if (existed.second == false)
         {
-          fprintf(stderr, "ambiguation edge :%d,%d (%s,%s)\n", prev_store_id, node_id, load_store_it->second.c_str(), load_store_it->first.c_str());
+          //fprintf(stderr, "ambiguation edge :%d,%d (%s,%s)\n", prev_store_id, node_id, load_store_it->second.c_str(), load_store_it->first.c_str());
           to_add_edges.push_back({prev_store_id, node_id, -1, 1});
           dynamicMemoryOps.insert(load_store_it->second + "-" + prev_basic_block.at(prev_store_id));
           dynamicMemoryOps.insert(load_store_it->first + "-" + prev_basic_block.at(node_id));
@@ -832,7 +832,9 @@ void Datapath::dumpStats()
 void Datapath::setGraphName(string graph_name, int min)
 {
   graphName = (char*)graph_name.c_str();
+#ifdef DDEBUG
   cerr << "setting minNode " << min << endl;
+#endif
   minNode = min;
 }
 
@@ -2138,7 +2140,7 @@ int Datapath::clearGraph()
 {
   string gn(graphName);
 
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << gn << "," << cycle-prevCycle << endl;
 #endif
   
@@ -2254,7 +2256,7 @@ void Datapath::stepExecutedQueue()
   while (it != executedQueue.end())
   {
     //it->second is the number of cycles to execute current nodes
-#ifdef DEBUG
+#ifdef DDEBUG
     cerr << "executing," << it->first << "," << microop.at(it->first) << "," <<
     cycle<< endl;
 #endif
@@ -2271,7 +2273,7 @@ void Datapath::stepExecutedQueue()
       it++;
     }
   }
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "======End stepping executed queue " << endl;
 #endif
 }
@@ -2327,7 +2329,7 @@ int Datapath::fireMemNodes()
     else
       ++it;
   }
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "fired Memory Nodes," << firedNodes << endl;
 #endif
   return firedNodes;
@@ -2335,7 +2337,7 @@ int Datapath::fireMemNodes()
 
 int Datapath::fireNonMemNodes()
 {
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "=========Firing NonMemory Nodes========" << endl;
 #endif
   int firedNodes = 0;
@@ -2350,7 +2352,7 @@ int Datapath::fireNonMemNodes()
     updateChildren(node_id, node_latency(microop.at(node_id)));
     it = nonMemReadyQueue.erase(it);
   }
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
 #endif
   return firedNodes;
@@ -2371,7 +2373,7 @@ void Datapath::initReadyQueue()
         addNonMemReadyNode(i);
     }
   }
-#ifdef DEBUG
+#ifdef DDEBUG
   cerr << "initialreadyqueuesize: memory," << memReadyQueue.size() << ", non-mem," << nonMemReadyQueue.size() << endl;
 #endif
 }

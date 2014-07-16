@@ -37,25 +37,20 @@ int main( int argc, const char *argv[])
   /*Profiling*/
   
   acc->clearGlobalGraph();
-  cerr << "after clearing global graph" << endl;
   vector<string> v_method_order;
   unordered_map<string, int > map_method_2_callinst;
-  cerr << "before init method order " << endl;
   init_method_order(bench, v_method_order, map_method_2_callinst);
   
-  cerr << "start per graph computation" << endl;
   
   ofstream method_latency;
   method_latency.open(bench+ "_method_latency", ofstream::out);
   if (v_method_order.size() == 0)
     v_method_order.push_back(bench);
-  cerr << "method size : " << v_method_order.size() << endl;
   for(unsigned method_id = 0; method_id < v_method_order.size(); ++method_id)
   {
     string current_dynamic_method;
     string graph_file;
     int min_node = 0;
-    fprintf(stderr, "CURRENT METHOD: %s\n", v_method_order.at(method_id).c_str());
     if (method_id != v_method_order.size() -1)
     {
       current_dynamic_method = v_method_order.at(method_id);
