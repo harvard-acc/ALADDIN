@@ -6,7 +6,7 @@ import glob
 import shutil
 
 
-def main(kernel, part, unroll):
+def main(directory, kernel, part, unroll):
 
   print '--Running config.main()'
   
@@ -49,9 +49,11 @@ def main(kernel, part, unroll):
   'triad' : ['2048','2048','2048'],
   }
 
-  BENCH_HOME = os.getenv('BENCH_HOME')
-  BaseFile = BENCH_HOME + '/' + kernel
+  BaseFile = directory
   os.chdir(BaseFile)
+  
+  if not os.path.isdir(BaseFile + '/sim/'):
+    os.mkdir(BaseFile + '/sim/')
   
   if os.path.isdir(BaseFile + '/sim/' + d):
     shutil.rmtree(BaseFile + '/sim/' + d)
@@ -154,7 +156,8 @@ def main(kernel, part, unroll):
   config.close()
 
 if __name__ == '__main__':
-  kernel = sys.argv[1]
-  part = sys.argv[2]
-  unroll = sys.argv[3]
-  main(kernel, part, unroll)
+  directory = sys.argv[1]
+  kernel = sys.argv[2]
+  part = sys.argv[3]
+  unroll = sys.argv[4]
+  main(directory, kernel, part, unroll)

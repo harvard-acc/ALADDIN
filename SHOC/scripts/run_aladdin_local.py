@@ -5,10 +5,8 @@ import os.path
 import subprocess
 import time
 
-#import compile
 import llvm_compile
 import config
-import pre_processing
 import aladdin_design
 
 def main(kernel, part, unroll):
@@ -29,7 +27,7 @@ def main(kernel, part, unroll):
 
   llvm_compile.main(BENCH_HOME + "/" + kernel, kernel)
   
-  config.main(kernel, part, unroll)
+  config.main(BENCH_HOME + '/' + kernel, kernel, part, unroll)
 
   print 'Continuing run_aladdin_local'
 

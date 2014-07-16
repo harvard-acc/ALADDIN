@@ -916,9 +916,15 @@ void Datapath::loopUnrolling()
     auto unroll_it = unrolling_config.find(node_linenum);
     if (unroll_it == unrolling_config.end())
       continue;
+
+    int node_microop = microop.at(node_id);
+    string node_instid = instid.at(node_id);
+    
+    if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
+      microop.at(node_id) = LLVM_IR_IndexAdd;
+    
     int factor = unroll_it->second;
     char unique_inst_id[256];
-    string node_instid = instid.at(node_id);
 
     sprintf(unique_inst_id, "%s-%d", node_instid.c_str(), node_linenum);
     //fprintf(stderr, "unique id: %s\n", unique_inst_id);
@@ -934,7 +940,6 @@ void Datapath::loopUnrolling()
     //time to roll
     if (it->second % factor == 0)
     {
-      int node_microop = microop.at(node_id);
       //fprintf(stderr, "node_id:%d,counts:%d,factor:%d, op:%d\n", node_id, it->second, factor, node_microop);
       if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
       {
