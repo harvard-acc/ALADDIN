@@ -60,14 +60,14 @@ void Datapath::globalOptimizationPass()
   completePartition();
   //partition
   scratchpadPartition();
-  //memoryAmbiguation();
+  memoryAmbiguation();
   //loop flattening
   loopFlatten();
   addCallDependence();
   methodGraphBuilder();
   methodGraphSplitter();
 }
-/*
+
 void Datapath::memoryAmbiguation()
 {
 #ifdef DEBUG
@@ -86,18 +86,17 @@ void Datapath::memoryAmbiguation()
   
   unsigned num_of_edges = boost::num_edges(tmp_graph);
   
-  std::unordered_map<std::string, edgeAtt> store_load_pair;
-  std::unordered_map<std::string, pair <std::string, bool> > pair_per_store;
+  std::unordered_multimap<std::string, std::string> pair_per_load;
+  std::unordered_set<std::string> paired_store;
+  std::unordered_map<std::string, bool> store_load_pair;
 
-  std::vector<int> edge_parid(num_of_edges, 0);
-  std::vector<unsigned> edge_latency(num_of_edges, 0);
   std::vector<string> instid(numTotalNodes, "");
   std::vector<string> dynamic_methodid(numTotalNodes, "");
+  std::vector<string> prev_basic_block(numTotalNodes, "");
   
-  initEdgeLatency(edge_latency);
-  initEdgeParID(edge_parid);
   initInstID(instid);
   initDynamicMethodID(dynamic_methodid);
+  initPrevBasicBlock(prev_basic_block);
   
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
@@ -106,51 +105,9 @@ void Datapath::memoryAmbiguation()
   {
     int node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
-    if (is_store_op(node_microop))
-    {
-      //iterate its children to find a load op
-      out_edge_iter out_edge_it, out_edge_end;
-      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
-      {
-        int child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-        int child_microop = microop.at(child_id);
-        if (!is_load_op(child_microop))
-          continue;
-        
-        string node_instid = instid.at(node_id);
-        string child_instid = instid.at(child_id);
-        string node_dynamic_methodid = dynamic_methodid.at(node_id);
-        string child_dynamic_methodid = dynamic_methodid.at(child_id);
-        
-        ostringstream unique_pair;
-        unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
-                    << child_dynamic_methodid << "-" << child_instid ;
-        if (store_load_pair.find(unique_pair.str()) != store_load_pair.end())
-          continue;
-        //add to the pair
-        int edge_id = edge_to_name[*out_edge_it];
-        store_load_pair[unique_pair.str()] = {edge_parid.at(edge_id), edge_latency.at(edge_id)};
-        pair_per_store[node_dynamic_methodid + "-" + node_instid] = make_pair{child_dynamic_methodid + "-" + child_instid, 0};
-      }
-    }
-  }
-  if (store_load_pair.size() == 0)
-    return;
-  std::vector<newEdge> to_add_edges;
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
-  {
-    int node_id = vertex_to_name[*vi];
-    int node_microop = microop.at(node_id);
     if (!is_store_op(node_microop))
       continue;
-    //if it already has that edge, ignore, otherwise add that edge to the graph
-    string node_instid = instid.at(node_id);
-    string node_dynamic_methodid = dynamic_methodid.at(node_id);
-    auto store_it = pair_per_store.find(node_dynamic_methodid + "-" + node_instid) 
-    if (store_it == pair_per_store.end())
-      continue;
-    bool add_edge = 1;
+    //iterate its children to find a load op
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
@@ -158,47 +115,85 @@ void Datapath::memoryAmbiguation()
       int child_microop = microop.at(child_id);
       if (!is_load_op(child_microop))
         continue;
-
-      string child_instid = instid.at(child_id);
-      string child_dynamic_methodid = dynamic_methodid.at(child_id);
-
-      ostringstream unique_pair;
-      unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
-                  << child_dynamic_methodid << "-" << child_instid ;
-
-      if (store_load_pair.find(unique_pair.str()) != store_load_pair.end())
-        add_edge = 0;
-    }
-    //find the load right after store, add edges
-    if (add_edge)
-    {
-      int load_id = node_id + 1;
-      while (load_id < numTotalNodes)
+      string node_dynamic_methodid = dynamic_methodid.at(node_id);
+      string load_dynamic_methodid = dynamic_methodid.at(child_id);
+      if (node_dynamic_methodid.compare(load_dynamic_methodid) != 0)
+        continue;
+      
+      string store_unique_id (node_dynamic_methodid + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+      string load_unique_id (load_dynamic_methodid+ "-" + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
+      
+      if (store_load_pair.find(store_unique_id + "-" + load_unique_id ) != store_load_pair.end())
+        continue;
+      //add to the pair
+      store_load_pair[store_unique_id + "-" + load_unique_id] = 1;
+      paired_store.insert(store_unique_id);
+      auto load_range = pair_per_load.equal_range(load_unique_id);
+      bool found_store = 0;
+      for (auto store_it = load_range.first; store_it != load_range.second; store_it++)
       {
-        int load_microop = microop.at(load_id);
-        if (is_load_op(load_microop))
+        if (store_unique_id.compare(store_it->second) == 0)
         {
-          string load_instid = instid.at(load_id);
-          string load_dynamic_methodid = dynamic_methodid.at(load_id);
-          ostringstream unique_pair;
-          unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
-                      << load_dynamic_methodid << "-" << load_instid ;
-          auto pair_it = store_load_pair.find(unique_pair.str())
-          if ( pair_it != store_load_pair.end())
-          {
-            to_add_edges.push_back(node_id, load_id, pair_it->second.parid, pair_it->second.latency);
-          }
-
+          found_store = 1;
+          break;
         }
-        load_id++;
       }
-    
+      if (!found_store)
+      {
+        pair_per_load.insert(make_pair(load_unique_id,store_unique_id));
+        fprintf(stderr, "pair_per_load[%s] = %s\n", load_unique_id.c_str(), store_unique_id.c_str());
+      }
     }
-
-
   }
+  if (store_load_pair.size() == 0)
+    return;
+  
+  std::vector<newEdge> to_add_edges;
+  std::unordered_map<std::string, unsigned> last_store;
+  
+  for (int node_id = 0; node_id < numTotalNodes; node_id++)
+  {
+    int node_microop = microop.at(node_id);
+    if (!is_memory_op(node_microop))
+      continue;
+    string unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+    if (is_store_op(node_microop))
+    {
+      auto store_it = paired_store.find(unique_id);
+      if (store_it == paired_store.end())
+        continue;
+      last_store[unique_id] = node_id;
+      fprintf(stderr, "last_store[%s] = %d\n", unique_id.c_str(), node_id);
+    }
+    else
+    {
+      assert(is_load_op(node_microop));
+      auto load_range = pair_per_load.equal_range(unique_id);
+      for (auto load_store_it = load_range.first; load_store_it != load_range.second; ++load_store_it)
+      {
+        assert(paired_store.find(load_store_it->second) != paired_store.end());
+        auto prev_store_it = last_store.find(load_store_it->second);
+        if (prev_store_it == last_store.end())
+          continue;
+        int prev_store_id = prev_store_it->second;
+        std::pair<Edge, bool> existed;
+        existed = edge(name_to_vertex[prev_store_id], name_to_vertex[node_id], tmp_graph);
+        if (existed.second == false)
+        {
+          fprintf(stderr, "ambiguation edge :%d,%d (%s,%s)\n", prev_store_id, node_id, load_store_it->second.c_str(), load_store_it->first.c_str());
+          to_add_edges.push_back({prev_store_id, node_id, -1, 1});
+          dynamicMemoryOps.insert(load_store_it->second + "-" + prev_basic_block.at(prev_store_id));
+          dynamicMemoryOps.insert(load_store_it->first + "-" + prev_basic_block.at(node_id));
+        }
+      }
+    }
+  }
+  writeGraphWithNewEdges(to_add_edges, num_of_edges);
+#ifdef DEBUG
+  std::cerr << "=======END Memory Ambiguation=====" << std::endl;
+#endif
 }
-*/
+
 void Datapath::removePhiNodes()
 {
 #ifdef DEBUG
@@ -320,6 +315,9 @@ void Datapath::initBaseAddress()
       baseAddress[node_id] = getElementPtr[node_id];
   }
   writeEdgeLatency(edge_latency);
+#ifdef DEBUG
+  std::cerr << "=======END Init Base Address=====" << std::endl;
+#endif
 }
 
 void Datapath::loopFlatten()
@@ -448,6 +446,7 @@ void Datapath::cleanLeafNodes()
     assert(num_of_children.at(node_id) >= 0);
     if (num_of_children.at(node_id) == 0 
       && microop.at(node_id) != LLVM_IR_SilentStore
+      //&& microop.at(node_id) != LLVM_IR_DynamicStore
       && microop.at(node_id) != LLVM_IR_Store
       && microop.at(node_id) != LLVM_IR_Ret 
       && microop.at(node_id) != LLVM_IR_Br
@@ -1121,6 +1120,14 @@ void Datapath::storeBuffer()
   initEdgeLatency(edge_latency);
   initEdgeParID(edge_parid);
   
+  std::vector<string> instid(numTotalNodes, "");
+  std::vector<string> dynamic_methodid(numTotalNodes, "");
+  std::vector<string> prev_basic_block(numTotalNodes, "");
+  
+  initInstID(instid);
+  initDynamicMethodID(dynamic_methodid);
+  initPrevBasicBlock(prev_basic_block);
+  
   std::vector<int> loop_bound;
   string file_name(graphName);
   
@@ -1168,6 +1175,9 @@ void Datapath::storeBuffer()
           int child_microop = microop.at(child_id);
           if (is_load_op(child_microop))
           {
+            string load_unique_id (dynamic_methodid.at(child_id) + "-" + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
+            if (dynamicMemoryOps.find(load_unique_id) != dynamicMemoryOps.end())
+              continue;
             if (child_id >= (unsigned)*loop_bound_it )
               continue;
             else
@@ -1263,6 +1273,14 @@ void Datapath::removeRepeatedStores()
   std::unordered_map<unsigned, unsigned> address;
   initAddress(address);
   
+  std::vector<string> instid(numTotalNodes, "");
+  std::vector<string> dynamic_methodid(numTotalNodes, "");
+  std::vector<string> prev_basic_block(numTotalNodes, "");
+  
+  initInstID(instid);
+  initDynamicMethodID(dynamic_methodid);
+  initPrevBasicBlock(prev_basic_block);
+  
   std::vector<bool> tmp_isolated(num_of_nodes, 0);
   vertex_iter vi, vi_end;
   unsigned max_node_id = minNode;
@@ -1303,13 +1321,18 @@ void Datapath::removeRepeatedStores()
         else
         {
           //remove this store
-          Vertex node = name_to_vertex[node_id];
-          //if it has children, ignore it
-          if (boost::out_degree(node, tmp_graph)== 0)
+          string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+          //dynamic stores, cannot disambiguated in the run time, cannot remove
+          if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end())
           {
-            //fprintf(stderr, "node_id:%d,bound:%d,node_address:%u,prev_store:%d\n", node_id, *loop_bound_it, node_address, *addr_it);
-            microop.at(node_id) = LLVM_IR_SilentStore;
-            shared_stores++;
+            Vertex node = name_to_vertex[node_id];
+            //if it has children, ignore it
+            if (boost::out_degree(node, tmp_graph)== 0)
+            {
+              //fprintf(stderr, "node_id:%d,bound:%d,node_address:%u,prev_store:%d\n", node_id, *loop_bound_it, node_address, *addr_it);
+              microop.at(node_id) = LLVM_IR_SilentStore;
+              shared_stores++;
+            }
           }
         }
       }
@@ -1807,16 +1830,17 @@ void Datapath::writePerCycleActivity()
     if (globalIsolated.at(node_id))
       continue;
     int tmp_level = newLevel.at(node_id);
-    if (microop.at(node_id) == LLVM_IR_Mul || microop.at(node_id) == LLVM_IR_UDiv)
+    int node_microop = microop.at(node_id);
+    if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv)
       mul_activity.at(tmp_level) += 1;
-    else if  (microop.at(node_id) == LLVM_IR_Add || microop.at(node_id) == LLVM_IR_Sub)
+    else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub)
       add_activity.at(tmp_level) += 1;
-    else if (is_load_op(microop.at(node_id)))
+    else if (is_load_op(node_microop))
     {
       string base_addr = baseAddress[node_id].first;
       ld_activity[base_addr].at(tmp_level) += 1;
     }
-    else if (is_store_op(microop.at(node_id)))
+    else if (is_store_op(node_microop))
     {
       string base_addr = baseAddress[node_id].first;
       st_activity[base_addr].at(tmp_level) += 1;
@@ -1863,6 +1887,12 @@ void Datapath::writeMicroop(std::vector<int> &microop)
   string file_name(benchName);
   file_name += "_microop.gz";
   write_gzip_file(file_name, microop.size(), microop);
+}
+void Datapath::initPrevBasicBlock(std::vector<string> &prevBasicBlock)
+{
+  string file_name(benchName);
+  file_name += "_prevBasicBlock.gz";
+  read_gzip_string_file(file_name, prevBasicBlock.size(), prevBasicBlock);
 }
 void Datapath::initDynamicMethodID(std::vector<string> &methodid)
 {
@@ -2173,8 +2203,7 @@ void Datapath::updateRegStats()
       //if (!is_memory_op(microop.at(child_id)))
         //continue;
       
-      if (is_memory_op(microop.at(child_id)) && 
-          (!is_store_op(microop.at(node_id))))
+      if (is_load_op(microop.at(child_id)) ) 
         continue;
       //if (is_branch_inst(microop.at(child_id)) ||
       //    is_index_inst(microop.at(child_id)) )

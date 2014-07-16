@@ -31,7 +31,6 @@ bool is_compute_op(unsigned microop)
   return false;
 
 }
-
 bool is_store_op(unsigned microop)
 {
   if (microop == LLVM_IR_Store)

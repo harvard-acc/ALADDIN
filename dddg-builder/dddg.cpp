@@ -7,12 +7,15 @@ gzFile line_num_file;
 gzFile memory_trace;
 gzFile getElementPtr_trace;
 
+gzFile prevBasicBlock_trace;
+
 dddg::dddg()
 {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
   last_parameter = 0;
+  prev_bblock = "-1";
 }
 int dddg::num_edges()
 {
@@ -88,8 +91,11 @@ void dddg::parse_instruction_line(string line)
   int line_num;
   char comma;
   sscanf(line.c_str(), "%d,%[^,],%[^,],%[^,],%d\n", &line_num, curr_static_function, bblockid, instid, &microop);
+  
   prev_microop = curr_microop;
   curr_microop = microop;
+
+  
   curr_instid = instid;
   
   if (!active_method.empty())
@@ -169,6 +175,10 @@ void dddg::parse_instruction_line(string line)
     }
     active_method.push(curr_dynamic_function);
   }
+  if (microop == LLVM_IR_PHI)
+    prev_bblock = curr_bblock;
+  curr_bblock = bblockid;
+  gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
   gzprintf(microop_file, "%d\n", curr_microop);
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
@@ -298,13 +308,15 @@ int build_initial_dddg(string bench, string trace_file_name)
   string func_file_name, microop_file_name, instid_file_name;
   string memory_trace_name, getElementPtr_trace_name;
   string resultVar_trace_name, line_num_file_name;
-  
+  string prevBasicBlock_trace_name;
+
   func_file_name = bench + "_dynamic_funcid.gz";
   microop_file_name = bench + "_microop.gz";
   instid_file_name = bench + "_instid.gz";
   line_num_file_name = bench + "_linenum.gz";
   memory_trace_name = bench + "_memaddr.gz";
   getElementPtr_trace_name = bench + "_getElementPtr.gz";
+  prevBasicBlock_trace_name = bench + "_prevBasicBlock.gz";
 
   dynamic_func_file  = gzopen(func_file_name.c_str(), "w");
   microop_file = gzopen(microop_file_name.c_str(), "w");
@@ -312,6 +324,7 @@ int build_initial_dddg(string bench, string trace_file_name)
 	line_num_file = gzopen(line_num_file_name.c_str(), "w");
   memory_trace = gzopen(memory_trace_name.c_str(), "w");
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
+  prevBasicBlock_trace = gzopen(prevBasicBlock_trace_name.c_str(), "w");
 
   if (!tracefile)
   {
@@ -353,6 +366,7 @@ int build_initial_dddg(string bench, string trace_file_name)
   gzclose(line_num_file);
   gzclose(memory_trace);
   gzclose(getElementPtr_trace);
+  gzclose(prevBasicBlock_trace);
   
   std::cerr << "num of nodes " << graph_dep.num_nodes() << std::endl; 
   std::cerr << "num of edges " << graph_dep.num_edges() << std::endl; 

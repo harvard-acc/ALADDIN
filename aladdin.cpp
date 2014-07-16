@@ -89,7 +89,8 @@ int main( int argc, const char *argv[])
     int cycles = acc->clearGraph();
     cerr << current_dynamic_method << "," << cycles << endl;
     method_latency 
-      << map_method_2_callinst[current_dynamic_method]  << ","
+      << current_dynamic_method  << ","
+      //<< map_method_2_callinst[current_dynamic_method]  << ","
       << cycles << endl;
   }
   method_latency.close();

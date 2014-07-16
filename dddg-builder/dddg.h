@@ -42,6 +42,9 @@ private:
   
   int curr_microop;
   int prev_microop;
+  string prev_bblock;
+  string curr_bblock;
+  
   std::string callee_function;
   bool last_parameter;
   int num_of_parameters;

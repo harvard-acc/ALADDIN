@@ -129,6 +129,7 @@ class Datapath
   void writeMicroop(std::vector<int> &microop);
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
+  void initPrevBasicBlock(std::vector<string> &prevBasicBlock);
   void initInstID(std::vector<std::string> &instid);
   void initAddressAndSize(std::unordered_map<unsigned, pair<unsigned, unsigned> > &address);
   void initAddress(std::unordered_map<unsigned, unsigned> &address);
@@ -196,6 +197,7 @@ class Datapath
   std::vector<bool> isolated;
   std::vector<int> edgeLatency;
   /*std::unordered_map<int, int> callLatency;*/
+  std::unordered_set<std::string> dynamicMemoryOps;
   
   //stateful states
   unsigned totalConnectedNodes;

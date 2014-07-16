@@ -138,12 +138,14 @@ def main(directory, kernel, part, unroll):
   elif kernel == 'ss_sort':
     config.write('unrolling,init,52,%s\n' %(part))
     config.write('unrolling,hist,61,%s\n' %(unroll))
+    config.write('flatten,hist,63,%s\n' %(unroll))
     config.write('unrolling,local_scan,17,%s\n' %(unroll))
     config.write('flatten,local_scan,19,%s\n' %(unroll))
     config.write('unrolling,sum_scan,30,%s\n' %(unroll))
     config.write('unrolling,last_step_scan,38,%s\n' %(unroll))
     config.write('flatten,last_step_scan,40,%s\n' %(unroll))
-    config.write('unrolling,update,79,%s\n' % (unroll))
+    config.write('unrolling,update,75,%s\n' % (unroll))
+    config.write('flatten,update,77,%s\n' %(unroll))
 
   elif kernel == 'stencil':
     #loop 1 unroll, loop2 flatten
