@@ -94,6 +94,7 @@ class Datapath
   void completePartition();
   void removeInductionDependence();
   void removePhiNodes();
+  void memoryAmbiguation();
   void removeAddressCalculation();
   void removeBranchEdges();
   void addCallDependence();

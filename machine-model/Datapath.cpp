@@ -60,13 +60,140 @@ void Datapath::globalOptimizationPass()
   completePartition();
   //partition
   scratchpadPartition();
-  //node strength reduction
+  //memoryAmbiguation();
   //loop flattening
   loopFlatten();
   addCallDependence();
   methodGraphBuilder();
   methodGraphSplitter();
 }
+/*
+void Datapath::memoryAmbiguation()
+{
+#ifdef DEBUG
+  std::cerr << "=======Memory Ambiguation=====" << std::endl;
+#endif
+  
+  Graph tmp_graph;
+  readGraph(tmp_graph); 
+  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  
+  std::unordered_map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  
+  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  
+  std::unordered_set<std::string, edgeAtt> store_load_pair;
+
+  std::vector<int> edge_parid(num_of_edges, 0);
+  std::vector<unsigned> edge_latency(num_of_edges, 0);
+  std::vector<string> instid(numTotalNodes, "");
+  std::vector<string> dynamic_methodid(numTotalNodes, "");
+  
+  initEdgeLatency(edge_latency);
+  initEdgeParID(edge_parid);
+  initInstID(instid);
+  initDynamicMethodID(dynamic_methodid);
+  
+  std::vector< Vertex > topo_nodes;
+  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  //nodes with no incoming edges to first
+  for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
+  {
+    int node_id = vertex_to_name[*vi];
+    int node_microop = microop.at(node_id);
+    if (is_store_op(node_microop))
+    {
+      //iterate its children to find a load op
+      out_edge_iter out_edge_it, out_edge_end;
+      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+      {
+        int child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+        int child_microop = microop.at(child_id);
+        if (!is_load_op(child_microop))
+          continue;
+        
+        string node_instid = instid.at(node_id);
+        string child_instid = instid.at(child_id);
+        string node_dynamic_methodid = dynamic_methodid.at(node_id);
+        string child_dynamic_methodid = dynamic_methodid.at(child_id);
+        
+        ostringstream unique_pair;
+        unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
+                    << child_dynamic_methodid << "-" << child_instid ;
+        if (store_load_pair.find(unique_pair.str()) != store_load_pair.end())
+          continue;
+        //add to the pair
+        int edge_id = edge_to_name[*out_edge_it];
+        store_load_pair[unique_pair.str()] = {edge_parid.at(edge_id), edge_latency.at(edge_id)};
+      }
+    }
+  }
+  if (store_load_pair.size() == 0)
+    return;
+  std::vector<newEdge> to_add_edges;
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  {
+    int node_id = vertex_to_name[*vi];
+    int node_microop = microop.at(node_id);
+    if (!is_store_op(node_microop))
+      continue;
+    //if it already has that edge, ignore, otherwise add that edge to the graph
+    bool add_edge = 1;
+    out_edge_iter out_edge_it, out_edge_end;
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+    {
+      int child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+      int child_microop = microop.at(child_id);
+      if (!is_load_op(child_microop))
+        continue;
+
+      string node_instid = instid.at(node_id);
+      string child_instid = instid.at(child_id);
+      string node_dynamic_methodid = dynamic_methodid.at(node_id);
+      string child_dynamic_methodid = dynamic_methodid.at(child_id);
+
+      ostringstream unique_pair;
+      unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
+                  << child_dynamic_methodid << "-" << child_instid ;
+
+      if (store_load_pair.find(unique_pair.str()) != store_load_pair.end())
+        add_edge = 0;
+    }
+    //find the load right after store, add edges
+    if (add_edge)
+    {
+      int load_id = node_id + 1;
+      while (load_id < numTotalNodes)
+      {
+        int load_microop = microop.at(load_id);
+        if (is_load_op(load_microop))
+        {
+          string load_instid = instid.at(load_id);
+          string load_dynamic_methodid = dynamic_methodid.at(load_id);
+          ostringstream unique_pair;
+          unique_pair << node_dynamic_methodid << "-" << node_instid << "-" 
+                      << load_dynamic_methodid << "-" << load_instid ;
+          auto pair_it = store_load_pair.find(unique_pair.str())
+          if ( pair_it != store_load_pair.end())
+          {
+            to_add_edges.push_back(node_id, load_id, pair_it->second.parid, pair_it->second.latency);
+          }
+
+        }
+        load_id++;
+      }
+    
+    }
+
+
+  }
+}
+*/
 void Datapath::removePhiNodes()
 {
 #ifdef DEBUG
@@ -794,7 +921,7 @@ void Datapath::loopUnrolling()
     string node_instid = instid.at(node_id);
 
     sprintf(unique_inst_id, "%s-%d", node_instid.c_str(), node_linenum);
-    fprintf(stderr, "unique id: %s\n", unique_inst_id);
+    //fprintf(stderr, "unique id: %s\n", unique_inst_id);
     auto it = inst_dynamic_counts.find(unique_inst_id);
     if (it == inst_dynamic_counts.end())
     {
@@ -803,15 +930,15 @@ void Datapath::loopUnrolling()
     }
     else
       it->second++;
-    fprintf(stderr, "node_id:%d,counts:%d,factor:%d\n", node_id, it->second, factor);
+    //fprintf(stderr, "node_id:%d,counts:%d,factor:%d\n", node_id, it->second, factor);
     //time to roll
     if (it->second % factor == 0)
     {
       int node_microop = microop.at(node_id);
-      fprintf(stderr, "node_id:%d,counts:%d,factor:%d, op:%d\n", node_id, it->second, factor, node_microop);
+      //fprintf(stderr, "node_id:%d,counts:%d,factor:%d, op:%d\n", node_id, it->second, factor, node_microop);
       if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
       {
-        fprintf(stderr, "loop bound: node_id:%d\n", node_id);
+        //fprintf(stderr, "loop bound: node_id:%d\n", node_id);
         loop_bound << node_id << endl;
         microop.at(node_id) = LLVM_IR_IndexAdd;
       }
@@ -837,14 +964,6 @@ void Datapath::loopUnrolling()
         }
       }
     }
-    //else
-    //{
-      //if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
-      //{
-        ////microop.at(node_id) = LLVM_IR_Move;
-      //}
-    
-    //}
   }
   loop_bound << num_of_nodes << endl;
   loop_bound.close();
@@ -1341,21 +1460,21 @@ void Datapath::treeHeightReduction()
     for(auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end(); it != E; it++)
       to_remove_edges.at(*it) = 1;
 
-    fprintf(stderr, "foudn TREE\n");
-    fprintf(stderr, "num of leaves:%d\n", leaves.size());
+    //fprintf(stderr, "foudn TREE\n");
+    //fprintf(stderr, "num of leaves:%d\n", leaves.size());
     std::unordered_map<unsigned, unsigned> rank_map;
     auto leaf_it = leaves.begin();
     
     while (leaf_it != leaves.end())
     {
-      fprintf(stderr, "leaf node,%d, its rank,%d\n", leaf_it->first, leaf_it->second);
+      //fprintf(stderr, "leaf node,%d, its rank,%d\n", leaf_it->first, leaf_it->second);
       if (leaf_it->second == 0)
         rank_map[leaf_it->first] = 0;
       else
         rank_map[leaf_it->first] = num_of_nodes;
       ++leaf_it; 
     }
-    fprintf(stderr, "after initializing rank map!\n");
+    //fprintf(stderr, "after initializing rank map!\n");
     //reconstruct the rest of the balanced tree
     auto node_it = nodes.begin();
     
@@ -1369,10 +1488,10 @@ void Datapath::treeHeightReduction()
       }
       else
         findMinRankNodes(node1, node2, rank_map);
-      fprintf(stderr, "found nodes: %d,%d\n", node1, node2);
+      //fprintf(stderr, "found nodes: %d,%d\n", node1, node2);
       assert((node1 != numTotalNodes) && (node2 != numTotalNodes));
-      fprintf(stderr, "adding edges between: %d,%d\n", node1, *node_it);
-      fprintf(stderr, "adding edges between: %d,%d\n", node2, *node_it);
+      //fprintf(stderr, "adding edges between: %d,%d\n", node1, *node_it);
+      //fprintf(stderr, "adding edges between: %d,%d\n", node2, *node_it);
       to_add_edges.push_back({node1, *node_it, 1, 1});
       to_add_edges.push_back({node2, *node_it, 1, 1});
 
@@ -1382,9 +1501,9 @@ void Datapath::treeHeightReduction()
       rank_map.erase(node2);
       ++node_it;
     }
-    fprintf(stderr, "DONE WITH RANKING_MAP\n");
+    //fprintf(stderr, "DONE WITH RANKING_MAP\n");
   }
-  fprintf(stderr, "DONE WITH SCANNING\n");
+  //fprintf(stderr, "DONE WITH SCANNING\n");
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 
