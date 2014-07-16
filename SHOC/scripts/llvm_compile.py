@@ -54,11 +54,6 @@ top_func = {
 
 def main (directory, source):
 #def main (directory, kernel, algorithm, source):
-  if source == 'aes': 
-    assert 'MACH_HOME' in os.environ, 'Please set the MACH_HOME environment variable'
-    MACH_HOME=os.environ['MACH_HOME']
-    test = MACH_HOME+'/common/harness.c'
-    test_obj = source + '_test.llvm'
   
   os.chdir(directory)
   obj = source + '.llvm'
@@ -70,19 +65,11 @@ def main (directory, source):
   source_file = source + '.c'
   print directory
   os.system('clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file)
-  if source == 'aes':
-    os.system('clang -O2 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + test_obj + ' '  + test)
-  #os.system('opt -S -load=/group/vlsiarch/shao/Projects/llvm-trace/indvar-list/indvar_list.so -indvar_list ' + obj + ' -o ' + opt_obj)
   os.system('opt -S -load=/group/vlsiarch/shao/Projects/llvm-trace/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj)
-  if source == 'aes':
-    os.system('llvm-link -o full.llvm ' + opt_obj + ' '+ test_obj+ ' /group/vlsiarch/shao/Projects/llvm-trace/profileFunc/trace_logger.llvm')
-  else:
-    os.system('llvm-link -o full.llvm ' + opt_obj + ' /group/vlsiarch/shao/Projects/llvm-trace/profileFunc/trace_logger.llvm')
-
-  os.system('llc -O0 -filetype=obj -o full.o full.llvm')
-  os.system('llc -O0 -filetype=asm -o full.s full.llvm')
-  os.system('gcc -O0 -fno-inline -o ' + executable + ' full.s -lm')
-  os.system('./' + executable + ' input.data check.data')
+  os.system('llvm-link -o full.llvm ' + opt_obj + ' /group/vlsiarch/shao/Projects/llvm-trace/profileFunc/trace_logger.llvm')
+  os.system('llc -filetype=asm -o full.s full.llvm')
+  os.system('gcc -fno-inline -o ' + executable + ' full.s -lm')
+  os.system('./' + executable)
 
 if __name__ == '__main__':
   directory = sys.argv[1]

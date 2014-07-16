@@ -16,14 +16,11 @@ def main(kernel, part, unroll):
   part = int(part)
   unroll = int(unroll)
 
-  if not 'BENCH_HOME' in os.environ:
-    raise Exception('Set BENCH_HOME directory as an environment variable')
-
   if not 'ALADDIN_HOME' in os.environ:
     raise Exception('Set ALADDIN_HOME directory as an environment variable')
 
-  BENCH_HOME = os.getenv('BENCH_HOME')
   ALADDIN_HOME = os.getenv('ALADDIN_HOME')
+  BENCH_HOME = ALADDIN_HOME + '/SHOC/'
 
   BMKROOT = BENCH_HOME  + '/' + kernel
   os.chdir(BMKROOT)

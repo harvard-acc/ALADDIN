@@ -6,10 +6,6 @@ import shlex
 
 def main(cil, trace, config):
 
-  if not 'BENCH_HOME' in os.environ:
-    print 'Set BENCH_HOME directory as an environment variable'
-    sys.exit(0)
-
   if not 'ALADDIN_HOME' in os.environ:
     print 'Set ALADDIN_HOME directory as an environment variable'
     sys.exit(0)
@@ -24,8 +20,8 @@ def main(cil, trace, config):
     # subprocess.Popen(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT).communicate()
   #os.system('%s/aladdin %s %s %s' % (os.getenv('ALADDIN_HOME'), cil, trace, config )) 
   
-  
-  sys.path.append(os.getenv('BENCH_HOME'))
+  BENCH_HOME = os.getenv('ALADDIN_HOME') + '/SHOC/'
+  #sys.path.append(os.getenv('BENCH_HOME'))
   #import parse_power_per_run_ss
   #return parse_power_per_run_ss.main(cil.split('.')[0], config2)
   #import internal_power_script
