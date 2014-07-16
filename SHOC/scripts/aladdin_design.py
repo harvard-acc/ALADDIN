@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import os
 import sys
 import subprocess
@@ -15,10 +15,10 @@ def main(cil, trace, config):
   aladdin_callstring = '%s/aladdin %s %s %s' % (os.getenv('ALADDIN_HOME'), cil, trace, config)
   # print '>> %s' % aladdin_callstring
 
-  out = open('aladdin.out', 'w')
-  subprocess.call(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT)
-    # subprocess.Popen(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT).communicate()
-  #os.system('%s/aladdin %s %s %s' % (os.getenv('ALADDIN_HOME'), cil, trace, config )) 
+  #out = open('aladdin.out', 'w')
+  #subprocess.call(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT)
+  # subprocess.Popen(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT).communicate()
+  os.system('%s/aladdin %s %s %s 2> aladdin.out' % (os.getenv('ALADDIN_HOME'), cil, trace, config )) 
   
   BENCH_HOME = os.getenv('ALADDIN_HOME') + '/SHOC/'
   #sys.path.append(os.getenv('BENCH_HOME'))

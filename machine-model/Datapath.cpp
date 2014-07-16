@@ -86,7 +86,8 @@ void Datapath::memoryAmbiguation()
   
   unsigned num_of_edges = boost::num_edges(tmp_graph);
   
-  std::unordered_set<std::string, edgeAtt> store_load_pair;
+  std::unordered_map<std::string, edgeAtt> store_load_pair;
+  std::unordered_map<std::string, pair <std::string, bool> > pair_per_store;
 
   std::vector<int> edge_parid(num_of_edges, 0);
   std::vector<unsigned> edge_latency(num_of_edges, 0);
@@ -129,6 +130,7 @@ void Datapath::memoryAmbiguation()
         //add to the pair
         int edge_id = edge_to_name[*out_edge_it];
         store_load_pair[unique_pair.str()] = {edge_parid.at(edge_id), edge_latency.at(edge_id)};
+        pair_per_store[node_dynamic_methodid + "-" + node_instid] = make_pair{child_dynamic_methodid + "-" + child_instid, 0};
       }
     }
   }
@@ -143,6 +145,11 @@ void Datapath::memoryAmbiguation()
     if (!is_store_op(node_microop))
       continue;
     //if it already has that edge, ignore, otherwise add that edge to the graph
+    string node_instid = instid.at(node_id);
+    string node_dynamic_methodid = dynamic_methodid.at(node_id);
+    auto store_it = pair_per_store.find(node_dynamic_methodid + "-" + node_instid) 
+    if (store_it == pair_per_store.end())
+      continue;
     bool add_edge = 1;
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
@@ -152,9 +159,7 @@ void Datapath::memoryAmbiguation()
       if (!is_load_op(child_microop))
         continue;
 
-      string node_instid = instid.at(node_id);
       string child_instid = instid.at(child_id);
-      string node_dynamic_methodid = dynamic_methodid.at(node_id);
       string child_dynamic_methodid = dynamic_methodid.at(child_id);
 
       ostringstream unique_pair;

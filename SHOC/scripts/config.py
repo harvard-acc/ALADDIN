@@ -27,8 +27,8 @@ def main(directory, kernel, part, unroll):
   }
   array_partition_type = {
   'bb_gemm' : ['cyclic','cyclic','cyclic'],
-  'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','cyclic','cyclic','cyclic','cyclic'],
-  #'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','complete','complete','complete','complete'],
+  #'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','cyclic','cyclic','cyclic','cyclic'],
+  'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','complete','complete','complete','complete'],
   'md' : ['cyclic','cyclic','cyclic','cyclic'],
   #'md' : ['cyclic','cyclic','cyclic','cyclic','cyclic','cyclic','cyclic'],
   'pp_scan' : ['cyclic','cyclic','cyclic'],

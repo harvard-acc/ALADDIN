@@ -1,4 +1,4 @@
-#!/group/brooks/shao/python-System/install/bin/python
+#!/usr/bin/env python
 import os
 import sys
 import os.path
