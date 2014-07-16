@@ -1,5 +1,5 @@
 OBJS = Datapath.o Scratchpad.o
-export DEBUG = -DDEBUG -DDDEBUG
+#export DEBUG = -DDEBUG -DDDEBUG
 export CFLAGS = -c $(DEBUG) -O2 -fPIC -std=c++0x -I/group/brooks/shao/System/include/ \
          -I$(ALADDIN_HOME)/utils/ \
          -I$(ALADDIN_HOME)/dddg-builder/ \
