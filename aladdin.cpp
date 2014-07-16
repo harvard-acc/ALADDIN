@@ -55,6 +55,7 @@ int main( int argc, const char *argv[])
     string current_dynamic_method;
     string graph_file;
     int min_node = 0;
+    fprintf(stderr, "CURRENT METHOD: %s\n", v_method_order.at(method_id).c_str());
     if (method_id != v_method_order.size() -1)
     {
       current_dynamic_method = v_method_order.at(method_id);
@@ -68,6 +69,7 @@ int main( int argc, const char *argv[])
       min_node = 0;
     }
     
+    fprintf(stderr, "CURRENT METHOD: %s\n", current_dynamic_method.c_str());
     unsigned base_method;
     int dynamic_count;
     char dash;

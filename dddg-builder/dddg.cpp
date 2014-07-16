@@ -125,7 +125,7 @@ void dddg::parse_instruction_line(string line)
          assert(callee_function == curr_static_function);
          
          ostringstream oss;
-         oss << num_of_instructions << "," << prev_static_function << "-" << prev_counts  << "," << curr_instid << "," << active_method.top();
+         oss << num_of_instructions << "," << prev_static_function << "-" << prev_counts  << "," << active_method.top();
          method_call_graph.push_back(oss.str());
        }
      }

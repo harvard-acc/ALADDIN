@@ -65,9 +65,7 @@ void Datapath::globalOptimizationPass()
   loopFlatten();
   addCallDependence();
   methodGraphBuilder();
-  /* 
   methodGraphSplitter();
-  */
 }
 void Datapath::removePhiNodes()
 {
@@ -291,14 +289,19 @@ void Datapath::cleanLeafNodes()
   readGraph(tmp_graph); 
   
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
   /*track the number of children each node has*/
-  vector<int> num_of_children(numTotalNodes, 0);
+  vector<int> num_of_children(num_of_nodes, 0);
+  std::vector<bool> tmp_isolated(num_of_nodes, 0);
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
   {
     int node_id = vertex_to_name[*vi];
     num_of_children.at(node_id) = boost::out_degree(*vi, tmp_graph);
+    if (boost::degree(*vi, tmp_graph) == 0)
+      tmp_isolated.at(node_id) = 1;
   }
+  
   
   unordered_set<unsigned> to_remove_nodes;
   
@@ -308,6 +311,8 @@ void Datapath::cleanLeafNodes()
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
     int node_id = vertex_to_name[*vi];
+    if (tmp_isolated.at(node_id))
+      continue;
     assert(num_of_children.at(node_id) >= 0);
     if (num_of_children.at(node_id) == 0 
       && microop.at(node_id) != LLVM_IR_SilentStore
@@ -394,7 +399,8 @@ void Datapath::methodGraphBuilder()
   call_file.open(call_file_name);
 
   std::vector<callDep> method_dep;
-  std::vector<string> node_att;
+  std::vector<std::string> node_att;
+  string prev_callee;
   while (!call_file.eof())
   {
     string wholeline;
@@ -403,14 +409,17 @@ void Datapath::methodGraphBuilder()
       break;
     char curr[256];
     char next[256];
-    int dynamic_id, inst_id;
-    sscanf(wholeline.c_str(), "%d,%[^,],%d,%[^,]\n", &dynamic_id, curr, &inst_id, next);
+    int dynamic_id;
+    sscanf(wholeline.c_str(), "%d,%[^,],%[^,]\n", &dynamic_id, curr, next);
     
     string caller_method(curr);
     string callee_method(next);
     
     node_att.push_back(caller_method);
+    if (method_dep.size())
+      method_dep.push_back({prev_callee, callee_method, dynamic_id});
     method_dep.push_back({caller_method, callee_method, dynamic_id});
+    prev_callee = callee_method;
   }
   call_file.close();
   //write output
@@ -471,7 +480,7 @@ void Datapath::methodGraphSplitter()
     cerr << "current method: " << method_name << endl;
 #endif    
     //only one caller for each dynamic function
-    assert (boost::in_degree(*vi, tmp_method_graph) <= 1);
+    //assert (boost::in_degree(*vi, tmp_method_graph) <= 1);
     if (boost::in_degree(*vi, tmp_method_graph) == 0)
       break;
     
@@ -499,6 +508,7 @@ void Datapath::methodGraphSplitter()
         max_node = node_id;
     }
     cerr << "to_split_nodes," << to_split_nodes.size() << endl;
+    
     unordered_map<string, edgeAtt> current_graph;
     auto graph_it = full_graph.begin(); 
     while (graph_it != full_graph.end())
@@ -531,13 +541,9 @@ void Datapath::methodGraphSplitter()
         oss << from << "-" << call_inst;
         //cerr << "to in the new graph, update original graph, add from-call" << endl;
         if(from != call_inst && full_graph.find(oss.str()) == full_graph.end())
-        {
           //cerr << "to in the new graph, update original graph, add from-call" << endl;
           full_graph[oss.str()] = { graph_it->second.parid, graph_it->second.latency};
-          graph_it = full_graph.erase(graph_it);
-        }
-        else
-          graph_it++;
+        graph_it = full_graph.erase(graph_it);
       }
       else if (split_from_it != to_split_nodes.end() 
           && split_to_it == to_split_nodes.end())
@@ -548,22 +554,16 @@ void Datapath::methodGraphSplitter()
         oss << call_inst << "-" << to;
         //cerr << "from in the new graph, update original graph, add call-to" << endl;
         if (call_inst != to && full_graph.find(oss.str()) != full_graph.end())
-        {
           //cerr << "from in the new graph, update original graph, add call-to" << endl;
           full_graph[oss.str()] = {graph_it->second.parid, graph_it->second.latency};
-          graph_it = full_graph.erase(graph_it);
-        }
-        else
-          graph_it++;
+        graph_it = full_graph.erase(graph_it);
       }
       else
       {
         //write to the new graph
         //cerr << "both from and to in the new graph, remove from-to in the original graph, add from-to in the new" << endl;
         if (current_graph.find(graph_it->first) == current_graph.end())
-        {
           current_graph[graph_it->first] = {graph_it->second.parid, graph_it->second.latency};
-        }
         graph_it = full_graph.erase(graph_it);
       }
     }
@@ -690,6 +690,7 @@ void Datapath::scratchpadPartition()
 //called in the end of the whole flow
 void Datapath::dumpStats()
 {
+  writeMicroop(microop);
   writeFinalLevel();
   writeGlobalIsolated();
   writePerCycleActivity();
@@ -706,18 +707,12 @@ void Datapath::setGraphName(string graph_name, int min)
 
 void Datapath::optimizationPass()
 {
-  //loop unrolling
   loopUnrolling();
-  //remove shared loads
   removeSharedLoads();
-  //store buffer
   storeBuffer();
-  //remove repeat stores
   removeRepeatedStores();
-  //tree height reduction
-  //treeHeightReduction();
+  treeHeightReduction();
   
-  writeMicroop(microop);
 }
 
 void Datapath::loopUnrolling()
@@ -799,6 +794,7 @@ void Datapath::loopUnrolling()
     string node_instid = instid.at(node_id);
 
     sprintf(unique_inst_id, "%s-%d", node_instid.c_str(), node_linenum);
+    fprintf(stderr, "unique id: %s\n", unique_inst_id);
     auto it = inst_dynamic_counts.find(unique_inst_id);
     if (it == inst_dynamic_counts.end())
     {
@@ -807,12 +803,15 @@ void Datapath::loopUnrolling()
     }
     else
       it->second++;
+    fprintf(stderr, "node_id:%d,counts:%d,factor:%d\n", node_id, it->second, factor);
     //time to roll
     if (it->second % factor == 0)
     {
       int node_microop = microop.at(node_id);
+      fprintf(stderr, "node_id:%d,counts:%d,factor:%d, op:%d\n", node_id, it->second, factor, node_microop);
       if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
       {
+        fprintf(stderr, "loop bound: node_id:%d\n", node_id);
         loop_bound << node_id << endl;
         microop.at(node_id) = LLVM_IR_IndexAdd;
       }
@@ -838,6 +837,14 @@ void Datapath::loopUnrolling()
         }
       }
     }
+    //else
+    //{
+      //if (node_microop == LLVM_IR_Add && node_instid.find("indvars") != std::string::npos)
+      //{
+        ////microop.at(node_id) = LLVM_IR_Move;
+      //}
+    
+    //}
   }
   loop_bound << num_of_nodes << endl;
   loop_bound.close();
@@ -1988,7 +1995,7 @@ int Datapath::clearGraph()
     if (!is_memory_op(microop.at(node_id)))
       if ((earliest_child.at(node_id) - 1 ) > newLevel.at(node_id))
         newLevel.at(node_id) = earliest_child.at(node_id) - 1;
-    
+
     in_edge_iter in_i, in_end;
     for (tie(in_i, in_end) = in_edges(*vi , graph_); in_i != in_end; ++in_i)
     {
@@ -2110,7 +2117,6 @@ void Datapath::stepExecutedQueue()
   cerr << "======End stepping executed queue " << endl;
 #endif
 }
-
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
 #ifdef DDEBUG
