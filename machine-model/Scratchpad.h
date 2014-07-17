@@ -5,30 +5,38 @@
 #include <assert.h>
 #include <unordered_map>
 #include <vector>
+#include "power_delay.h"
 #include "./Datapath.h"
-
-
+#include <math.h>
 class Scratchpad
 {
  public:
-  Scratchpad(float p_latency, unsigned p_ports_per_part);
+  Scratchpad(unsigned p_ports_per_part);
   ~Scratchpad();
   void step();
-  void setScratchpad(string baseName, unsigned size);
+  void setScratchpad(std::string baseName, unsigned size);
   bool canService();
-  bool canServicePartition(string baseName);
-  bool partitionExist(string baseName);
-  unsigned findPartitionID(string baseName);
-  float addressRequest(string baseName);
+  bool canServicePartition(std::string baseName);
+  bool partitionExist(std::string baseName);
+  unsigned findPartitionID(std::string baseName);
+  bool addressRequest(std::string baseName);
   void partitionNames(std::vector<string> &names);
+  float readPower(std::string baseName);
+  float writePower(std::string baseName);
+  float leakPower(std::string baseName);
+  float area(std::string baseName);
 
- private:
+private:
   unsigned numOfPartitions;
   unsigned numOfPortsPerPartition;
   unordered_map<string, unsigned> baseToPartitionID;
-  vector<unsigned> occupiedBWPerPartition;
-  vector<unsigned> sizePerPartition;
-  float latency;
-
+  std::vector<unsigned> occupiedBWPerPartition;
+  std::vector<unsigned> sizePerPartition;
+  
+  std::vector<float> readPowerPerPartition;
+  std::vector<float> writePowerPerPartition;
+  std::vector<float> leakPowerPerPartition;
+  std::vector<float> areaPerPartition;
 };
+
 #endif

@@ -1848,22 +1848,49 @@ void Datapath::writePerCycleActivity()
       st_activity[base_addr].at(tmp_level) += 1;
     }
   }
-  ofstream stats;
+  ofstream stats, power_stats;
   string tmp_name = bn + "_stats";
   stats.open(tmp_name.c_str());
+  tmp_name += "_power";
+  power_stats.open(tmp_name.c_str());
+
   stats << "cycles," << cycle << "," << numTotalNodes << endl; 
+  power_stats << "cycles," << cycle << "," << numTotalNodes << endl; 
   stats << cycle << ",mul,add," ;
+  power_stats << cycle << ",mul,add," ;
+  
+  int max_add = *max_element(add_activity.begin(), add_activity.end());
+  int max_mul = *max_element(mul_activity.begin(), mul_activity.end());
+
+  //ADD_int_power, MUL_int_power, REG_int_power
+  float add_leakage_per_cycle = ADD_leak_power * max_add;
+  float mul_leakage_per_cycle = MUL_leak_power * max_mul;
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
+  {
     stats << *it << "," ;
+    power_stats << *it << "," ;
+  }
   stats << endl;
+  power_stats << endl;
+
   for (unsigned tmp_level = 0; ((int)tmp_level) < cycle ; ++tmp_level)
   {
     stats << tmp_level << "," << mul_activity.at(tmp_level) << "," << add_activity.at(tmp_level) << ","; 
+    power_stats << tmp_level << "," 
+                << (MUL_switch_power + MUL_int_power) * mul_activity.at(tmp_level) + mul_leakage_per_cycle << "," 
+                << (ADD_switch_power + ADD_int_power) * add_activity.at(tmp_level) + add_leakage_per_cycle << ","; 
     for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
+    {
       stats << ld_activity.at(*it).at(tmp_level) << "," << st_activity.at(*it).at(tmp_level) << "," ;
+      power_stats << scratchpad->readPower(*it) * ld_activity.at(*it).at(tmp_level) + 
+                     scratchpad->writePower(*it) * st_activity.at(*it).at(tmp_level) + 
+                     scratchpad->leakPower(*it) << "," ;
+    }
     stats << endl;
+    power_stats << endl;
   }
   stats.close();
+  power_stats.close();
 }
 
 void Datapath::writeGlobalIsolated()
@@ -2318,8 +2345,7 @@ int Datapath::fireMemNodes()
     //fprintf(stderr, "nodeid,%d,node-part,%s\n", node_id, node_part.c_str());
     if(scratchpad->canServicePartition(node_part))
     {
-      float latency = scratchpad->addressRequest(node_part);
-      assert(latency != -1);
+      assert(scratchpad->addressRequest(node_part));
       //assign levels and add to executed queue
       executedQueue.push_back(make_pair(node_id, node_latency(microop.at(node_id))));
       updateChildren(node_id, node_latency(microop.at(node_id)));
@@ -2342,7 +2368,6 @@ int Datapath::fireNonMemNodes()
 #endif
   int firedNodes = 0;
   //assume the Queue is sorted by somehow
-  //non considering user's constraints on num of functional units
   auto it = nonMemReadyQueue.begin();
   while (it != nonMemReadyQueue.end())
   {

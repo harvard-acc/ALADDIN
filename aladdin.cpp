@@ -25,10 +25,11 @@ int main( int argc, const char *argv[])
   Datapath *acc;
   Scratchpad *spad;
 
-  float mem_latency = 1;
-  float cycle_time = 10;
-  spad = new Scratchpad(mem_latency, 1); 
-  acc = new Datapath(bench, cycle_time);
+  //float cycle_time = 10;
+  //read technology file
+  //get cycle time, mem_latency, add_latency, 
+  spad = new Scratchpad(1); 
+  acc = new Datapath(bench, CYCLE_TIME);
   acc->setScratchpad(spad);
   //get the complete graph
   acc->setGlobalGraph();

@@ -108,6 +108,7 @@ class Datapath
   void removeRepeatedStores();
   void treeHeightReduction();
   void scratchpadPartition();
+  void findMinRankNodes(int &node1, int &node2, std::unordered_map<unsigned, unsigned> &rank_map);
   
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
@@ -117,16 +118,19 @@ class Datapath
 
   /*void readGraph(igraph_t *g);*/
   /*void readMethodGraph(igraph_t *g);*/
-  void readGraph(Graph &g);
-  void readMethodGraph(MethodGraph &g);
-  void initMicroop(std::vector<int> &microop);
   void dumpStats();
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity();
+  void writeEdgeLatency(std::vector<unsigned> &edge_latency);
   void writeRegStats();
-  void updateRegStats();
   void writeMicroop(std::vector<int> &microop);
+  
+  void readGraph(Graph &g);
+  void readMethodGraph(MethodGraph &g);
+  void initMicroop(std::vector<int> &microop);
+  void updateRegStats();
+  void updateGlobalIsolated();
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<string> &methodid);
   void initPrevBasicBlock(std::vector<string> &prevBasicBlock);
@@ -136,7 +140,6 @@ class Datapath
   void initLineNum(std::vector<int> &lineNum);
   void initEdgeParID(std::vector<int> &parid);
   void initEdgeLatency(std::vector<unsigned> &edge_latency);
-  void writeEdgeLatency(std::vector<unsigned> &edge_latency);
   void initGetElementPtr(std::unordered_map<unsigned, pair<string, unsigned> > &get_element_ptr);
 
   int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
@@ -147,7 +150,8 @@ class Datapath
 
   void setGraphName(std::string graph_name, int min);
   void setGraphForStepping(std::string graph_name);
-  int clearGraph();
+  void setScratchpad(Scratchpad *spad);
+  
   bool step();
   void stepExecutedQueue();
   void updateChildren(unsigned node_id, float latencySoFar);
@@ -156,11 +160,8 @@ class Datapath
   void initReadyQueue();
   void addMemReadyNode( unsigned node_id);
   void addNonMemReadyNode( unsigned node_id);
-  void setScratchpad(Scratchpad *spad);
-  void updateGlobalIsolated();
+  int clearGraph();
   
-  void findMinRankNodes(int &node1, int &node2, std::unordered_map<unsigned, unsigned> &rank_map);
-
  private:
   
   //global/whole datapath variables
@@ -206,6 +207,7 @@ class Datapath
   std::set<unsigned> memReadyQueue;
   std::set<unsigned> nonMemReadyQueue;
   std::vector<pair<unsigned, float> > executedQueue;
+  
 
 };
 

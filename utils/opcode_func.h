@@ -1,4 +1,4 @@
-#include "node_latency.h"
+#include "power_delay.h"
 
 #ifndef OPCODE_FUNC_H
 #define OPCODE_FUNC_H
