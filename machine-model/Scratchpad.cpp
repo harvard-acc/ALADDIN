@@ -6,6 +6,7 @@ const float MEM_wr_power[] = {1.733467, 1.733467, 2.531965, 2.531965, 3.138079, 
 const float MEM_lk_power[] = {0.013156, 0.026312, 0.052599, 0.105198, 0.210474, 0.420818, 0.841640, 1.682850, 3.365650, 6.729040, 13.459700, 26.916200, 53.832100};
 const float MEM_area[]     = {1616.140000, 2929.000000, 4228.290000, 7935.990000, 15090.200000, 28129.300000, 49709.900000, 94523.900000, 174459.000000, 352194.000000, 684305.000000, 1319220.000000, 2554980.000000};
 
+/*
 const float widths[] = {8,12,16,20,24,28,32,34,36,40,45,50,55,60,64};
 
 //Leakage needs to be divided by 100 to be in mW for FUs.
@@ -24,6 +25,7 @@ const float REG_area = 7.98;
 const float REG_switching = 0.000125;
 const float REG_internal = 0.00191;
 const float REG_leakage = 0.000055;
+*/
 
 Scratchpad::Scratchpad(unsigned p_ports_per_part)
 {
