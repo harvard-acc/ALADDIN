@@ -123,7 +123,6 @@ class Datapath
   void writeGlobalIsolated();
   void writePerCycleActivity();
   void writeEdgeLatency(std::vector<unsigned> &edge_latency);
-  void writeRegStats();
   void writeMicroop(std::vector<int> &microop);
   
   void readGraph(Graph &g);

@@ -776,7 +776,7 @@ void Datapath::scratchpadPartition()
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
     string base_addr = it->first;
-    unsigned size = it->second.array_size;
+    unsigned size = it->second.array_size; //num of words
     unsigned p_factor = it->second.part_factor;
     unsigned per_size = ceil(size / p_factor);
 #ifdef DEBUG
@@ -839,7 +839,6 @@ void Datapath::dumpStats()
   writeFinalLevel();
   writeGlobalIsolated();
   writePerCycleActivity();
-  writeRegStats();
 }
 
 //localOptimizationFunctions
@@ -1813,17 +1812,6 @@ void Datapath::readGraph(Graph &tmp_graph)
 }
 
 //initFunctions
-void Datapath::writeRegStats()
-{
-  string bn(benchName);
-  string tmp_name = bn + "_reg_stats";
-  ofstream stats;
-  stats.open(tmp_name.c_str());
-  for (unsigned level_id = 0; ((int) level_id) < cycle; ++level_id)
-    stats << regStats.at(level_id).size << "," << regStats.at(level_id).reads << "," << regStats.at(level_id).writes << endl; 
-  stats.close();
-  regStats.clear();
-}
 void Datapath::writePerCycleActivity()
 {
   string bn(benchName);
@@ -1841,14 +1829,16 @@ void Datapath::writePerCycleActivity()
   std::vector<string> partition_names;
   scratchpad->partitionNames(partition_names);
 
+  float avg_power, avg_fu_power, avg_mem_power, total_area, fu_area, mem_area;
+  mem_area = 0;
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
   {
     string p_name = *it;
     std::vector<int> tmp_activity(cycle, 0);
     ld_activity[p_name] = tmp_activity;
     st_activity[p_name] = tmp_activity;
+    mem_area += scratchpad->area(*it);
   }
-
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     string p_name = *it;
@@ -1901,7 +1891,17 @@ void Datapath::writePerCycleActivity()
   
   int max_add =  0;
   int max_mul =  0;
-  
+  int max_reg_read =  0;
+  int max_reg_write =  0;
+  for (unsigned level_id = 0; ((int) level_id) < cycle; ++level_id)
+  {
+    if (max_reg_read < regStats.at(level_id).reads )
+      max_reg_read = regStats.at(level_id).reads ;
+    if (max_reg_write < regStats.at(level_id).writes )
+      max_reg_write = regStats.at(level_id).writes ;
+  }
+  int max_reg = max_reg_read + max_reg_write;
+
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     stats << *it << "-mul," << *it << "-add,";
@@ -1913,35 +1913,72 @@ void Datapath::writePerCycleActivity()
   //ADD_int_power, MUL_int_power, REG_int_power
   float add_leakage_per_cycle = ADD_leak_power * max_add;
   float mul_leakage_per_cycle = MUL_leak_power * max_mul;
+  float reg_leakage_per_cycle = REG_leak_power * 32 * max_reg;
+
+  fu_area = ADD_area * max_add + MUL_area * max_mul + REG_area * 32 * max_reg;
+  total_area = mem_area + fu_area;
+  
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
   {
     stats << *it << "," ;
     power_stats << *it << "," ;
   }
-  stats << endl;
-  power_stats << endl;
+  stats << "reg" << endl;
+  power_stats << "reg" << endl;
 
+  avg_power = 0;
+  avg_fu_power = 0;
+  avg_mem_power = 0;
+  
   for (unsigned tmp_level = 0; ((int)tmp_level) < cycle ; ++tmp_level)
   {
     stats << tmp_level << "," ;
     power_stats << tmp_level << ",";
+    //For FUs
     for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
     {
       stats << mul_activity[*it].at(tmp_level) << "," << add_activity[*it].at(tmp_level) << ","; 
-      power_stats  
-            << (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle << "," 
-            << (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle << ","; 
+      float tmp_mul_power = (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle ;
+      float tmp_add_power = (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle;
+      avg_fu_power += tmp_mul_power + tmp_add_power;
+      power_stats  << tmp_mul_power << "," << tmp_add_power << "," ;
     }
+    //For memory
     for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
     {
       stats << ld_activity.at(*it).at(tmp_level) << "," << st_activity.at(*it).at(tmp_level) << "," ;
-      power_stats << scratchpad->readPower(*it) * ld_activity.at(*it).at(tmp_level) + 
-                     scratchpad->writePower(*it) * st_activity.at(*it).at(tmp_level) + 
-                     scratchpad->leakPower(*it) << "," ;
+      float tmp_mem_power = scratchpad->readPower(*it) * ld_activity.at(*it).at(tmp_level) + 
+                            scratchpad->writePower(*it) * st_activity.at(*it).at(tmp_level) + 
+                            scratchpad->leakPower(*it);
+      avg_mem_power += tmp_mem_power;
+      power_stats << tmp_mem_power << "," ;
     }
-    stats << endl;
-    power_stats << endl;
+    //For regs
+    stats << regStats.at(tmp_level).reads << "," << regStats.at(tmp_level).writes <<endl;
+    //reg power per bit
+    float tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
+    avg_fu_power += tmp_reg_power;
+    power_stats << tmp_reg_power << endl;
   }
+  avg_fu_power /= cycle;
+  avg_mem_power /= cycle;
+  avg_power = avg_fu_power + avg_mem_power;
+  //Summary output:
+  //Cycle, Avg Power, Avg FU Power, Avg MEM Power, Total Area, FU Area, MEM Area
+  std::cerr << "===============================" << std::endl;
+  std::cerr << "        Aladdin Results        " << std::endl;
+  std::cerr << "===============================" << std::endl;
+  std::cerr << "Running : " << benchName << std::endl;
+  std::cerr << "Cycle : " << cycle << " cycle" << std::endl;
+  std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
+  std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
+  std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
+  std::cerr << "Total Area: " << total_area << std::endl;
+  std::cerr << "FU Area: " << fu_area << std::endl;
+  std::cerr << "MEM Area: " << mem_area << std::endl;
+  std::cerr << "===============================" << std::endl;
+  std::cerr << "        Aladdin Results        " << std::endl;
+  std::cerr << "===============================" << std::endl;
   stats.close();
   power_stats.close();
 }
@@ -2270,8 +2307,8 @@ void Datapath::updateRegStats()
   {
     if (isolated.at(node_id))
       continue;
-    if (is_branch_inst(microop.at(node_id)) || 
-        is_index_inst(microop.at(node_id)))
+    if (is_branch_op(microop.at(node_id)) || 
+        is_index_op(microop.at(node_id)))
       continue;
     int node_level = newLevel.at(node_id);
     int max_children_level 		= node_level;
@@ -2282,14 +2319,12 @@ void Datapath::updateRegStats()
     for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
       int child_id = vertexToName[target(*out_edge_it, graph_)];
-      //if (!is_memory_op(microop.at(child_id)))
-        //continue;
-      
-      if (is_load_op(microop.at(child_id)) ) 
+      int node_microop = microop.at(child_id);
+      if (is_branch_op(node_microop))
         continue;
-      //if (is_branch_inst(microop.at(child_id)) ||
-      //    is_index_inst(microop.at(child_id)) )
-      //  continue;
+      
+      if (is_load_op(node_microop)) 
+        continue;
       
       int child_level = newLevel.at(child_id);
       if (child_level > max_children_level)

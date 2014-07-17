@@ -17,7 +17,7 @@ Scratchpad::~Scratchpad()
 void Scratchpad::setScratchpad(string baseName, unsigned size)
 {
   assert(!partitionExist(baseName));
-  
+  //size: number of words
   unsigned new_id = baseToPartitionID.size();
   baseToPartitionID[baseName] = new_id;
   occupiedBWPerPartition.push_back(0);

@@ -8,12 +8,10 @@ bool is_associative(unsigned microop)
 }
 bool is_memory_op(unsigned microop)
 {
-
   if (microop == LLVM_IR_Load || microop == LLVM_IR_Store)
     return true;
   return false;
 }
-
 bool is_compute_op(unsigned microop)
 {
   switch(microop)
@@ -44,7 +42,7 @@ bool is_load_op(unsigned microop)
   return false;
 }
 
-bool is_branch_inst (unsigned microop)
+bool is_branch_op (unsigned microop)
 {
   switch (microop)
   {
@@ -54,7 +52,7 @@ bool is_branch_inst (unsigned microop)
   }
 }
 
-bool is_index_inst (unsigned microop)
+bool is_index_op (unsigned microop)
 {
   if (microop == LLVM_IR_IndexAdd)
     return true;
