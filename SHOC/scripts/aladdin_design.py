@@ -19,7 +19,6 @@ def main(cil, trace, config):
   #subprocess.call(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT)
   # subprocess.Popen(shlex.split(aladdin_callstring), stdout=out, stderr=subprocess.STDOUT).communicate()
   os.system('%s/aladdin %s %s %s 2> aladdin.out' % (os.getenv('ALADDIN_HOME'), cil, trace, config )) 
-  print 'Back??' 
   BENCH_HOME = os.getenv('ALADDIN_HOME') + '/SHOC/'
   #sys.path.append(os.getenv('BENCH_HOME'))
   #import parse_power_per_run_ss
