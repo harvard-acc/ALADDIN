@@ -186,7 +186,6 @@ class Datapath
   unsigned numGraphNodes;
   unsigned numGraphEdges;
   unsigned minNode;
-
   
   /*igraph_t *g;*/
   /*Graph global_graph_;*/
@@ -199,6 +198,7 @@ class Datapath
   std::vector<int> edgeLatency;
   /*std::unordered_map<int, int> callLatency;*/
   std::unordered_set<std::string> dynamicMemoryOps;
+  std::unordered_set<std::string> functionNames;
   
   //stateful states
   unsigned totalConnectedNodes;

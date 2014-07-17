@@ -9,6 +9,20 @@ Datapath::Datapath(string bench, float cycle_t)
   read_gzip_file_no_size(bn + "_microop.gz", microop);
   numTotalNodes = microop.size();
   //also need to read address
+  //
+  //
+  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
+  initDynamicMethodID(dynamic_methodid);
+
+  for (auto dynamic_func_it = dynamic_methodid.begin(), E = dynamic_methodid.end(); dynamic_func_it != E; dynamic_func_it++)
+  {
+    char func_id[256];
+    int count;
+    sscanf((*dynamic_func_it).c_str(), "%[^-]-%d\n", func_id, &count);
+    if (functionNames.find(func_id) == functionNames.end())
+      functionNames.insert(func_id);
+  }
+
   cycle = 0;
   cerr << "End Initializing Datapath " << endl;
 }
@@ -1813,18 +1827,34 @@ void Datapath::writeRegStats()
 void Datapath::writePerCycleActivity()
 {
   string bn(benchName);
-  std::vector<int> mul_activity(cycle, 0);
-  std::vector<int> add_activity(cycle, 0);
+  //std::vector<int> mul_activity(cycle, 0);
+  //std::vector<int> add_activity(cycle, 0);
+  
+  std::vector<string> dynamic_methodid(numTotalNodes, "");
+  initDynamicMethodID(dynamic_methodid);
+  
+  std::unordered_map< string, std::vector<int> > mul_activity;
+  std::unordered_map< string, std::vector<int> > add_activity;
   std::unordered_map< string, std::vector<int> > ld_activity;
   std::unordered_map< string, std::vector<int> > st_activity;
+  
   std::vector<string> partition_names;
   scratchpad->partitionNames(partition_names);
+
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
   {
     string p_name = *it;
     std::vector<int> tmp_activity(cycle, 0);
     ld_activity[p_name] = tmp_activity;
     st_activity[p_name] = tmp_activity;
+  }
+
+  for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
+  {
+    string p_name = *it;
+    std::vector<int> tmp_activity(cycle, 0);
+    add_activity[p_name] = tmp_activity;
+    mul_activity[p_name] = tmp_activity;
   }
   //cerr <<  "start activity" << endl;
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
@@ -1834,9 +1864,19 @@ void Datapath::writePerCycleActivity()
     int tmp_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
     if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv)
-      mul_activity.at(tmp_level) += 1;
+    {
+      char func_id[256];
+      int count;
+      sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+      mul_activity[func_id].at(tmp_level) +=1;
+    }
     else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub)
-      add_activity.at(tmp_level) += 1;
+    {
+      char func_id[256];
+      int count;
+      sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+      add_activity[func_id].at(tmp_level) +=1;
+    }
     else if (is_load_op(node_microop))
     {
       string base_addr = baseAddress[node_id].first;
@@ -1856,11 +1896,19 @@ void Datapath::writePerCycleActivity()
 
   stats << "cycles," << cycle << "," << numTotalNodes << endl; 
   power_stats << "cycles," << cycle << "," << numTotalNodes << endl; 
-  stats << cycle << ",mul,add," ;
-  power_stats << cycle << ",mul,add," ;
+  stats << cycle << "," ;
+  power_stats << cycle << "," ;
   
-  int max_add = *max_element(add_activity.begin(), add_activity.end());
-  int max_mul = *max_element(mul_activity.begin(), mul_activity.end());
+  int max_add =  0;
+  int max_mul =  0;
+  
+  for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
+  {
+    stats << *it << "-mul," << *it << "-add,";
+    power_stats << *it << "-mul," << *it << "-add,";
+    max_add += *max_element(add_activity[*it].begin(), add_activity[*it].end());
+    max_mul += *max_element(mul_activity[*it].begin(), mul_activity[*it].end());
+  }
 
   //ADD_int_power, MUL_int_power, REG_int_power
   float add_leakage_per_cycle = ADD_leak_power * max_add;
@@ -1875,10 +1923,15 @@ void Datapath::writePerCycleActivity()
 
   for (unsigned tmp_level = 0; ((int)tmp_level) < cycle ; ++tmp_level)
   {
-    stats << tmp_level << "," << mul_activity.at(tmp_level) << "," << add_activity.at(tmp_level) << ","; 
-    power_stats << tmp_level << "," 
-                << (MUL_switch_power + MUL_int_power) * mul_activity.at(tmp_level) + mul_leakage_per_cycle << "," 
-                << (ADD_switch_power + ADD_int_power) * add_activity.at(tmp_level) + add_leakage_per_cycle << ","; 
+    stats << tmp_level << "," ;
+    power_stats << tmp_level << ",";
+    for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
+    {
+      stats << mul_activity[*it].at(tmp_level) << "," << add_activity[*it].at(tmp_level) << ","; 
+      power_stats  
+            << (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle << "," 
+            << (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle << ","; 
+    }
     for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
     {
       stats << ld_activity.at(*it).at(tmp_level) << "," << st_activity.at(*it).at(tmp_level) << "," ;
