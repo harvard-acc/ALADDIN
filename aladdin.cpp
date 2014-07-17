@@ -16,6 +16,7 @@ int main( int argc, const char *argv[])
   string bench(argv[1]);
   string trace_file(argv[2]);
   string config_file(argv[3]);
+  
   cout << bench << "," << trace_file << "," << config_file <<  endl;
   parse_config(bench, config_file);
   
@@ -25,9 +26,6 @@ int main( int argc, const char *argv[])
   Datapath *acc;
   Scratchpad *spad;
 
-  //float cycle_time = 10;
-  //read technology file
-  //get cycle time, mem_latency, add_latency, 
   spad = new Scratchpad(1); 
   acc = new Datapath(bench, CYCLE_TIME);
   acc->setScratchpad(spad);
@@ -36,21 +34,16 @@ int main( int argc, const char *argv[])
   acc->globalOptimizationPass();
   
   /*Profiling*/
-  
   acc->clearGlobalGraph();
   vector<string> v_method_order;
   unordered_map<string, int > map_method_2_callinst;
   init_method_order(bench, v_method_order, map_method_2_callinst);
   
-  
   ofstream method_latency;
   method_latency.open(bench+ "_method_latency", ofstream::out);
-  if (v_method_order.size() == 0)
-    v_method_order.push_back(bench);
   for(unsigned method_id = 0; method_id < v_method_order.size(); ++method_id)
   {
-    string current_dynamic_method;
-    string graph_file;
+    string current_dynamic_method, graph_file;
     int min_node = 0;
     if (method_id != v_method_order.size() -1)
     {
@@ -66,33 +59,22 @@ int main( int argc, const char *argv[])
     }
     
     fprintf(stderr, "CURRENT METHOD: %s\n", current_dynamic_method.c_str());
-    unsigned base_method;
-    int dynamic_count;
-    char dash;
-    istringstream parser(current_dynamic_method);
-    parser >> base_method >> dash >> dynamic_count;
-    
-    cerr << current_dynamic_method << endl;
-
+    //Per Dynamic Function Local Optimization
     acc->setGraphName(graph_file, min_node);
     acc->optimizationPass();
-    //graph, edgeLatency, edgeType fixed
-    
-    cerr << current_dynamic_method  << endl;
     acc->setGraphForStepping(graph_file);
+    
+    //Scheduling
     while(!acc->step())
       spad->step();
     int cycles = acc->clearGraph();
+    
     cerr << current_dynamic_method << "," << cycles << endl;
-    method_latency 
-      << current_dynamic_method  << ","
-      //<< map_method_2_callinst[current_dynamic_method]  << ","
-      << cycles << endl;
+    method_latency  << current_dynamic_method  << "," << cycles << endl;
   }
   method_latency.close();
   acc->dumpStats();
   delete acc;
   delete spad;
   return 0;
-
 }
