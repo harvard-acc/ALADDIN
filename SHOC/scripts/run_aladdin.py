@@ -14,6 +14,10 @@ def main(kernel, part, unroll):
 
   if not 'ALADDIN_HOME' in os.environ:
     raise Exception('Set ALADDIN_HOME directory as an environment variable')
+  
+  if not 'TRACER_HOME' in os.environ:
+    raise Exception('Set TRACER_HOME directory as an environment variable')
+  
 
   ALADDIN_HOME = os.getenv('ALADDIN_HOME')
   BENCH_HOME = ALADDIN_HOME + '/SHOC/' + kernel
