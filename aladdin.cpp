@@ -8,10 +8,15 @@ int main( int argc, const char *argv[])
 {
   if(argc < 4)
   {
-    cout << "Aladdin" << endl;
-    cout << "./aladdin <bench> <dynamic trace> <config file>" << endl;
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << "Aladdin takes:                 " << std::endl;
+    std::cerr << "./aladdin <bench> <dynamic trace> <config file>" << endl;
+    std::cerr << "-------------------------------" << std::endl;
     exit(0);
   }
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "      Starts Aladdin           " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
 
   string bench(argv[1]);
   string trace_file(argv[2]);
@@ -58,7 +63,6 @@ int main( int argc, const char *argv[])
       min_node = 0;
     }
     
-    fprintf(stderr, "CURRENT METHOD: %s\n", current_dynamic_method.c_str());
     //Per Dynamic Function Local Optimization
     acc->setGraphName(graph_file, min_node);
     acc->optimizationPass();
@@ -68,8 +72,6 @@ int main( int argc, const char *argv[])
     while(!acc->step())
       spad->step();
     int cycles = acc->clearGraph();
-    
-    cerr << current_dynamic_method << "," << cycles << endl;
     method_latency  << current_dynamic_method  << "," << cycles << endl;
   }
   method_latency.close();

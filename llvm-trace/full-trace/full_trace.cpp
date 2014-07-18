@@ -17,11 +17,9 @@ namespace std { class type_info; }
 #include "SlotTracker.h"
 
 #define NUM_OF_INTRINSICS 33
-//#define FUNC 56
-//#define TOP 20
 #define INST_TYPES 60
-//#define OPER 7
 #define RESULT_LINE 19134
+
 using namespace llvm;
 using namespace std;
 

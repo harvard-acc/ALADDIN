@@ -126,8 +126,6 @@ void dddg::parse_instruction_line(string line)
         // if prev inst is a IRCALL instruction
        if (prev_microop == LLVM_IR_Call)
        {
-         //FIXME: define callee_function somewhere
-         cerr << "calling," << callee_function << ",curr func," << curr_static_function << endl;
          assert(callee_function == curr_static_function);
          
          ostringstream oss;
@@ -333,10 +331,9 @@ int build_initial_dddg(string bench, string trace_file_name)
 	}
 	else
   {
-    std::cerr << "===================START GENERATING DDG=======================" 
-      << std::endl; 
-    std::cerr << "Building DDG Original reading trace from " 
-      << trace_file_name << std::endl; 
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << "      Generating DDDG          " << std::endl;
+    std::cerr << "-------------------------------" << std::endl;
   } 
   
   char buffer[256];
@@ -368,10 +365,12 @@ int build_initial_dddg(string bench, string trace_file_name)
   gzclose(getElementPtr_trace);
   gzclose(prevBasicBlock_trace);
   
-  std::cerr << "num of nodes " << graph_dep.num_nodes() << std::endl; 
-  std::cerr << "num of edges " << graph_dep.num_edges() << std::endl; 
-  std::cerr << "num of reg edges " << graph_dep.num_of_register_dependency() << std::endl; 
-  std::cerr << "num of mem edges " << graph_dep.num_of_memory_dependency() << std::endl; 
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "Num of Nodes: " << graph_dep.num_nodes() << std::endl;
+  std::cerr << "Num of Edges: " << graph_dep.num_edges() << std::endl;
+  std::cerr << "Num of Reg Edges: " << graph_dep.num_of_register_dependency() << std::endl;
+  std::cerr << "Num of MEM Edges: " << graph_dep.num_of_memory_dependency() << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
 
   string graph_file, edge_parid, edge_latency;
   //string graph_file, edge_varid, edge_parid, edge_latency;
@@ -382,8 +381,6 @@ int build_initial_dddg(string bench, string trace_file_name)
 
   graph_dep.output_dddg(graph_file, edge_parid, edge_latency);
   graph_dep.output_method_call_graph(bench);
-  std::cerr << "=====================END GENERATING DDG====================== " << std::endl;
-  std::cerr << endl;
 	
   return 0;
 

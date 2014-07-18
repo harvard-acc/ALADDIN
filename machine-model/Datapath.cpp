@@ -4,13 +4,12 @@ Datapath::Datapath(string bench, float cycle_t)
 {
   benchName = (char*) bench.c_str();
   cycleTime = cycle_t;
-  cerr << "Initializing Datapath " << endl;
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "    Initializing Datapath      " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   string bn(benchName);
   read_gzip_file_no_size(bn + "_microop.gz", microop);
   numTotalNodes = microop.size();
-  //also need to read address
-  //
-  //
   std::vector<std::string> dynamic_methodid(numTotalNodes, "");
   initDynamicMethodID(dynamic_methodid);
 
@@ -24,7 +23,6 @@ Datapath::Datapath(string bench, float cycle_t)
   }
 
   cycle = 0;
-  cerr << "End Initializing Datapath " << endl;
 }
 Datapath::~Datapath()
 {
@@ -32,26 +30,20 @@ Datapath::~Datapath()
 
 void Datapath::setScratchpad(Scratchpad *spad)
 {
-#ifdef DEBUG
-  std::cerr << "=======Setting Scratchpad=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "      Setting ScratchPad       " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   scratchpad = spad;
 }
 
 //optimizationFunctions
 void Datapath::setGlobalGraph()
 {
-#ifdef DEBUG
-  std::cerr << "=======Setting Global Graph=====" << std::endl;
-#endif
   graphName = benchName;
 }
 
 void Datapath::clearGlobalGraph()
 {
-#ifdef DEBUG
-  std::cerr << "=======Clearing Global Graph=====" << std::endl;
-#endif
   writeMicroop(microop);
   newLevel.assign(numTotalNodes, 0);
   globalIsolated.assign(numTotalNodes, 1);
@@ -61,9 +53,6 @@ void Datapath::clearGlobalGraph()
 
 void Datapath::globalOptimizationPass()
 {
-#ifdef DEBUG
-  std::cerr << "=======Global Optimization Pass=====" << std::endl;
-#endif
   //graph independent
   ////remove induction variables
   removeInductionDependence();
@@ -84,9 +73,9 @@ void Datapath::globalOptimizationPass()
 
 void Datapath::memoryAmbiguation()
 {
-#ifdef DEBUG
-  std::cerr << "=======Memory Ambiguation=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "      Memory Ambiguation       " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -203,16 +192,13 @@ void Datapath::memoryAmbiguation()
     }
   }
   writeGraphWithNewEdges(to_add_edges, num_of_edges);
-#ifdef DEBUG
-  std::cerr << "=======END Memory Ambiguation=====" << std::endl;
-#endif
 }
 
 void Datapath::removePhiNodes()
 {
-#ifdef DEBUG
-  std::cerr << "=======Remove PHI Nodes=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "       Remove PHI Nodes        " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -277,17 +263,14 @@ void Datapath::removePhiNodes()
   }
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
-#ifdef DEBUG
-  std::cerr << "=======End of Removing Phi Nodes: " << removed_phi << "=====" << std::endl;
-#endif
   cleanLeafNodes();
 
 }
 void Datapath::initBaseAddress()
 {
-#ifdef DEBUG
-  std::cerr << "=======Init Base Address=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "       Init Base Address       " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -329,9 +312,6 @@ void Datapath::initBaseAddress()
       baseAddress[node_id] = getElementPtr[node_id];
   }
   writeEdgeLatency(edge_latency);
-#ifdef DEBUG
-  std::cerr << "=======END Init Base Address=====" << std::endl;
-#endif
 }
 
 void Datapath::loopFlatten()
@@ -339,9 +319,9 @@ void Datapath::loopFlatten()
   std::unordered_set<int> flatten_config;
   if (!readFlattenConfig(flatten_config))
     return;
-#ifdef DEBUG
-  std::cerr << "=======Flatten Loops=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "         Loop Flatten         " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   std::vector<int> lineNum(numTotalNodes, -1);
   initLineNum(lineNum);
   
@@ -366,10 +346,10 @@ void Datapath::completePartition()
   std::unordered_set<string> comp_part_config;
   if (!readCompletePartitionConfig(comp_part_config))
     return;
-#ifdef DEBUG
-  std::cerr << "=======Complete Partition=====" << std::endl;
-#endif
   
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "        Mem to Reg Conv        " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   
   int changed_nodes = 0;
   //set graph
@@ -380,9 +360,6 @@ void Datapath::completePartition()
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
   unsigned num_of_edges = boost::num_edges(tmp_graph);
-#ifdef DEBUG
-  std::cerr << "num_edges," << num_of_edges << std::endl;
-#endif
   
  //read edgetype.second
   std::vector<bool> to_remove_edges(num_of_edges, 0);
@@ -418,16 +395,10 @@ void Datapath::completePartition()
     microop.at(node_id) = LLVM_IR_Move;
   }
   writeGraphWithIsolatedEdges(to_remove_edges);
-#ifdef DEBUG
-  std::cerr << "=======End Comp: ChangedNodes: " << changed_nodes << "=====" << std::endl;
-#endif
   cleanLeafNodes();
 }
 void Datapath::cleanLeafNodes()
 {
-#ifdef DEBUG
-  std::cerr << "=======Clean Leaf Nodes=====" << std::endl;
-#endif
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -479,18 +450,14 @@ void Datapath::cleanLeafNodes()
     }
   }
   writeGraphWithIsolatedNodes(to_remove_nodes);
-#ifdef DEBUG
-  std::cerr << "=======Cleaned Leaf Nodes:" << to_remove_nodes.size() << "=====" << std::endl;
-#endif
 }
 
 void Datapath::removeInductionDependence()
 {
   //set graph
-  
-#ifdef DEBUG
-  std::cerr << "=======Remove Induction Dependence=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "  Remove Induction Dependence  " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -528,16 +495,13 @@ void Datapath::removeInductionDependence()
   }
   writeEdgeLatency(edge_latency);
 
-#ifdef DEBUG
-  std::cerr << "=======Removed Induction Edges: " << removed_edges << "=====" << std::endl;
-#endif
 }
 
 void Datapath::methodGraphBuilder()
 {
-#ifdef DEBUG
-  std::cerr << "=======Method Graph Builder=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "     Split into Functions      " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   string call_file_name(benchName);
   call_file_name += "_method_call_graph";
   ifstream call_file;
@@ -590,9 +554,9 @@ void Datapath::methodGraphBuilder()
 }
 void Datapath::methodGraphSplitter()
 {
-#ifdef DEBUG
-  std::cerr << "=======Method Graph Splitter=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "    Generate Functions DDDG    " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   MethodGraph tmp_method_graph;
   readMethodGraph(tmp_method_graph);
@@ -615,15 +579,11 @@ void Datapath::methodGraphSplitter()
   
   //set graph
   unordered_map<string, edgeAtt > full_graph ;
-  //FIXME
   initializeGraphInMap(full_graph);
   //bottom node first
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
     string method_name = vertex_to_name[*vi]; 
-#ifdef DEBUG
-    cerr << "current method: " << method_name << endl;
-#endif    
     //only one caller for each dynamic function
     //assert (boost::in_degree(*vi, tmp_method_graph) <= 1);
     if (boost::in_degree(*vi, tmp_method_graph) == 0)
@@ -632,9 +592,6 @@ void Datapath::methodGraphSplitter()
     method_in_edge_iter in_edge_it, in_edge_end;
     tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_method_graph);
     int call_inst = edge_to_name[*in_edge_it];
-#ifdef DEBUG
-    cerr << "call_inst," << call_inst << endl;
-#endif 
     method_order << method_name << "," <<
       vertex_to_name[source(*in_edge_it, tmp_method_graph)] << "," << call_inst << std::endl;
     std::unordered_set<int> to_split_nodes;
@@ -652,7 +609,6 @@ void Datapath::methodGraphSplitter()
       if (node_id > max_node)
         max_node = node_id;
     }
-    cerr << "to_split_nodes," << to_split_nodes.size() << endl;
     
     unordered_map<string, edgeAtt> current_graph;
     auto graph_it = full_graph.begin(); 
@@ -684,9 +640,7 @@ void Datapath::methodGraphSplitter()
         //between from to call_inst
         ostringstream oss;
         oss << from << "-" << call_inst;
-        //cerr << "to in the new graph, update original graph, add from-call" << endl;
         if(from != call_inst && full_graph.find(oss.str()) == full_graph.end())
-          //cerr << "to in the new graph, update original graph, add from-call" << endl;
           full_graph[oss.str()] = { graph_it->second.parid, graph_it->second.latency};
         graph_it = full_graph.erase(graph_it);
       }
@@ -694,19 +648,15 @@ void Datapath::methodGraphSplitter()
           && split_to_it == to_split_nodes.end())
       {
         //update the full graph: remove edge between from to to, add edge
-        //between call_inst to to
         ostringstream oss;
         oss << call_inst << "-" << to;
-        //cerr << "from in the new graph, update original graph, add call-to" << endl;
         if (call_inst != to && full_graph.find(oss.str()) != full_graph.end())
-          //cerr << "from in the new graph, update original graph, add call-to" << endl;
           full_graph[oss.str()] = {graph_it->second.parid, graph_it->second.latency};
         graph_it = full_graph.erase(graph_it);
       }
       else
       {
         //write to the new graph
-        //cerr << "both from and to in the new graph, remove from-to in the original graph, add from-to in the new" << endl;
         if (current_graph.find(graph_it->first) == current_graph.end())
           current_graph[graph_it->first] = {graph_it->second.parid, graph_it->second.latency};
         graph_it = full_graph.erase(graph_it);
@@ -719,15 +669,9 @@ void Datapath::methodGraphSplitter()
   
   method_order.close();
   writeGraphInMap(full_graph, bn);
-#ifdef DEBUG
-  std::cerr << "=======Finally the End of Method Graph Splitter=====" << std::endl;
-#endif
 }
 void Datapath::addCallDependence()
 {
-#ifdef DEBUG
-  std::cerr << "=======Add Call Dependence=====" << std::endl;
-#endif
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph);
@@ -746,9 +690,6 @@ void Datapath::addCallDependence()
   int num_of_edges = num_edges(tmp_graph);
   writeGraphWithNewEdges(to_add_edges, num_of_edges);
 
-#ifdef DEBUG
-  std::cerr << "=======End Add Call Dependence: " << to_add_edges.size() << "=====" << std::endl;
-#endif
 }
 
 /*
@@ -762,9 +703,9 @@ void Datapath::scratchpadPartition()
   if (!readPartitionConfig(part_config))
     return;
 
-#ifdef DEBUG
-  std::cerr << "=======ScratchPad Partition=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "      ScratchPad Partition     " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   string bn(benchName);
   
   string partition_file;
@@ -779,9 +720,7 @@ void Datapath::scratchpadPartition()
     unsigned size = it->second.array_size; //num of words
     unsigned p_factor = it->second.part_factor;
     unsigned per_size = ceil(size / p_factor);
-#ifdef DEBUG
-    cerr << base_addr << "," << size << "," << p_factor << endl;
-#endif
+    
     for ( unsigned i = 0; i < p_factor ; i++)
     {
       ostringstream oss;
@@ -789,9 +728,6 @@ void Datapath::scratchpadPartition()
       scratchpad->setScratchpad(oss.str(), per_size);
     }
   }
-#ifdef DEBUG
-  cerr << "End Setting Scratchpad" << endl;
-#endif
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
     int node_microop = microop.at(node_id);
@@ -828,9 +764,6 @@ void Datapath::scratchpadPartition()
       }
     }
   }
-  //FIXME
-  //write_gzip_string_file(bn + "_new_membase.gz", numTotalNodes, baseAddress);
-  
 }
 //called in the end of the whole flow
 void Datapath::dumpStats()
@@ -844,10 +777,10 @@ void Datapath::dumpStats()
 //localOptimizationFunctions
 void Datapath::setGraphName(string graph_name, int min)
 {
+  std::cerr << "=============================================" << std::endl;
+  std::cerr << "      Optimizing...            " << graph_name << std::endl;
+  std::cerr << "=============================================" << std::endl;
   graphName = (char*)graph_name.c_str();
-#ifdef DDEBUG
-  cerr << "setting minNode " << min << endl;
-#endif
   minNode = min;
 }
 
@@ -870,9 +803,9 @@ void Datapath::loopUnrolling()
     return ;
   }
 
-#ifdef DEBUG
-  std::cerr << "=======Loop Unrolling=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "         Loop Unrolling        " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -991,9 +924,6 @@ void Datapath::loopUnrolling()
   }
   loop_bound << num_of_nodes << endl;
   loop_bound.close();
-#ifdef DEBUG
-  std::cerr << "=======End Loop Unrolling: "<< add_unrolling_edges << " =====" << std::endl;
-#endif
 }
 
 void Datapath::removeSharedLoads()
@@ -1002,9 +932,9 @@ void Datapath::removeSharedLoads()
   string file_name(graphName);
   file_name += "_loop_bound";
   read_file(file_name, loop_bound);
-#ifdef DEBUG
-  std::cerr << "=======Remove Shared Loads=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "          Load Buffer          " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -1104,17 +1034,14 @@ void Datapath::removeSharedLoads()
   edge_parid.clear();
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
-#ifdef DEBUG
-  std::cerr << "=======End of Shared Loads: " << shared_loads << "=====" << std::endl;
-#endif
   cleanLeafNodes();
 }
 
 void Datapath::storeBuffer()
 {
-#ifdef DEBUG
-  std::cerr << "=======Store Buffer=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "          Store Buffer         " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -1255,9 +1182,6 @@ void Datapath::storeBuffer()
   edge_parid.clear();
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
-#ifdef DEBUG
-  std::cerr << "=======End of Buffered Stores: " << buffered_stores << "=====" << std::endl;
-#endif
   cleanLeafNodes();
 }
 
@@ -1270,9 +1194,9 @@ void Datapath::removeRepeatedStores()
   
   if (loop_bound.size() < 1)
     return;
-#ifdef DEBUG
-  std::cerr << "=======Remove Repeated Stores=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "     Remove Repeated Store     " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -1361,16 +1285,13 @@ void Datapath::removeRepeatedStores()
     }
   }
   cleanLeafNodes();
-#ifdef DEBUG
-  std::cerr << "=======End of Remove Repeated Stores " << shared_stores << "=====" << std::endl;
-#endif
 }
 
 void Datapath::treeHeightReduction()
 {
-#ifdef DEBUG
-  std::cerr << "========Tree Height Reduction=====" << std::endl;
-#endif
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "     Tree Height Reduction     " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
   std::vector<int> loop_bound;
   string file_name(graphName);
   file_name += "_loop_bound";
@@ -1556,9 +1477,6 @@ void Datapath::treeHeightReduction()
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
 
   cleanLeafNodes();
-#ifdef DEBUG
-  std::cerr << "=======End of Tree Height Reduction=====" << std::endl;
-#endif
 }
 void Datapath::findMinRankNodes(int &node1, int &node2, std::unordered_map<unsigned, unsigned> &rank_map)
 {
@@ -1591,9 +1509,6 @@ void Datapath::findMinRankNodes(int &node1, int &node2, std::unordered_map<unsig
 //readWriteGraph
 int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges)
 {
-#ifdef DDEBUG
-  std::cerr << "=======Write Graph With New Edges=====" << std::endl;
-#endif
   string gn(graphName);
   string graph_file, edge_parid_file, edge_latency_file;
   graph_file = gn + "_graph";
@@ -1637,9 +1552,6 @@ int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int cur
   new_graph.close();
   gzclose(new_edgelatency);
   gzclose(new_edgeparid);
-#ifdef DDEBUG
-  std::cerr << "=======End Write Graph With New Edges=====" << std::endl;
-#endif
 
   return new_edge_id;
 }
@@ -1689,7 +1601,6 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
      || to_remove_nodes.find(to) != to_remove_nodes.end())
       continue;
 
-    //FIXME   
     new_graph << from << " -> " 
               << to
               << " [e_id = " << new_edge_id << "];" << endl;
@@ -1707,9 +1618,6 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
 }
 int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
 {
-#ifdef DDEBUG
-  std::cerr << "=======Write Graph With Isolated Edges=====" << std::endl;
-#endif
   Graph tmp_graph;
   readGraph(tmp_graph);
   
@@ -1762,17 +1670,11 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
   new_graph.close();
   gzclose(new_edgelatency);
   gzclose(new_edgeparid);
-#ifdef DDEBUG
-  std::cerr << "=======End Write Graph With Isolated Edges=====" << std::endl;
-#endif
   return new_edge_id;
 }
 
 void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
 {
-#ifdef DDEBUG
-  std::cerr << "=======Read Graph=====" << std::endl;
-#endif
   string gn(graphName);
   string graph_file_name(gn + "_method_graph");
   
@@ -1784,17 +1686,11 @@ void Datapath::readMethodGraph(MethodGraph &tmp_method_graph)
   std::ifstream fin(graph_file_name.c_str());
   boost::read_graphviz(fin, tmp_method_graph, dp, "n_id");
   
-#ifdef DDEBUG
-  std::cerr << "=======End Read Graph=====" << std::endl;
-#endif
 }
 
 
 void Datapath::readGraph(Graph &tmp_graph)
 {
-#ifdef DDEBUG
-  std::cerr << "=======Read Graph=====" << std::endl;
-#endif
   string gn(graphName);
   string graph_file_name(gn + "_graph");
   
@@ -1806,9 +1702,6 @@ void Datapath::readGraph(Graph &tmp_graph)
   std::ifstream fin(graph_file_name.c_str());
   boost::read_graphviz(fin, tmp_graph, dp, "n_id");
 
-#ifdef DDEBUG
-  std::cerr << "=======End Read Graph=====" << std::endl;
-#endif
 }
 
 //initFunctions
@@ -1960,6 +1853,9 @@ void Datapath::writePerCycleActivity()
     avg_fu_power += tmp_reg_power;
     power_stats << tmp_reg_power << endl;
   }
+  stats.close();
+  power_stats.close();
+  
   avg_fu_power /= cycle;
   avg_mem_power /= cycle;
   avg_power = avg_fu_power + avg_mem_power;
@@ -1973,14 +1869,31 @@ void Datapath::writePerCycleActivity()
   std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
-  std::cerr << "Total Area: " << total_area << std::endl;
-  std::cerr << "FU Area: " << fu_area << std::endl;
-  std::cerr << "MEM Area: " << mem_area << std::endl;
+  std::cerr << "Total Area: " << total_area << " uM^2" << std::endl;
+  std::cerr << "FU Area: " << fu_area << " uM^2" << std::endl;
+  std::cerr << "MEM Area: " << mem_area << " uM^2" << std::endl;
   std::cerr << "===============================" << std::endl;
   std::cerr << "        Aladdin Results        " << std::endl;
   std::cerr << "===============================" << std::endl;
-  stats.close();
-  power_stats.close();
+  
+  ofstream summary;
+  tmp_name = bn + "_summary";
+  summary.open(tmp_name.c_str());
+  summary << "===============================" << std::endl;
+  summary << "        Aladdin Results        " << std::endl;
+  summary << "===============================" << std::endl;
+  summary << "Running : " << benchName << std::endl;
+  summary << "Cycle : " << cycle << " cycle" << std::endl;
+  summary << "Avg Power: " << avg_power << " mW" << std::endl;
+  summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
+  summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
+  summary << "Total Area: " << total_area << " uM^2" << std::endl;
+  summary << "FU Area: " << fu_area << " uM^2" << std::endl;
+  summary << "MEM Area: " << mem_area << " uM^2" << std::endl;
+  summary << "===============================" << std::endl;
+  summary << "        Aladdin Results        " << std::endl;
+  summary << "===============================" << std::endl;
+  summary.close();
 }
 
 void Datapath::writeGlobalIsolated()
@@ -2097,9 +2010,6 @@ void Datapath::initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_gr
 
 void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name)
 {
-#ifdef DEBUG
-  std::cerr << "=======Write Graph In Map: " << name << "," << full_graph.size() << "=====" << std::endl;
-#endif
   ofstream graph_file;
   gzFile new_edgelatency, new_edgeparid;
   
@@ -2134,9 +2044,6 @@ void Datapath::writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, 
   graph_file.close();
   gzclose(new_edgelatency);
   gzclose(new_edgeparid);
-#ifdef DDEBUG
-  //std::cerr << "=======End Write Graph In Map=====" << std::endl;
-#endif
 }
 
 void Datapath::initLineNum(std::vector<int> &line_num)
@@ -2188,14 +2095,14 @@ void Datapath::writeEdgeLatency(std::vector<unsigned> &edge_latency)
 //multiple function, each function is a separate graph
 void Datapath::setGraphForStepping(string graph_name)
 {
+  std::cerr << "=============================================" << std::endl;
+  std::cerr << "      Scheduling...            " << graph_name << std::endl;
+  std::cerr << "=============================================" << std::endl;
   graphName = (char*)graph_name.c_str();
   string gn(graphName);
   
   string graph_file_name(gn + "_graph");
 
-#ifdef DEBUG
-  std::cerr << "========Setting Graph for Stepping======" << std::endl;
-#endif
   boost::dynamic_properties dp;
   boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, graph_);
   boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph_);
@@ -2232,10 +2139,6 @@ void Datapath::setGraphForStepping(string graph_name)
   
   updateGlobalIsolated();
 
-#ifdef DEBUG
-  cerr << "totalConnectedNodes," << totalConnectedNodes << endl;
-#endif
-
   executedNodes = 0;
 
   prevCycle = cycle;
@@ -2248,19 +2151,12 @@ void Datapath::setGraphForStepping(string graph_name)
   std::vector<pair<unsigned,float> >().swap(executedQueue);
 
   initReadyQueue();
-#ifdef DDEBUG
-  cerr << "End of Setting Graph: " << graph_name << endl;
-#endif
 }
 
 int Datapath::clearGraph()
 {
   string gn(graphName);
 
-#ifdef DDEBUG
-  cerr << gn << "," << cycle-prevCycle << endl;
-#endif
-  
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //bottom nodes first
@@ -2270,7 +2166,9 @@ int Datapath::clearGraph()
     int node_id = vertexToName[*vi];
     if (isolated.at(node_id))
       continue;
-    if (!is_memory_op(microop.at(node_id)))
+    unsigned node_microop = microop.at(node_id);
+    if (!is_memory_op(node_microop) )
+      //if (!is_memory_op(node_microop) && node_microop != LLVM_IR_Mul)
       if ((earliest_child.at(node_id) - 1 ) > newLevel.at(node_id))
         newLevel.at(node_id) = earliest_child.at(node_id) - 1;
 
@@ -2352,9 +2250,6 @@ bool Datapath::step()
 
   stepExecutedQueue();
 
-#ifdef DDEBUG
-  cerr << "Cycle:" << cycle << ",executedNodes," << executedNodes << ",totalConnectedNodes," << totalConnectedNodes << endl;
-#endif
   cycle++;
   if (executedNodes == totalConnectedNodes)
     return 1;
@@ -2363,18 +2258,10 @@ bool Datapath::step()
 
 void Datapath::stepExecutedQueue()
 {
-#ifdef DDEBUG
-  cerr << "======stepping executed queue " << endl;
-#endif
-  
   auto it = executedQueue.begin();
   while (it != executedQueue.end())
   {
     //it->second is the number of cycles to execute current nodes
-#ifdef DDEBUG
-    cerr << "executing," << it->first << "," << microop.at(it->first) << "," <<
-    cycle<< endl;
-#endif
     if (it->second <= cycleTime)
     {
       unsigned node_id = it->first;
@@ -2388,23 +2275,14 @@ void Datapath::stepExecutedQueue()
       it++;
     }
   }
-#ifdef DDEBUG
-  cerr << "======End stepping executed queue " << endl;
-#endif
 }
 void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 {
-#ifdef DDEBUG
-  cerr << "updating the children of " << node_id << endl;
-#endif
   Vertex node = nameToVertex[node_id];
   out_edge_iter out_edge_it, out_edge_end;
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
   {
     int child_id = vertexToName[target(*out_edge_it, graph_)];
-#ifdef DDEBUG
-    cerr << "child_id, numParents: " << child_id << "," << numParents[child_id] << endl;
-#endif
     if (numParents[child_id] > 0)
     {
       numParents[child_id]--;
@@ -2443,17 +2321,11 @@ int Datapath::fireMemNodes()
     else
       ++it;
   }
-#ifdef DDEBUG
-  cerr << "fired Memory Nodes," << firedNodes << endl;
-#endif
   return firedNodes;
 }
 
 int Datapath::fireNonMemNodes()
 {
-#ifdef DDEBUG
-  cerr << "=========Firing NonMemory Nodes========" << endl;
-#endif
   int firedNodes = 0;
   //assume the Queue is sorted by somehow
   auto it = nonMemReadyQueue.begin();
@@ -2465,17 +2337,11 @@ int Datapath::fireNonMemNodes()
     updateChildren(node_id, node_latency(microop.at(node_id)));
     it = nonMemReadyQueue.erase(it);
   }
-#ifdef DDEBUG
-  cerr << "Fired Non-Memory Nodes: " << firedNodes << endl;
-#endif
   return firedNodes;
 }
 
 void Datapath::initReadyQueue()
 {
-#ifdef DEBUG
-  cerr << "======Initializing Ready Queue=========" << endl;
-#endif
   for(unsigned i = 0; i < numGraphNodes; i++)
   {
     if (numParents[i] == 0 && isolated[i] != 1)
@@ -2486,9 +2352,6 @@ void Datapath::initReadyQueue()
         addNonMemReadyNode(i);
     }
   }
-#ifdef DDEBUG
-  cerr << "initialreadyqueuesize: memory," << memReadyQueue.size() << ", non-mem," << nonMemReadyQueue.size() << endl;
-#endif
 }
 
 void Datapath::addMemReadyNode(unsigned node_id)

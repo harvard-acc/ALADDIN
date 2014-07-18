@@ -18,7 +18,6 @@ def main(directory, kernel, part, unroll):
   'bb_gemm' : ['x','y','z'],
   'fft' : ['work_x','work_y','DATA_x','DATA_y','data_x','data_y','smem','reversed','sin_64','cos_64','sin_512','cos_512'],
   'md' : ['position_x','position_y','position_z','NL'],
-  #'md' : ['d_force_x','d_force_y','d_force_z','position_x','position_y','position_z','NL'],
   'pp_scan' : ['bucket','bucket2','sum'],
   'reduction' : ['in'],
   'ss_sort' : ['a','b','bucket','sum'],
@@ -27,10 +26,8 @@ def main(directory, kernel, part, unroll):
   }
   array_partition_type = {
   'bb_gemm' : ['cyclic','cyclic','cyclic'],
-  #'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','cyclic','cyclic','cyclic','cyclic'],
   'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','complete','complete','complete','complete'],
   'md' : ['cyclic','cyclic','cyclic','cyclic'],
-  #'md' : ['cyclic','cyclic','cyclic','cyclic','cyclic','cyclic','cyclic'],
   'pp_scan' : ['cyclic','cyclic','cyclic'],
   'reduction' : ['cyclic'],
   'ss_sort' : ['cyclic','cyclic','cyclic','cyclic'],
@@ -41,7 +38,6 @@ def main(directory, kernel, part, unroll):
   'bb_gemm' : ['1024','1024','1024'],
   'fft' : ['512','512','512','512','8','8','576','8','448','448','448','448'],
   'md' : ['32','32','32','1024'],
-  #'md' : ['32','32','32','32','32','32','1024'],
   'pp_scan' : ['2048','2048','16'],
   'reduction' : ['2048'],
   'ss_sort' : ['2048','2048','2048','128'],
@@ -57,9 +53,6 @@ def main(directory, kernel, part, unroll):
   
   if os.path.isdir(BaseFile + '/sim/' + d):
     shutil.rmtree(BaseFile + '/sim/' + d)
-
-  #if not os.path.isdir(BaseFile + '/sim/'):
-    #os.mkdir(BaseFile + '/sim/')
 
   if not os.path.isdir(BaseFile + '/sim/' + d):
     os.mkdir(BaseFile + '/sim/' + d)
@@ -119,8 +112,7 @@ def main(directory, kernel, part, unroll):
     config.write('flatten,step11,304\n')
     
   elif kernel == 'md':
-    config.write('unrolling,md,13,%s\n' %(unroll))
-    config.write('flatten,md,21\n')
+    config.write('unrolling,md_kernel,19,%s\n' %(unroll))
     config.write('partition,cyclic,d_force_x,32,1\n')
     config.write('partition,cyclic,d_force_y,32,1\n')
     config.write('partition,cyclic,d_force_z,32,1\n')
@@ -148,7 +140,6 @@ def main(directory, kernel, part, unroll):
     config.write('flatten,update,77,%s\n' %(unroll))
 
   elif kernel == 'stencil':
-    #loop 1 unroll, loop2 flatten
     config.write('unrolling,stencil,11,%s\n' %(unroll))
     config.write('flatten,stencil,12,%s\n' %(unroll))
 
