@@ -20,18 +20,25 @@ Requirements:
      The Boost Graph Library is a header-only library and does not need to be
      built most of the time. But we do need a function that requires building
      libboost_graph and libboost_regex. To build the two libraries:
+
      a. Download the Boost library from here:
+     
         wget http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.gz
 
-     b. tar -xzvf boost_1_55_0.tar; cd boost_1_55_0
-        Set this path as your $BOOST_ROOT:
+     b. Unzip the tarball and set your $BOOST_ROOT: 
+        
+        tar -xzvf boost_1_55_0.tar; cd boost_1_55_0
         export BOOST_ROOT=/your/path/to/boost_1_55_0/
      
      c. Run:
+        
         ./bootstrap.sh
+
      d. Install:
+        
         mkdir build
         ./b2 --build-dir=./build --with-graph --with-regex
+
      e. It will compile these two libraries to $BOOST_ROOT/stage/lib
 
   2. Recent version of GCC including some C++11 features (GCC 4.5+ should be ok).
@@ -46,20 +53,39 @@ Requirements:
      You can download LLVM-Tracer here: 
      To build LLVM-Tracer:
      a. Set LLVM_HOME to where you installed LLVM
+
+         export LLVM_HOME=/your/path/to/llvm
+         export PATH=$LLVM_HOME/bin/:$PATH
+         export LD_LIBRARY_PATH=$LLVM_HOME/lib/:$LD_LIBRARY_PATH
+
      b. Go to where you put LLVM-Tracer source code
-        cd /path/to/LLVM-Tracer
-     c. cd /path/to/LLVM-Tracer/full-trace; make
-     d. cd /path/to/LLVM-Tracer/profileFunc; make
+
+         cd /path/to/LLVM-Tracer
+         cd /path/to/LLVM-Tracer/full-trace
+         make
+         cd /path/to/LLVM-Tracer/profile-func
+         make
 
 Build:
 ------
   1. Set ALADDIN_HOME to where put Aladdin source code. 
-  2. Set BOOST_ROOT to where put Boost source code. 
-  3. Build aladdin
-     cd $ALADDIN_HOME; make
-  4. Add $ALDDIN_HOME/lib and $BOOST_ROOT/stage/lib to $LD_LIBRARY_PATH
-     export LD_LIBRARY_PATH=$ALADDIN_HOME/lib/:$LD_LIBRARY_PATH
+    
+     export ALADDIN_HOME=/your/path/to/aladdin
+
+  2. Set BOOST_ROOT to where put Boost source code and update $LD_LIBRARY_PATH
+     
+     export BOOST_ROOT=/your/path/to/boost
      export LD_LIBRARY_PATH=$BOOST_ROOT/stage/lib:$LD_LIBRARY_PATH
+
+  3. Build aladdin
+     
+     cd $ALADDIN_HOME
+     make
+
+  4. Add $ALDDIN_HOME/lib to $LD_LIBRARY_PATH
+     
+     export LD_LIBRARY_PATH=$ALADDIN_HOME/lib/:$LD_LIBRARY_PATH
+    
 
 Run:
 ----
@@ -73,28 +99,31 @@ Example program: triad
      a. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
         triad example, we want to analyze the triad kernel instead of the setup
         and initialization work done in main. To tell LLVM-Tracer the functions we are
-        interested, set enviroment variable WORKLOAD to be the function names:
+        interested, set enviroment variable WORKLOAD to be the function names (if you have multiple functions interested, separated by comma):
         
         export WORKLOAD=triad
-
-        if you have multiple functions interested, separated by comma, like
         export WORKLOAD=md,md_kernel
      
      b. Generate LLVM IR:
+
         clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o triad.llvm triad.c
      
      c. Run LLVM-Tracer pass:
         Before you run, make sure you already built LLVM-Tracer. 
-        Set TRACER_HOME to where you put LLVM-Tracer code. 
+        Set TRACER_HOME to where you put LLVM-Tracer code.
+        
+        export TRACER_HOME=/your/path/to/LLVM-Tracer
         
         opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
         llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profileFunc/tracer_logger.llvm
      
      d. Generate machine code:
+     
         llc -filetype=asm -o ful.s full.llvm
         gcc -fno-inline -o triad-instrumented full.s
      
      e. Run binary:
+        
         ./triad-instrumented
         
         It will generate a file called `dynamic_trace' under current directory. 
@@ -154,9 +183,11 @@ Example program: triad
 ----------------------
   We prepare a script to automatically run all the steps above: generating
   trace, config file and run Aladdin here: 
+  
   $ALADDIN_HOME/SHOC/scripts/run_aladdin.py
 
   You can run:
+  
   cd $ALADDIN_HOME/SHOC/scripts
   python run_aladdin.py triad 2 2
 
