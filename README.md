@@ -111,6 +111,25 @@ directory to test Aladdin.
 
 Example program: triad
 ----------------------
+  We prepare a script to automatically run all the steps above: generating
+  trace, config file and run Aladdin here: 
+  
+  `$ALADDIN_HOME/SHOC/scripts/run_aladdin.py`
+
+  You can run:
+  
+  ```
+  cd $ALADDIN_HOME/SHOC/scripts
+  python run_aladdin.py triad 2 2
+  ```
+  
+  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2`
+
+  The last two parameters are unrolling and partition factors in the config
+  files. You can sweep these parameters easily with Aladdin. 
+
+Step-by-step:
+----------------------
   1. Go to `$ALADDIN_HOME/SHOC/triad`
   2. Run LLVM-Tracer to generate a dynamic LLVM IR trace
      1. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
@@ -218,24 +237,6 @@ Example program: triad
      A corresponding dynamic power trace is 
        `<bench_name>_stats_power`
   
-----------------------
-  We prepare a script to automatically run all the steps above: generating
-  trace, config file and run Aladdin here: 
-  
-  `$ALADDIN_HOME/SHOC/scripts/run_aladdin.py`
-
-  You can run:
-  
-  ```
-  cd $ALADDIN_HOME/SHOC/scripts
-  python run_aladdin.py triad 2 2
-  ```
-  
-  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2`
-
-  The last two parameters are unrolling and partition factors in the config
-  files. You can sweep these parameters easily with Aladdin. 
-       
 ============================================
 Sophia Shao,
 
