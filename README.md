@@ -57,7 +57,7 @@ Requirements:
 
      You can find  LLVM-Tracer here: 
      
-     `https://github.com/ysshao/LLVM-Tracer.git`
+     [https://github.com/ysshao/LLVM-Tracer.git]
      
      To build LLVM-Tracer:
      
