@@ -14,7 +14,7 @@ export LFLAGS = $(DEBUG) \
 all : $(EXE)
 
 $(EXE) : $(LIBS) $(OBJS) 
-	$(CXX) -m32 -o $(EXE) $(OBJS) $(LFLAGS) 
+	$(CXX) -o $(EXE) $(OBJS) $(LFLAGS) 
 	rm *.o
 
 libutils.so :

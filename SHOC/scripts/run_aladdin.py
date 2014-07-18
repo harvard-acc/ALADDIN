@@ -2,7 +2,6 @@
 import os
 import sys
 import os.path
-import time
 
 import llvm_compile
 import config
