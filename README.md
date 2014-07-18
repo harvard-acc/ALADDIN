@@ -138,14 +138,14 @@ Example program: triad
         llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
         ```
      
-     d. Generate machine code:
+     4. Generate machine code:
         
         ```
         llc -filetype=asm -o ful.s full.llvm
         gcc -fno-inline -o triad-instrumented full.s
         ```
      
-     e. Run binary:
+     5. Run binary:
         
         `./triad-instrumented`
         
