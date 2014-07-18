@@ -135,7 +135,7 @@ Example program: triad
         ```
         export TRACER_HOME=/your/path/to/LLVM-Tracer
         opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
-        llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profileFunc/tracer_logger.llvm
+        llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
         ```
      
      d. Generate machine code:
@@ -152,8 +152,10 @@ Example program: triad
         It will generate a file called `dynamic_trace' under current directory. 
         We provide a python script to run the above steps automatically for SHOC. 
         
-        `cd $ALADDIN_HOME/SHOC/scripts/`
-        `python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad`
+        ```
+        cd $ALADDIN_HOME/SHOC/scripts/
+        python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad
+        ```
   
   3. config file
      Aladdin takes user defined parameters to model corresponding accelerator
