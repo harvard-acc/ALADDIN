@@ -45,31 +45,31 @@ Requirements:
 
    5. It will compile these two libraries to `$BOOST_ROOT/stage/lib`
 
-  2. Recent version of GCC including some C++11 features (GCC 4.5+ should be ok).
-     We use GCC 4.8.1.
+2. Recent version of GCC including some C++11 features (GCC 4.5+ should be ok).
+   We use GCC 4.8.1.
 
-  3. LLVM 3.4 and Clang 3.4 64-bit
+3. LLVM 3.4 and Clang 3.4 64-bit
 
-  4. LLVM IR Trace Profiler (LLVM-Tracer)
-     LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM's 
-     machine-independent IR. It prints out a dynamic trace of your program, which can
-     then be taken as an input for Aladdin. 
+4. LLVM IR Trace Profiler (LLVM-Tracer)
+   LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM's 
+   machine-independent IR. It prints out a dynamic trace of your program, which can
+   then be taken as an input for Aladdin. 
 
-     You can find  LLVM-Tracer here: 
+   You can find  LLVM-Tracer here: 
      
-     [https://github.com/ysshao/LLVM-Tracer.git]
+   [https://github.com/ysshao/LLVM-Tracer.git]
      
-     To build LLVM-Tracer:
+   To build LLVM-Tracer:
      
-    1. Set `LLVM_HOME` to where you installed LLVM
+   1. Set `LLVM_HOME` to where you installed LLVM
          
        ```
        export LLVM_HOME=/your/path/to/llvm
        export PATH=$LLVM_HOME/bin/:$PATH
        export LD_LIBRARY_PATH=$LLVM_HOME/lib/:$LD_LIBRARY_PATH
       ```
-
-    2. Go to where you put LLVM-Tracer source code
+    
+   2. Go to where you put LLVM-Tracer source code
 
        ```
        cd /path/to/LLVM-Tracer
@@ -81,25 +81,25 @@ Requirements:
 
 Build:
 ------
-  1. Set `$LADDIN_HOME` to where put Aladdin source code. 
+1. Set `$LADDIN_HOME` to where put Aladdin source code. 
     
       `export ALADDIN_HOME=/your/path/to/aladdin`
 
-  2. Set `$BOOST_ROOT` to where put Boost source code and update `$LD_LIBRARY_PATH`
+2. Set `$BOOST_ROOT` to where put Boost source code and update `$LD_LIBRARY_PATH`
 
      ```
      export BOOST_ROOT=/your/path/to/boost
      export LD_LIBRARY_PATH=$BOOST_ROOT/stage/lib:$LD_LIBRARY_PATH
      ```
      
-  3. Build aladdin
+3. Build aladdin
 
      ```
      cd $ALADDIN_HOME
      make
      ```
 
-  4. Add `$ALDDIN_HOME/lib` to `$LD_LIBRARY_PATH`
+4. Add `$ALDDIN_HOME/lib` to `$LD_LIBRARY_PATH`
 
      `export LD_LIBRARY_PATH=$ALADDIN_HOME/lib/:$LD_LIBRARY_PATH`
     
@@ -130,9 +130,9 @@ Example program: triad
 
 Step-by-step:
 ----------------------
-  1. Go to `$ALADDIN_HOME/SHOC/triad`
-  2. Run LLVM-Tracer to generate a dynamic LLVM IR trace
-     1. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
+1. Go to `$ALADDIN_HOME/SHOC/triad`
+2. Run LLVM-Tracer to generate a dynamic LLVM IR trace
+   1. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
         triad example, we want to analyze the triad kernel instead of the setup
         and initialization work done in main. To tell LLVM-Tracer the functions we are
         interested, set enviroment variable WORKLOAD to be the function names (if you 
@@ -143,28 +143,28 @@ Step-by-step:
         export WORKLOAD=md,md_kernel
         ```
         
-     2. Generate LLVM IR:
+   2. Generate LLVM IR:
 
         `clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o triad.llvm triad.c`
      
-     3. Run LLVM-Tracer pass:
-        Before you run, make sure you already built LLVM-Tracer. 
-        Set `$TRACER_HOME` to where you put LLVM-Tracer code.
+   3. Run LLVM-Tracer pass:
+      Before you run, make sure you already built LLVM-Tracer. 
+      Set `$TRACER_HOME` to where you put LLVM-Tracer code.
         
-        ```
-        export TRACER_HOME=/your/path/to/LLVM-Tracer
-        opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
-        llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
-        ```
+      ```
+      export TRACER_HOME=/your/path/to/LLVM-Tracer
+      opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
+      llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
+      ```
      
-     4. Generate machine code:
+   4. Generate machine code:
         
-        ```
-        llc -filetype=asm -o ful.s full.llvm
-        gcc -fno-inline -o triad-instrumented full.s
-        ```
+      ```
+      llc -filetype=asm -o ful.s full.llvm
+      gcc -fno-inline -o triad-instrumented full.s
+      ```
      
-     5. Run binary:
+   5. Run binary:
         
         `./triad-instrumented`
         
@@ -176,66 +176,66 @@ Step-by-step:
         python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad
         ```
   
-  3. config file
-     Aladdin takes user defined parameters to model corresponding accelerator
-     designs. We prepare an example of such config file at 
-     
-     ```
-     cd $ALADDIN_HOME/SHOC/triad/example
-     cat config_example
-     ```
-     ```
-     partition,cyclic,a,2048,2  //cyclic partition array a, size 2048, with partition factor 2
-     partition,cyclic,b,2048,2  //cyclic partition array b, size 2048, with partition factor 2
-     partition,cyclic,c,2048,2  //cyclic partition array c, size 2048, with partition factor 2
-     unrolling,triad,5,2        //unroll loop in triad, define at line 5 in triad.c, with unrolling factor 2
-     ```
+3.config file
 
-     The format of config file is:
-     
-     ```
-     partition,cyclic,array_name,array_size,partition_factor
-     unrolling,function_name,loop_increment_happened_at_line,unrolling_factor
-     ```
-     
-     Two more configs:
-     
-     ```
-     partition,complete,array_name,array_size //convert the array into register
-     flatten,function_name,loop_increment_happend_at_line  //flatten the loop
-     ```
-     
-  4. Run Aladdin
-     Aladdin takes three parameters: 
-       a. benchmark name
-       b. path to the dynamic trace generated by LLVM-Tracer
-       c. config file
-     Now you are ready to run Aladdin by:
-     
-     ```
-     cd $ALADDIN_HOME/SHOC/triad/example
-     $ALADDIN_HOME/aladdin triad $ALADDIN_HOME/SHOC/triad/dynamic_trace config_example
-     ```
+  Aladdin takes user defined parameters to model corresponding accelerator
+  designs. We prepare an example of such config file at 
+  ```
+  cd $ALADDIN_HOME/SHOC/triad/example
+  cat config_example
+  ```
+  ```
+  partition,cyclic,a,2048,2  //cyclic partition array a, size 2048, with partition factor 2
+  partition,cyclic,b,2048,2  //cyclic partition array b, size 2048, with partition factor 2
+  partition,cyclic,c,2048,2  //cyclic partition array c, size 2048, with partition factor 2
+  unrolling,triad,5,2        //unroll loop in triad, define at line 5 in triad.c, with unrolling factor 2
+  ```
 
-     Aladdin will print out the different stages of optimizations and scheduling as
-     it runs. In the end, Aladdin prints out the performance, power and area
-     estimates for this design, which is also saved at <bench_name>_summary
-     (triad_summary) in this case. 
+  The format of config file is:
+     
+  ```
+  partition,cyclic,array_name,array_size,partition_factor
+  unrolling,function_name,loop_increment_happened_at_line,unrolling_factor
+  ```
+     
+  Two more configs:
+     
+  ```
+  partition,complete,array_name,array_size //convert the array into register
+  flatten,function_name,loop_increment_happend_at_line  //flatten the loop
+  ```
+     
+4. Run Aladdin
+   Aladdin takes three parameters: 
+   a. benchmark name
+   b. path to the dynamic trace generated by LLVM-Tracer
+   c. config file
+   Now you are ready to run Aladdin by:
+     
+   ```
+   cd $ALADDIN_HOME/SHOC/triad/example
+   $ALADDIN_HOME/aladdin triad $ALADDIN_HOME/SHOC/triad/dynamic_trace config_example
+   ```
 
-     Aladdin will generate some files during its execution. One file you might
-     be interested is 
-       `<bench_name>_stats`
-     which profiles the dynamic activities as accelerator is running. Its format:
+   Aladdin will print out the different stages of optimizations and scheduling as
+   it runs. In the end, Aladdin prints out the performance, power and area
+   estimates for this design, which is also saved at <bench_name>_summary
+   (triad_summary) in this case. 
+
+   Aladdin will generate some files during its execution. One file you might
+   be interested is 
+    `<bench_name>_stats`
+   which profiles the dynamic activities as accelerator is running. Its format:
      
-     ```
-     line1: cycles,<cycle count>,<# of nodes in the trace>
-     line2: <cycle count>,<function-name-mul>,<function-name-add>,<each-partitioned-array>,....
-     line3: <cycle 0>,<# of mul happend from functiona-name at cycle 0>,..
-     line4: ...
-     ```
+   ```
+   line1: cycles,<cycle count>,<# of nodes in the trace>
+   line2: <cycle count>,<function-name-mul>,<function-name-add>,<each-partitioned-array>,....
+   line3: <cycle 0>,<# of mul happend from functiona-name at cycle 0>,..
+   line4: ...
+   ```
      
-     A corresponding dynamic power trace is 
-       `<bench_name>_stats_power`
+    A corresponding dynamic power trace is 
+      `<bench_name>_stats_power`
   
 ============================================
 Sophia Shao,
