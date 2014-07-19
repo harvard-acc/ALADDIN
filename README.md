@@ -27,11 +27,11 @@ Requirements:
       `wget http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.gz`
 
    2. Unzip the tarball and set your `$BOOST_ROOT`: 
-        ```
-        tar -xzvf boost_1_55_0.tar 
-        cd boost_1_55_0
-        export BOOST_ROOT=/your/path/to/boost_1_55_0/
-        ```
+      ```
+      tar -xzvf boost_1_55_0.tar 
+      cd boost_1_55_0
+      export BOOST_ROOT=/your/path/to/boost_1_55_0/
+      ```
    3. Run:
         
       `./bootstrap.sh`
@@ -51,7 +51,7 @@ Requirements:
 3. LLVM 3.4 and Clang 3.4 64-bit
 
 4. LLVM IR Trace Profiler (LLVM-Tracer)
-   LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM's 
+   LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM 
    machine-independent IR. It prints out a dynamic trace of your program, which can
    then be taken as an input for Aladdin. 
 
@@ -83,31 +83,37 @@ Build:
 ------
 1. Set `$ALDDIN_HOME` to where put Aladdin source code. 
     
-      `export ALADDIN_HOME=/your/path/to/aladdin`
+   `export ALADDIN_HOME=/your/path/to/aladdin`
 
 2. Set `$BOOST_ROOT` to where put Boost source code and update `$LD_LIBRARY_PATH`
 
-     ```
-     export BOOST_ROOT=/your/path/to/boost
-     export LD_LIBRARY_PATH=$BOOST_ROOT/stage/lib:$LD_LIBRARY_PATH
-     ```
+   ```
+   export BOOST_ROOT=/your/path/to/boost
+   export LD_LIBRARY_PATH=$BOOST_ROOT/stage/lib:$LD_LIBRARY_PATH
+   ```
      
 3. Build aladdin
 
-     ```
-     cd $ALADDIN_HOME
-     make
-     ```
+   ```
+   cd $ALADDIN_HOME
+   make
+   ```
 
 4. Add `$ALDDIN_HOME/lib` to `$LD_LIBRARY_PATH`
 
-     `export LD_LIBRARY_PATH=$ALADDIN_HOME/lib/:$LD_LIBRARY_PATH`
+   `export LD_LIBRARY_PATH=$ALADDIN_HOME/lib/:$LD_LIBRARY_PATH`
     
 
 Run:
 ----
 After you build Aladdin and LLVM-Tracer, you can use example SHOC programs in the SHOC
 directory to test Aladdin. 
+
+This distribution of Aladdin models fixed-function
+accelerators with scratchpad memory. Parameters like loop unrolling factors for
+each loop and memory partition (or memory bandwith) for each array allocated in
+your program. The functional units power models are based on OpenPDK 45nm and SRAM model from
+CACTI 5.3. 
 
 Example program: triad
 ----------------------
@@ -168,7 +174,7 @@ Step-by-step:
         
      `./triad-instrumented`
         
-     It will generate a file called `dynamic_trace' under current directory. 
+     It will generate a file called `dynamic_trace` under current directory. 
      We provide a python script to run the above steps automatically for SHOC. 
         
      ```
@@ -237,6 +243,37 @@ Step-by-step:
     A corresponding dynamic power trace is 
       `<bench_name>_stats_power`
   
+Caveats
+-------
+1. This distribution of Aladdin models the datapath and local scratcpad memory 
+of accelerators but not includes the rest of the memory hierarchy. 
+You can integrate Aladdin with cache or memory simulators. 
+
+2. This distribution of Aladdin does not model function pipelining. In this
+case, if a program has multiple functions built into accelerators, This
+distribution of Aladdion assumes only function executes at a time. 
+
+3. For nested loops, this distribution of Aladdin explores loop-level pipelining
+at the outter-most loop: The unrolling factors are applied to the outter-most
+loops with loop pipelining, and all the inner loops are flattened. 
+
+4. If you are interested in exploring inner-loop parallelism, one way to do that
+is to write the inner-loop into another function, like md and md_kernel in
+SHOC/md. In this case, loop unrolling factor for the original outter loop can
+only be one, assuming outer loop runs sequencially, and you can sweep the
+unrolling factors for the inner loop in its function. 
+
+5. This distribution of Aladdin takes at most ONE loop per fuction. Nested loops
+are fine as long as there is only one outter-most loop. If your functions have
+multiple loops, please break into multiple functions with one loop each. 
+
+6. This distribution of Aladdin characterizes power using OpenPDK 45nm
+technology. The characterized power for functional units are in
+`utils/power_delay.h`. If you are interested in trying different technologies,
+modify the constants there with your power delay characteristics. We will be
+releasing the microbenchmark set that we used to do power characterization. 
+
+
 ============================================
 Sophia Shao,
 
