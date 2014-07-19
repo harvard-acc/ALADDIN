@@ -249,29 +249,40 @@ Caveats
 of accelerators but not includes the rest of the memory hierarchy. 
 You can integrate Aladdin with cache or memory simulators. 
 
-2. This distribution of Aladdin does not model function pipelining. In this
+2. No Function Pipelining:
+
+This distribution of Aladdin does not model function pipelining. In this
 case, if a program has multiple functions built into accelerators, This
 distribution of Aladdion assumes only function executes at a time. 
 
-3. For nested loops, this distribution of Aladdin explores loop-level pipelining
+3. Unrolling Only Applied to Outter-Most Loop
+
+For nested loops, this distribution of Aladdin explores loop-level pipelining
 at the outter-most loop: The unrolling factors are applied to the outter-most
 loops with loop pipelining, and all the inner loops are flattened. 
 
-4. If you are interested in exploring inner-loop parallelism, one way to do that
+4. To Unroll Inner Loops:
+
+If you are interested in exploring inner-loop parallelism, one way to do that
 is to write the inner-loop into another function, like md and md_kernel in
 SHOC/md. In this case, loop unrolling factor for the original outter loop can
-only be one, assuming outer loop runs sequencially, and you can sweep the
+only be 1, assuming outter loop runs sequencially, and you can sweep the
 unrolling factors for the inner loop in its function. 
 
-5. This distribution of Aladdin takes at most ONE loop per fuction. Nested loops
+5. One Loop Per Function:
+
+This distribution of Aladdin takes at most ONE loop per fuction. Nested loops
 are fine as long as there is only one outter-most loop. If your functions have
 multiple loops, please break into multiple functions with one loop each. 
 
-6. This distribution of Aladdin characterizes power using OpenPDK 45nm
+6. Power Model Library:
+
+This distribution of Aladdin characterizes power using OpenPDK 45nm
 technology. The characterized power for functional units are in
 `utils/power_delay.h`. If you are interested in trying different technologies,
-modify the constants there with your power delay characteristics. We will be
-releasing the microbenchmark set that we used to do power characterization. 
+modify the constants there with your power delay characteristics and then
+recompile Aladdin. We will be releasing the microbenchmark set that we used to 
+do power characterization soon. 
 
 
 ============================================
