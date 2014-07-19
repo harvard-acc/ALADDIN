@@ -81,7 +81,7 @@ Requirements:
 
 Build:
 ------
-1. Set `$LADDIN_HOME` to where put Aladdin source code. 
+1. Set `$ALDDIN_HOME` to where put Aladdin source code. 
     
       `export ALADDIN_HOME=/your/path/to/aladdin`
 
@@ -133,48 +133,48 @@ Step-by-step:
 1. Go to `$ALADDIN_HOME/SHOC/triad`
 2. Run LLVM-Tracer to generate a dynamic LLVM IR trace
    1. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
-        triad example, we want to analyze the triad kernel instead of the setup
-        and initialization work done in main. To tell LLVM-Tracer the functions we are
-        interested, set enviroment variable WORKLOAD to be the function names (if you 
-        have multiple functions interested, separated by comma):
+      triad example, we want to analyze the triad kernel instead of the setup
+      and initialization work done in main. To tell LLVM-Tracer the functions we are
+      interested, set enviroment variable `WORKLOAD` to be the function names (if you 
+      have multiple functions interested, separated by comma):
 
-        ```
-        export WORKLOAD=triad
-        export WORKLOAD=md,md_kernel
-        ```
+    ```
+    export WORKLOAD=triad
+    export WORKLOAD=md,md_kernel
+    ```
         
    2. Generate LLVM IR:
 
-        `clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o triad.llvm triad.c`
+    `clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o triad.llvm triad.c`
      
    3. Run LLVM-Tracer pass:
       Before you run, make sure you already built LLVM-Tracer. 
       Set `$TRACER_HOME` to where you put LLVM-Tracer code.
         
-      ```
-      export TRACER_HOME=/your/path/to/LLVM-Tracer
-      opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
-      llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
-      ```
+     ```
+     export TRACER_HOME=/your/path/to/LLVM-Tracer
+     opt -S -load=$TRACER_HOME/full-trace/full_trace.so -full trace triad.llvm -o triad-opt.llvm
+     llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
+     ```
      
    4. Generate machine code:
         
-      ```
-      llc -filetype=asm -o ful.s full.llvm
-      gcc -fno-inline -o triad-instrumented full.s
-      ```
+     ```
+     llc -filetype=asm -o ful.s full.llvm
+     gcc -fno-inline -o triad-instrumented full.s
+     ```
      
    5. Run binary:
         
-        `./triad-instrumented`
+     `./triad-instrumented`
         
-        It will generate a file called `dynamic_trace' under current directory. 
-        We provide a python script to run the above steps automatically for SHOC. 
+     It will generate a file called `dynamic_trace' under current directory. 
+     We provide a python script to run the above steps automatically for SHOC. 
         
-        ```
-        cd $ALADDIN_HOME/SHOC/scripts/
-        python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad
-        ```
+     ```
+     cd $ALADDIN_HOME/SHOC/scripts/
+     python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad
+     ```
   
 3.config file
 
