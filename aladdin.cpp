@@ -6,6 +6,18 @@
 
 int main( int argc, const char *argv[])
 {
+   const char *logo="     ________                                                    \n"  
+                    "    /\\ ____  \\    ___   _       ___  ______ ______  _____  _   _ \n"
+                    "   /  \\    \\  |  / _ \\ | |     / _ \\ |  _  \\|  _  \\|_   _|| \\ | |\n"
+                    "  / /\\ \\    | | / /_\\ \\| |    / /_\\ \\| | | || | | |  | |  |  \\| |\n"
+                    " | |  | |   | | |  _  || |    |  _  || | | || | | |  | |  | . ` |\n"
+                    " \\ \\  / /__/  | | | | || |____| | | || |/ / | |/ /  _| |_ | |\\  |\n"
+                    "  \\_\\/_/ ____/  \\_| |_/\\_____/\\_| |_/|___/  |___/  |_____|\\_| \\_/\n"
+                    "                                                                 \n";
+
+   std::cout << logo << endl;
+
+
   if(argc < 4)
   {
     std::cerr << "-------------------------------" << std::endl;
@@ -23,10 +35,17 @@ int main( int argc, const char *argv[])
   string config_file(argv[3]);
   
   cout << bench << "," << trace_file << "," << config_file <<  endl;
+  /*Build Initial DDDG*/
+  if (build_initial_dddg(bench, trace_file))
+  {
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << "       Aladdin Ends..          " << std::endl;
+    std::cerr << "-------------------------------" << std::endl;
+    exit(0);
+  }
+  
   parse_config(bench, config_file);
   
-  /*Build Initial DDDG*/
-  build_initial_dddg(bench, trace_file);
   
   Datapath *acc;
   Scratchpad *spad;

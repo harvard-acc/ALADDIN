@@ -298,9 +298,24 @@ void dddg::parse_result(string line)
 int build_initial_dddg(string bench, string trace_file_name)
   //int build_initial_dddg(string bench, string trace_file_name, string config_file)
 {
-	dddg graph_dep;
+  if (!fileExists(trace_file_name))
+  {
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << " ERROR: Input Trace Not Found  " << std::endl;
+    std::cerr << "-------------------------------" << std::endl;
+    return 1;
+  }
+	else
+  {
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << "      Generating DDDG          " << std::endl;
+    std::cerr << "-------------------------------" << std::endl;
+  } 
+	
+  dddg graph_dep;
 
   FILE *tracefile;
+  
   tracefile = fopen(trace_file_name.c_str(), "r");
 
   string func_file_name, microop_file_name, instid_file_name;
@@ -324,17 +339,6 @@ int build_initial_dddg(string bench, string trace_file_name)
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
   prevBasicBlock_trace = gzopen(prevBasicBlock_trace_name.c_str(), "w");
 
-  if (!tracefile)
-  {
-		std::cerr << "file is not found" << std::endl;
-		return 11;
-	}
-	else
-  {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "      Generating DDDG          " << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
-  } 
   
   char buffer[256];
   while(!feof(tracefile)) 
