@@ -36,7 +36,7 @@ int main( int argc, const char *argv[])
   
   cout << bench << "," << trace_file << "," << config_file <<  endl;
   /*Build Initial DDDG*/
-  if (!build_initial_dddg(bench, trace_file))
+  if (build_initial_dddg(bench, trace_file))
   {
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "       Aladdin Ends..          " << std::endl;
