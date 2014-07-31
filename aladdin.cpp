@@ -46,7 +46,6 @@ int main( int argc, const char *argv[])
   
   parse_config(bench, config_file);
   
-  
   Datapath *acc;
   Scratchpad *spad;
 
@@ -81,15 +80,14 @@ int main( int argc, const char *argv[])
       graph_file = bench;
       min_node = 0;
     }
-    
     //Per Dynamic Function Local Optimization
     acc->setGraphName(graph_file, min_node);
     acc->optimizationPass();
     acc->setGraphForStepping(graph_file);
-    
     //Scheduling
-    while(!acc->step())
+    while(!acc->step()){
       spad->step();
+    }
     int cycles = acc->clearGraph();
     method_latency  << current_dynamic_method  << "," << cycles << endl;
   }

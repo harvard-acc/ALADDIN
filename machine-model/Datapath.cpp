@@ -1768,7 +1768,7 @@ void Datapath::writePerCycleActivity()
     else if (is_store_op(node_microop))
     {
       string base_addr = baseAddress[node_id].first;
-      st_activity[base_addr].at(tmp_level) += 1;
+      st_activity[base_addr].at(tmp_level) += 1; //bug out of range
     }
   }
   ofstream stats, power_stats;
@@ -2126,6 +2126,7 @@ void Datapath::setGraphForStepping(string graph_name)
   
   totalConnectedNodes = 0;
   vertex_iter vi, vi_end;
+
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
     if (boost::degree(*vi, graph_) == 0)
@@ -2136,7 +2137,7 @@ void Datapath::setGraphForStepping(string graph_name)
       totalConnectedNodes++;
     }
   }
-  
+
   updateGlobalIsolated();
 
   executedNodes = 0;
@@ -2149,14 +2150,12 @@ void Datapath::setGraphForStepping(string graph_name)
   std::set<unsigned>().swap(memReadyQueue);
   std::set<unsigned>().swap(nonMemReadyQueue);
   std::vector<pair<unsigned,float> >().swap(executedQueue);
-
   initReadyQueue();
 }
 
 int Datapath::clearGraph()
 {
   string gn(graphName);
-
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //bottom nodes first
@@ -2247,11 +2246,11 @@ bool Datapath::step()
 //#endif
   int firedNodes = fireNonMemNodes();
   firedNodes += fireMemNodes();
-
   stepExecutedQueue();
 
   cycle++;
-  if (executedNodes == totalConnectedNodes)
+ // if(executedQueue.empty()) 
+ if (executedNodes == totalConnectedNodes)
     return 1;
   return 0;
 }
@@ -2343,7 +2342,7 @@ int Datapath::fireNonMemNodes()
 void Datapath::initReadyQueue()
 {
   for(unsigned i = 0; i < numGraphNodes; i++)
-  {
+  { 
     if (numParents[i] == 0 && isolated[i] != 1)
     {
       if (is_memory_op(microop.at(i)))

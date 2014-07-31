@@ -35,9 +35,10 @@ void Scratchpad::setScratchpad(string baseName, unsigned size)
 }
 
 void Scratchpad::step()
-{
-  for (auto it = occupiedBWPerPartition.begin(); it != occupiedBWPerPartition.end(); ++it)
+{ 
+  for (auto it = occupiedBWPerPartition.begin(); it != occupiedBWPerPartition.end(); ++it){
     *it = 0;
+}
 }
 bool Scratchpad::partitionExist(string baseName)
 {
