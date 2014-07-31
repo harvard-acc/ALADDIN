@@ -216,14 +216,15 @@ void dddg::parse_parameter(string line, int param_tag)
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store || curr_microop == LLVM_IR_GetElementPtr)
   {
-    parameter_value.insert(parameter_value.begin(), value);
-    parameter_size.insert(parameter_size.begin(), size);
-    parameter_label.insert(parameter_label.begin(), label);
+    parameter_value.push_back(value);
+    parameter_size.push_back(size);
+    parameter_label.push_back(label);
+    unsigned psz = parameter_value.size();
     //last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load)
     {
-      unsigned mem_address = parameter_value.at(0);
-      unsigned mem_size = parameter_size.at(0);
+      unsigned mem_address = parameter_value.back();
+      unsigned mem_size = parameter_size.back();
       gzprintf(memory_trace, "%d,%u,%u\n", num_of_instructions, mem_address, mem_size);
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())
@@ -249,28 +250,28 @@ void dddg::parse_parameter(string line, int param_tag)
           num_of_mem_dep++;
         }
       }
-      unsigned base_address = parameter_value.at(0);
-      string base_label = parameter_label.at(0);
+      unsigned base_address = parameter_value.back();
+      string base_label = parameter_label.back();
       gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_Store)
     {
-      unsigned mem_address = parameter_value.at(1);
-      unsigned mem_size = parameter_size.at(1);
+      unsigned mem_address = parameter_value[psz-1];
+      unsigned mem_size = parameter_size[psz-1];
       gzprintf(memory_trace, "%d,%u,%u\n", num_of_instructions, mem_address, mem_size);
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())
         addr_it->second = num_of_instructions;
       else
         address_last_written.insert(make_pair(mem_address, num_of_instructions));
-      unsigned base_address = parameter_value.at(1);
-      string base_label = parameter_label.at(1);
+      unsigned base_address = parameter_value[psz-1];
+      string base_label = parameter_label[psz-1];
       gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr)
     {
-      unsigned base_address = parameter_value.at(0);
-      string base_label = parameter_label.at(0);
+      unsigned base_address = parameter_value[psz-1];
+      string base_label = parameter_label[psz-1];
       gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
   }
