@@ -332,7 +332,7 @@ void Datapath::loopFlatten()
  * */
 void Datapath::completePartition()
 {
-  std::unordered_set<std::string> comp_part_config;
+  std::unordered_map<std::string, unsigned> comp_part_config;
   if (!readCompletePartitionConfig(comp_part_config))
     return;
   
@@ -340,48 +340,14 @@ void Datapath::completePartition()
   std::cerr << "        Mem to Reg Conv        " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   
-  int changed_nodes = 0;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  
- //read edgetype.second
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
-  
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  for (auto it = comp_part_config.begin(); it != comp_part_config.end(); ++it)
   {
-    unsigned node_id = vertex_to_name[*vi];
-    int node_microop = microop.at(node_id);
-    if (!is_memory_op(node_microop))
-      continue;
-    assert(baseAddress.find(node_id) != baseAddress.end());
-    std::string base_label = baseAddress[node_id].first;
-    if (comp_part_config.find(base_label) == comp_part_config.end())
-      continue;
-    changed_nodes++;
-    //iterate its parents
-    in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(*vi , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
-    {
-      int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-      int parent_microop = microop.at(parent_id);
-      if (parent_microop == LLVM_IR_GetElementPtr)
-      {
-        int edge_id = edge_to_name[*in_edge_it];
-        to_remove_edges.at(edge_id) = 1;
-      }
-    }
-    baseAddress.erase(node_id);
-    microop.at(node_id) = LLVM_IR_Move;
+    std::string base_addr = it->first;
+    unsigned size = it->second;
+
+    scratchpad->setCompScratchpad(base_addr, size);
   }
-  writeGraphWithIsolatedEdges(to_remove_edges);
-  cleanLeafNodes();
+
 }
 void Datapath::cleanLeafNodes()
 {
@@ -1080,7 +1046,7 @@ void Datapath::removeRepeatedStores()
   vertex_iter vi, vi_end;
 
   int shared_stores = 0;
-  int node_id = num_of_nodes;
+  int node_id = num_of_nodes - 1;
   auto loop_bound_it = loop_bound.end();
   loop_bound_it--;
   loop_bound_it--;
@@ -1495,7 +1461,9 @@ void Datapath::writePerCycleActivity()
   std::unordered_map< std::string, std::vector<int> > st_activity;
   
   std::vector<std::string> partition_names;
+  std::vector<std::string> comp_partition_names;
   scratchpad->partitionNames(partition_names);
+  scratchpad->compPartitionNames(comp_partition_names);
 
   float avg_power, avg_fu_power, avg_mem_power, total_area, fu_area, mem_area;
   mem_area = 0;
@@ -1506,6 +1474,14 @@ void Datapath::writePerCycleActivity()
     ld_activity[p_name] = tmp_activity;
     st_activity[p_name] = tmp_activity;
     mem_area += scratchpad->area(*it);
+  }
+  for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+  {
+    std::string p_name = *it;
+    std::vector<int> tmp_activity(cycle, 0);
+    ld_activity[p_name] = tmp_activity;
+    st_activity[p_name] = tmp_activity;
+    fu_area += scratchpad->area(*it);
   }
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
@@ -1582,7 +1558,7 @@ void Datapath::writePerCycleActivity()
   float mul_leakage_per_cycle = MUL_leak_power * max_mul;
   float reg_leakage_per_cycle = REG_leak_power * 32 * max_reg;
 
-  fu_area = ADD_area * max_add + MUL_area * max_mul + REG_area * 32 * max_reg;
+  fu_area += ADD_area * max_add + MUL_area * max_mul + REG_area * 32 * max_reg;
   total_area = mem_area + fu_area;
   
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
@@ -1621,10 +1597,20 @@ void Datapath::writePerCycleActivity()
       power_stats << tmp_mem_power << "," ;
     }
     //For regs
-    stats << regStats.at(tmp_level).reads << "," << regStats.at(tmp_level).writes <<endl;
-    //reg power per bit
+    int curr_reg_reads = regStats.at(tmp_level).reads;
+    int curr_reg_writes = regStats.at(tmp_level).writes;
     float tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
+    for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+    {
+      curr_reg_reads     += ld_activity.at(*it).at(tmp_level)*32;
+      curr_reg_writes    += st_activity.at(*it).at(tmp_level)*32;
+      tmp_reg_power      += scratchpad->readPower(*it) * ld_activity.at(*it).at(tmp_level) + 
+                            scratchpad->writePower(*it) * st_activity.at(*it).at(tmp_level) + 
+                            scratchpad->leakPower(*it);
+    }
     avg_fu_power += tmp_reg_power;
+    
+    stats << curr_reg_reads << "," << curr_reg_writes <<endl;
     power_stats << tmp_reg_power << endl;
   }
   stats.close();
@@ -2040,6 +2026,7 @@ int Datapath::fireMemNodes()
     unsigned node_id = it->node_id;
     float latency_so_far = it->latency_so_far;
     assert(is_memory_op(microop.at(node_id)));
+    
     std::string node_part = baseAddress[node_id].first;
     if(scratchpad->canServicePartition(node_part))
     {
@@ -2169,7 +2156,7 @@ bool Datapath::readFlattenConfig(std::unordered_set<int> &flatten_config)
 }
 
 
-bool Datapath::readCompletePartitionConfig(std::unordered_set<std::string> &config)
+bool Datapath::readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config)
 {
   std::string bn(benchName);
   std::string comp_partition_file;
@@ -2190,7 +2177,7 @@ bool Datapath::readCompletePartitionConfig(std::unordered_set<std::string> &conf
     char type[256];
     char base_addr[256];
     sscanf(wholeline.c_str(), "%[^,],%[^,],%d\n", type, base_addr, &size);
-    config.insert(base_addr);
+    config[base_addr] = size;
   }
   config_file.close();
   return 1;

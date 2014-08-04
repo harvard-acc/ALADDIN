@@ -105,7 +105,7 @@ class Datapath
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
   bool readPartitionConfig(std::unordered_map<std::string,
          partitionEntry> & partition_config);
-  bool readCompletePartitionConfig(std::unordered_set<std::string> &config);
+  bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
   /*void readGraph(igraph_t *g);*/
   void dumpStats();

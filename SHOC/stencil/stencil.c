@@ -14,7 +14,7 @@ void stencil (int *orig, int *sol, int const *filter)
 			SI = 0;
 			tmp = 0;
 			fidx = 0;
-			SI = i * 32;
+			SI = i * 34;
 			sidx = SI + j ;
 			didx = sidx;
 
@@ -33,7 +33,7 @@ void stencil (int *orig, int *sol, int const *filter)
 			sidx ++;
 			fidx ++;
 
-			sidx += (32 ) - 3;
+			sidx += (34 ) - 3;
 
 			Si = filter[fidx] * orig[sidx];
 			tmp = tmp + Si;
@@ -50,7 +50,7 @@ void stencil (int *orig, int *sol, int const *filter)
 			sidx ++;
 			fidx ++;
 
-			sidx = sidx + (32 ) - 3;
+			sidx = sidx + (34 ) - 3;
 
 			Si = filter[fidx] * orig[sidx];
 			tmp = tmp + Si;

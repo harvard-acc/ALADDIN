@@ -24,7 +24,7 @@ def main(kernel, part, unroll, pipe):
   #Run LLVM-Tracer to generate the dynamic trace
   #Only need to run once to generate the design space of each algorithm
   #All the Aladdin runs use the same trace
-  #llvm_compile.main(BENCH_HOME, kernel)
+  llvm_compile.main(BENCH_HOME, kernel)
   
   #Generate accelerator design config file
   config.main(BENCH_HOME, kernel, part, unroll, pipe)

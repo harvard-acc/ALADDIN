@@ -14,6 +14,22 @@ Scratchpad::Scratchpad(unsigned p_ports_per_part)
 }
 Scratchpad::~Scratchpad()
 {}
+void Scratchpad::setCompScratchpad(string baseName, unsigned size)
+{
+  assert(!partitionExist(baseName));
+  //size: number of words
+  unsigned new_id = baseToPartitionID.size();
+  baseToPartitionID[baseName] = new_id;
+  
+  compPartition.push_back(true);
+  occupiedBWPerPartition.push_back(0);
+  sizePerPartition.push_back(size);
+  //set
+  readPowerPerPartition.push_back(size * 32 * (REG_int_power + REG_sw_power));
+  writePowerPerPartition.push_back(size * 32 * (REG_int_power + REG_sw_power));
+  leakPowerPerPartition.push_back(size * 32 * REG_leak_power);
+  areaPerPartition.push_back(size * 32 * REG_area);
+}
 
 void Scratchpad::setScratchpad(string baseName, unsigned size)
 {
@@ -21,6 +37,8 @@ void Scratchpad::setScratchpad(string baseName, unsigned size)
   //size: number of words
   unsigned new_id = baseToPartitionID.size();
   baseToPartitionID[baseName] = new_id;
+  
+  compPartition.push_back(false);
   occupiedBWPerPartition.push_back(0);
   sizePerPartition.push_back(size);
   //set
@@ -58,6 +76,8 @@ bool Scratchpad::addressRequest(string baseName)
   if (canServicePartition(baseName))
   {
     unsigned partition_id = findPartitionID(baseName);
+    if (compPartition.at(partition_id))
+      return true;
     assert(occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition);
     occupiedBWPerPartition.at(partition_id)++;
     return true;
@@ -70,15 +90,19 @@ bool Scratchpad::canService()
   for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
   {
     string base_name = base_it->first;
-    if (canServicePartition(base_name))
-      return 1;
+    //unsigned base_id = base_it->second;
+    //if (!compPartition.at(base_id))
+      if (canServicePartition(base_name))
+        return 1;
   }
   return 0;
 }
 bool Scratchpad::canServicePartition(string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
-  if (occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition)
+  if (compPartition.at(partition_id))
+    return 1;
+  else if (occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition)
     return 1;
   else
     return 0;
@@ -103,7 +127,20 @@ void Scratchpad::partitionNames(std::vector<string> &names)
   for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
   {
     string base_name = base_it->first;
-    names.push_back(base_name);
+    unsigned base_id = base_it->second;
+    if (!compPartition.at(base_id))
+      names.push_back(base_name);
+  }
+}
+
+void Scratchpad::compPartitionNames(std::vector<string> &names)
+{
+  for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
+  {
+    string base_name = base_it->first;
+    unsigned base_id = base_it->second;
+    if (compPartition.at(base_id))
+      names.push_back(base_name);
   }
 }
 
