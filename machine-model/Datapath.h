@@ -20,6 +20,7 @@
 #include "generic_func.h"
 #include "./Scratchpad.h"
 
+#define CONTROL_EDGE 11
 using namespace std;
 typedef boost::property < boost::vertex_name_t, int> VertexProperty;
 typedef boost::property < boost::edge_name_t, int> EdgeProperty;
@@ -34,24 +35,11 @@ typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_name_t>::type VertexNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexIndexMap;
 
-typedef boost::property < boost::vertex_name_t, string> MethodVertexProperty;
-typedef boost::property < boost::edge_name_t, int> MethodEdgeProperty;
-typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, MethodVertexProperty, MethodEdgeProperty> MethodGraph;
-typedef boost::graph_traits<MethodGraph>::vertex_descriptor MethodVertex;
-typedef boost::graph_traits<MethodGraph>::edge_descriptor MethodEdge;
-typedef boost::graph_traits<MethodGraph>::vertex_iterator method_vertex_iter;
-typedef boost::graph_traits<MethodGraph>::edge_iterator method_edge_iter;
-typedef boost::graph_traits<MethodGraph>::in_edge_iterator method_in_edge_iter;
-typedef boost::graph_traits<MethodGraph>::out_edge_iterator method_out_edge_iter;
-typedef boost::property_map<MethodGraph, boost::edge_name_t>::type MethodEdgeNameMap;
-typedef boost::property_map<MethodGraph, boost::vertex_name_t>::type MethodVertexNameMap;
-typedef boost::property_map<MethodGraph, boost::vertex_index_t>::type MethodVertexIndexMap;
-
 class Scratchpad;
 
 struct partitionEntry
 {
-  string type;
+  std::string type;
   unsigned array_size; //num of elements
   unsigned part_factor;
 };
@@ -63,33 +51,37 @@ struct regEntry
 };
 struct callDep
 {
-  string caller;
-  string callee;
+  std::string caller;
+  std::string callee;
   int callInstID;
 };
 struct newEdge
 {
-  int from;
-  int to;
+  unsigned from;
+  unsigned to;
   int parid;
-  unsigned latency;
 };
-struct edgeAtt
+struct RQEntry
 {
-  int parid;
-  unsigned latency;
+  unsigned node_id;
+  mutable float latency_so_far;
+  mutable bool valid;
 };
 
+struct RQEntryComp
+{
+  bool operator() (const RQEntry& left, const RQEntry &right) const  
+  { return left.node_id < right.node_id; }
+};
 class Datapath
 {
  public:
-  Datapath(string bench, float cycle_t);
+  Datapath(std::string bench, float cycle_t);
   ~Datapath();
   void setGlobalGraph();
   void clearGlobalGraph();
   void globalOptimizationPass();
   void initBaseAddress();
-  void optimizationPass();
   void cleanLeafNodes();
   void completePartition();
   void removeInductionDependence();
@@ -97,19 +89,18 @@ class Datapath
   void memoryAmbiguation();
   void removeAddressCalculation();
   void removeBranchEdges();
-  void addCallDependence();
-  void methodGraphBuilder();
-  void methodGraphSplitter();
   void nodeStrengthReduction();
   void loopFlatten();
   void loopUnrolling();
+  void loopPipelining();
   void removeSharedLoads();
   void storeBuffer();
   void removeRepeatedStores();
   void treeHeightReduction();
   void scratchpadPartition();
-  void findMinRankNodes(int &node1, int &node2, std::unordered_map<unsigned, unsigned> &rank_map);
-  
+  void findMinRankNodes(unsigned &node1, unsigned &node2, std::unordered_map<unsigned, unsigned> &rank_map);
+
+  bool readPipeliningConfig();
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
   bool readPartitionConfig(std::unordered_map<std::string,
@@ -117,38 +108,32 @@ class Datapath
   bool readCompletePartitionConfig(std::unordered_set<std::string> &config);
 
   /*void readGraph(igraph_t *g);*/
-  /*void readMethodGraph(igraph_t *g);*/
   void dumpStats();
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity();
-  void writeEdgeLatency(std::vector<unsigned> &edge_latency);
   void writeMicroop(std::vector<int> &microop);
   
   void readGraph(Graph &g);
-  void readMethodGraph(MethodGraph &g);
   void initMicroop(std::vector<int> &microop);
   void updateRegStats();
-  void updateGlobalIsolated();
   void initMethodID(std::vector<int> &methodid);
-  void initDynamicMethodID(std::vector<string> &methodid);
-  void initPrevBasicBlock(std::vector<string> &prevBasicBlock);
+  void initDynamicMethodID(std::vector<std::string> &methodid);
+  void initPrevBasicBlock(std::vector<std::string> &prevBasicBlock);
   void initInstID(std::vector<std::string> &instid);
-  void initAddressAndSize(std::unordered_map<unsigned, pair<unsigned, unsigned> > &address);
-  void initAddress(std::unordered_map<unsigned, unsigned> &address);
+  void initAddressAndSize(std::unordered_map<unsigned, pair<long long int, unsigned> > &address);
+  void initAddress(std::unordered_map<unsigned, long long int> &address);
   void initLineNum(std::vector<int> &lineNum);
   void initEdgeParID(std::vector<int> &parid);
-  void initEdgeLatency(std::vector<unsigned> &edge_latency);
-  void initGetElementPtr(std::unordered_map<unsigned, pair<string, unsigned> > &get_element_ptr);
+  void initGetElementPtr(std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
 
   int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
   int writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges);
   int writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
-  void writeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph, string name);
-  void initializeGraphInMap(std::unordered_map<string, edgeAtt> &full_graph);
+  void writeGraphInMap(std::unordered_map<std::string, int> &full_graph, std::string name);
+  void initializeGraphInMap(std::unordered_map<std::string, int> &full_graph);
 
-  void setGraphName(std::string graph_name, int min);
-  void setGraphForStepping(std::string graph_name);
+  void setGraphForStepping();
   void setScratchpad(Scratchpad *spad);
   
   bool step();
@@ -157,19 +142,18 @@ class Datapath
   int fireMemNodes();
   int fireNonMemNodes();
   void initReadyQueue();
-  void addMemReadyNode( unsigned node_id);
-  void addNonMemReadyNode( unsigned node_id);
+  void addMemReadyNode( unsigned node_id, float latency_so_far);
+  void addNonMemReadyNode( unsigned node_id, float latency_so_far);
   int clearGraph();
   
  private:
   
   //global/whole datapath variables
   Scratchpad *scratchpad;
-  std::vector<bool> globalIsolated;
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
   std::vector<int> microop;
-  std::unordered_map<unsigned, pair<string, unsigned> > baseAddress;
+  std::unordered_map<unsigned, pair<std::string, long long int> > baseAddress;
 
   unsigned numTotalNodes;
 
@@ -177,14 +161,10 @@ class Datapath
   float cycleTime;
   //stateful states
   int cycle;
-  int prevCycle;
   
   //local/per method variables for step(), may need to include new data
   //structure for optimization phase
   char* graphName;
-  unsigned numGraphNodes;
-  unsigned numGraphEdges;
-  unsigned minNode;
   
   /*igraph_t *g;*/
   /*Graph global_graph_;*/
@@ -193,9 +173,9 @@ class Datapath
   VertexNameMap vertexToName;
 
   std::vector<int> numParents;
-  std::vector<bool> isolated;
+  std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
-  /*std::unordered_map<int, int> callLatency;*/
+  
   std::unordered_set<std::string> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;
   
@@ -203,10 +183,9 @@ class Datapath
   unsigned totalConnectedNodes;
   unsigned executedNodes;
 
-  std::set<unsigned> memReadyQueue;
-  std::set<unsigned> nonMemReadyQueue;
-  std::vector<pair<unsigned, float> > executedQueue;
-  
+  std::set<RQEntry, RQEntryComp> memReadyQueue;
+  std::set<RQEntry, RQEntryComp> nonMemReadyQueue;
+  std::vector<pair<unsigned, float> > executingQueue;
 
 };
 

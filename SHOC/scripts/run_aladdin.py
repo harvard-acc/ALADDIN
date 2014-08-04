@@ -6,10 +6,7 @@ import os.path
 import llvm_compile
 import config
 
-def main(kernel, part, unroll):
-
-  part = int(part)
-  unroll = int(unroll)
+def main(kernel, part, unroll, pipe):
 
   if not 'ALADDIN_HOME' in os.environ:
     raise Exception('Set ALADDIN_HOME directory as an environment variable')
@@ -22,13 +19,15 @@ def main(kernel, part, unroll):
   BENCH_HOME = ALADDIN_HOME + '/SHOC/' + kernel
 
   os.chdir(BENCH_HOME)
-  d = 'p%i_u%i' % (part, unroll)
+  d = 'p%s_u%s_P%s' % (part, unroll, pipe)
 
   #Run LLVM-Tracer to generate the dynamic trace
-  llvm_compile.main(BENCH_HOME, kernel)
+  #Only need to run once to generate the design space of each algorithm
+  #All the Aladdin runs use the same trace
+  #llvm_compile.main(BENCH_HOME, kernel)
   
   #Generate accelerator design config file
-  config.main(BENCH_HOME, kernel, part, unroll)
+  config.main(BENCH_HOME, kernel, part, unroll, pipe)
 
   print 'Start Aladdin'
   trace_file = BENCH_HOME+ '/' + 'dynamic_trace'
@@ -44,5 +43,6 @@ if __name__ == '__main__':
   kernel = sys.argv[1]
   part = sys.argv[2]
   unroll = sys.argv[3]
-  main(kernel, part, unroll)
+  pipe = sys.argv[4]
+  main(kernel, part, unroll, pipe)
 

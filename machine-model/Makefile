@@ -1,4 +1,5 @@
 OBJS = Datapath.o Scratchpad.o
+
 libmachinemodel : $(OBJS)
 	$(CXX) -shared -fPIC -o ../lib/libmachinemodel.so $(OBJS)
 	rm *.o

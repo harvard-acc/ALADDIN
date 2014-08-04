@@ -1,4 +1,4 @@
-ALADDIN 0.1 Pre-release
+ALADDIN 0.1.1 Pre-release
 ============================================
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators. 
@@ -126,12 +126,13 @@ Example program: triad
   
   ```
   cd $ALADDIN_HOME/SHOC/scripts
-  python run_aladdin.py triad 2 2
+  python run_aladdin.py triad 2 2 1
   ```
   
-  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2`
+  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2_P1`
 
-  The last two parameters are unrolling and partition factors in the config
+  The last three parameters are unrolling and partition factors and enabling
+  loop pipelining in the config
   files. You can sweep these parameters easily with Aladdin. 
 
 Step-by-step:
@@ -186,6 +187,7 @@ Step-by-step:
 
   Aladdin takes user defined parameters to model corresponding accelerator
   designs. We prepare an example of such config file at 
+  
   ```
   cd $ALADDIN_HOME/SHOC/triad/example
   cat config_example
@@ -195,6 +197,7 @@ Step-by-step:
   partition,cyclic,b,2048,2  //cyclic partition array b, size 2048, with partition factor 2
   partition,cyclic,c,2048,2  //cyclic partition array c, size 2048, with partition factor 2
   unrolling,triad,5,2        //unroll loop in triad, define at line 5 in triad.c, with unrolling factor 2
+  pipelining,1               //enable loop pipelining, applied to all loops
   ```
 
   The format of config file is:
@@ -210,7 +213,15 @@ Step-by-step:
   partition,complete,array_name,array_size //convert the array into register
   flatten,function_name,loop_increment_happend_at_line  //flatten the loop
   ```
-     
+  
+  Note that you need to explicitly config how to partition each array in your
+  source code. If you do not want to partition the array, declare it as
+  partition_factor in your config file, like:
+  
+  ```
+  partition,cyclic,your-array,1
+  ```
+
 4. Run Aladdin
    Aladdin takes three parameters: 
    a. benchmark name
@@ -242,12 +253,37 @@ Step-by-step:
      
     A corresponding dynamic power trace is 
       `<bench_name>_stats_power`
+
+5. Design Space
+   We provide a simple script to show how to run Aladdin to generate the design
+   space of a workload. The script is
+
+  `$ALADDIN_HOME/SHOC/scripts/gen_space.py`
+
+   You can run:
   
+   ```
+   cd $ALADDIN_HOME/SHOC/scripts
+   python gen_space.py triad
+   ```
+
+   You can replace triad with any SHOC benchmark that we provide. It will
+   automatically generate the config file and trigger Aladdin. 
+   
+   It sweeps unrolling and partition factors, as well as turn on and off loop
+   pipelining, to generate a power-performance-area design space. At the end of
+   the script, if you have matplotlib installed, it will generate 6 plots of
+   design spaces in terms of total-power vs cycles, fu-power vs cycles,
+   mem-power vs cycles, total-area vs cycles, fu-area vs cycles, and mem-area vs
+   cycles. 
+
 Caveats
 -------
 1. This distribution of Aladdin models the datapath and local scratcpad memory 
 of accelerators but not includes the rest of the memory hierarchy. 
-You can integrate Aladdin with cache or memory simulators. 
+We are working on providing a release of Aladdin with a memory hierarchy. At the
+same time, if you are interested in doing your customized integration, we will
+provide a user`s guide on how to do the integration. 
 
 2. No Function Pipelining:
 
@@ -255,27 +291,7 @@ This distribution of Aladdin does not model function pipelining. In this
 case, if a program has multiple functions built into accelerators, This
 distribution of Aladdion assumes only function executes at a time. 
 
-3. Unrolling Only Applied to Outter-Most Loop
-
-For nested loops, this distribution of Aladdin explores loop-level pipelining
-at the outter-most loop: The unrolling factors are applied to the outter-most
-loops with loop pipelining, and all the inner loops are flattened. 
-
-4. To Unroll Inner Loops:
-
-If you are interested in exploring inner-loop parallelism, one way to do that
-is to write the inner-loop into another function, like md and md_kernel in
-SHOC/md. In this case, loop unrolling factor for the original outter loop can
-only be 1, assuming outter loop runs sequencially, and you can sweep the
-unrolling factors for the inner loop in its function. 
-
-5. One Loop Per Function:
-
-This distribution of Aladdin takes at most ONE loop per fuction. Nested loops
-are fine as long as there is only one outter-most loop. If your functions have
-multiple loops, please break into multiple functions with one loop each. 
-
-6. Power Model Library:
+3. Power Model Library:
 
 This distribution of Aladdin characterizes power using OpenPDK 45nm
 technology. The characterized power for functional units are in

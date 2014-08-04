@@ -4,11 +4,11 @@ import os
 import shutil
 
 
-def main(directory, kernel, part, unroll):
+def main(directory, kernel, part, unroll, pipe):
 
   print '--Running config.main()'
   
-  d = 'p%s_u%s' % (part, unroll)
+  d = 'p%s_u%s_P%s' % (part, unroll, pipe)
 
   print 'Kernel = %s, Part = %s, unroll = %s' % (kernel, part, unroll)
 
@@ -57,6 +57,7 @@ def main(directory, kernel, part, unroll):
 
   print 'Writing config file'
   config = open(BaseFile + '/sim/' + d + '/config_' + d, 'w')
+  config.write('pipelining,' + str(pipe) + "\n")
   #memory partition
   names = array_names[kernel]
   types = array_partition_type[kernel]
@@ -151,4 +152,5 @@ if __name__ == '__main__':
   kernel = sys.argv[2]
   part = sys.argv[3]
   unroll = sys.argv[4]
-  main(directory, kernel, part, unroll)
+  pipe = sys.argv[5]
+  main(directory, kernel, part, unroll, pipe)

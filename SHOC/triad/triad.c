@@ -2,9 +2,8 @@
 
 void triad(int *a,int *b, int *c, int s){
 	int i;
-	for(i=0;i<NUM;i++){
-		c[i] = a[i] + s*b[i];
-	}
+	for(i=0;i<NUM;i++)
+    c[i] = a[i] + s*b[i];
 }
 
 int main(){
