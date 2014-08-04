@@ -87,13 +87,8 @@ unsigned Scratchpad::findPartitionID(string baseName)
     return partition_it->second;
   else
   {
-		cerr<<"Valid Partition Names are:";
-	for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
- 	{
-		cerr<<base_it->first<<":"<<base_it->second<<endl;
-	}
-	cerr<<endl;
-    cerr << "Unknown Partition Name:" << baseName << endl;
+    std::cerr << "Unknown Partition Name:" << baseName << std::endl;
+    std::cerr << "Need to Explicitly Declare How to Partition Each Array in the Config File" << std::endl;
     exit(0);
   }
 }

@@ -11,13 +11,12 @@ using namespace std;
 
 struct edge_node_info{
   unsigned sink_node;
-  /*string var_id;*/
   int par_id;
 };
 
 //data structure used to tract dependency
-typedef unordered_map<string, unsigned int> string_to_uint;
-typedef unordered_map<unsigned int, unsigned int> uint_to_uint;
+typedef unordered_map<std::string, unsigned int> string_to_uint;
+typedef unordered_map<long long int, unsigned int> uint_to_uint;
 typedef unordered_multimap<unsigned int, edge_node_info> multi_uint_to_node_info;
 
 
@@ -29,31 +28,29 @@ public:
   int num_nodes();
   int num_of_register_dependency();
   int num_of_memory_dependency();
-  void output_method_call_graph(string bench);
-  void output_dddg(string dddg_file, string edge_parid_file, 
-      /*string edge_varid_file,*/
-   string edge_latency_file);
-  void parse_instruction_line(string line);
-  void parse_parameter(string line, int param_tag);
-  void parse_result(string line);
-  void parse_call_parameter(string line, int param_tag);
+  void output_method_call_graph(std::string bench);
+  void output_dddg(std::string dddg_file, std::string edge_parid_file);
+  void parse_instruction_line(std::string line);
+  void parse_parameter(std::string line, int param_tag);
+  void parse_result(std::string line);
+  void parse_call_parameter(std::string line, int param_tag);
 private:
   std::string curr_dynamic_function;
   
   int curr_microop;
   int prev_microop;
-  string prev_bblock;
-  string curr_bblock;
+  std::string prev_bblock;
+  std::string curr_bblock;
   
   std::string callee_function;
   bool last_parameter;
   int num_of_parameters;
 
   std::string curr_instid;
-  std::vector<unsigned> parameter_value;
-  std::vector<unsigned> parameter_size;
-  std::vector<string> parameter_label;
-  std::vector<string> method_call_graph;
+  std::vector<long long int> parameter_value_per_inst;
+  std::vector<unsigned> parameter_size_per_inst;
+  std::vector<std::string> parameter_label_per_inst;
+  std::vector<std::string> method_call_graph;
   /*unordered_map<unsigned, bool> to_ignore_methodid;*/
   int num_of_instructions;
   int num_of_reg_dep;
@@ -65,7 +62,7 @@ private:
 	multi_uint_to_node_info register_edge_table;
 	multi_uint_to_node_info memory_edge_table;
 	//keep track of currently executed methods
-	stack<string> active_method;
+	stack<std::string> active_method;
 	//manage methods
   /*c_string_to_uint method_appearance_table;*/
 	string_to_uint function_counter;
@@ -73,5 +70,5 @@ private:
 	uint_to_uint address_last_written;
 };
 
-int build_initial_dddg(string bench, string trace_file_name);
+int build_initial_dddg(std::string bench, std::string trace_file_name);
 #endif

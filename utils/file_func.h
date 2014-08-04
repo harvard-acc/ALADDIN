@@ -29,5 +29,4 @@ void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size, vector<u
 
 void parse_config(string bench, string config_file_name);
 bool fileExists(const string file_name);
-void init_method_order(string bench, vector<string> &v_method_order, unordered_map<string, int> &map_method_2_callinst);
 #endif

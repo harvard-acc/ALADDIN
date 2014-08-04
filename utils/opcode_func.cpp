@@ -25,9 +25,6 @@ bool is_compute_op(unsigned microop)
     default:
       return false;
   }
-     return true;
-  return false;
-
 }
 bool is_store_op(unsigned microop)
 {
@@ -41,14 +38,32 @@ bool is_load_op(unsigned microop)
     return true;
   return false;
 }
-
 bool is_branch_op (unsigned microop)
 {
   switch (microop)
   {
-    case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_PHI:
+    case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_Call:
       return true;
-    return false;
+    default:
+      return false;
+  }
+}
+
+bool is_call_op(unsigned microop)
+{
+  if (microop == LLVM_IR_Call)
+    return true;
+  return false;
+}
+
+bool is_control_op (unsigned microop)
+{
+  switch (microop)
+  {
+    case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_PHI: case LLVM_IR_Call: 
+      return true;
+    default:
+      return false;
   }
 }
 

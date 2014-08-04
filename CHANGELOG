@@ -1,0 +1,25 @@
+Aladdin Pre-Release, v0.1.1
+08-03-2014
+*Fixed: store memory address using long long instead of unsigned
+*Fixed: update the scheduler to keep the timestamp of when nodes are fired
+*Fixed: remove function/sub-graph optimization and scheduling: all the
+  optimizations are applied to the whole graph; improve optimization and
+  scheduling speed. 
+*Implemented: Separate loop unrolling and loop pipelining; user can turn on/off
+  loop pipeling from config file
+*Implemented: Initial support for unrolling inner loops in a nested loop.  
+*Implemented: Initial support for multi-loop function.  
+
+--Sophia Shao
+
+Aladdin Pre-Release, v0.1.0
+07-18-2014
+*First Release
+*Implemented: Build the DDDG from an LLVM IR trace
+*Implemented: Optimizations: loop unrolling, memory ambiguation, lood
+  forwarding, store forwarding, remove repeated store, memory to register, memory
+  partition, loop flattening, tree height reduction
+*Implemented: Scheduler constraining memory bandwidth
+*Implemented: FU and MEM power models
+
+--Sophia Shao

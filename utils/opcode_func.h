@@ -69,7 +69,9 @@ bool is_memory_op(unsigned microop);
 bool is_compute_op(unsigned microop);
 bool is_store_op(unsigned microop);
 bool is_load_op(unsigned microop);
+bool is_call_op(unsigned microop);
 bool is_branch_op (unsigned microop);
+bool is_control_op (unsigned microop);
 bool is_index_op (unsigned microop);
 float node_latency (unsigned  microop);
 

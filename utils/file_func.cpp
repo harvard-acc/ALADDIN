@@ -1,28 +1,5 @@
 #include "file_func.h"
 
-void init_method_order(string bench, vector<string> &v_method_order,
-  unordered_map<string, int> &map_method_2_callinst)
-{
-  ifstream method_order_file;
-  method_order_file.open(bench + "_method_order");
-  while (!method_order_file.eof())
-  {
-    string wholeline;
-    getline(method_order_file, wholeline);
-    cerr << wholeline << endl;
-    if (wholeline.size() == 0)
-      break;
-    char current_method[256], next_method[256];
-    int call_inst;
-    sscanf(wholeline.c_str(), "%[^,],%[^,],%d\n", current_method, next_method, &call_inst);
-    
-    v_method_order.insert(v_method_order.begin(), current_method);
-    map_method_2_callinst[current_method] = call_inst;
-  }
-  v_method_order.push_back(bench);
-  method_order_file.close();
-}
-
 void read_file(string file_name, vector<int> &output)
 {
   ifstream file;
@@ -269,16 +246,17 @@ void write_gzip_string_file(string gzip_file_name, unsigned size, vector<string>
   gzclose(gzip_file);
 }
 
-void parse_config(string bench, string config_file_name)
+void parse_config(std::string bench, std::string config_file_name)
 {
   ifstream config_file;
   config_file.open(config_file_name);
-  string wholeline;
+  std::string wholeline;
 
-  vector<string> flatten_config;
-  vector<string> unrolling_config;
-  vector<string> partition_config;
-  vector<string> comp_partition_config;
+  std::vector<std::string> flatten_config;
+  std::vector<std::string> unrolling_config;
+  std::vector<std::string> partition_config;
+  std::vector<std::string> comp_partition_config;
+  std::vector<std::string> pipelining_config;
 
   while(!config_file.eof())
   {
@@ -303,6 +281,8 @@ void parse_config(string bench, string config_file_name)
         partition_config.push_back(rest_line); 
       else 
         comp_partition_config.push_back(rest_line); 
+    else if (!type.compare("pipelining"))
+      pipelining_config.push_back(rest_line);
     else
     {
       cerr << "what else? " << wholeline << endl;
@@ -329,6 +309,17 @@ void parse_config(string bench, string config_file_name)
     for (unsigned i = 0; i < unrolling_config.size(); ++i)
       output << unrolling_config.at(i) << endl;
     output.close();
+  }
+  if (pipelining_config.size() != 0)
+  {
+    string pipelining(bench);
+    pipelining += "_pipelining_config";
+
+    ofstream pipe_config;
+    pipe_config.open(pipelining);
+    for (unsigned i = 0; i < pipelining_config.size(); ++i)
+      pipe_config << pipelining_config.at(i) << endl;
+    pipe_config.close();
   }
   if (partition_config.size() != 0)
   {
