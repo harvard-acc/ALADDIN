@@ -395,16 +395,8 @@ void Datapath::cleanLeafNodes()
   std::vector<int> edge_parid(num_of_edges, 0);
   initEdgeParID(edge_parid);
   
-  
   /*track the number of children each node has*/
   std::vector<int> num_of_children(num_of_nodes, 0);
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
-  {
-    unsigned node_id = vertex_to_name[*vi];
-    num_of_children.at(node_id) = boost::out_degree(*vi, tmp_graph);
-  }
-  
   unordered_set<unsigned> to_remove_nodes;
   
   std::vector< Vertex > topo_nodes;
@@ -415,9 +407,8 @@ void Datapath::cleanLeafNodes()
     unsigned  node_id = vertex_to_name[*vi];
     if (boost::degree(*vi, tmp_graph) == 0)
       continue;
-    assert(num_of_children.at(node_id) >= 0);
     int node_microop = microop.at(node_id);
-    if (num_of_children.at(node_id) == 0 
+    if (num_of_children.at(node_id) == boost::out_degree(*vi, tmp_graph) 
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
       && node_microop != LLVM_IR_Ret 
@@ -431,8 +422,7 @@ void Datapath::cleanLeafNodes()
       for (tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
       {
         int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-        assert(num_of_children.at(parent_id) != 0);
-        num_of_children.at(parent_id)--;
+        num_of_children.at(parent_id)++;
       }
     }
     else if (is_branch_op(node_microop))
@@ -445,8 +435,7 @@ void Datapath::cleanLeafNodes()
         if (edge_parid.at(edge_id) == CONTROL_EDGE)
         {
           int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-          assert(num_of_children.at(parent_id) != 0);
-          num_of_children.at(parent_id)--;
+          num_of_children.at(parent_id)++;
         }
       }
     }
