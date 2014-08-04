@@ -27,6 +27,11 @@ void Scratchpad::setScratchpad(string baseName, unsigned size)
   unsigned mem_size = next_power_of_two(size);
   if (mem_size < 64)
     mem_size = 64;
+  if (mem_size  > 4194304 )
+  {
+    std::cerr << "Error: Scratchpad cannot be larger than 4M words" << endl;
+    exit(0);
+  }
   unsigned mem_index = (unsigned) log2(mem_size) - 6;
   readPowerPerPartition.push_back(MEM_rd_power[mem_index]);
   writePowerPerPartition.push_back(MEM_wr_power[mem_index]);
