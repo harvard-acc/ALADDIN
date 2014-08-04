@@ -301,16 +301,30 @@ void Datapath::initBaseAddress()
       if (parent_microop == LLVM_IR_GetElementPtr)
       {
         baseAddress[node_id] = getElementPtr[parent_id];
-        //remove address calculation directly
+        //auto tmp = baseAddress[node_id];
+	//printf("!%d %s %d\n", tmp.first, tmp.second.first.c_str(), tmp.second.second);
+	 //remove address calculation directly
         int edge_id = edge_to_name[*in_edge_it];
         edge_latency.at(edge_id) = 0;
         flag_GEP = 1;
         break;
       }
     }
-    if (!flag_GEP)
-      baseAddress[node_id] = getElementPtr[node_id];
-  }
+    if (!flag_GEP){
+      baseAddress[node_id] = getElementPtr[node_id]; // here!!
+      auto tmp = baseAddress[node_id];
+	printf("!%d %d,%s,%d\n", microop.at(node_id), node_id, tmp.first.c_str(), tmp.second);
+	}
+   }
+
+
+	for(auto tmp = baseAddress.begin(); tmp!=baseAddress.end(); tmp++) // check!!
+	{	//string two="2";
+		//if(tmp->second.first == two) printf("!!!\n");
+	//	printf("~%d %s %d\n", tmp->first, tmp->second.first.c_str(), tmp->second.second);
+	}
+
+
   writeEdgeLatency(edge_latency);
 }
 
@@ -2065,7 +2079,7 @@ void Datapath::initGetElementPtr(std::unordered_map<unsigned, pair<string, unsig
       break;
     unsigned node_id, address;
     char label[256];
-    sscanf(buffer, "%d,%[^,],%d\n", &node_id, label, &address);
+    sscanf(buffer, "%d,%[^,],%u\n", &node_id, label, &address);
     get_element_ptr[node_id] = make_pair(label, address);
   }
   gzclose(gzip_file);
@@ -2287,8 +2301,9 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
       numParents[child_id]--;
       if (numParents[child_id] == 0)
       {
-        if (is_memory_op(microop.at(child_id)))
+        if (is_memory_op(microop.at(child_id))){
           addMemReadyNode(child_id);
+	}
         else
         {
           executedQueue.push_back(make_pair(child_id, latencySoFar + node_latency(microop.at(child_id))));
@@ -2308,17 +2323,24 @@ int Datapath::fireMemNodes()
     //need to check scratchpad constraints
     string node_part = baseAddress[node_id].first;
     //fprintf(stderr, "nodeid,%d,node-part,%s\n", node_id, node_part.c_str());
+	for(auto tmp = baseAddress.begin(); tmp!=baseAddress.end(); tmp++) // check!!
+	{	string two="2";
+//		if(tmp->second.first == two) printf("!!!\n");
+		//printf("%d %s %d\n", tmp->first, tmp->second.first.c_str(), tmp->second.second);
+	}
+
     if(scratchpad->canServicePartition(node_part))
     {
       assert(scratchpad->addressRequest(node_part));
       //assign levels and add to executed queue
       executedQueue.push_back(make_pair(node_id, node_latency(microop.at(node_id))));
       updateChildren(node_id, node_latency(microop.at(node_id)));
-      it = memReadyQueue.erase(it);
-      firedNodes++;
+/*      it = memReadyQueue.erase(it);
+      firedNodes++;*/
     }
     else
       ++it;
+
   }
   return firedNodes;
 }
@@ -2355,6 +2377,7 @@ void Datapath::initReadyQueue()
 
 void Datapath::addMemReadyNode(unsigned node_id)
 {
+
   memReadyQueue.insert(node_id);
 }
 

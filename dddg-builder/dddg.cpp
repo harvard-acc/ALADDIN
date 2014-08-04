@@ -179,6 +179,8 @@ void dddg::parse_instruction_line(string line)
   gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
   gzprintf(microop_file, "%d\n", curr_microop);
+	if(num_of_instructions==6675) printf("!!!%d\n",curr_microop);
+
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
   gzprintf(line_num_file, "%d\n", line_num);
   num_of_instructions++;
@@ -196,7 +198,6 @@ void dddg::parse_parameter(string line, int param_tag)
       callee_function = label;
   }
   last_parameter = 1;
-  
   if (is_reg)
   {
     char unique_reg_id[256];
@@ -254,10 +255,12 @@ void dddg::parse_parameter(string line, int param_tag)
       string base_label = parameter_label.back();
       gzprintf(getElementPtr_trace, "%d,%s,%u\n", num_of_instructions, base_label.c_str(), base_address);
     }
-    else if (param_tag == 1 && curr_microop == LLVM_IR_Store)
+    else if (param_tag == 2 && curr_microop == LLVM_IR_Store) //2nd of Store is the pointer while 1st is the value
     {
       unsigned mem_address = parameter_value[psz-1];
       unsigned mem_size = parameter_size[psz-1];
+
+
       gzprintf(memory_trace, "%d,%u,%u\n", num_of_instructions, mem_address, mem_size);
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())

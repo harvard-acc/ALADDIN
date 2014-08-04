@@ -81,11 +81,18 @@ bool Scratchpad::canServicePartition(string baseName)
 
 unsigned Scratchpad::findPartitionID(string baseName)
 {
+  
   auto partition_it = baseToPartitionID.find(baseName);
   if (partition_it != baseToPartitionID.end())
     return partition_it->second;
   else
   {
+		cerr<<"Valid Partition Names are:";
+	for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
+ 	{
+		cerr<<base_it->first<<":"<<base_it->second<<endl;
+	}
+	cerr<<endl;
     cerr << "Unknown Partition Name:" << baseName << endl;
     exit(0);
   }
