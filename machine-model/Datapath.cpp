@@ -294,8 +294,9 @@ void Datapath::initBaseAddress()
         break;
       }
     }
-    if (!flag_GEP)
+    if (!flag_GEP){
       baseAddress[node_id] = getElementPtr[node_id];
+    }
   }
 }
 
