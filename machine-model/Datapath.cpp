@@ -95,13 +95,13 @@ void Datapath::memoryAmbiguation()
   initInstID(instid);
   initDynamicMethodID(dynamic_methodid);
   initPrevBasicBlock(prev_basic_block);
-  
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
   //nodes with no incoming edges to first
   for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
   {
     unsigned node_id = vertex_to_name[*vi];
+ 
     int node_microop = microop.at(node_id);
     if (!is_store_op(node_microop))
       continue;
@@ -1061,7 +1061,7 @@ void Datapath::removeRepeatedStores()
   std::map<int, Vertex> name_to_vertex;
   BGL_FORALL_VERTICES(v, tmp_graph, Graph)
     name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-  
+
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   
   unsigned num_of_nodes = boost::num_vertices(tmp_graph);

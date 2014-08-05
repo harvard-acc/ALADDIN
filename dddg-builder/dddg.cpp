@@ -203,9 +203,6 @@ void dddg::parse_parameter(std::string line, int param_tag)
       tmp_edge.sink_node = num_of_instructions;
       //tmp_edge.var_id = label;
       tmp_edge.par_id = param_tag;
-	if(num_of_instructions == 74726){
-		printf("1:%d %d\n", curr_microop, reg_it->second);
-	}
       register_edge_table.insert(make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
     }
@@ -286,12 +283,6 @@ void dddg::parse_result(std::string line)
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
   auto reg_it = register_last_written.find(unique_reg_id);
-  if(num_of_instructions == 74573){
-	printf("2:%d\n", curr_microop);
-	} 
-  if(num_of_instructions == 74572){
-	printf("3:%d\n", curr_microop);
-	} 
   if (reg_it != register_last_written.end())
     reg_it->second = num_of_instructions;
   else
