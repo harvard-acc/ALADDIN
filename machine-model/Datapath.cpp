@@ -1991,6 +1991,7 @@ void Datapath::stepExecutedQueue()
     }
     else
     {
+      unsigned node_id = it->first;
       it->second -= cycleTime;
       it++;
     }
@@ -2012,6 +2013,7 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
         base_node_latency = cycleTime;
       if (cycle * cycleTime + latencySoFar + base_node_latency > latestParents[child_id])
         latestParents[child_id] = cycle * cycleTime + latencySoFar + base_node_latency ;
+      
       if (numParents[child_id] == 0)
       {
         float tmp_latencySoFar = latestParents[child_id] - cycle * cycleTime;
@@ -2033,7 +2035,7 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
 int Datapath::fireMemNodes()
 {
   int firedNodes = 0;
-  std::set<RQEntry, RQEntryComp>::iterator it = memReadyQueue.begin();
+  auto it = memReadyQueue.begin();
   int orig_size = memReadyQueue.size();
   while (it != memReadyQueue.end() && scratchpad->canService())
   {
@@ -2056,6 +2058,12 @@ int Datapath::fireMemNodes()
       it->latency_so_far -= cycleTime;
       ++it;
     }
+  }
+  
+  while (it != memReadyQueue.end())
+  {
+    it->latency_so_far -= cycleTime;
+    ++it;
   }
   return firedNodes;
 }
