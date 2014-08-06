@@ -622,7 +622,6 @@ void Datapath::loopPipelining()
     if (is_call_op(microop.at(br_node)))
       continue;
     unsigned first_node = first_it->second;
-    fprintf(stderr, "first node:%d, microop:%d, br_node:%d, microop:%d\n", first_node, microop.at(first_node), br_node, microop.at(br_node));
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
@@ -2009,13 +2008,13 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
     {
       numParents[child_id]--;
       float base_node_latency = 0;
-      if (edge_id == PIPE_EDGE)
+      if (edgeParid[edge_id] == PIPE_EDGE)
         base_node_latency = cycleTime;
-      if (cycle * cycleTime + latencySoFar > latestParents[child_id])
-        latestParents[child_id] = cycle * cycleTime + latencySoFar;
-      float tmp_latencySoFar = latestParents[child_id] - cycle * cycleTime;
+      if (cycle * cycleTime + latencySoFar + base_node_latency > latestParents[child_id])
+        latestParents[child_id] = cycle * cycleTime + latencySoFar + base_node_latency ;
       if (numParents[child_id] == 0)
       {
+        float tmp_latencySoFar = latestParents[child_id] - cycle * cycleTime;
         int child_microop = microop.at(child_id);
         if (is_memory_op(child_microop))
         {
@@ -2023,9 +2022,10 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
         }
         else
         {
-          executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + base_node_latency + node_latency(child_microop)));
-          updateChildren(child_id, tmp_latencySoFar + base_node_latency + node_latency(child_microop));
+          executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + node_latency(child_microop)));
+          updateChildren(child_id, tmp_latencySoFar + node_latency(child_microop));
         }
+        numParents[child_id] = -1;
       }
     }
   }
