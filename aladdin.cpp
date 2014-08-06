@@ -45,7 +45,6 @@ int main( int argc, const char *argv[])
   }
   parse_config(bench, config_file);
   
-  
   Datapath *acc;
   Scratchpad *spad;
 

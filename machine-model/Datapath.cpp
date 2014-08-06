@@ -286,7 +286,9 @@ void Datapath::initBaseAddress()
       if (parent_microop == LLVM_IR_GetElementPtr)
       {
         baseAddress[node_id] = getElementPtr[parent_id];
-        //remove address calculation directly
+        //auto tmp = baseAddress[node_id];
+	//printf("!%d %s %d\n", tmp.first, tmp.second.first.c_str(), tmp.second.second);
+	 //remove address calculation directly
         int edge_id = edge_to_name[*in_edge_it];
         flag_GEP = 1;
         break;
@@ -1875,6 +1877,7 @@ void Datapath::setGraphForStepping()
   numParents.assign(numTotalNodes, 0);
   totalConnectedNodes = 0;
   vertex_iter vi, vi_end;
+
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
     if (boost::degree(*vi, graph_) == 0)
@@ -1885,7 +1888,6 @@ void Datapath::setGraphForStepping()
       totalConnectedNodes++;
     }
   }
-  
   executedNodes = 0;
   
   memReadyQueue.clear();
@@ -1973,10 +1975,10 @@ bool Datapath::step()
 {
   int firedNodes = fireNonMemNodes();
   firedNodes += fireMemNodes();
-
   stepExecutedQueue();
   cycle++;
-  if (executedNodes == totalConnectedNodes)
+ // if(executedQueue.empty()) 
+ if (executedNodes == totalConnectedNodes)
     return 1;
   return 0;
 }
@@ -2094,7 +2096,6 @@ void Datapath::addMemReadyNode(unsigned node_id, float latency_so_far)
 {
   assert(is_memory_op(microop.at(node_id)));
   memReadyQueue.insert({node_id, latency_so_far, 1});
-  //memReadyQueue.push_back({node_id, latency_so_far, 1});
 }
 
 void Datapath::addNonMemReadyNode(unsigned node_id, float latency_so_far)
