@@ -180,9 +180,9 @@ void dddg::parse_instruction_line(std::string line)
 void dddg::parse_parameter(std::string line, int param_tag)
 {
   int size, is_reg;
-  long long int value; //FIXME: suggest change into double because value may affect is_reg
+  double value; 
   char label[256];
-  sscanf(line.c_str(), "%d,%lld,%d,%[^\n]\n", &size, &value, &is_reg, label);
+  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
   if (!last_parameter)
   {
     num_of_parameters = param_tag;
@@ -209,7 +209,7 @@ void dddg::parse_parameter(std::string line, int param_tag)
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store || curr_microop == LLVM_IR_GetElementPtr)
   {
-    parameter_value_per_inst.push_back(value);
+    parameter_value_per_inst.push_back((long long int) value);
     parameter_size_per_inst.push_back(size);
     parameter_label_per_inst.push_back(label);
     //last parameter
