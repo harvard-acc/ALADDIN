@@ -169,8 +169,6 @@ void dddg::parse_instruction_line(std::string line)
   gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
   gzprintf(microop_file, "%d\n", curr_microop);
-	if(num_of_instructions==6675) printf("!!!%d\n",curr_microop);
-
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
   gzprintf(line_num_file, "%d\n", line_num);
   num_of_instructions++;
@@ -182,7 +180,7 @@ void dddg::parse_instruction_line(std::string line)
 void dddg::parse_parameter(std::string line, int param_tag)
 {
   int size, is_reg;
-  long long int value;
+  long long int value; //FIXME: suggest change into double because value may affect is_reg
   char label[256];
   sscanf(line.c_str(), "%d,%lld,%d,%[^\n]\n", &size, &value, &is_reg, label);
   if (!last_parameter)
@@ -275,17 +273,16 @@ void dddg::parse_parameter(std::string line, int param_tag)
 void dddg::parse_result(std::string line)
 {
   int size, is_reg;
-  long long int value;
+  //long long int value;
+  double value;
   char label[256];
   
-  sscanf(line.c_str(), "%d,%lld,%d,%[^\n]\n", &size, &value, &is_reg, label);
-  
+  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
   assert(is_reg);
   
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
   auto reg_it = register_last_written.find(unique_reg_id);
-  
   if (reg_it != register_last_written.end())
     reg_it->second = num_of_instructions;
   else
