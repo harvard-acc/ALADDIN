@@ -188,9 +188,10 @@ class Datapath
   unsigned totalConnectedNodes;
   unsigned executedNodes;
 
-  std::set<RQEntry, RQEntryComp> memReadyQueue;
-  std::set<RQEntry, RQEntryComp> nonMemReadyQueue;
-  std::vector<pair<unsigned, float> > executingQueue;
+  /*std::set<RQEntry, RQEntryComp> memReadyQueue;*/
+  /*std::set<RQEntry, RQEntryComp> nonMemReadyQueue;*/
+  /*std::vector<pair<unsigned, float> > executingQueue;*/
+
 
 };
 

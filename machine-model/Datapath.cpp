@@ -2009,8 +2009,9 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
     {
       numParents[child_id]--;
       float base_node_latency = 0;
-      if (edgeParid[edge_id] == PIPE_EDGE)
+      if (edgeParid[edge_id] == PIPE_EDGE || edgeParid[edge_id] == CONTROL_EDGE)
         base_node_latency = cycleTime;
+      
       if (cycle * cycleTime + latencySoFar + base_node_latency > latestParents[child_id])
         latestParents[child_id] = cycle * cycleTime + latencySoFar + base_node_latency ;
       
@@ -2024,8 +2025,19 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
         }
         else
         {
-          executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + node_latency(child_microop)));
-          updateChildren(child_id, tmp_latencySoFar + node_latency(child_microop));
+          float child_latency = node_latency(child_microop);
+          int start_cycle = floor(tmp_latencySoFar / cycleTime);
+          int end_cycle = floor ((tmp_latencySoFar + child_latency)/ cycleTime);
+          if (start_cycle != end_cycle)
+          {
+            executingQueue.push_back(make_pair(child_id, (start_cycle + 1)*cycleTime + child_latency));
+            updateChildren(child_id, (start_cycle + 1) * cycleTime  + child_latency);
+          }
+          else
+          {
+            executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + child_latency));
+            updateChildren(child_id, tmp_latencySoFar + child_latency);
+          }
         }
         numParents[child_id] = -1;
       }
