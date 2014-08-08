@@ -1,3 +1,12 @@
+Aladdin Pre-Release, v0.1.2
+08-08-2014
+*Fixed: tree height optimization.
+*Fixed: complete partition: when completely partitioning all the arrays in an application.
+*Fixed: store buffer: node_id overflow.
+*Fixed: loop pipelining: control dependence between basic blocks cleaned up. 
+
+--Sophia Shao
+
 Aladdin Pre-Release, v0.1.1
 08-03-2014
 *Fixed: store memory address using long long instead of unsigned
