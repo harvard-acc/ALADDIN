@@ -596,7 +596,8 @@ void Datapath::loopPipelining()
   {
     while (node_id < *loop_bound_it &&  (unsigned) node_id < num_of_nodes)
     {
-      if(boost::degree(name_to_vertex[node_id], tmp_graph) == 0 || is_branch_op(microop.at(node_id)))
+      if(boost::degree(name_to_vertex[node_id], tmp_graph) == 0 
+              || is_branch_op(microop.at(node_id)) )
       {
         node_id++;
         continue;
@@ -620,8 +621,8 @@ void Datapath::loopPipelining()
     //if br_node is a call instruction, skip
     if (is_call_op(microop.at(br_node)))
       continue;
-
     unsigned first_node = first_it->second;
+    fprintf(stderr, "first node:%d, microop:%d, br_node:%d, microop:%d\n", first_node, microop.at(first_node), br_node, microop.at(br_node));
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
@@ -633,7 +634,7 @@ void Datapath::loopPipelining()
       existed = edge(name_to_vertex[first_node], name_to_vertex[child_id], tmp_graph);
       if (existed.second == false)
       {
-        to_add_edges.push_back({first_node, child_id, edge_parid.at(edge_id)});
+        to_add_edges.push_back({first_node, child_id, PIPE_EDGE});
       }
       to_remove_edges[edge_id] = 1;
     }
@@ -1858,10 +1859,16 @@ void Datapath::setGraphForStepping()
   boost::read_graphviz(fin, graph_, dp, "n_id");
   
   vertexToName = get(boost::vertex_name, graph_);
+  edgeToName = get(boost::edge_name, graph_);
   BGL_FORALL_VERTICES(v, graph_, Graph)
     nameToVertex[get(boost::vertex_name, graph_, v)] = v;
   
+  numTotalEdges  = boost::num_edges(graph_);
+  edgeParid.assign(numTotalEdges, 0);
+  initEdgeParID(edgeParid);
+
   numParents.assign(numTotalNodes, 0);
+  latestParents.assign(numTotalNodes, 0);
   totalConnectedNodes = 0;
   vertex_iter vi, vi_end;
 
@@ -1997,20 +2004,27 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
   {
     unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
+    unsigned edge_id = edgeToName[*out_edge_it];
     if (numParents[child_id] > 0)
     {
       numParents[child_id]--;
+      float base_node_latency = 0;
+      if (edge_id == PIPE_EDGE)
+        base_node_latency = cycleTime;
+      if (cycle * cycleTime + latencySoFar > latestParents[child_id])
+        latestParents[child_id] = cycle * cycleTime + latencySoFar;
+      float tmp_latencySoFar = latestParents[child_id] - cycle * cycleTime;
       if (numParents[child_id] == 0)
       {
         int child_microop = microop.at(child_id);
         if (is_memory_op(child_microop))
         {
-          addMemReadyNode(child_id, latencySoFar);
+          addMemReadyNode(child_id, tmp_latencySoFar);
         }
         else
         {
-          executingQueue.push_back(make_pair(child_id, latencySoFar + node_latency(child_microop)));
-          updateChildren(child_id, latencySoFar + node_latency(child_microop));
+          executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + base_node_latency + node_latency(child_microop)));
+          updateChildren(child_id, tmp_latencySoFar + base_node_latency + node_latency(child_microop));
         }
       }
     }

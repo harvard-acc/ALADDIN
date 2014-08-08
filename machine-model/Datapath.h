@@ -21,6 +21,7 @@
 #include "./Scratchpad.h"
 
 #define CONTROL_EDGE 11
+#define PIPE_EDGE 12
 using namespace std;
 typedef boost::property < boost::vertex_name_t, int> VertexProperty;
 typedef boost::property < boost::edge_name_t, int> EdgeProperty;
@@ -156,6 +157,7 @@ class Datapath
   std::unordered_map<unsigned, pair<std::string, long long int> > baseAddress;
 
   unsigned numTotalNodes;
+  unsigned numTotalEdges;
 
   char* benchName;
   float cycleTime;
@@ -171,8 +173,11 @@ class Datapath
   Graph graph_;
   std::unordered_map<int, Vertex> nameToVertex;
   VertexNameMap vertexToName;
+  EdgeNameMap edgeToName;
 
   std::vector<int> numParents;
+  std::vector<int> edgeParid;
+  std::vector<float> latestParents;
   std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
   

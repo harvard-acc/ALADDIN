@@ -200,7 +200,7 @@ void write_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
   gzclose(gzip_file);
 }
 
-void write_gzip_bool_file(string gzip_file_name, unsigned size, vector<bool> &output)
+void write_gzip_bool_file(std::string gzip_file_name, unsigned size, std::vector<bool> &output)
 {
   gzFile gzip_file;
 #ifdef DDEBUG
@@ -208,7 +208,7 @@ void write_gzip_bool_file(string gzip_file_name, unsigned size, vector<bool> &ou
 #endif
   gzip_file = gzopen(gzip_file_name.c_str(), "w");
   for (unsigned i = 0; i < size; ++i)
-    gzprintf(gzip_file, "%d\n", output.at(i));
+    gzprintf(gzip_file, "%d\n", output.at(i) ? 1 : 0);
   gzclose(gzip_file);
 }
 

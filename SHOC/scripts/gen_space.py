@@ -21,10 +21,10 @@ pipe = [0,1]
 #In this case, llvm_coompile.py inside run_aladdin.py only need to run once
 #to generate the dynamic instruction trace
 
-for f_unroll in unroll:
-  for f_part in part:
-    for f_pipe in pipe: 
-      os.system('python run_aladdin.py %s %i %i %i' % (bench, f_part, f_unroll, f_pipe))
+#for f_unroll in unroll:
+  #for f_part in part:
+    #for f_pipe in pipe: 
+      #os.system('python run_aladdin.py %s %i %i %i' % (bench, f_part, f_unroll, f_pipe))
 
 cycle = []
 total_power = []
