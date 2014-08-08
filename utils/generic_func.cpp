@@ -1,5 +1,10 @@
 #include "generic_func.h"
 
+std::vector<int> make_vector(int size)
+{
+  std::vector<int> tmp_vector(size, 0);
+  return tmp_vector;
+}
 int max_value(const vector<int> array, int start, int end)
 {
   int max = array.at(start);

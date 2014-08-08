@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
-#include <list>
+#include <map>
 #include <set>
 #include "file_func.h"
 #include "opcode_func.h"
@@ -99,7 +99,7 @@ class Datapath
   void removeRepeatedStores();
   void treeHeightReduction();
   void scratchpadPartition();
-  void findMinRankNodes(unsigned &node1, unsigned &node2, std::unordered_map<unsigned, unsigned> &rank_map);
+  void findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
 
   bool readPipeliningConfig();
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
@@ -138,11 +138,12 @@ class Datapath
   void setScratchpad(Scratchpad *spad);
   
   bool step();
-  void stepExecutedQueue();
-  void updateChildren(unsigned node_id, float latencySoFar);
+  void stepExecutingQueue();
+  void updateChildren(unsigned node_id);
+  void copyToExecutingQueue();
   int fireMemNodes();
   int fireNonMemNodes();
-  void initReadyQueue();
+  void initExecutingQueue();
   void addMemReadyNode( unsigned node_id, float latency_so_far);
   void addNonMemReadyNode( unsigned node_id, float latency_so_far);
   int clearGraph();
@@ -187,12 +188,9 @@ class Datapath
   //stateful states
   unsigned totalConnectedNodes;
   unsigned executedNodes;
-
-  /*std::set<RQEntry, RQEntryComp> memReadyQueue;*/
-  /*std::set<RQEntry, RQEntryComp> nonMemReadyQueue;*/
-  /*std::vector<pair<unsigned, float> > executingQueue;*/
-
-
+  
+  std::vector<unsigned> executingQueue;
+  std::vector<unsigned> readyToExecuteQueue;
 };
 
 

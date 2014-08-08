@@ -445,12 +445,6 @@ void Datapath::removeInductionDependence()
     if (microop.at(node_id) == LLVM_IR_Add )
         microop.at(node_id) = LLVM_IR_IndexAdd;
     //check its children, update the edge latency between them to 0
-    out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
-    {
-      int edge_id = edge_to_name[*out_edge_it];
-      removed_edges++;
-    }
   }
 }
 
@@ -588,7 +582,7 @@ void Datapath::loopPipelining()
   //starting without waiting until the prev iteration finish, we move the control dependences 
   //between last branch node in the prev basic block and instructions in the next basic block 
   //to first non isolated instruction in the prev basic block and instructions in the next basic block...
-  std::unordered_map<unsigned, unsigned> first_non_isolated_node;
+  std::map<unsigned, unsigned> first_non_isolated_node;
   auto loop_bound_it = loop_bound.begin();
   unsigned node_id = *loop_bound_it;
   loop_bound_it++;
@@ -614,7 +608,8 @@ void Datapath::loopPipelining()
     if (loop_bound_it == loop_bound.end() - 1 )
       break;
   }
-
+  int prev_branch = -1;
+  int prev_first = -1;
   for(auto first_it = first_non_isolated_node.begin(), E = first_non_isolated_node.end(); first_it != E; ++first_it)
   {
     unsigned br_node = first_it->first;
@@ -622,6 +617,45 @@ void Datapath::loopPipelining()
     if (is_call_op(microop.at(br_node)))
       continue;
     unsigned first_node = first_it->second;
+    //all the nodes between first and branch now dependent on first
+    if (prev_branch != -1)
+    {
+      out_edge_iter out_edge_it, out_edge_end;
+      for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[prev_branch], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+      {
+        unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+        if (child_id == first_node)
+          continue;
+        int edge_id = edge_to_name[*out_edge_it];
+        if (edge_parid.at(edge_id) != CONTROL_EDGE) 
+          continue;
+        std::pair<Edge, bool> existed;
+        existed = edge(name_to_vertex[first_node], name_to_vertex[child_id], tmp_graph);
+        if (existed.second == false)
+          to_add_edges.push_back({first_node, child_id, 1});
+      }
+    }
+    //update first_node's parents, depence become strict control dependence
+    in_edge_iter in_edge_it, in_edge_end;
+    for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[first_node], tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+    {
+      unsigned parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+      if (is_branch_op(microop.at(parent_id)))
+        continue;
+      int edge_id = edge_to_name[*in_edge_it];
+      to_remove_edges[edge_id] = 1;
+      to_add_edges.push_back({parent_id, first_node, CONTROL_EDGE});
+    }
+    //adding dependence between prev_first and first_node
+    if (prev_first != -1)
+    {
+      std::pair<Edge, bool> existed;
+      existed = edge(name_to_vertex[prev_first], name_to_vertex[first_node], tmp_graph);
+      if (existed.second == false)
+        to_add_edges.push_back({(unsigned)prev_first, first_node, CONTROL_EDGE});
+    }
+    
+    //remove control dependence between br node to its children
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
@@ -629,14 +663,10 @@ void Datapath::loopPipelining()
       int edge_id = edge_to_name[*out_edge_it];
       if (edge_parid.at(edge_id) != CONTROL_EDGE) 
         continue;
-      std::pair<Edge, bool> existed;
-      existed = edge(name_to_vertex[first_node], name_to_vertex[child_id], tmp_graph);
-      if (existed.second == false)
-      {
-        to_add_edges.push_back({first_node, child_id, PIPE_EDGE});
-      }
       to_remove_edges[edge_id] = 1;
     }
+    prev_branch = br_node;
+    prev_first = first_node;
   }
 
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
@@ -1115,8 +1145,14 @@ void Datapath::treeHeightReduction()
   unsigned num_of_nodes = boost::num_vertices(tmp_graph);
   unsigned num_of_edges = boost::num_edges(tmp_graph);
    
+  std::vector<int> edge_parid(num_of_edges, 0);
+  initEdgeParID(edge_parid);
+  
   VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
   EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  std::map<int, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
+    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
   
   std::vector<bool> updated(num_of_nodes, 0);
   std::vector<int> bound_region(num_of_nodes, 0);
@@ -1139,15 +1175,11 @@ void Datapath::treeHeightReduction()
   
   std::vector<bool> to_remove_edges(num_of_edges, 0);
   std::vector<newEdge> to_add_edges;
-  
-  std::vector< Vertex > topo_nodes;
-  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
 
   //nodes with no outgoing edges to first (bottom nodes first)
-  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
+  for(int node_id = num_of_nodes -1; node_id >= 0; node_id--)
   {
-    unsigned node_id = vertex_to_name[*vi];
-    if(boost::degree(*vi, tmp_graph) == 0 || updated.at(node_id))
+    if(boost::degree(name_to_vertex[node_id], tmp_graph) == 0 || updated.at(node_id))
       continue;
     int node_microop = microop.at(node_id);
     if (!is_associative(node_microop))
@@ -1158,67 +1190,93 @@ void Datapath::treeHeightReduction()
     std::vector<int> tmp_remove_edges;
     std::vector<pair<int, bool> > leaves;
     
-    std::vector< Vertex > associative_chain;
-    associative_chain.push_back(*vi);
-    //auto chain_it = associative_chain.begin();
+    std::vector<int> associative_chain;
+    associative_chain.push_back(node_id);
     int chain_id = 0;
-    //while (chain_it != associative_chain.end())
     while (chain_id < associative_chain.size())
     {
-      Vertex chain_node = associative_chain.at(chain_id);
-      //Vertex chain_node = *chain_it;
-      unsigned chain_node_id = vertex_to_name[chain_node];
+      int chain_node_id = associative_chain.at(chain_id);
       int chain_node_microop = microop.at(chain_node_id);
       int chain_node_region = bound_region.at(chain_node_id); 
       if (is_associative(chain_node_microop))
       {
-        nodes.push_front(chain_node_id);
-        updated.at(node_id) = 1;
-        //loop its parents
+        updated.at(chain_node_id) = 1;
         in_edge_iter in_edge_it, in_edge_end;
-        for (tie(in_edge_it, in_edge_end) = in_edges(chain_node , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+        int num_of_chain_parents = 0;
+        for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
         {
           Vertex parent_node = source(*in_edge_it, tmp_graph);
           int parent_id = vertex_to_name[parent_node];
-          int parent_region = bound_region.at(parent_id);
           int parent_microop = microop.at(parent_id);
-          int edge_id = edge_to_name[*in_edge_it];
-          updated.at(parent_id) = 1;
-          if (parent_region == node_region)
+          if (is_branch_op(parent_microop))
+            continue;
+          num_of_chain_parents++;
+        }
+        if (num_of_chain_parents == 2)
+        {
+          nodes.push_front(chain_node_id);
+          for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
           {
-            if (is_associative(parent_microop) && boost::out_degree(parent_node , tmp_graph) == 1)
+            Vertex parent_node = source(*in_edge_it, tmp_graph);
+            int parent_id = vertex_to_name[parent_node];
+            int parent_region = bound_region.at(parent_id);
+            int parent_microop = microop.at(parent_id);
+            if (is_branch_op(parent_microop))
+              continue;
+            int edge_id = edge_to_name[*in_edge_it];
+            
+            if (parent_region == node_region)
             {
-              //to_remove_edges.at(edge_id) = 1;
-              tmp_remove_edges.push_back(edge_id);
-              associative_chain.push_back(parent_node);
+              updated.at(parent_id) = 1;
+              if (!is_associative(parent_microop))
+              {
+                tmp_remove_edges.push_back(edge_id);
+                leaves.push_back(make_pair(parent_id, 0));
+              }
+              else
+              {
+                out_edge_iter out_edge_it, out_edge_end;
+                int num_of_children = 0;
+                for (tie(out_edge_it, out_edge_end) = out_edges(parent_node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+                {
+                  int tmp_edge_id = edge_to_name[*out_edge_it];
+                  if (edge_parid[tmp_edge_id] != CONTROL_EDGE)
+                    num_of_children++;
+                }
+                if (num_of_children == 1)
+                {
+                  tmp_remove_edges.push_back(edge_id);
+                  associative_chain.push_back(parent_id);
+                }
+                else
+                {
+                  tmp_remove_edges.push_back(edge_id);
+                  leaves.push_back(make_pair(parent_id, 0));
+                }
+              }
             }
             else
             {
-              //to_remove_edges.at(edge_id) = 1;
+              leaves.push_back(make_pair(parent_id, 1));
               tmp_remove_edges.push_back(edge_id);
-              leaves.push_back(make_pair(parent_id, 0));
             }
           }
-          else
-          {
-            //to_remove_edges.at(edge_id) = 1;
-            tmp_remove_edges.push_back(edge_id);
-            leaves.push_back(make_pair(parent_id, 1));
-          }
         }
+        else
+          leaves.push_back(make_pair(chain_node_id, 0));
       }
       else
         leaves.push_back(make_pair(chain_node_id, 0));
       chain_id++;
-      //chain_it = associative_chain.erase(chain_it);
     }
     //build the tree
     if (nodes.size() < 3)
       continue;
+    
     for(auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end(); it != E; it++)
       to_remove_edges.at(*it) = 1;
 
-    std::unordered_map<unsigned, unsigned> rank_map;
+    std::map<unsigned, unsigned> rank_map;
     auto leaf_it = leaves.begin();
     
     while (leaf_it != leaves.end())
@@ -1255,10 +1313,9 @@ void Datapath::treeHeightReduction()
   }
   int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
   writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
-
   cleanLeafNodes();
 }
-void Datapath::findMinRankNodes(unsigned &node1, unsigned &node2, std::unordered_map<unsigned, unsigned> &rank_map)
+void Datapath::findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map)
 {
   unsigned min_rank = numTotalNodes;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it)
@@ -1470,25 +1527,22 @@ void Datapath::writePerCycleActivity()
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
   {
     std::string p_name = *it;
-    std::vector<int> tmp_activity(cycle, 0);
-    ld_activity[p_name] = tmp_activity;
-    st_activity[p_name] = tmp_activity;
+    ld_activity.insert({p_name, make_vector(cycle)});
+    st_activity.insert({p_name, make_vector(cycle)});
     mem_area += scratchpad->area(*it);
   }
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
   {
     std::string p_name = *it;
-    std::vector<int> tmp_activity(cycle, 0);
-    ld_activity[p_name] = tmp_activity;
-    st_activity[p_name] = tmp_activity;
+    ld_activity.insert({p_name, make_vector(cycle)});
+    st_activity.insert({p_name, make_vector(cycle)});
     fu_area += scratchpad->area(*it);
   }
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     std::string p_name = *it;
-    std::vector<int> tmp_activity(cycle, 0);
-    add_activity[p_name] = tmp_activity;
-    mul_activity[p_name] = tmp_activity;
+    add_activity.insert({p_name, make_vector(cycle)});
+    mul_activity.insert({p_name, make_vector(cycle)});
   }
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
@@ -1602,8 +1656,8 @@ void Datapath::writePerCycleActivity()
     float tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
     for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
     {
-      curr_reg_reads     += ld_activity.at(*it).at(tmp_level)*32;
-      curr_reg_writes    += st_activity.at(*it).at(tmp_level)*32;
+      curr_reg_reads     += ld_activity.at(*it).at(tmp_level);
+      curr_reg_writes    += st_activity.at(*it).at(tmp_level);
       tmp_reg_power      += scratchpad->readPower(*it) * ld_activity.at(*it).at(tmp_level) + 
                             scratchpad->writePower(*it) * st_activity.at(*it).at(tmp_level) + 
                             scratchpad->leakPower(*it);
@@ -1883,13 +1937,9 @@ void Datapath::setGraphForStepping()
   }
   executedNodes = 0;
   
-  memReadyQueue.clear();
-  nonMemReadyQueue.clear();
   executingQueue.clear();
-  std::vector<pair<unsigned,float> >().swap(executingQueue);
-  std::set<RQEntry, RQEntryComp>().swap(memReadyQueue);
-  std::set<RQEntry, RQEntryComp>().swap(nonMemReadyQueue);
-  initReadyQueue();
+  readyToExecuteQueue.clear();
+  initExecutingQueue();
 }
 
 int Datapath::clearGraph()
@@ -1964,40 +2014,64 @@ void Datapath::updateRegStats()
       regStats.at(node_level).writes++;
   }
 }
+void Datapath::copyToExecutingQueue()
+{
+  auto it = readyToExecuteQueue.begin(); 
+  while (it != readyToExecuteQueue.end())
+  {
+    executingQueue.push_back(*it);
+    it = readyToExecuteQueue.erase(it);
+  }
+}
 bool Datapath::step()
 {
-  int firedNodes = fireNonMemNodes();
-  firedNodes += fireMemNodes();
-  stepExecutedQueue();
+  stepExecutingQueue();
+  copyToExecutingQueue();
   cycle++;
- // if(executedQueue.empty()) 
- if (executedNodes == totalConnectedNodes)
+  
+  if (executedNodes == totalConnectedNodes)
     return 1;
   return 0;
 }
 
-void Datapath::stepExecutedQueue()
+void Datapath::stepExecutingQueue()
 {
   auto it = executingQueue.begin();
+  int index = 0;
   while (it != executingQueue.end())
   {
-    //it->second is the number of cycles to execute current nodes
-    if (it->second <= cycleTime)
+    unsigned node_id = *it;
+    if (is_memory_op(microop.at(node_id)))
     {
-      unsigned node_id = it->first;
-      executedNodes++;
-      newLevel.at(node_id) = cycle;
-      it = executingQueue.erase(it);
+      std::string node_part = baseAddress[node_id].first;
+      if(scratchpad->canServicePartition(node_part))
+      {
+        assert(scratchpad->addressRequest(node_part));
+        executedNodes++;
+        newLevel.at(node_id) = cycle;
+        executingQueue.erase(it);
+        updateChildren(node_id);
+        it = executingQueue.begin();
+        std::advance(it, index);
+      }
+      else
+      {
+        ++it;
+        ++index;
+      }
     }
     else
     {
-      unsigned node_id = it->first;
-      it->second -= cycleTime;
-      it++;
+      executedNodes++;
+      newLevel.at(node_id) = cycle;
+      executingQueue.erase(it);
+      updateChildren(node_id);
+      it = executingQueue.begin();
+      std::advance(it, index);
     }
   }
 }
-void Datapath::updateChildren(unsigned node_id, float latencySoFar)
+void Datapath::updateChildren(unsigned node_id)
 {
   Vertex node = nameToVertex[node_id];
   out_edge_iter out_edge_it, out_edge_end;
@@ -2008,122 +2082,27 @@ void Datapath::updateChildren(unsigned node_id, float latencySoFar)
     if (numParents[child_id] > 0)
     {
       numParents[child_id]--;
-      float base_node_latency = 0;
-      if (edgeParid[edge_id] == PIPE_EDGE || edgeParid[edge_id] == CONTROL_EDGE)
-        base_node_latency = cycleTime;
-      
-      if (cycle * cycleTime + latencySoFar + base_node_latency > latestParents[child_id])
-        latestParents[child_id] = cycle * cycleTime + latencySoFar + base_node_latency ;
-      
       if (numParents[child_id] == 0)
       {
-        float tmp_latencySoFar = latestParents[child_id] - cycle * cycleTime;
-        int child_microop = microop.at(child_id);
-        if (is_memory_op(child_microop))
-        {
-          addMemReadyNode(child_id, tmp_latencySoFar);
-        }
+        unsigned child_microop = microop.at(child_id);
+        if ( (node_latency(child_microop) == 0 || node_latency(microop.at(node_id))== 0)
+             && edgeParid[edge_id] != CONTROL_EDGE )
+          executingQueue.push_back(child_id);
         else
-        {
-          float child_latency = node_latency(child_microop);
-          int start_cycle = floor(tmp_latencySoFar / cycleTime);
-          int end_cycle = floor ((tmp_latencySoFar + child_latency)/ cycleTime);
-          if (start_cycle != end_cycle)
-          {
-            executingQueue.push_back(make_pair(child_id, (start_cycle + 1)*cycleTime + child_latency));
-            updateChildren(child_id, (start_cycle + 1) * cycleTime  + child_latency);
-          }
-          else
-          {
-            executingQueue.push_back(make_pair(child_id, tmp_latencySoFar + child_latency));
-            updateChildren(child_id, tmp_latencySoFar + child_latency);
-          }
-        }
+          readyToExecuteQueue.push_back(child_id);
         numParents[child_id] = -1;
       }
     }
   }
 }
-int Datapath::fireMemNodes()
-{
-  int firedNodes = 0;
-  auto it = memReadyQueue.begin();
-  int orig_size = memReadyQueue.size();
-  while (it != memReadyQueue.end() && scratchpad->canService())
-  {
-    unsigned node_id = it->node_id;
-    float latency_so_far = it->latency_so_far;
-    assert(is_memory_op(microop.at(node_id)));
-    
-    std::string node_part = baseAddress[node_id].first;
-    if(scratchpad->canServicePartition(node_part))
-    {
-      assert(scratchpad->addressRequest(node_part));
-      //assign levels and add to executed queue
-      executingQueue.push_back(make_pair(node_id, latency_so_far + node_latency(microop.at(node_id))));
-      updateChildren(node_id, latency_so_far + node_latency(microop.at(node_id)));
-      it = memReadyQueue.erase(it);
-      firedNodes++;
-    }
-    else
-    {
-      it->latency_so_far -= cycleTime;
-      ++it;
-    }
-  }
-  
-  while (it != memReadyQueue.end())
-  {
-    it->latency_so_far -= cycleTime;
-    ++it;
-  }
-  return firedNodes;
-}
 
-int Datapath::fireNonMemNodes()
-{
-  int firedNodes = 0;
-  //assume the Queue is sorted by somehow
-  auto it = nonMemReadyQueue.begin();
-  int step = 0;
-  while (it != nonMemReadyQueue.end())
-  {
-    unsigned node_id = it->node_id;
-    float latency_so_far = it->latency_so_far;
-    firedNodes++;
-    executingQueue.push_back(make_pair(node_id, latency_so_far + node_latency(microop.at(node_id))));
-    updateChildren(node_id, latency_so_far + node_latency(microop.at(node_id)));
-    it = nonMemReadyQueue.erase(it);
-  }
-  return firedNodes;
-}
-
-void Datapath::initReadyQueue()
+void Datapath::initExecutingQueue()
 {
   for(unsigned i = 0; i < numTotalNodes; i++)
   {
     if (numParents[i] == 0 && finalIsolated[i] != 1)
-    {
-      if (is_memory_op(microop.at(i)))
-      {
-        addMemReadyNode(i, 0);
-      }
-      else
-        addNonMemReadyNode(i, 0);
-    }
+      executingQueue.push_back(i);
   }
-}
-
-void Datapath::addMemReadyNode(unsigned node_id, float latency_so_far)
-{
-  assert(is_memory_op(microop.at(node_id)));
-  memReadyQueue.insert({node_id, latency_so_far, 1});
-}
-
-void Datapath::addNonMemReadyNode(unsigned node_id, float latency_so_far)
-{
-  //nonMemReadyQueue.push_back({node_id, latency_so_far, 1});
-  nonMemReadyQueue.insert({node_id, latency_so_far, 1});
 }
 
 //readConfigs
