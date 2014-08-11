@@ -53,8 +53,8 @@ void Datapath::clearGlobalGraph()
 void Datapath::globalOptimizationPass()
 {
   removeInductionDependence();
-  initBaseAddress();
   removePhiNodes();
+  initBaseAddress();
   completePartition();
   scratchpadPartition();
   loopFlatten();
@@ -189,7 +189,7 @@ void Datapath::memoryAmbiguation()
 void Datapath::removePhiNodes()
 {
   std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "       Remove PHI Nodes        " << std::endl;
+  std::cerr << "  Remove PHI and BitCast Nodes " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   
   Graph tmp_graph;
@@ -212,7 +212,7 @@ void Datapath::removePhiNodes()
   {
     unsigned node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
-    if (node_microop != LLVM_IR_PHI)
+    if (node_microop != LLVM_IR_PHI && node_microop != LLVM_IR_BitCast)
       continue;
     //find its children
 
