@@ -142,8 +142,8 @@ def main(directory, kernel, part, unroll, pipe):
     config.write('unrolling,stencil,11,%s\n' %(unroll))
     config.write('flatten,stencil,12,%s\n' %(unroll))
 
-  elif kernel == 'triad':
-    config.write('unrolling,triad,5,%s\n' %(unroll))
+  #elif kernel == 'triad':
+    #config.write('unrolling,triad,5,%s\n' %(unroll))
 
   config.close()
 

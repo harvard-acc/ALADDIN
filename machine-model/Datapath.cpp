@@ -541,8 +541,9 @@ void Datapath::loopPipelining()
   std::unordered_map<int, int > unrolling_config;
   if (!readUnrollingConfig(unrolling_config))
   {
-    std::cerr << "Loop Unrolling is undefined (required by loop pipelining.)" << endl;
-    exit(0) ;
+    //std::cerr << "Loop Unrolling is undefined (required by loop pipelining.)" << endl;
+    std::cerr << "Loop Unrolling is not ON." << endl;
+    return ;
   }
   
   std::vector<int> loop_bound;
@@ -676,11 +677,7 @@ void Datapath::loopPipelining()
 void Datapath::loopUnrolling()
 {
   std::unordered_map<int, int > unrolling_config;
-  if (!readUnrollingConfig(unrolling_config))
-  {
-    std::cerr << "Loop Unrolling is undefined." << endl;
-    exit(0) ;
-  }
+  readUnrollingConfig(unrolling_config);
 
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "         Loop Unrolling        " << std::endl;
@@ -794,7 +791,7 @@ void Datapath::loopUnrolling()
   loop_bound << num_of_nodes << endl;
   loop_bound.close();
   
-  if (iter_counts == 0)
+  if (iter_counts == 0 && unrolling_config.size() != 0 )
   {
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "Loop Unrolling Factor is Larger than the Loop Trip Count." << std::endl;
@@ -813,7 +810,9 @@ void Datapath::removeSharedLoads()
   std::string file_name(graphName);
   file_name += "_loop_bound";
   read_file(file_name, loop_bound);
-  if (loop_bound.size() <= 2)
+  
+  std::unordered_set<int> flatten_config;
+  if (!readFlattenConfig(flatten_config)&& loop_bound.size() <= 2)
     return;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Load Buffer          " << std::endl;
@@ -911,7 +910,9 @@ void Datapath::storeBuffer()
   std::string file_name(graphName);
   file_name += "_loop_bound";
   read_file(file_name, loop_bound);
-  if (loop_bound.size() <= 2)
+  
+  std::unordered_set<int> flatten_config;
+  if (!readFlattenConfig(flatten_config)&& loop_bound.size() <= 2)
     return;
 
   std::cerr << "-------------------------------" << std::endl;
@@ -1045,8 +1046,10 @@ void Datapath::removeRepeatedStores()
   file_name += "_loop_bound";
   read_file(file_name, loop_bound);
   
-  if (loop_bound.size() <= 2)
+  std::unordered_set<int> flatten_config;
+  if (!readFlattenConfig(flatten_config)&& loop_bound.size() <= 2)
     return;
+  
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "     Remove Repeated Store     " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
@@ -1133,7 +1136,8 @@ void Datapath::treeHeightReduction()
   std::string file_name(graphName);
   file_name += "_loop_bound";
   read_file(file_name, loop_bound);
-  if (loop_bound.size() <= 2)
+  std::unordered_set<int> flatten_config;
+  if (!readFlattenConfig(flatten_config)&& loop_bound.size() <= 2)
     return;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "     Tree Height Reduction     " << std::endl;
@@ -1338,7 +1342,7 @@ void Datapath::findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsig
     }
   }
 }
-//readWriteGraph
+
 int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges)
 {
   std::string gn(graphName);
