@@ -534,15 +534,15 @@ void Datapath::loopPipelining()
 {
   if (!readPipeliningConfig())
   {
-    std::cerr << "Loop Pipelining is not ON." << endl;
+    std::cerr << "Loop Pipelining is not ON." << std::endl;
     return ;
   }
   
   std::unordered_map<int, int > unrolling_config;
   if (!readUnrollingConfig(unrolling_config))
   {
-    //std::cerr << "Loop Unrolling is undefined (required by loop pipelining.)" << endl;
-    std::cerr << "Loop Unrolling is not ON." << endl;
+    std::cerr << "Loop Unrolling is not defined. " << std::endl;
+    std::cerr << "Loop pipelining is only applied to unrolled loops." << std::endl;
     return ;
   }
   
