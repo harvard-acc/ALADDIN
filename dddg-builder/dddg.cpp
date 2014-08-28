@@ -188,23 +188,32 @@ void dddg::parse_parameter(std::string line, int param_tag)
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
       callee_function = label;
+    auto func_it = function_counter.find(callee_function);
+    ostringstream oss;
+    if (func_it != function_counter.end())
+      oss << callee_function << "-" << func_it->second;
+    else
+      oss << callee_function << "-0" ;
+    callee_dynamic_function = oss.str();
   }
   last_parameter = 1;
+  last_call_source = -1;
   if (is_reg)
   {
     char unique_reg_id[256];
     sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
-    //string unique_reg_id (label);
-    //unique_reg_id += curr_dynamic_function;
+    
+    //Find the instruction that writes the register
     auto reg_it = register_last_written.find(unique_reg_id);
     if (reg_it != register_last_written.end())
     {
       edge_node_info tmp_edge;
       tmp_edge.sink_node = num_of_instructions;
-      //tmp_edge.var_id = label;
       tmp_edge.par_id = param_tag;
       register_edge_table.insert(make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
+      if (curr_microop == LLVM_IR_Call)
+        last_call_source = reg_it->second;
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store || curr_microop == LLVM_IR_GetElementPtr)
@@ -273,7 +282,6 @@ void dddg::parse_parameter(std::string line, int param_tag)
 void dddg::parse_result(std::string line)
 {
   int size, is_reg;
-  //long long int value;
   double value;
   char label[256];
   
@@ -289,6 +297,28 @@ void dddg::parse_result(std::string line)
     register_last_written[unique_reg_id] = num_of_instructions;
 }
 
+void dddg::parse_forward(std::string line)
+{
+  int size, is_reg;
+  double value;
+  char label[256];
+  
+  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
+  assert(is_reg);
+  
+  char unique_reg_id[256];
+  assert(curr_microop == LLVM_IR_Call);
+  sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
+  
+  auto reg_it = register_last_written.find(unique_reg_id);
+  int tmp_written_inst = num_of_instructions;
+  if (last_call_source != -1)
+    tmp_written_inst = last_call_source;
+  if (reg_it != register_last_written.end())
+    reg_it->second = tmp_written_inst;
+  else
+    register_last_written[unique_reg_id] = tmp_written_inst;
+}
 int build_initial_dddg(std::string bench, std::string trace_file_name)
 {
   if (!fileExists(trace_file_name))
@@ -348,6 +378,8 @@ int build_initial_dddg(std::string bench, std::string trace_file_name)
       graph_dep.parse_instruction_line(line_left); 
     else if (tag.compare("r")  == 0)
       graph_dep.parse_result(line_left);	
+    else if (tag.compare("f")  == 0)
+      graph_dep.parse_forward(line_left);	
     else 
       graph_dep.parse_parameter(line_left, atoi(tag.c_str()));	
  }

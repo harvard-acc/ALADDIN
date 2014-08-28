@@ -33,6 +33,7 @@ public:
   void parse_instruction_line(std::string line);
   void parse_parameter(std::string line, int param_tag);
   void parse_result(std::string line);
+  void parse_forward(std::string line);
   void parse_call_parameter(std::string line, int param_tag);
 private:
   std::string curr_dynamic_function;
@@ -43,8 +44,12 @@ private:
   std::string curr_bblock;
   
   std::string callee_function;
+  std::string callee_dynamic_function;
+  
   bool last_parameter;
   int num_of_parameters;
+  //Used to track the instruction that initialize call function parameters
+  int last_call_source;
 
   std::string curr_instid;
   std::vector<long long int> parameter_value_per_inst;
