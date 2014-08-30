@@ -113,6 +113,7 @@ class Datapath
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity();
+  void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
   
   void readGraph(Graph &g);

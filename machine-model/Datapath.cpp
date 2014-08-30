@@ -276,28 +276,54 @@ void Datapath::initBaseAddress()
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
-    //iterate its parents
-    in_edge_iter in_edge_it, in_edge_end;
     bool flag_GEP = 0;
-    for (tie(in_edge_it, in_edge_end) = in_edges(*vi , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+    bool no_gep_parent = 0;
+    //iterate its parents, until it finds the root parent
+    Vertex tmp_node;
+    tmp_node = *vi;
+    while (!no_gep_parent)
     {
-      int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-      int parent_microop = microop.at(parent_id);
-      if (parent_microop == LLVM_IR_GetElementPtr)
+      bool tmp_flag_GEP = 0;
+      Vertex tmp_parent;
+
+      in_edge_iter in_edge_it, in_edge_end;
+      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        baseAddress[node_id] = getElementPtr[parent_id];
-        //auto tmp = baseAddress[node_id];
-	//printf("!%d %s %d\n", tmp.first, tmp.second.first.c_str(), tmp.second.second);
-	 //remove address calculation directly
-        int edge_id = edge_to_name[*in_edge_it];
-        flag_GEP = 1;
-        break;
+        int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+        int parent_microop = microop.at(parent_id);
+        if (parent_microop == LLVM_IR_GetElementPtr)
+        {
+          //remove address calculation directly
+          baseAddress[node_id] = getElementPtr[parent_id];
+          tmp_flag_GEP = 1;
+          tmp_parent = source(*in_edge_it, tmp_graph);
+          break;
+        }
+        else if (parent_microop == LLVM_IR_Alloca)
+        {
+          baseAddress[node_id] = getElementPtr[parent_id];
+          flag_GEP = 1;
+          break;
+        }
       }
+      if (tmp_flag_GEP)
+      {
+        if (!flag_GEP)
+          flag_GEP = 1;
+        tmp_node = tmp_parent;
+      }
+      else
+        no_gep_parent = 1;
     }
-    if (!flag_GEP){
-      baseAddress[node_id] = getElementPtr[node_id];
+    if (!flag_GEP)
+    {
+      std::cerr << "Unknown memory accesses:" << getElementPtr[node_id].first << std::endl;
+      fprintf(stderr, "Unknow memory accesses: node:%d, label:%s\n", node_id, getElementPtr[node_id].first.c_str());
+      exit(0);
     }
+    fprintf(stderr, "BaseAddr: node:%d, label:%s\n", node_id, baseAddress[node_id].first.c_str());
   }
+  writeBaseAddress();
 }
 
 void Datapath::loopFlatten()
@@ -1719,6 +1745,16 @@ void Datapath::writeGlobalIsolated()
   std::string file_name(benchName);
   file_name += "_isolated.gz";
   write_gzip_bool_file(file_name, finalIsolated.size(), finalIsolated);
+}
+void Datapath::writeBaseAddress()
+{
+  ostringstream file_name;
+  file_name << benchName << "_baseAddr.gz";
+  gzFile gzip_file;
+  gzip_file = gzopen(file_name.str().c_str(), "w");
+  for (auto it = baseAddress.begin(), E = baseAddress.end(); it != E; ++it)
+    gzprintf(gzip_file, "node:%u,part:%s,base:%lld\n", it->first, it->second.first.c_str(), it->second.second);
+  gzclose(gzip_file);
 }
 void Datapath::writeFinalLevel()
 {
