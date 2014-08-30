@@ -203,7 +203,6 @@ void dddg::parse_parameter(std::string line, int param_tag)
   {
     char unique_reg_id[256];
     sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
-    fprintf(stderr, "accessing reg_id:%s @inst:%d\n", unique_reg_id, num_of_instructions);
     //Find the instruction that writes the register
     auto reg_it = register_last_written.find(unique_reg_id);
     if (reg_it != register_last_written.end())
@@ -290,7 +289,6 @@ void dddg::parse_result(std::string line)
   assert(is_reg);
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
-  fprintf(stderr, "result: reg_id:%s, @inst:%d\n", unique_reg_id, num_of_instructions);
   auto reg_it = register_last_written.find(unique_reg_id);
   if (reg_it != register_last_written.end())
     reg_it->second = num_of_instructions;
@@ -313,7 +311,6 @@ void dddg::parse_forward(std::string line)
   char unique_reg_id[256];
   assert(curr_microop == LLVM_IR_Call);
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
-  fprintf(stderr, "forward: reg_id:%s, @inst:%d\n", unique_reg_id, num_of_instructions);
   
   auto reg_it = register_last_written.find(unique_reg_id);
   int tmp_written_inst = num_of_instructions;

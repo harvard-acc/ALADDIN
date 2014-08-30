@@ -318,10 +318,8 @@ void Datapath::initBaseAddress()
     if (!flag_GEP)
     {
       std::cerr << "Unknown memory accesses:" << getElementPtr[node_id].first << std::endl;
-      fprintf(stderr, "Unknow memory accesses: node:%d, label:%s\n", node_id, getElementPtr[node_id].first.c_str());
       exit(0);
     }
-    fprintf(stderr, "BaseAddr: node:%d, label:%s\n", node_id, baseAddress[node_id].first.c_str());
   }
   writeBaseAddress();
 }
@@ -626,6 +624,7 @@ void Datapath::loopPipelining()
       else
       {
         assert(is_branch_op(microop.at(*loop_bound_it)));
+        assert(!is_branch_op(node_id));
         first_non_isolated_node[*loop_bound_it] = node_id;
         node_id = *loop_bound_it;
         break;
@@ -651,7 +650,7 @@ void Datapath::loopPipelining()
       for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[prev_branch], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
       {
         unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-        if (child_id == first_node)
+        if (child_id <= first_node)
           continue;
         int edge_id = edge_to_name[*out_edge_it];
         if (edge_parid.at(edge_id) != CONTROL_EDGE) 
@@ -659,10 +658,12 @@ void Datapath::loopPipelining()
         std::pair<Edge, bool> existed;
         existed = edge(name_to_vertex[first_node], name_to_vertex[child_id], tmp_graph);
         if (existed.second == false)
+        {
           to_add_edges.push_back({first_node, child_id, 1});
+        }
       }
     }
-    //update first_node's parents, depence become strict control dependence
+    //update first_node's parents, dependence become strict control dependence
     in_edge_iter in_edge_it, in_edge_end;
     for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[first_node], tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
     {
@@ -679,7 +680,9 @@ void Datapath::loopPipelining()
       std::pair<Edge, bool> existed;
       existed = edge(name_to_vertex[prev_first], name_to_vertex[first_node], tmp_graph);
       if (existed.second == false)
+      {
         to_add_edges.push_back({(unsigned)prev_first, first_node, CONTROL_EDGE});
+      }
     }
     
     //remove control dependence between br node to its children
@@ -1544,6 +1547,7 @@ void Datapath::writePerCycleActivity()
   
   std::unordered_map< std::string, std::vector<int> > mul_activity;
   std::unordered_map< std::string, std::vector<int> > add_activity;
+  std::unordered_map< std::string, std::vector<int> > bit_activity;
   std::unordered_map< std::string, std::vector<int> > ld_activity;
   std::unordered_map< std::string, std::vector<int> > st_activity;
   
@@ -1571,8 +1575,9 @@ void Datapath::writePerCycleActivity()
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     std::string p_name = *it;
-    add_activity.insert({p_name, make_vector(cycle)});
     mul_activity.insert({p_name, make_vector(cycle)});
+    add_activity.insert({p_name, make_vector(cycle)});
+    bit_activity.insert({p_name, make_vector(cycle)});
   }
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
@@ -1580,20 +1585,16 @@ void Datapath::writePerCycleActivity()
       continue;
     int tmp_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
+    char func_id[256];
+    int count;
+    sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+    
     if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv)
-    {
-      char func_id[256];
-      int count;
-      sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
       mul_activity[func_id].at(tmp_level) +=1;
-    }
     else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub)
-    {
-      char func_id[256];
-      int count;
-      sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
       add_activity[func_id].at(tmp_level) +=1;
-    }
+    else if (is_bit_op(node_microop))
+      bit_activity[func_id].at(tmp_level) +=1;
     else if (is_load_op(node_microop))
     {
       std::string base_addr = baseAddress[node_id].first;
@@ -1616,8 +1617,9 @@ void Datapath::writePerCycleActivity()
   stats << cycle << "," ;
   power_stats << cycle << "," ;
   
-  int max_add =  0;
   int max_mul =  0;
+  int max_add =  0;
+  int max_bit =  0;
   int max_reg_read =  0;
   int max_reg_write =  0;
   for (unsigned level_id = 0; ((int) level_id) < cycle; ++level_id)
@@ -1631,8 +1633,9 @@ void Datapath::writePerCycleActivity()
 
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
-    stats << *it << "-mul," << *it << "-add,";
-    power_stats << *it << "-mul," << *it << "-add,";
+    stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
+    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
+    max_bit += *max_element(bit_activity[*it].begin(), bit_activity[*it].end());
     max_add += *max_element(add_activity[*it].begin(), add_activity[*it].end());
     max_mul += *max_element(mul_activity[*it].begin(), mul_activity[*it].end());
   }
@@ -1664,11 +1667,11 @@ void Datapath::writePerCycleActivity()
     //For FUs
     for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
     {
-      stats << mul_activity[*it].at(tmp_level) << "," << add_activity[*it].at(tmp_level) << ","; 
+      stats << mul_activity[*it].at(tmp_level) << "," << add_activity[*it].at(tmp_level) << "," << bit_activity[*it].at(tmp_level) << ","; 
       float tmp_mul_power = (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle ;
       float tmp_add_power = (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle;
       avg_fu_power += tmp_mul_power + tmp_add_power;
-      power_stats  << tmp_mul_power << "," << tmp_add_power << "," ;
+      power_stats  << tmp_mul_power << "," << tmp_add_power << ",0," ;
     }
     //For memory
     for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
