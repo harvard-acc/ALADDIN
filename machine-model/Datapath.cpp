@@ -258,6 +258,12 @@ void Datapath::initBaseAddress()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "       Init Base Address       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
+  
+  std::unordered_map<std::string, unsigned> comp_part_config;
+  readCompletePartitionConfig(comp_part_config);
+  std::unordered_map<std::string, partitionEntry> part_config;
+  readPartitionConfig(part_config);
+  
   //set graph
   Graph tmp_graph;
   readGraph(tmp_graph); 
@@ -296,6 +302,7 @@ void Datapath::initBaseAddress()
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
           tmp_flag_GEP = 1;
+          flag_GEP = 1;
           tmp_parent = source(*in_edge_it, tmp_graph);
           break;
         }
@@ -316,8 +323,12 @@ void Datapath::initBaseAddress()
         no_gep_parent = 1;
     }
     if (!flag_GEP)
+      baseAddress[node_id] = getElementPtr[node_id];
+    std::string part_name = baseAddress[node_id].first;
+    if (part_config.find(part_name) == part_config.end() &&
+          comp_part_config.find(part_name) == comp_part_config.end() )
     {
-      std::cerr << "Unknown memory accesses:" << getElementPtr[node_id].first << std::endl;
+      std::cerr << "Unknown partition : " << part_name << std::endl;
       exit(0);
     }
   }
