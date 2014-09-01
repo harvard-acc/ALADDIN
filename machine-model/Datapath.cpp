@@ -297,7 +297,7 @@ void Datapath::initBaseAddress()
       {
         int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
         int parent_microop = microop.at(parent_id);
-        if (parent_microop == LLVM_IR_GetElementPtr)
+        if (parent_microop == LLVM_IR_GetElementPtr || parent_microop == LLVM_IR_Load)
         {
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
