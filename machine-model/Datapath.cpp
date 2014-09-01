@@ -278,6 +278,8 @@ void Datapath::initBaseAddress()
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
   {
+    if (boost::degree(*vi, tmp_graph) == 0)
+      continue;
     unsigned node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
@@ -527,7 +529,8 @@ void Datapath::scratchpadPartition()
     if (!is_memory_op(node_microop))
       continue;
     
-    assert(baseAddress.find(node_id) != baseAddress.end());
+    if (baseAddress.find(node_id) == baseAddress.end())
+      continue;
     std::string base_label  = baseAddress[node_id].first;
     long long int base_addr = baseAddress[node_id].second;
     
