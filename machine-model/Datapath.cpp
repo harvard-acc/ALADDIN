@@ -302,12 +302,13 @@ void Datapath::initBaseAddress()
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
           tmp_flag_GEP = 1;
-          flag_GEP = 1;
           tmp_parent = source(*in_edge_it, tmp_graph);
+          flag_GEP = 1;
           break;
         }
         else if (parent_microop == LLVM_IR_Alloca)
         {
+          std::string part_name = getElementPtr[parent_id].first;
           baseAddress[node_id] = getElementPtr[parent_id];
           flag_GEP = 1;
           break;
@@ -324,11 +325,12 @@ void Datapath::initBaseAddress()
     }
     if (!flag_GEP)
       baseAddress[node_id] = getElementPtr[node_id];
+    
     std::string part_name = baseAddress[node_id].first;
     if (part_config.find(part_name) == part_config.end() &&
           comp_part_config.find(part_name) == comp_part_config.end() )
     {
-      std::cerr << "Unknown partition : " << part_name << std::endl;
+      std::cerr << "Unknown partition : " << part_name << "@inst: " << node_id << std::endl;
       exit(0);
     }
   }
