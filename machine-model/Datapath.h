@@ -22,6 +22,7 @@
 
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
+
 using namespace std;
 typedef boost::property < boost::vertex_name_t, int> VertexProperty;
 typedef boost::property < boost::edge_name_t, int> EdgeProperty;
@@ -74,6 +75,7 @@ struct RQEntryComp
   bool operator() (const RQEntry& left, const RQEntry &right) const  
   { return left.node_id < right.node_id; }
 };
+
 class Datapath
 {
  public:
