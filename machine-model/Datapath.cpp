@@ -705,7 +705,6 @@ void Datapath::loopPipelining()
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
       int edge_id = edge_to_name[*out_edge_it];
       if (edge_parid.at(edge_id) != CONTROL_EDGE) 
         continue;
@@ -731,14 +730,10 @@ void Datapath::loopUnrolling()
   Graph tmp_graph;
   readGraph(tmp_graph); 
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-
   std::unordered_map<int, Vertex> name_to_vertex;
   BGL_FORALL_VERTICES(v, tmp_graph, Graph)
     name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
   
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
   unsigned num_of_nodes = boost::num_vertices(tmp_graph);
   
   std::unordered_set<unsigned> to_remove_nodes;
@@ -746,8 +741,6 @@ void Datapath::loopUnrolling()
   std::vector<int> lineNum(num_of_nodes, -1);
   initLineNum(lineNum);
 
-  int add_unrolling_edges = 0;
-  
   ofstream loop_bound;
   std::string file_name(graphName);
   file_name += "_loop_bound";
@@ -767,7 +760,7 @@ void Datapath::loopUnrolling()
     if (!first)
     {
       first = 1;
-      loop_bound << node_id << endl;
+      loop_bound << node_id << std::endl;
     }
     if (prev_branch != -1)
       to_add_edges.push_back({(unsigned) prev_branch, node_id, CONTROL_EDGE});
@@ -814,7 +807,7 @@ void Datapath::loopUnrolling()
           it->second++;
         if (it->second % factor == 0)
         {
-          loop_bound << node_id << endl;
+          loop_bound << node_id << std::endl;
           iter_counts++;
           for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                      prev_node_it != E; prev_node_it++)
@@ -833,7 +826,7 @@ void Datapath::loopUnrolling()
       }
     }
   }
-  loop_bound << num_of_nodes << endl;
+  loop_bound << num_of_nodes << std::endl;
   loop_bound.close();
   
   if (iter_counts == 0 && unrolling_config.size() != 0 )
@@ -1106,8 +1099,6 @@ void Datapath::removeRepeatedStores()
   BGL_FORALL_VERTICES(v, tmp_graph, Graph)
     name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
 
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  
   unsigned num_of_nodes = boost::num_vertices(tmp_graph);
 
   std::unordered_map<unsigned, long long int> address;
@@ -1246,7 +1237,6 @@ void Datapath::treeHeightReduction()
     {
       int chain_node_id = associative_chain.at(chain_id);
       int chain_node_microop = microop.at(chain_node_id);
-      int chain_node_region = bound_region.at(chain_node_id); 
       if (is_associative(chain_node_microop))
       {
         updated.at(chain_node_id) = 1;
@@ -1422,11 +1412,11 @@ int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int cur
   {
     new_graph << it->from << " -> " 
               << it->to
-              << " [e_id = " << new_edge_id << "];" << endl;
+              << " [e_id = " << new_edge_id << "];" << std::endl;
     new_edge_id++;
     gzprintf(new_edgeparid, "%d\n", it->parid);
   }
-  new_graph << "}" << endl;
+  new_graph << "}" << std::endl;
   new_graph.close();
   gzclose(new_edgeparid);
 
@@ -1438,7 +1428,6 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
   readGraph(tmp_graph);
   
   unsigned num_of_edges = num_edges(tmp_graph);
-  unsigned num_of_nodes = num_vertices(tmp_graph);
   
   std::vector<int> edge_parid(num_of_edges, 0);
 
@@ -1476,12 +1465,11 @@ int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remov
 
     new_graph << from << " -> " 
               << to
-              << " [e_id = " << new_edge_id << "];" << endl;
+              << " [e_id = " << new_edge_id << "];" << std::endl;
     new_edge_id++;
     gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
   }
 
-  new_graph << "}" << endl;
   new_graph.close();
   gzclose(new_edgeparid);
   
@@ -1527,12 +1515,11 @@ int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
       continue;
     new_graph << vertex_to_name[source(*ei, tmp_graph)] << " -> " 
               << vertex_to_name[target(*ei, tmp_graph)] 
-              << " [e_id = " << new_edge_id << "];" << endl;
+              << " [e_id = " << new_edge_id << "];" << std::endl;
     new_edge_id++;
     gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
   }
   
-  new_graph << "}" << endl;
   new_graph.close();
   gzclose(new_edgeparid);
   return new_edge_id;
@@ -1574,6 +1561,7 @@ void Datapath::writePerCycleActivity()
 
   float avg_power, avg_fu_power, avg_mem_power, total_area, fu_area, mem_area;
   mem_area = 0;
+  fu_area = 0;
   for (auto it = partition_names.begin(); it != partition_names.end() ; ++it)
   {
     std::string p_name = *it;
@@ -1628,8 +1616,8 @@ void Datapath::writePerCycleActivity()
   tmp_name += "_power";
   power_stats.open(tmp_name.c_str());
 
-  stats << "cycles," << cycle << "," << numTotalNodes << endl; 
-  power_stats << "cycles," << cycle << "," << numTotalNodes << endl; 
+  stats << "cycles," << cycle << "," << numTotalNodes << std::endl; 
+  power_stats << "cycles," << cycle << "," << numTotalNodes << std::endl; 
   stats << cycle << "," ;
   power_stats << cycle << "," ;
   
@@ -1669,8 +1657,8 @@ void Datapath::writePerCycleActivity()
     stats << *it << "," ;
     power_stats << *it << "," ;
   }
-  stats << "reg" << endl;
-  power_stats << "reg" << endl;
+  stats << "reg" << std::endl;
+  power_stats << "reg" << std::endl;
 
   avg_power = 0;
   avg_fu_power = 0;
@@ -1713,8 +1701,8 @@ void Datapath::writePerCycleActivity()
     }
     avg_fu_power += tmp_reg_power;
     
-    stats << curr_reg_reads << "," << curr_reg_writes <<endl;
-    power_stats << tmp_reg_power << endl;
+    stats << curr_reg_reads << "," << curr_reg_writes <<std::endl;
+    power_stats << tmp_reg_power << std::endl;
   }
   stats.close();
   power_stats.close();
@@ -1906,11 +1894,11 @@ void Datapath::writeGraphInMap(std::unordered_map<std::string, int> &full_graph,
     
     graph_file << from << " -> " 
               << to
-              << " [e_id = " << new_edge_id << "];" << endl;
+              << " [e_id = " << new_edge_id << "];" << std::endl;
     new_edge_id++;
     gzprintf(new_edgeparid, "%d\n", it->second);
   }
-  graph_file << "}" << endl;
+  graph_file << "}" << std::endl;
   graph_file.close();
   gzclose(new_edgeparid);
 }
