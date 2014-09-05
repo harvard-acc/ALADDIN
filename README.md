@@ -28,7 +28,7 @@ Requirements:
 
    2. Unzip the tarball and set your `$BOOST_ROOT`: 
       ```
-      tar -xzvf boost_1_55_0.tar 
+      tar -xzvf boost_1_55_0.tar.gz
       cd boost_1_55_0
       export BOOST_ROOT=/your/path/to/boost_1_55_0/
       ```
