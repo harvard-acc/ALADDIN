@@ -26,13 +26,23 @@ def main (directory, source):
 
   source_file = source + '.c'
   print directory
-  print 'llvm-link -o full.llvm ' + opt_obj + ' ' + os.getenv('TRACER_HOME') + '/profile-func/trace_logger.llvm'
+  
+  print 'clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file
   os.system('clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file)
+  
+  print 'opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj
   os.system('opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj)
+  
+  print 'llvm-link -o full.llvm ' + opt_obj + ' ' + os.getenv('TRACER_HOME') + '/profile-func/trace_logger.llvm'
   os.system('llvm-link -o full.llvm ' + opt_obj + ' ' + os.getenv('TRACER_HOME') + '/profile-func/trace_logger.llvm')
+  
+  print 'llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm'
   os.system('llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm')
+  
+  print 'gcc -O0 -fno-inline -o ' + executable + ' full.s -lm'
   os.system('gcc -O0 -fno-inline -o ' + executable + ' full.s -lm')
-  os.system('./' + executable)
+  
+  print './' + executable
   os.system('./' + executable)
 
 if __name__ == '__main__':
