@@ -1207,6 +1207,7 @@ void Datapath::treeHeightReduction()
           {
             Vertex parent_node = source(*in_edge_it, graph_);
             int parent_id = vertex_to_name[parent_node];
+            assert(parent_id < chain_node_id);
             int parent_region = bound_region.at(parent_id);
             int parent_microop = microop.at(parent_id);
             if (is_branch_op(parent_microop))
@@ -1250,10 +1251,14 @@ void Datapath::treeHeightReduction()
           }
         }
         else
+        {
           leaves.push_back(make_pair(chain_node_id, 0));
+        }
       }
       else
+      {
         leaves.push_back(make_pair(chain_node_id, 0));
+      }
       chain_id++;
     }
     //build the tree
@@ -1334,7 +1339,7 @@ void Datapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
   
   for(auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it)
   {
-    assert(it->from < it->to);
+    //assert(it->from < it->to);
     Vertex from, to;
     if (name_to_vertex.find(it->from) == name_to_vertex.end())
     {
@@ -1834,7 +1839,6 @@ bool Datapath::step()
 {
   stepExecutingQueue();
   copyToExecutingQueue();
-  fprintf(stderr, "cycle=%d,executedNodes=%d,totalConnectedNodes=%d\n", cycle, executedNodes, totalConnectedNodes);
   cycle++;
   if (executedNodes == totalConnectedNodes)
     return 1;
