@@ -694,8 +694,6 @@ void Datapath::loopUnrolling()
   BGL_FORALL_VERTICES(v, graph_, Graph)
     name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
-  
   std::unordered_set<unsigned> to_remove_nodes;
   
   std::vector<int> lineNum(numTotalNodes, -1);
@@ -1334,7 +1332,6 @@ void Datapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
   BGL_FORALL_VERTICES(v, graph_, Graph)
     name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   for(auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it)
   {
     assert(it->from < it->to);
@@ -1837,6 +1834,7 @@ bool Datapath::step()
 {
   stepExecutingQueue();
   copyToExecutingQueue();
+  fprintf(stderr, "cycle=%d,executedNodes=%d,totalConnectedNodes=%d\n", cycle, executedNodes, totalConnectedNodes);
   cycle++;
   if (executedNodes == totalConnectedNodes)
     return 1;
