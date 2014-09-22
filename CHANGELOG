@@ -1,3 +1,7 @@
+09-21-2014
+*Fixed: remove read/write graph file I/O operation; just read graph once and
+store it in memory
+
 Aladdin Pre-Release, v0.1.3
 09-05-2014
 *Fixed: base address initialization: for the case where there is bitcast between

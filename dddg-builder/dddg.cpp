@@ -40,38 +40,23 @@ void dddg::output_method_call_graph(std::string bench)
   write_string_file(output_file_name, method_call_graph.size(),
     method_call_graph);
 }
-void dddg::output_dddg(std::string dddg_file, std::string edge_parid_file)
+void dddg::output_dddg(std::string dddg_file)
 {
   ofstream dddg;
-  gzFile edge_parid;
 
   dddg.open(dddg_file.c_str());
-  edge_parid = gzopen(edge_parid_file.c_str(), "w");
   //write title
   dddg << "digraph DDDG {" << endl;
-  for (int node_id = 0; node_id < num_of_instructions ; node_id++)
-    dddg << node_id << endl;
   
-  int edge_id = 0;
   for(auto it = register_edge_table.begin(); 
     it != register_edge_table.end(); ++it)
-  {
-    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
-    edge_id++;
-    gzprintf(edge_parid, "%d\n", it->second.par_id);
-  }
+    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << it->second.par_id << "];" << endl;
   //Memory Dependency
   for(auto it = memory_edge_table.begin();
     it != memory_edge_table.end(); ++it)
-  {
-    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << edge_id << "];" << endl;
-    edge_id++;
-    //gzprintf(edge_varid, "%s\n", it->second.var_id.c_str());
-    gzprintf(edge_parid, "%d\n", it->second.par_id);
-  }
+    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << it->second.par_id << "];" << endl;
   dddg << "}" << endl;
   dddg.close();
-  gzclose(edge_parid);
 }
 void dddg::parse_instruction_line(std::string line)
 {
@@ -403,11 +388,10 @@ int build_initial_dddg(std::string bench, std::string trace_file_name)
   std::cerr << "Num of MEM Edges: " << graph_dep.num_of_memory_dependency() << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::string graph_file, edge_parid;
+  std::string graph_file;
   graph_file = bench + "_graph";
-  edge_parid = bench + "_edgeparid.gz";
 
-  graph_dep.output_dddg(graph_file, edge_parid);
+  graph_dep.output_dddg(graph_file);
   graph_dep.output_method_call_graph(bench);
 	
   return 0;
