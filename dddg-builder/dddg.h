@@ -29,7 +29,7 @@ public:
   int num_of_register_dependency();
   int num_of_memory_dependency();
   void output_method_call_graph(std::string bench);
-  void output_dddg(std::string dddg_file, std::string edge_parid_file);
+  void output_dddg(std::string dddg_file);
   void parse_instruction_line(std::string line);
   void parse_parameter(std::string line, int param_tag);
   void parse_result(std::string line);

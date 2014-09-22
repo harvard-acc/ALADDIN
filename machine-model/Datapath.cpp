@@ -40,10 +40,24 @@ void Datapath::setScratchpad(Scratchpad *spad)
 void Datapath::setGlobalGraph()
 {
   graphName = benchName;
+  
+  std::string gn(graphName);
+  std::string graph_file_name(gn + "_graph");
+  
+
+  boost::dynamic_properties dp;
+  boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, graph_);
+  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph_);
+  dp.property("n_id", v_name);
+  dp.property("e_id", e_name);
+
+  std::ifstream fin(graph_file_name.c_str());
+  boost::read_graphviz(fin, graph_, dp, "n_id");
+  
   std::cerr << "=============================================" << std::endl;
   std::cerr << "      Optimizing...            " << graphName << std::endl;
   std::cerr << "=============================================" << std::endl;
-  finalIsolated.assign(numTotalNodes, 0);
+  finalIsolated.assign(numTotalNodes, 1);
 }
 
 void Datapath::clearGlobalGraph()
@@ -72,17 +86,11 @@ void Datapath::memoryAmbiguation()
   std::cerr << "      Memory Ambiguation       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  std::unordered_map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
   std::unordered_multimap<std::string, std::string> pair_per_load;
   std::unordered_set<std::string> paired_store;
@@ -96,7 +104,7 @@ void Datapath::memoryAmbiguation()
   initDynamicMethodID(dynamic_methodid);
   initPrevBasicBlock(prev_basic_block);
   std::vector< Vertex > topo_nodes;
-  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //nodes with no incoming edges to first
   for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
   {
@@ -107,9 +115,9 @@ void Datapath::memoryAmbiguation()
       continue;
     //iterate its children to find a load op
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      int child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+      int child_id = vertex_to_name[target(*out_edge_it, graph_)];
       int child_microop = microop.at(child_id);
       if (!is_load_op(child_microop))
         continue;
@@ -173,7 +181,7 @@ void Datapath::memoryAmbiguation()
           continue;
         unsigned prev_store_id = prev_store_it->second;
         std::pair<Edge, bool> existed;
-        existed = edge(name_to_vertex[prev_store_id], name_to_vertex[node_id], tmp_graph);
+        existed = edge(name_to_vertex[prev_store_id], name_to_vertex[node_id], graph_);
         if (existed.second == false)
         {
           to_add_edges.push_back({prev_store_id, node_id, -1});
@@ -183,7 +191,7 @@ void Datapath::memoryAmbiguation()
       }
     }
   }
-  writeGraphWithNewEdges(to_add_edges, num_of_edges);
+  updateGraphWithNewEdges(to_add_edges);
 }
 
 void Datapath::removePhiNodes()
@@ -192,23 +200,15 @@ void Datapath::removePhiNodes()
   std::cerr << "  Remove PHI and BitCast Nodes " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
   
   vertex_iter vi, vi_end;
   int removed_phi = 0;
-  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
     unsigned node_id = vertex_to_name[*vi];
     int node_microop = microop.at(node_id);
@@ -216,42 +216,35 @@ void Datapath::removePhiNodes()
       continue;
     //find its children
 
-    std::vector< pair<unsigned, unsigned> > phi_child;
+    std::vector< pair<unsigned, int> > phi_child;
 
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      unsigned edge_id = edge_to_name[*out_edge_it];
-      unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-      int child_microop = microop.at(child_id);
-      to_remove_edges.at(edge_id) = 1;
-      phi_child.push_back(make_pair(child_id, edge_id));
+      to_remove_edges.push_back(*out_edge_it);
+      phi_child.push_back(make_pair(vertex_to_name[target(*out_edge_it, graph_)], edge_to_parid[*out_edge_it]));
     }
     if (phi_child.size() == 0)
       continue;
-
     //find its parents
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, graph_); in_edge_it != in_edge_end; ++in_edge_it)
     {
-      unsigned parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-      int parent_microop = microop.at(parent_id);
-      int edge_id = edge_to_name[*in_edge_it];
+      unsigned parent_id = vertex_to_name[source(*in_edge_it, graph_)];
+      to_remove_edges.push_back(*in_edge_it);
       
-      to_remove_edges.at(edge_id) = 1;
       for (auto child_it = phi_child.begin(), chil_E = phi_child.end(); child_it != chil_E; ++child_it)
       {
-        unsigned child_id = child_it->first;
-        unsigned child_edge_id  = child_it->second;
-        to_add_edges.push_back({parent_id, child_id, edge_parid.at(child_edge_id)});
+        to_add_edges.push_back({parent_id, child_it->first, child_it->second});
       }
     }
+    std::vector<pair<unsigned, int> >().swap(phi_child);
     removed_phi++;
   }
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
-
 }
 void Datapath::initBaseAddress()
 {
@@ -264,47 +257,41 @@ void Datapath::initBaseAddress()
   std::unordered_map<std::string, partitionEntry> part_config;
   readPartitionConfig(part_config);
   
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
 
   std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
   initGetElementPtr(getElementPtr);
   
   vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(tmp_graph); vi != vi_end; ++vi)
+  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
-    if (boost::degree(*vi, tmp_graph) == 0)
+    if (boost::degree(*vi, graph_) == 0)
       continue;
-    unsigned node_id = vertex_to_name[*vi];
+    Vertex tmp_node;
+    tmp_node = *vi;
+    unsigned node_id = vertex_to_name[tmp_node];
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
     bool flag_GEP = 0;
     bool no_gep_parent = 0;
     //iterate its parents, until it finds the root parent
-    Vertex tmp_node;
-    tmp_node = *vi;
     while (!no_gep_parent)
     {
       bool tmp_flag_GEP = 0;
       Vertex tmp_parent;
 
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , graph_); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+        int parent_id = vertex_to_name[source(*in_edge_it, graph_)];
         int parent_microop = microop.at(parent_id);
         if (parent_microop == LLVM_IR_GetElementPtr || parent_microop == LLVM_IR_Load)
         {
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
           tmp_flag_GEP = 1;
-          tmp_parent = source(*in_edge_it, tmp_graph);
+          tmp_parent = source(*in_edge_it, graph_);
           flag_GEP = 1;
           break;
         }
@@ -350,8 +337,8 @@ void Datapath::loopFlatten()
   std::vector<int> lineNum(numTotalNodes, -1);
   initLineNum(lineNum);
   
-  unordered_set<unsigned> to_remove_nodes;
-
+  std::unordered_set<unsigned> to_remove_nodes;
+  
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
     int node_linenum = lineNum.at(node_id);
@@ -363,7 +350,7 @@ void Datapath::loopFlatten()
     else if (is_branch_op(microop.at(node_id)))
       to_remove_nodes.insert(node_id);
   }
-  writeGraphWithIsolatedNodes(to_remove_nodes);
+  updateGraphWithIsolatedNodes(to_remove_nodes);
   cleanLeafNodes();
 }
 /*
@@ -390,33 +377,24 @@ void Datapath::completePartition()
 }
 void Datapath::cleanLeafNodes()
 {
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
-  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+
   /*track the number of children each node has*/
-  std::vector<int> num_of_children(num_of_nodes, 0);
-  unordered_set<unsigned> to_remove_nodes;
+  std::vector<int> num_of_children(numTotalNodes, 0);
+  std::unordered_set<unsigned> to_remove_nodes;
   
   std::vector< Vertex > topo_nodes;
-  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //bottom nodes first
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
-    unsigned  node_id = vertex_to_name[*vi];
-    if (boost::degree(*vi, tmp_graph) == 0)
+    Vertex node_vertex = *vi;
+    if (boost::degree(node_vertex, graph_) == 0)
       continue;
+    unsigned  node_id = vertex_to_name[node_vertex];
     int node_microop = microop.at(node_id);
-    if (num_of_children.at(node_id) == boost::out_degree(*vi, tmp_graph) 
+    if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) 
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
       && node_microop != LLVM_IR_Ret 
@@ -427,9 +405,9 @@ void Datapath::cleanLeafNodes()
       to_remove_nodes.insert(node_id); 
       //iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+      for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+        int parent_id = vertex_to_name[source(*in_edge_it, graph_)];
         num_of_children.at(parent_id)++;
       }
     }
@@ -437,19 +415,17 @@ void Datapath::cleanLeafNodes()
     {
       //iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(*vi, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+      for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        int edge_id = edge_to_name[*in_edge_it];
-        if (edge_parid.at(edge_id) == CONTROL_EDGE)
+        if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
         {
-          int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+          int parent_id = vertex_to_name[source(*in_edge_it, graph_)];
           num_of_children.at(parent_id)++;
         }
       }
     }
   }
-  edge_parid.clear();
-  writeGraphWithIsolatedNodes(to_remove_nodes);
+  updateGraphWithIsolatedNodes(to_remove_nodes);
 }
 
 void Datapath::removeInductionDependence()
@@ -459,20 +435,13 @@ void Datapath::removeInductionDependence()
   std::cerr << "  Remove Induction Dependence  " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
   std::vector<std::string> instid(numTotalNodes, "");
   initInstID(instid);
 
-  int removed_edges = 0;
-  
   std::vector< Vertex > topo_nodes;
-  boost::topological_sort(tmp_graph, std::back_inserter(topo_nodes));
+  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //nodes with no incoming edges to first
   for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi)
   {
@@ -483,7 +452,6 @@ void Datapath::removeInductionDependence()
       continue;
     if (microop.at(node_id) == LLVM_IR_Add )
         microop.at(node_id) = LLVM_IR_IndexAdd;
-    //check its children, update the edge latency between them to 0
   }
 }
 
@@ -596,25 +564,16 @@ void Datapath::loopPipelining()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "         Loop Pipelining        " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
   
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
   vertex_iter vi, vi_end;
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
   
   //After loop unrolling, we define strick control dependences between basic block, 
@@ -627,11 +586,16 @@ void Datapath::loopPipelining()
   auto loop_bound_it = loop_bound.begin();
   unsigned node_id = *loop_bound_it;
   loop_bound_it++;
-  while ( (unsigned)node_id < num_of_nodes)
+  while ( (unsigned)node_id < numTotalNodes)
   {
-    while (node_id < *loop_bound_it &&  (unsigned) node_id < num_of_nodes)
+    while (node_id < *loop_bound_it &&  (unsigned) node_id < numTotalNodes)
     {
-      if(boost::degree(name_to_vertex[node_id], tmp_graph) == 0 
+      if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      {
+        node_id++;
+        continue;
+      }
+      if(boost::degree(name_to_vertex[node_id], graph_) == 0 
               || is_branch_op(microop.at(node_id)) )
       {
         node_id++;
@@ -652,6 +616,7 @@ void Datapath::loopPipelining()
   }
   int prev_branch = -1;
   int prev_first = -1;
+  Vertex prev_first_vertex;
   for(auto first_it = first_non_isolated_node.begin(), E = first_non_isolated_node.end(); first_it != E; ++first_it)
   {
     unsigned br_node = first_it->first;
@@ -659,64 +624,61 @@ void Datapath::loopPipelining()
     if (is_call_op(microop.at(br_node)))
       continue;
     unsigned first_node = first_it->second;
+    Vertex first_vertex = name_to_vertex[first_node];
+    
     //all the nodes between first and branch now dependent on first
     if (prev_branch != -1)
     {
       out_edge_iter out_edge_it, out_edge_end;
-      for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[prev_branch], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+      for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[prev_branch], graph_); out_edge_it != out_edge_end; ++out_edge_it)
       {
-        unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+        Vertex child_vertex = target(*out_edge_it, graph_);
+        unsigned child_id = vertex_to_name[child_vertex];
         if (child_id <= first_node)
           continue;
-        int edge_id = edge_to_name[*out_edge_it];
-        if (edge_parid.at(edge_id) != CONTROL_EDGE) 
+        if (edge_to_parid[*out_edge_it] != CONTROL_EDGE) 
           continue;
         std::pair<Edge, bool> existed;
-        existed = edge(name_to_vertex[first_node], name_to_vertex[child_id], tmp_graph);
+        existed = edge(first_vertex, child_vertex, graph_);
         if (existed.second == false)
-        {
           to_add_edges.push_back({first_node, child_id, 1});
-        }
       }
     }
     //update first_node's parents, dependence become strict control dependence
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[first_node], tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+    for (tie(in_edge_it, in_edge_end) = in_edges(first_vertex, graph_); in_edge_it != in_edge_end; ++in_edge_it)
     {
-      unsigned parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
+      Vertex parent_vertex = source(*in_edge_it, graph_);
+      unsigned parent_id = vertex_to_name[parent_vertex];
       if (is_branch_op(microop.at(parent_id)))
         continue;
-      int edge_id = edge_to_name[*in_edge_it];
-      to_remove_edges[edge_id] = 1;
+      to_remove_edges.push_back(*in_edge_it);
       to_add_edges.push_back({parent_id, first_node, CONTROL_EDGE});
     }
     //adding dependence between prev_first and first_node
     if (prev_first != -1)
     {
       std::pair<Edge, bool> existed;
-      existed = edge(name_to_vertex[prev_first], name_to_vertex[first_node], tmp_graph);
+      existed = edge(prev_first_vertex, first_vertex, graph_);
       if (existed.second == false)
-      {
         to_add_edges.push_back({(unsigned)prev_first, first_node, CONTROL_EDGE});
-      }
     }
     
     //remove control dependence between br node to its children
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+    for (tie(out_edge_it, out_edge_end) = out_edges(name_to_vertex[br_node], graph_); out_edge_it != out_edge_end; ++out_edge_it)
     {
-      unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-      int edge_id = edge_to_name[*out_edge_it];
-      if (edge_parid.at(edge_id) != CONTROL_EDGE) 
+      if (edge_to_parid[*out_edge_it] != CONTROL_EDGE) 
         continue;
-      to_remove_edges[edge_id] = 1;
+      to_remove_edges.push_back(*out_edge_it);
     }
     prev_branch = br_node;
     prev_first = first_node;
+    prev_first_vertex = first_vertex;
   }
 
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 void Datapath::loopUnrolling()
@@ -727,19 +689,16 @@ void Datapath::loopUnrolling()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "         Loop Unrolling        " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
   
-  std::unordered_map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
   std::unordered_set<unsigned> to_remove_nodes;
   
-  std::vector<int> lineNum(num_of_nodes, -1);
+  std::vector<int> lineNum(numTotalNodes, -1);
   initLineNum(lineNum);
 
   ofstream loop_bound;
@@ -754,9 +713,12 @@ void Datapath::loopUnrolling()
   std::vector<unsigned> nodes_between;
   std::vector<newEdge> to_add_edges;
 
-  for(unsigned node_id = 0; node_id < num_of_nodes; node_id++)
+  for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    if (boost::degree(name_to_vertex[node_id], tmp_graph) == 0)
+    if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      continue;
+    Vertex node_vertex = name_to_vertex[node_id];
+    if (boost::degree(node_vertex, graph_) == 0)
       continue;
     if (!first)
     {
@@ -764,12 +726,13 @@ void Datapath::loopUnrolling()
       loop_bound << node_id << std::endl;
     }
     if (prev_branch != -1)
-      to_add_edges.push_back({(unsigned) prev_branch, node_id, CONTROL_EDGE});
+    {
+      to_add_edges.push_back({(unsigned)prev_branch, node_id, CONTROL_EDGE});
+    }
     
     if (!is_branch_op(microop.at(node_id)))
-    {
-        nodes_between.push_back(node_id);
-    }
+      nodes_between.push_back(node_id);
+    
     else
     {
       assert(is_branch_op(microop.at(node_id)));
@@ -783,9 +746,11 @@ void Datapath::loopUnrolling()
                    prev_node_it != E; prev_node_it++)
         {
           std::pair<Edge, bool> existed;
-          existed = edge(name_to_vertex[*prev_node_it], name_to_vertex[node_id], tmp_graph);
+          existed = edge(name_to_vertex[*prev_node_it], node_vertex, graph_);
           if (existed.second == false)
+          {
             to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
+          }
         }
         
         nodes_between.clear();
@@ -814,9 +779,11 @@ void Datapath::loopUnrolling()
                      prev_node_it != E; prev_node_it++)
           {
             std::pair<Edge, bool> existed;
-            existed = edge(name_to_vertex[*prev_node_it], name_to_vertex[node_id], tmp_graph);
+            existed = edge(name_to_vertex[*prev_node_it], node_vertex, graph_);
             if (existed.second == false)
+            {
               to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
+            }
           }
           
           nodes_between.clear();
@@ -827,7 +794,7 @@ void Datapath::loopUnrolling()
       }
     }
   }
-  loop_bound << num_of_nodes << std::endl;
+  loop_bound << numTotalNodes << std::endl;
   loop_bound.close();
   
   if (iter_counts == 0 && unrolling_config.size() != 0 )
@@ -837,9 +804,8 @@ void Datapath::loopUnrolling()
     std::cerr << "Loop Unrolling is NOT applied. Please choose a smaller unrolling factor." << std::endl;
     std::cerr << "-------------------------------" << std::endl;
   }
-
-  int curr_num_of_edges = writeGraphWithIsolatedNodes(to_remove_nodes);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  updateGraphWithIsolatedNodes(to_remove_nodes);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 
@@ -856,40 +822,37 @@ void Datapath::removeSharedLoads()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Load Buffer          " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
   
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
-  
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
+
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
   std::unordered_map<unsigned, long long int> address;
-  std::vector<int> edge_parid(num_of_edges, 0);
-
   initAddress(address);
-  initEdgeParID(edge_parid);
 
   vertex_iter vi, vi_end;
   
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   int shared_loads = 0;
   auto loop_bound_it = loop_bound.begin();
   
   unsigned node_id = 0;
-  while ( (unsigned)node_id < num_of_nodes)
+  while ( (unsigned)node_id < numTotalNodes)
   {
     std::unordered_map<unsigned, unsigned> address_loaded;
-    while (node_id < *loop_bound_it &&  (unsigned) node_id < num_of_nodes)
+    while (node_id < *loop_bound_it &&  (unsigned) node_id < numTotalNodes)
     {
-      if (boost::degree(name_to_vertex[node_id], tmp_graph) == 0)
+      if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      {
+        node_id++;
+        continue;
+      }
+      if (boost::degree(name_to_vertex[node_id], graph_) == 0)
       {
         node_id++;
         continue;
@@ -912,23 +875,24 @@ void Datapath::removeSharedLoads()
           Vertex load_node = name_to_vertex[node_id];
           
           out_edge_iter out_edge_it, out_edge_end;
-          for (tie(out_edge_it, out_edge_end) = out_edges(load_node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+          for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
           {
-            unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-            int edge_id = edge_to_name[*out_edge_it];
+            Edge curr_edge = *out_edge_it;
+            Vertex child_vertex = target(curr_edge, graph_);
+            unsigned child_id = vertex_to_name[child_vertex];
+            
+            Vertex prev_load_vertex = name_to_vertex[prev_load];
             std::pair<Edge, bool> existed;
-            existed = edge(name_to_vertex[prev_load], name_to_vertex[child_id], tmp_graph);
+            existed = edge(prev_load_vertex, child_vertex, graph_);
             if (existed.second == false)
-              to_add_edges.push_back({prev_load, child_id, edge_parid.at(edge_id)});
-            to_remove_edges[edge_id] = 1;
+              to_add_edges.push_back({prev_load, child_id, edge_to_parid[curr_edge]});
+            to_remove_edges.push_back(*out_edge_it);
           }
           
           in_edge_iter in_edge_it, in_edge_end;
-          for (tie(in_edge_it, in_edge_end) = in_edges(load_node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
-          {
-            int edge_id = edge_to_name[*in_edge_it];
-            to_remove_edges.at(edge_id) = 1;
-          }
+          for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
+            to_remove_edges.push_back(*in_edge_it);
+        
         }
       }
       node_id++;
@@ -937,9 +901,8 @@ void Datapath::removeSharedLoads()
     if (loop_bound_it == loop_bound.end() )
       break;
   }
-  edge_parid.clear();
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 
@@ -957,22 +920,13 @@ void Datapath::storeBuffer()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Store Buffer         " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
   
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-  
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
   std::vector<std::string> instid(numTotalNodes, "");
   std::vector<std::string> dynamic_methodid(numTotalNodes, "");
@@ -983,18 +937,23 @@ void Datapath::storeBuffer()
   initPrevBasicBlock(prev_basic_block);
   
   
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   int buffered_stores = 0;
   auto loop_bound_it = loop_bound.begin();
   
   unsigned node_id = 0;
-  while (node_id < num_of_nodes)
+  while (node_id < numTotalNodes)
   {
-    while (node_id < *loop_bound_it && node_id < num_of_nodes)
+    while (node_id < *loop_bound_it && node_id < numTotalNodes)
     {
-      if (boost::degree(name_to_vertex[node_id], tmp_graph) == 0)
+      if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      {
+        node_id++;
+        continue;
+      }
+      if (boost::degree(name_to_vertex[node_id], graph_) == 0)
       {
         node_id++;
         continue;
@@ -1004,10 +963,12 @@ void Datapath::storeBuffer()
       {
         Vertex node = name_to_vertex[node_id];
         out_edge_iter out_edge_it, out_edge_end;
-        std::vector<unsigned> store_child;
-        for (tie(out_edge_it, out_edge_end) = out_edges(node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+        
+        std::vector<Vertex> store_child;
+        for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
         {
-          int child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
+          Vertex child_vertex = target(*out_edge_it, graph_);
+          int child_id = vertex_to_name[child_vertex];
           int child_microop = microop.at(child_id);
           if (is_load_op(child_microop))
           {
@@ -1017,7 +978,7 @@ void Datapath::storeBuffer()
             if (child_id >= (unsigned)*loop_bound_it )
               continue;
             else
-              store_child.push_back(child_id);
+              store_child.push_back(child_vertex);
           }
         }
         
@@ -1026,42 +987,38 @@ void Datapath::storeBuffer()
           buffered_stores++;
           
           in_edge_iter in_edge_it, in_edge_end;
-          unsigned store_parent = num_of_nodes;
-          for (tie(in_edge_it, in_edge_end) = in_edges(node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+          bool parent_found = false;
+          Vertex store_vertex;
+          for (tie(in_edge_it, in_edge_end) = in_edges(node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
           {
-            int edge_id = edge_to_name[*in_edge_it];
-            int parent_id = vertex_to_name[source(*in_edge_it, tmp_graph)];
-            int parid = edge_parid.at(edge_id);
+            Edge curr_edge = *in_edge_it;
             //parent node that generates value
-            if (parid == 1)
+            if (edge_to_parid[curr_edge] == 1)
             {
-              store_parent = parent_id;
+              parent_found = true;
+              store_vertex = source(curr_edge, graph_);
               break;
             }
           }
           
-          if (store_parent != num_of_nodes)
+          if (parent_found)
           {
-            for (unsigned i = 0; i < store_child.size(); ++i)
+            for (auto store_it = store_child.begin(), store_E = store_child.end(); store_it != store_E; ++store_it)
             {
-              unsigned load_id = store_child.at(i);
-              
-              Vertex load_node = name_to_vertex[load_id];
+              Vertex load_node = *store_it;
               
               out_edge_iter out_edge_it, out_edge_end;
-              for (tie(out_edge_it, out_edge_end) = out_edges(load_node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+              for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
               {
-                int edge_id = edge_to_name[*out_edge_it];
-                unsigned child_id = vertex_to_name[target(*out_edge_it, tmp_graph)];
-                to_remove_edges.at(edge_id) = 1;
-                to_add_edges.push_back({store_parent, child_id, edge_parid.at(edge_id)});
+                Edge curr_edge = *out_edge_it;
+                to_remove_edges.push_back(curr_edge);
+                
+                Vertex child_vertex = target(curr_edge, graph_);
+                to_add_edges.push_back({vertex_to_name[store_vertex], vertex_to_name[child_vertex], edge_to_parid[curr_edge]});
               }
               
-              for (tie(in_edge_it, in_edge_end) = in_edges(load_node, tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
-              {
-                int edge_id = edge_to_name[*in_edge_it];
-                to_remove_edges.at(edge_id) = 1;
-              }
+              for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
+                to_remove_edges.push_back(*in_edge_it);
             }
           }
         }
@@ -1072,9 +1029,8 @@ void Datapath::storeBuffer()
     if (loop_bound_it == loop_bound.end() )
       break;
   }
-  edge_parid.clear();
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 
@@ -1092,15 +1048,10 @@ void Datapath::removeRepeatedStores()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "     Remove Repeated Store     " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
   
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
 
   std::unordered_map<unsigned, long long int> address;
   initAddress(address);
@@ -1116,7 +1067,7 @@ void Datapath::removeRepeatedStores()
   vertex_iter vi, vi_end;
 
   int shared_stores = 0;
-  int node_id = num_of_nodes - 1;
+  int node_id = numTotalNodes - 1;
   auto loop_bound_it = loop_bound.end();
   loop_bound_it--;
   loop_bound_it--;
@@ -1125,7 +1076,12 @@ void Datapath::removeRepeatedStores()
     unordered_map<unsigned, int> address_store_map;
     while (node_id >= *loop_bound_it && node_id >= 0)
     {
-      if (boost::degree(name_to_vertex[node_id], tmp_graph) == 0 )
+      if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      {
+        --node_id;
+        continue;
+      }
+      if (boost::degree(name_to_vertex[node_id], graph_) == 0 )
       {
         --node_id;
         continue;
@@ -1146,7 +1102,7 @@ void Datapath::removeRepeatedStores()
           {
             Vertex node = name_to_vertex[node_id];
             //if it has children, ignore it
-            if (boost::out_degree(node, tmp_graph)== 0)
+            if (boost::out_degree(node, graph_)== 0)
             {
               microop.at(node_id) = LLVM_IR_SilentStore;
               shared_stores++;
@@ -1179,24 +1135,16 @@ void Datapath::treeHeightReduction()
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "     Tree Height Reduction     " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  //set graph
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
   
-  unsigned num_of_nodes = boost::num_vertices(tmp_graph);
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-   
-  std::vector<int> edge_parid(num_of_edges, 0);
-  initEdgeParID(edge_parid);
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  std::map<int, Vertex> name_to_vertex;
-  BGL_FORALL_VERTICES(v, tmp_graph, Graph)
-    name_to_vertex[get(boost::vertex_name, tmp_graph, v)] = v;
-  
-  std::vector<bool> updated(num_of_nodes, 0);
-  std::vector<int> bound_region(num_of_nodes, 0);
+  std::vector<bool> updated(numTotalNodes, 0);
+  std::vector<int> bound_region(numTotalNodes, 0);
   
   int region_id = 0;
   unsigned node_id = 0;
@@ -1214,13 +1162,15 @@ void Datapath::treeHeightReduction()
     }
   }
   
-  std::vector<bool> to_remove_edges(num_of_edges, 0);
+  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   //nodes with no outgoing edges to first (bottom nodes first)
-  for(int node_id = num_of_nodes -1; node_id >= 0; node_id--)
+  for(int node_id = numTotalNodes -1; node_id >= 0; node_id--)
   {
-    if(boost::degree(name_to_vertex[node_id], tmp_graph) == 0 || updated.at(node_id))
+    if (name_to_vertex.find(node_id) == name_to_vertex.end())
+      continue;
+    if(boost::degree(name_to_vertex[node_id], graph_) == 0 || updated.at(node_id))
       continue;
     int node_microop = microop.at(node_id);
     if (!is_associative(node_microop))
@@ -1228,7 +1178,7 @@ void Datapath::treeHeightReduction()
     updated.at(node_id) = 1;
     int node_region = bound_region.at(node_id); 
     std::list<unsigned> nodes;
-    std::vector<int> tmp_remove_edges;
+    std::vector<Edge> tmp_remove_edges;
     std::vector<pair<int, bool> > leaves;
     
     std::vector<int> associative_chain;
@@ -1243,9 +1193,9 @@ void Datapath::treeHeightReduction()
         updated.at(chain_node_id) = 1;
         in_edge_iter in_edge_it, in_edge_end;
         int num_of_chain_parents = 0;
-        for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+        for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , graph_); in_edge_it != in_edge_end; ++in_edge_it)
         {
-          Vertex parent_node = source(*in_edge_it, tmp_graph);
+          Vertex parent_node = source(*in_edge_it, graph_);
           int parent_id = vertex_to_name[parent_node];
           int parent_microop = microop.at(parent_id);
           if (is_branch_op(parent_microop))
@@ -1255,42 +1205,41 @@ void Datapath::treeHeightReduction()
         if (num_of_chain_parents == 2)
         {
           nodes.push_front(chain_node_id);
-          for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , tmp_graph); in_edge_it != in_edge_end; ++in_edge_it)
+          for (tie(in_edge_it, in_edge_end) = in_edges(name_to_vertex[chain_node_id] , graph_); in_edge_it != in_edge_end; ++in_edge_it)
           {
-            Vertex parent_node = source(*in_edge_it, tmp_graph);
+            Vertex parent_node = source(*in_edge_it, graph_);
             int parent_id = vertex_to_name[parent_node];
             int parent_region = bound_region.at(parent_id);
             int parent_microop = microop.at(parent_id);
             if (is_branch_op(parent_microop))
               continue;
-            int edge_id = edge_to_name[*in_edge_it];
+            Edge curr_edge = *in_edge_it;
             
             if (parent_region == node_region)
             {
               updated.at(parent_id) = 1;
               if (!is_associative(parent_microop))
               {
-                tmp_remove_edges.push_back(edge_id);
+                tmp_remove_edges.push_back(curr_edge);
                 leaves.push_back(make_pair(parent_id, 0));
               }
               else
               {
                 out_edge_iter out_edge_it, out_edge_end;
                 int num_of_children = 0;
-                for (tie(out_edge_it, out_edge_end) = out_edges(parent_node, tmp_graph); out_edge_it != out_edge_end; ++out_edge_it)
+                for (tie(out_edge_it, out_edge_end) = out_edges(parent_node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
                 {
-                  int tmp_edge_id = edge_to_name[*out_edge_it];
-                  if (edge_parid[tmp_edge_id] != CONTROL_EDGE)
+                  if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
                     num_of_children++;
                 }
                 if (num_of_children == 1)
                 {
-                  tmp_remove_edges.push_back(edge_id);
+                  tmp_remove_edges.push_back(curr_edge);
                   associative_chain.push_back(parent_id);
                 }
                 else
                 {
-                  tmp_remove_edges.push_back(edge_id);
+                  tmp_remove_edges.push_back(curr_edge);
                   leaves.push_back(make_pair(parent_id, 0));
                 }
               }
@@ -1298,7 +1247,7 @@ void Datapath::treeHeightReduction()
             else
             {
               leaves.push_back(make_pair(parent_id, 1));
-              tmp_remove_edges.push_back(edge_id);
+              tmp_remove_edges.push_back(curr_edge);
             }
           }
         }
@@ -1314,7 +1263,7 @@ void Datapath::treeHeightReduction()
       continue;
     
     for(auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end(); it != E; it++)
-      to_remove_edges.at(*it) = 1;
+      to_remove_edges.push_back(*it);
 
     std::map<unsigned, unsigned> rank_map;
     auto leaf_it = leaves.begin();
@@ -1324,7 +1273,7 @@ void Datapath::treeHeightReduction()
       if (leaf_it->second == 0)
         rank_map[leaf_it->first] = 0;
       else
-        rank_map[leaf_it->first] = num_of_nodes;
+        rank_map[leaf_it->first] = numTotalNodes;
       ++leaf_it; 
     }
     //reconstruct the rest of the balanced tree
@@ -1351,8 +1300,8 @@ void Datapath::treeHeightReduction()
       ++node_it;
     }
   }
-  int curr_num_of_edges = writeGraphWithIsolatedEdges(to_remove_edges);
-  writeGraphWithNewEdges(to_add_edges, curr_num_of_edges);
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 void Datapath::findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map)
@@ -1379,169 +1328,59 @@ void Datapath::findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsig
   }
 }
 
-int Datapath::writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges)
+void Datapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
 {
-  std::string gn(graphName);
-  std::string graph_file, edge_parid_file;
-  graph_file = gn + "_graph";
-  edge_parid_file = gn + "_edgeparid.gz";
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  ifstream orig_graph;
-  ofstream new_graph;
-  gzFile new_edgeparid;
-  
-  orig_graph.open(graph_file.c_str());
-  std::filebuf *pbuf = orig_graph.rdbuf();
-  std::size_t size = pbuf->pubseekoff(0, orig_graph.end, orig_graph.in);
-  pbuf->pubseekpos(0, orig_graph.in);
-  char *buffer = new char[size];
-  pbuf->sgetn (buffer, size);
-  orig_graph.close();
-  
-  new_graph.open(graph_file.c_str());
-  new_graph.write(buffer, size);
-  delete[] buffer;
-
-  long pos = new_graph.tellp();
-  new_graph.seekp(pos-2);
-
-  new_edgeparid = gzopen(edge_parid_file.c_str(), "a");
-  
-  int new_edge_id = curr_num_of_edges;
-  
+  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
   for(auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it)
   {
-    new_graph << it->from << " -> " 
-              << it->to
-              << " [e_id = " << new_edge_id << "];" << std::endl;
-    new_edge_id++;
-    gzprintf(new_edgeparid, "%d\n", it->parid);
+    assert(it->from < it->to);
+    Vertex from, to;
+    if (name_to_vertex.find(it->from) == name_to_vertex.end())
+    {
+      from = add_vertex(graph_);
+      get(boost::vertex_name, graph_)[from] = it->from;
+    }
+    else
+      from = name_to_vertex[it->from];
+    if (name_to_vertex.find(it->to) == name_to_vertex.end())
+    {
+      to = add_vertex(graph_);
+      get(boost::vertex_name, graph_)[to] = it->to;
+    }
+    else
+      to = name_to_vertex[it->to];
+    
+    std::pair<Edge, bool> existed;
+    existed = edge(from, to, graph_);
+    if (existed.second == false)
+    {
+      get(boost::edge_name, graph_)[add_edge(from, to, graph_).first] = it->parid;
+    }
   }
-  new_graph << "}" << std::endl;
-  new_graph.close();
-  gzclose(new_edgeparid);
-
-  return new_edge_id;
+  //write_graphviz(std::cout, graph_);
 }
-int Datapath::writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes)
+void Datapath::updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes)
 {
-  Graph tmp_graph;
-  readGraph(tmp_graph);
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
+  BGL_FORALL_VERTICES(v, graph_, Graph)
+    name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
-  unsigned num_of_edges = num_edges(tmp_graph);
-  unsigned num_of_nodes = num_vertices(tmp_graph);
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-
-  initEdgeParID(edge_parid);
-  
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-
-  ofstream new_graph;
-  gzFile new_edgeparid;
-  
-  std::string gn(graphName);
-  std::string graph_file, edge_parid_file;
-  graph_file = gn + "_graph";
-  edge_parid_file = gn + "_edgeparid.gz";
-  
-  new_graph.open(graph_file.c_str());
-  new_edgeparid = gzopen(edge_parid_file.c_str(), "w");
-  
-  new_graph << "digraph DDDG {" << std::endl;
-
-  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
-     new_graph << node_id << ";" << std::endl; 
-  
-  edge_iter ei, ei_end;
-  int new_edge_id = 0;
-  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
+  for(auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it)
   {
-    int edge_id = edge_to_name[*ei];
-    int from = vertex_to_name[source(*ei, tmp_graph)];
-    int to   = vertex_to_name[target(*ei, tmp_graph)];
-    if (to_remove_nodes.find(from) != to_remove_nodes.end() 
-     || to_remove_nodes.find(to) != to_remove_nodes.end())
-      continue;
-
-    new_graph << from << " -> " 
-              << to
-              << " [e_id = " << new_edge_id << "];" << std::endl;
-    new_edge_id++;
-    gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
+    clear_vertex(name_to_vertex[*it], graph_);
+    //remove_vertex(name_to_vertex[*it], graph_);
   }
-
-  new_graph << "}" << std::endl;
-  new_graph.close();
-  gzclose(new_edgeparid);
-  
-  return new_edge_id;
+  //write_graphviz(std::cout, graph_);
 }
-int Datapath::writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges)
+void Datapath::updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges)
 {
-  Graph tmp_graph;
-  readGraph(tmp_graph);
-  
-  unsigned num_of_edges = num_edges(tmp_graph);
-  unsigned num_of_nodes = num_vertices(tmp_graph);
-
-  std::vector<int> edge_parid(num_of_edges, 0);
-
-  initEdgeParID(edge_parid);
-  
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-
-  ofstream new_graph;
-  gzFile new_edgeparid;
-  
-  std::string gn(graphName);
-  std::string graph_file, edge_parid_file;
-  graph_file = gn + "_graph";
-  edge_parid_file = gn + "_edgeparid.gz";
-  
-  new_graph.open(graph_file.c_str());
-  new_edgeparid = gzopen(edge_parid_file.c_str(), "w");
-
-  new_graph << "digraph DDDG {" << std::endl;
-
-  for (unsigned node_id = 0; node_id < num_of_nodes; node_id++)
-     new_graph << node_id << ";" << std::endl; 
-  
-  edge_iter ei, ei_end;
-  int new_edge_id = 0;
-  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
-  {
-    int edge_id = edge_to_name[*ei];
-    if (to_remove_edges.at(edge_id))
-      continue;
-    new_graph << vertex_to_name[source(*ei, tmp_graph)] << " -> " 
-              << vertex_to_name[target(*ei, tmp_graph)] 
-              << " [e_id = " << new_edge_id << "];" << std::endl;
-    new_edge_id++;
-    gzprintf(new_edgeparid, "%d\n", edge_parid.at(edge_id) );
-  }
-  
-  new_graph << "}" << std::endl;
-  new_graph.close();
-  gzclose(new_edgeparid);
-  return new_edge_id;
-}
-
-void Datapath::readGraph(Graph &tmp_graph)
-{
-  std::string gn(graphName);
-  std::string graph_file_name(gn + "_graph");
-  
-  boost::dynamic_properties dp;
-  boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, tmp_graph);
-  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, tmp_graph);
-  dp.property("n_id", v_name);
-  dp.property("e_id", e_name);
-  std::ifstream fin(graph_file_name.c_str());
-  boost::read_graphviz(fin, tmp_graph, dp, "n_id");
-
+  for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it!=E; ++it)
+    remove_edge(*it, graph_);
+  //write_graphviz(std::cout, graph_);
 }
 
 //initFunctions
@@ -1847,66 +1686,6 @@ void Datapath::initAddressAndSize(std::unordered_map<unsigned, pair<long long in
   gzclose(gzip_file);
 }
 
-void Datapath::initializeGraphInMap(std::unordered_map<std::string, int> &full_graph)
-{
-  Graph tmp_graph;
-  readGraph(tmp_graph); 
-  unsigned num_of_edges = boost::num_edges(tmp_graph);
-  
-  VertexNameMap vertex_to_name = get(boost::vertex_name, tmp_graph);
-  EdgeNameMap edge_to_name = get(boost::edge_name, tmp_graph);
-  
-  std::vector<int> edge_parid(num_of_edges, 0);
-
-  initEdgeParID(edge_parid);
-  
-  //initialize full_graph
-  edge_iter ei, ei_end;
-  for (tie(ei, ei_end) = edges(tmp_graph); ei != ei_end; ++ei)
-  {
-    int edge_id = edge_to_name[*ei];
-    int from = vertex_to_name[source(*ei, tmp_graph)];
-    int to   = vertex_to_name[target(*ei, tmp_graph)];
-    ostringstream oss;
-    oss << from << "-" << to;
-    full_graph[oss.str()] = edge_parid.at(edge_id);
-  }
-}
-
-void Datapath::writeGraphInMap(std::unordered_map<std::string, int> &full_graph, std::string name)
-{
-  ofstream graph_file;
-  gzFile new_edgeparid;
-  
-  std::string graph_name;
-  std::string edge_parid_file;
-
-  edge_parid_file = name + "_edgeparid.gz";
-  graph_name = name + "_graph";
-  
-  new_edgeparid = gzopen(edge_parid_file.c_str(), "w");
-  
-  graph_file.open(graph_name.c_str());
-  graph_file << "digraph DDDG {" << std::endl;
-  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
-     graph_file << node_id << ";" << std::endl; 
-  int new_edge_id = 0; 
-  for(auto it = full_graph.begin(); it != full_graph.end(); it++)
-  {
-    int from, to;
-    sscanf(it->first.c_str(), "%d-%d", &from, &to);
-    
-    graph_file << from << " -> " 
-              << to
-              << " [e_id = " << new_edge_id << "];" << std::endl;
-    new_edge_id++;
-    gzprintf(new_edgeparid, "%d\n", it->second);
-  }
-  graph_file << "}" << std::endl;
-  graph_file.close();
-  gzclose(new_edgeparid);
-}
-
 void Datapath::initLineNum(std::vector<int> &line_num)
 {
   ostringstream file_name;
@@ -1932,12 +1711,6 @@ void Datapath::initGetElementPtr(std::unordered_map<unsigned, pair<std::string, 
   }
   gzclose(gzip_file);
 }
-void Datapath::initEdgeParID(std::vector<int> &parid)
-{
-  std::string file_name(graphName);
-  file_name += "_edgeparid.gz";
-  read_gzip_file(file_name, parid.size(), parid);
-}
 
 //stepFunctions
 //multiple function, each function is a separate graph
@@ -1950,26 +1723,13 @@ void Datapath::setGraphForStepping()
   newLevel.assign(numTotalNodes, 0);
   regStats.assign(numTotalNodes, {0, 0, 0});
   
-  std::string gn(graphName);
-  std::string graph_file_name(gn + "_graph");
-  
-
-  boost::dynamic_properties dp;
-  boost::property_map<Graph, boost::vertex_name_t>::type v_name = get(boost::vertex_name, graph_);
-  boost::property_map<Graph, boost::edge_name_t>::type e_name = get(boost::edge_name, graph_);
-  dp.property("n_id", v_name);
-  dp.property("e_id", e_name);
-  std::ifstream fin(graph_file_name.c_str());
-  boost::read_graphviz(fin, graph_, dp, "n_id");
   
   vertexToName = get(boost::vertex_name, graph_);
-  edgeToName = get(boost::edge_name, graph_);
+  edgeToParid = get(boost::edge_name, graph_);
   BGL_FORALL_VERTICES(v, graph_, Graph)
     nameToVertex[get(boost::vertex_name, graph_, v)] = v;
   
   numTotalEdges  = boost::num_edges(graph_);
-  edgeParid.assign(numTotalEdges, 0);
-  initEdgeParID(edgeParid);
 
   numParents.assign(numTotalNodes, 0);
   latestParents.assign(numTotalNodes, 0);
@@ -1978,10 +1738,9 @@ void Datapath::setGraphForStepping()
 
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
-    if (boost::degree(*vi, graph_) == 0)
-      finalIsolated.at(vertexToName[*vi]) = 1;
-    else
+    if (boost::degree(*vi, graph_) != 0)
     {
+      finalIsolated.at(vertexToName[*vi]) = 0;
       numParents.at(vertexToName[*vi]) = boost::in_degree(*vi, graph_);
       totalConnectedNodes++;
     }
@@ -2024,7 +1783,7 @@ int Datapath::clearGraph()
 }
 void Datapath::updateRegStats()
 {
-  std::map<int, Vertex> name_to_vertex;
+  std::unordered_map<unsigned, Vertex> name_to_vertex;
   BGL_FORALL_VERTICES(v, graph_, Graph)
     name_to_vertex[get(boost::vertex_name, graph_, v)] = v;
   
@@ -2079,7 +1838,6 @@ bool Datapath::step()
   stepExecutingQueue();
   copyToExecutingQueue();
   cycle++;
-  
   if (executedNodes == totalConnectedNodes)
     return 1;
   return 0;
@@ -2129,7 +1887,7 @@ void Datapath::updateChildren(unsigned node_id)
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
   {
     unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
-    unsigned edge_id = edgeToName[*out_edge_it];
+    int edge_parid = edgeToParid[*out_edge_it];
     if (numParents[child_id] > 0)
     {
       numParents[child_id]--;
@@ -2137,7 +1895,7 @@ void Datapath::updateChildren(unsigned node_id)
       {
         unsigned child_microop = microop.at(child_id);
         if ( (node_latency(child_microop) == 0 || node_latency(microop.at(node_id))== 0)
-             && edgeParid[edge_id] != CONTROL_EDGE )
+             && edge_parid != CONTROL_EDGE )
           executingQueue.push_back(child_id);
         else
           readyToExecuteQueue.push_back(child_id);

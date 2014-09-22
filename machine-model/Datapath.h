@@ -24,9 +24,9 @@
 #define PIPE_EDGE 12
 
 using namespace std;
-typedef boost::property < boost::vertex_name_t, int> VertexProperty;
+typedef boost::property < boost::vertex_name_t, unsigned> VertexProperty;
 typedef boost::property < boost::edge_name_t, int> EdgeProperty;
-typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
+typedef boost::adjacency_list < boost::listS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef boost::graph_traits<Graph>::edge_descriptor Edge;
 typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
@@ -110,7 +110,6 @@ class Datapath
          partitionEntry> & partition_config);
   bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
-  /*void readGraph(igraph_t *g);*/
   void dumpStats();
   void writeFinalLevel();
   void writeGlobalIsolated();
@@ -118,7 +117,6 @@ class Datapath
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
   
-  void readGraph(Graph &g);
   void initMicroop(std::vector<int> &microop);
   void updateRegStats();
   void initMethodID(std::vector<int> &methodid);
@@ -128,14 +126,11 @@ class Datapath
   void initAddressAndSize(std::unordered_map<unsigned, pair<long long int, unsigned> > &address);
   void initAddress(std::unordered_map<unsigned, long long int> &address);
   void initLineNum(std::vector<int> &lineNum);
-  void initEdgeParID(std::vector<int> &parid);
   void initGetElementPtr(std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
 
-  int writeGraphWithIsolatedEdges(std::vector<bool> &to_remove_edges);
-  int writeGraphWithNewEdges(std::vector<newEdge> &to_add_edges, int curr_num_of_edges);
-  int writeGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
-  void writeGraphInMap(std::unordered_map<std::string, int> &full_graph, std::string name);
-  void initializeGraphInMap(std::unordered_map<std::string, int> &full_graph);
+  void updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges);
+  void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
+  void updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
 
   void setGraphForStepping();
   void setScratchpad(Scratchpad *spad);
@@ -175,12 +170,11 @@ class Datapath
   /*igraph_t *g;*/
   /*Graph global_graph_;*/
   Graph graph_;
-  std::unordered_map<int, Vertex> nameToVertex;
+  std::unordered_map<unsigned, Vertex> nameToVertex;
   VertexNameMap vertexToName;
-  EdgeNameMap edgeToName;
+  EdgeNameMap edgeToParid;
 
   std::vector<int> numParents;
-  std::vector<int> edgeParid;
   std::vector<float> latestParents;
   std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
