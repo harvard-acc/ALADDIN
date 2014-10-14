@@ -1,5 +1,5 @@
 #include "file_func.h"
-#include "Datapath.h"
+#include "ScratchpadDatapath.h"
 #include "Scratchpad.h"
 #include "dddg.h"
 #include <stdio.h>
@@ -45,17 +45,16 @@ int main( int argc, const char *argv[])
   }
   parse_config(bench, config_file);
   
-  Datapath *acc;
+  ScratchpadDatapath *acc;
   Scratchpad *spad;
 
   spad = new Scratchpad(1); 
-  acc = new Datapath(bench, CYCLE_TIME);
+  acc = new ScratchpadDatapath(bench, CYCLE_TIME);
   acc->setScratchpad(spad);
   //get the complete graph
   acc->setGlobalGraph();
   acc->globalOptimizationPass();
   /*Profiling*/
-  acc->clearGlobalGraph();
   acc->setGraphForStepping();
   
   //Scheduling

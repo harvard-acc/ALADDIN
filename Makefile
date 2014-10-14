@@ -1,36 +1,23 @@
-OBJS = aladdin.o
-LIBS = libutils.so libdddgbuild.so libmachinemodel.so
+.PHONY: all clean
 EXE = aladdin
-export CFLAGS = -c $(DEBUG) -O2 -fPIC -std=c++0x\
-         -I$(ALADDIN_HOME)/utils/ \
-         -I$(ALADDIN_HOME)/dddg-builder/ \
-         -I$(ALADDIN_HOME)/machine-model/ \
-         -I$(BOOST_ROOT)
-export LFLAGS = $(DEBUG) \
-         -L$(ALADDIN_HOME)/lib/\
-         -lutils -ldddgbuild -lmachinemodel -lz \
-         -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+
+MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o
+UTILS_OBJS = file_func.o generic_func.o opcode_func.o
+DDDG_OBJS = dddg.o
+OBJS = $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
+
+CFLAGS = -c -m32 $(DEBUG) -O2 -std=c++0x -I$(BOOST_ROOT)
+LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
 
 all : $(EXE)
 
-$(EXE) : $(LIBS) $(OBJS) 
-	$(CXX) -o $(EXE) $(OBJS) $(LFLAGS) 
-	rm *.o
-
-libutils.so :
-	cd utils && $(MAKE)
-
-libdddgbuild.so :
-	cd dddg-builder && $(MAKE)
-
-libmachinemodel.so :
-	cd machine-model && $(MAKE)
-
-aladdin.o : aladdin.cpp
+$(EXE): $(OBJS)
 	$(CXX) $(CFLAGS) aladdin.cpp
+	$(CXX) -m32 -o $(EXE) $(EXE).o $(OBJS) $(LFLAGS)
+
+%.o : %.h %.cpp
+	$(CXX) $(CFLAGS) $*.cpp
 
 clean:
-	rm lib/*
-	rm aladdin
-
-
+	rm -f *.o
+	rm -f aladdin

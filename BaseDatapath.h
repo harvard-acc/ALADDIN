@@ -1,5 +1,5 @@
-#ifndef __DATAPATH__
-#define __DATAPATH__
+#ifndef __BASE_DATAPATH__
+#define __BASE_DATAPATH__
 
 #include <boost/graph/graphviz.hpp>
 #include <boost/config.hpp>
@@ -15,10 +15,12 @@
 #include <algorithm>
 #include <map>
 #include <set>
+
 #include "file_func.h"
 #include "opcode_func.h"
 #include "generic_func.h"
-#include "./Scratchpad.h"
+#include "MemoryInterface.h"
+#include "Scratchpad.h"
 
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
@@ -36,6 +38,8 @@ typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
 typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_name_t>::type VertexNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexIndexMap;
+// Used heavily in reporting cycle-level statistics.
+typedef std::unordered_map< std::string, std::vector<int> > activity_map;
 
 class Scratchpad;
 
@@ -76,17 +80,17 @@ struct RQEntryComp
   { return left.node_id < right.node_id; }
 };
 
-class Datapath
+class BaseDatapath
 {
  public:
-  Datapath(std::string bench, float cycle_t);
-  ~Datapath();
+  BaseDatapath(std::string bench, float cycle_t);
+  virtual ~BaseDatapath();
+
+  // Graph optimizations.
+  // TODO: Refactor these into a separate class.
   void setGlobalGraph();
   void clearGlobalGraph();
-  void globalOptimizationPass();
-  void initBaseAddress();
   void cleanLeafNodes();
-  void completePartition();
   void removeInductionDependence();
   void removePhiNodes();
   void memoryAmbiguation();
@@ -100,9 +104,11 @@ class Datapath
   void storeBuffer();
   void removeRepeatedStores();
   void treeHeightReduction();
-  void scratchpadPartition();
-  void findMinRankNodes(unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
+  void findMinRankNodes(
+      unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
 
+  // Configuration parsing and handling.
+  // TODO: These don't seem to need to be public.
   bool readPipeliningConfig();
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
@@ -110,33 +116,25 @@ class Datapath
          partitionEntry> & partition_config);
   bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
-  void dumpStats();
-  void writeFinalLevel();
-  void writeGlobalIsolated();
-  void writePerCycleActivity();
-  void writeBaseAddress();
-  void writeMicroop(std::vector<int> &microop);
-  
+  // State initialization.
   void initMicroop(std::vector<int> &microop);
   void updateRegStats();
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<std::string> &methodid);
   void initPrevBasicBlock(std::vector<std::string> &prevBasicBlock);
   void initInstID(std::vector<std::string> &instid);
-  void initAddressAndSize(std::unordered_map<unsigned, pair<long long int, unsigned> > &address);
+  void initAddressAndSize(
+      std::unordered_map<unsigned, pair<long long int, unsigned> > &address);
   void initAddress(std::unordered_map<unsigned, long long int> &address);
   void initLineNum(std::vector<int> &lineNum);
-  void initGetElementPtr(std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
+  void initGetElementPtr(
+      std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
 
   void updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
   void updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
 
   void setGraphForStepping();
-  void setScratchpad(Scratchpad *spad);
-  
-  bool step();
-  void stepExecutingQueue();
   void updateChildren(unsigned node_id);
   void copyToExecutingQueue();
   int fireMemNodes();
@@ -145,11 +143,23 @@ class Datapath
   void addMemReadyNode( unsigned node_id, float latency_so_far);
   void addNonMemReadyNode( unsigned node_id, float latency_so_far);
   int clearGraph();
+
+  // Stats output.
+  // TODO: How many of these need to be public?
+  void writeFinalLevel();
+  void writeGlobalIsolated();
+  void writePerCycleActivity(MemoryInterface* memory);
+  void writeBaseAddress();
+  void writeMicroop(std::vector<int> &microop);
+
+  virtual bool step();
+  virtual void dumpStats();
+  virtual void stepExecutingQueue() = 0;
+  virtual void globalOptimizationPass() = 0;
   
- private:
+ protected:
   
   //global/whole datapath variables
-  Scratchpad *scratchpad;
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
   std::vector<int> microop;

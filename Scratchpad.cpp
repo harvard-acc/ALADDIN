@@ -1,4 +1,5 @@
-#include "./Scratchpad.h"
+#include "generic_func.h"
+#include "Scratchpad.h"
 
 const unsigned MEM_size[]  = {64, 128, 256, 512, 1024, 2049, 4098, 8196, 16392, 32784, 65568, 131136, 262272, 524288, 1048576, 2097152, 4194304};
 const float MEM_rd_power[] = {1.779210, 1.779210, 2.653500, 2.653500, 3.569050, 4.695780, 5.883620, 7.587260, 9.458480, 8.363850, 13.472600, 12.640600, 18.336900, 14.724300, 23.883600, 16.310100, 28.517300};
@@ -12,15 +13,16 @@ Scratchpad::Scratchpad(unsigned p_ports_per_part)
 {
   numOfPortsPerPartition = p_ports_per_part;
 }
-Scratchpad::~Scratchpad()
-{}
-void Scratchpad::setCompScratchpad(string baseName, unsigned size)
+
+Scratchpad::~Scratchpad() {}
+
+void Scratchpad::setCompScratchpad(std::string baseName, unsigned size)
 {
   assert(!partitionExist(baseName));
   //size: number of words
   unsigned new_id = baseToPartitionID.size();
   baseToPartitionID[baseName] = new_id;
-  
+
   compPartition.push_back(true);
   occupiedBWPerPartition.push_back(0);
   sizePerPartition.push_back(size);
@@ -31,13 +33,13 @@ void Scratchpad::setCompScratchpad(string baseName, unsigned size)
   areaPerPartition.push_back(size * 32 * REG_area);
 }
 
-void Scratchpad::setScratchpad(string baseName, unsigned size)
+void Scratchpad::setScratchpad(std::string baseName, unsigned size)
 {
   assert(!partitionExist(baseName));
   //size: number of words
   unsigned new_id = baseToPartitionID.size();
   baseToPartitionID[baseName] = new_id;
-  
+
   compPartition.push_back(false);
   occupiedBWPerPartition.push_back(0);
   sizePerPartition.push_back(size);
@@ -58,12 +60,12 @@ void Scratchpad::setScratchpad(string baseName, unsigned size)
 }
 
 void Scratchpad::step()
-{ 
+{
   for (auto it = occupiedBWPerPartition.begin(); it != occupiedBWPerPartition.end(); ++it){
     *it = 0;
 }
 }
-bool Scratchpad::partitionExist(string baseName)
+bool Scratchpad::partitionExist(std::string baseName)
 {
   auto partition_it = baseToPartitionID.find(baseName);
   if (partition_it != baseToPartitionID.end())
@@ -71,7 +73,7 @@ bool Scratchpad::partitionExist(string baseName)
   else
     return 0;
 }
-bool Scratchpad::addressRequest(string baseName)
+bool Scratchpad::addressRequest(std::string baseName)
 {
   if (canServicePartition(baseName))
   {
@@ -89,7 +91,7 @@ bool Scratchpad::canService()
 {
   for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
   {
-    string base_name = base_it->first;
+    std::string base_name = base_it->first;
     //unsigned base_id = base_it->second;
     //if (!compPartition.at(base_id))
       if (canServicePartition(base_name))
@@ -97,7 +99,7 @@ bool Scratchpad::canService()
   }
   return 0;
 }
-bool Scratchpad::canServicePartition(string baseName)
+bool Scratchpad::canServicePartition(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
   if (compPartition.at(partition_id))
@@ -108,9 +110,9 @@ bool Scratchpad::canServicePartition(string baseName)
     return 0;
 }
 
-unsigned Scratchpad::findPartitionID(string baseName)
+unsigned Scratchpad::findPartitionID(std::string baseName)
 {
-  
+
   auto partition_it = baseToPartitionID.find(baseName);
   if (partition_it != baseToPartitionID.end())
     return partition_it->second;
@@ -122,49 +124,86 @@ unsigned Scratchpad::findPartitionID(string baseName)
   }
 }
 
-void Scratchpad::partitionNames(std::vector<string> &names)
+float Scratchpad::getAveragePower(unsigned int cycles) {
+  float load_power = 0;
+  float store_power = 0;
+  float leakage_power = 0;
+  for (auto it = partition_loads.begin(); it != partition_loads.end(); ++it)
+    load_power += it->second * getReadPower(it->first);
+  for (auto it = partition_stores.begin(); it != partition_stores.end(); ++it)
+    store_power += it->second * getReadPower(it->first);
+  std::vector<std::string> all_partitions;
+  getMemoryBlocks(all_partitions);
+  for (auto it = all_partitions.begin(); it != all_partitions.end(); ++it)
+    leakage_power += getLeakagePower(*it);
+
+  // Load power and store power are computed per cycle, so we have to average
+  // the aggregated per cycle power.
+  return (load_power + store_power + leakage_power)/cycles;
+}
+
+float Scratchpad::getTotalArea() {
+  std::vector<std::string> all_partitions;
+  getMemoryBlocks(all_partitions);
+  float mem_area = 0;
+  for (auto it = all_partitions.begin(); it != all_partitions.end() ; ++it)
+    mem_area += getArea(*it);
+  return mem_area;
+}
+
+void Scratchpad::getMemoryBlocks(std::vector<std::string> &names)
 {
-  for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
+  for (auto base_it = baseToPartitionID.begin();
+       base_it != baseToPartitionID.end(); ++base_it)
   {
-    string base_name = base_it->first;
+    std::string base_name = base_it->first;
     unsigned base_id = base_it->second;
     if (!compPartition.at(base_id))
       names.push_back(base_name);
   }
 }
 
-void Scratchpad::compPartitionNames(std::vector<string> &names)
+void Scratchpad::increment_loads(std::string partition)
+{
+  partition_loads[partition]++;
+}
+
+void Scratchpad::increment_stores(std::string partition)
+{
+  partition_stores[partition]++;
+}
+
+void Scratchpad::getRegisterBlocks(std::vector<std::string> &names)
 {
   for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
   {
-    string base_name = base_it->first;
+    std::string base_name = base_it->first;
     unsigned base_id = base_it->second;
     if (compPartition.at(base_id))
       names.push_back(base_name);
   }
 }
 
-float Scratchpad::readPower (std::string baseName)
+float Scratchpad::getReadPower(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
   return readPowerPerPartition.at(partition_id);
 }
 
-float Scratchpad::writePower (std::string baseName)
+float Scratchpad::getWritePower(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
   return writePowerPerPartition.at(partition_id);
 }
 
-float Scratchpad::leakPower (std::string baseName)
+float Scratchpad::getLeakagePower(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
   return leakPowerPerPartition.at(partition_id);
 }
 
-float Scratchpad::area (std::string baseName)
+float Scratchpad::getArea(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
   return areaPerPartition.at(partition_id);
 }
-
