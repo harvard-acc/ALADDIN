@@ -1,3 +1,18 @@
+Aladdin Pre-Release, v0.2.0
+10-17-2014
+*Implemented: Major refactoring of Aladdin for cache integration:
+              Datapath and Scratchpad have each been divided into parent-child
+              relationships;
+              a. Added BaseDatapath parent class that does not rely on any
+              memory-specific behavior. ScratchDatapath.cpp inherits from
+              BaseDatapath.cpp to model accelerators connetected with a local
+              scratchpad memory.
+              b. Added MemoryInterface parent class that is generic for any
+              memory structure. Scratchpad.cpp inherits from MemoryInterface.cpp
+              for scratchpads. Future implementations of cache-based memory
+              interface should follow MemoryInterface.
+--Sam Xi and Sophia Shao
+
 Aladdin Pre-Release, v0.1.4
 09-21-2014
 *Fixed: remove read/write graph file I/O operation; just read graph once and
@@ -20,7 +35,7 @@ Aladdin Pre-Release, v0.1.2
 *Fixed: tree height optimization.
 *Fixed: complete partition: when completely partitioning all the arrays in an application.
 *Fixed: store buffer: node_id overflow.
-*Fixed: loop pipelining: control dependence between basic blocks cleaned up. 
+*Fixed: loop pipelining: control dependence between basic blocks cleaned up.
 
 --Sophia Shao
 
@@ -30,11 +45,11 @@ Aladdin Pre-Release, v0.1.1
 *Fixed: update the scheduler to keep the timestamp of when nodes are fired
 *Fixed: remove function/sub-graph optimization and scheduling: all the
   optimizations are applied to the whole graph; improve optimization and
-  scheduling speed. 
+  scheduling speed.
 *Implemented: Separate loop unrolling and loop pipelining; user can turn on/off
   loop pipeling from config file
-*Implemented: Initial support for unrolling inner loops in a nested loop.  
-*Implemented: Initial support for multi-loop function.  
+*Implemented: Initial support for unrolling inner loops in a nested loop.
+*Implemented: Initial support for multi-loop function.
 
 --Sophia Shao
 

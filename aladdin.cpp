@@ -1,12 +1,12 @@
 #include "file_func.h"
 #include "ScratchpadDatapath.h"
 #include "Scratchpad.h"
-#include "dddg.h"
+#include "DDDG.h"
 #include <stdio.h>
 
 int main( int argc, const char *argv[])
 {
-   const char *logo="     ________                                                    \n"  
+   const char *logo="     ________                                                    \n"
                     "    /\\ ____  \\    ___   _       ___  ______ ______  _____  _   _ \n"
                     "   /  \\    \\  |  / _ \\ | |     / _ \\ |  _  \\|  _  \\|_   _|| \\ | |\n"
                     "  / /\\ \\    | | / /_\\ \\| |    / /_\\ \\| | | || | | |  | |  |  \\| |\n"
@@ -30,38 +30,29 @@ int main( int argc, const char *argv[])
   std::cerr << "      Starts Aladdin           " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  string bench(argv[1]);
-  string trace_file(argv[2]);
-  string config_file(argv[3]);
-  
-  cout << bench << "," << trace_file << "," << config_file <<  endl;
-  /*Build Initial DDDG*/
-  if (build_initial_dddg(bench, trace_file))
-  {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "       Aladdin Ends..          " << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
-    exit(0);
-  }
-  parse_config(bench, config_file);
-  
+  std::string bench(argv[1]);
+  std::string trace_file(argv[2]);
+  std::string config_file(argv[3]);
+
+  std::cout << bench << "," << trace_file << "," << config_file <<  std::endl;
+
   ScratchpadDatapath *acc;
   Scratchpad *spad;
 
-  spad = new Scratchpad(1); 
-  acc = new ScratchpadDatapath(bench, CYCLE_TIME);
+  spad = new Scratchpad(1);
+  acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
   acc->setScratchpad(spad);
   //get the complete graph
   acc->setGlobalGraph();
   acc->globalOptimizationPass();
   /*Profiling*/
   acc->setGraphForStepping();
-  
+
   //Scheduling
   while(!acc->step())
     spad->step();
   int cycles = acc->clearGraph();
-  
+
   acc->dumpStats();
   delete acc;
   delete spad;

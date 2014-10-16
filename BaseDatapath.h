@@ -15,7 +15,9 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <stdint.h>
 
+#include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
 #include "generic_func.h"
@@ -26,8 +28,8 @@
 #define PIPE_EDGE 12
 
 using namespace std;
-typedef boost::property < boost::vertex_name_t, unsigned> VertexProperty;
-typedef boost::property < boost::edge_name_t, int> EdgeProperty;
+typedef boost::property < boost::vertex_index_t, unsigned> VertexProperty;
+typedef boost::property < boost::edge_name_t, uint8_t> EdgeProperty;
 typedef boost::adjacency_list < boost::listS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef boost::graph_traits<Graph>::edge_descriptor Edge;
@@ -36,8 +38,7 @@ typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
 typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iter;
 typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
 typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
-typedef boost::property_map<Graph, boost::vertex_name_t>::type VertexNameMap;
-typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexIndexMap;
+typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 // Used heavily in reporting cycle-level statistics.
 typedef std::unordered_map< std::string, std::vector<int> > activity_map;
 
@@ -76,21 +77,31 @@ struct RQEntry
 
 struct RQEntryComp
 {
-  bool operator() (const RQEntry& left, const RQEntry &right) const  
+  bool operator() (const RQEntry& left, const RQEntry &right) const
   { return left.node_id < right.node_id; }
 };
 
 class BaseDatapath
 {
  public:
-  BaseDatapath(std::string bench, float cycle_t);
+  BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t);
   virtual ~BaseDatapath();
+  void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
+  std::string getBenchName() {return benchName;}
+  void setGlobalGraph();
+  void setGraphForStepping();
+  int clearGraph();
+  void parse_config(std::string bench, std::string config_file);
+
+  //Accessing stats
+  int getMicroop(unsigned int node_id) {return microop.at(node_id);}
+  int getNumOfConnectedNodes(unsigned int node_id) {return boost::degree(nameToVertex[node_id], graph_);}
+  std::string getBaseAddressLabel(unsigned int node_id) {return baseAddress[node_id].first;}
+  void insertMicroop(int node_microop) { microop.push_back(node_microop);}
+  int getNumOfNodes() {return boost::num_vertices(graph_);}
+  int getNumOfEdges() {return boost::num_edges(graph_);}
 
   // Graph optimizations.
-  // TODO: Refactor these into a separate class.
-  void setGlobalGraph();
-  void clearGlobalGraph();
-  void cleanLeafNodes();
   void removeInductionDependence();
   void removePhiNodes();
   void memoryAmbiguation();
@@ -104,11 +115,15 @@ class BaseDatapath
   void storeBuffer();
   void removeRepeatedStores();
   void treeHeightReduction();
+
+ protected:
+
+  void clearGlobalGraph();
   void findMinRankNodes(
       unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
+  void cleanLeafNodes();
 
   // Configuration parsing and handling.
-  // TODO: These don't seem to need to be public.
   bool readPipeliningConfig();
   bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
   bool readFlattenConfig(std::unordered_set<int> &flatten_config);
@@ -117,7 +132,6 @@ class BaseDatapath
   bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
   // State initialization.
-  void initMicroop(std::vector<int> &microop);
   void updateRegStats();
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<std::string> &methodid);
@@ -134,7 +148,6 @@ class BaseDatapath
   void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
   void updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
 
-  void setGraphForStepping();
   void updateChildren(unsigned node_id);
   void copyToExecutingQueue();
   int fireMemNodes();
@@ -142,10 +155,8 @@ class BaseDatapath
   void initExecutingQueue();
   void addMemReadyNode( unsigned node_id, float latency_so_far);
   void addNonMemReadyNode( unsigned node_id, float latency_so_far);
-  int clearGraph();
 
   // Stats output.
-  // TODO: How many of these need to be public?
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity(MemoryInterface* memory);
@@ -156,9 +167,7 @@ class BaseDatapath
   virtual void dumpStats();
   virtual void stepExecutingQueue() = 0;
   virtual void globalOptimizationPass() = 0;
-  
- protected:
-  
+
   //global/whole datapath variables
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
@@ -169,16 +178,10 @@ class BaseDatapath
   unsigned numTotalEdges;
 
   char* benchName;
-  float cycleTime;
-  //stateful states
+
   int cycle;
-  
-  //local/per method variables for step(), may need to include new data
-  //structure for optimization phase
-  char* graphName;
-  
-  /*igraph_t *g;*/
-  /*Graph global_graph_;*/
+  float cycleTime;
+
   Graph graph_;
   std::unordered_map<unsigned, Vertex> nameToVertex;
   VertexNameMap vertexToName;
@@ -188,14 +191,14 @@ class BaseDatapath
   std::vector<float> latestParents;
   std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
-  
+
   std::unordered_set<std::string> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;
-  
+
   //stateful states
   unsigned totalConnectedNodes;
   unsigned executedNodes;
-  
+
   std::vector<unsigned> executingQueue;
   std::vector<unsigned> readyToExecuteQueue;
 };

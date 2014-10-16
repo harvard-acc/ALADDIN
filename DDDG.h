@@ -1,11 +1,13 @@
 #ifndef DDDG_H
 #define DDDG_H
 
-#include "file_func.h"
-#include "zlib.h"
 #include <stack>
-#include "opcode_func.h"
 #include <string.h>
+#include <zlib.h>
+#include <stdlib.h>
+
+#include "file_func.h"
+#include "opcode_func.h"
 /*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
 using namespace std;
 
@@ -19,33 +21,42 @@ typedef unordered_map<std::string, unsigned int> string_to_uint;
 typedef unordered_map<long long int, unsigned int> uint_to_uint;
 typedef unordered_multimap<unsigned int, edge_node_info> multi_uint_to_node_info;
 
+class BaseDatapath;
 
-class dddg
+class DDDG
 {
+
+private:
+  BaseDatapath *datapath;
+
 public:
-  dddg();
+  DDDG(BaseDatapath *_datapath, std::string _trace_name);
   int num_edges();
   int num_nodes();
   int num_of_register_dependency();
   int num_of_memory_dependency();
   void output_method_call_graph(std::string bench);
-  void output_dddg(std::string dddg_file);
+  void output_dddg();
+  bool build_initial_dddg();
+
+private:
   void parse_instruction_line(std::string line);
   void parse_parameter(std::string line, int param_tag);
   void parse_result(std::string line);
   void parse_forward(std::string line);
   void parse_call_parameter(std::string line, int param_tag);
-private:
+
+  std::string trace_name;
   std::string curr_dynamic_function;
-  
-  int curr_microop;
-  int prev_microop;
+
+  uint8_t curr_microop;
+  uint8_t prev_microop;
   std::string prev_bblock;
   std::string curr_bblock;
-  
+
   std::string callee_function;
   std::string callee_dynamic_function;
-  
+
   bool last_parameter;
   int num_of_parameters;
   //Used to track the instruction that initialize call function parameters
@@ -69,11 +80,9 @@ private:
 	//keep track of currently executed methods
 	stack<std::string> active_method;
 	//manage methods
-  /*c_string_to_uint method_appearance_table;*/
 	string_to_uint function_counter;
   string_to_uint register_last_written;
 	uint_to_uint address_last_written;
 };
 
-int build_initial_dddg(std::string bench, std::string trace_file_name);
 #endif

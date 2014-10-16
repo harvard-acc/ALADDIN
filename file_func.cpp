@@ -55,12 +55,9 @@ void read_gzip_string_file ( string gzip_file_name, unsigned size,
 /*Read gz file into vector
 Input: gzip-file-name, size of elements, vector to write to
 */
-void read_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
+void read_gzip_file(string gzip_file_name, unsigned size, std::vector<int> &output)
 {
   gzFile gzip_file;
-#ifdef DDEBUG
-  cerr << gzip_file_name << endl;
-#endif
   if (fileExists(gzip_file_name))
   {
     gzip_file = gzopen(gzip_file_name.c_str(), "r");
@@ -73,10 +70,6 @@ void read_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
       i++;
     }
     gzclose(gzip_file);
-    
-#ifdef DDEBUG
-    cerr << "end of reading file" << gzip_file_name << endl;
-#endif
   }
   else
   {
@@ -244,105 +237,6 @@ void write_gzip_string_file(string gzip_file_name, unsigned size, vector<string>
   for (unsigned i = 0; i < size; ++i)
     gzprintf(gzip_file, "%s\n", output.at(i).c_str());
   gzclose(gzip_file);
-}
-
-void parse_config(std::string bench, std::string config_file_name)
-{
-  ifstream config_file;
-  config_file.open(config_file_name);
-  std::string wholeline;
-
-  std::vector<std::string> flatten_config;
-  std::vector<std::string> unrolling_config;
-  std::vector<std::string> partition_config;
-  std::vector<std::string> comp_partition_config;
-  std::vector<std::string> pipelining_config;
-
-  while(!config_file.eof())
-  {
-    wholeline.clear();
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    string type, rest_line;
-    int pos_end_tag = wholeline.find(",");
-    if (pos_end_tag == -1)
-      break;
-    type = wholeline.substr(0, pos_end_tag);
-    rest_line = wholeline.substr(pos_end_tag + 1);
-    if (!type.compare("flatten"))
-      flatten_config.push_back(rest_line); 
-
-    else if (!type.compare("unrolling"))
-      unrolling_config.push_back(rest_line); 
-
-    else if (!type.compare("partition"))
-      if (wholeline.find("complete") == std::string::npos)
-        partition_config.push_back(rest_line); 
-      else 
-        comp_partition_config.push_back(rest_line); 
-    else if (!type.compare("pipelining"))
-      pipelining_config.push_back(rest_line);
-    else
-    {
-      cerr << "what else? " << wholeline << endl;
-      exit(0);
-    }
-  }
-  config_file.close();
-  if (flatten_config.size() != 0)
-  {
-    string file_name(bench);
-    file_name += "_flatten_config";
-    ofstream output;
-    output.open(file_name);
-    for (unsigned i = 0; i < flatten_config.size(); ++i)
-      output << flatten_config.at(i) << endl;
-    output.close();
-  }
-  if (unrolling_config.size() != 0)
-  {
-    string file_name(bench);
-    file_name += "_unrolling_config";
-    ofstream output;
-    output.open(file_name);
-    for (unsigned i = 0; i < unrolling_config.size(); ++i)
-      output << unrolling_config.at(i) << endl;
-    output.close();
-  }
-  if (pipelining_config.size() != 0)
-  {
-    string pipelining(bench);
-    pipelining += "_pipelining_config";
-
-    ofstream pipe_config;
-    pipe_config.open(pipelining);
-    for (unsigned i = 0; i < pipelining_config.size(); ++i)
-      pipe_config << pipelining_config.at(i) << endl;
-    pipe_config.close();
-  }
-  if (partition_config.size() != 0)
-  {
-    string partition(bench);
-    partition += "_partition_config";
-
-    ofstream part_config;
-    part_config.open(partition);
-    for (unsigned i = 0; i < partition_config.size(); ++i)
-      part_config << partition_config.at(i) << endl;
-    part_config.close();
-  }
-  if (comp_partition_config.size() != 0)
-  {
-    string complete_partition(bench);
-    complete_partition += "_complete_partition_config";
-
-    ofstream comp_config;
-    comp_config.open(complete_partition);
-    for (unsigned i = 0; i < comp_partition_config.size(); ++i)
-      comp_config << comp_partition_config.at(i) << endl;
-    comp_config.close();
-  }
 }
 
 bool fileExists (const string file_name)

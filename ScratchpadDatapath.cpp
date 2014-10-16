@@ -7,8 +7,8 @@
 #include "ScratchpadDatapath.h"
 
 
-ScratchpadDatapath::ScratchpadDatapath(std::string bench, float cycle_t) :
-    BaseDatapath(bench, cycle_t) {}
+ScratchpadDatapath::ScratchpadDatapath(std::string bench, std::string trace_file, std::string config_file, float cycle_t) :
+    BaseDatapath(bench, trace_file, config_file, cycle_t) {}
 
 ScratchpadDatapath::~ScratchpadDatapath() {}
 
@@ -34,9 +34,13 @@ void ScratchpadDatapath::globalOptimizationPass() {
   storeBuffer();
   removeRepeatedStores();
   treeHeightReduction();
+  // Must do loop pipelining last; after all the data/control dependences are fixed
   loopPipelining();
 }
-
+/*
+ * Read: graph, getElementPtr.gz, completePartitionConfig, PartitionConfig
+ * Modify: baseAddress
+ */
 void ScratchpadDatapath::initBaseAddress()
 {
   std::cerr << "-------------------------------" << std::endl;
@@ -48,8 +52,6 @@ void ScratchpadDatapath::initBaseAddress()
   std::unordered_map<std::string, partitionEntry> part_config;
   readPartitionConfig(part_config);
 
-  VertexNameMap vertex_to_name = get(boost::vertex_name, graph_);
-
   std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
   initGetElementPtr(getElementPtr);
 
@@ -60,7 +62,7 @@ void ScratchpadDatapath::initBaseAddress()
       continue;
     Vertex tmp_node;
     tmp_node = *vi;
-    unsigned node_id = vertex_to_name[tmp_node];
+    unsigned node_id = vertexToName[tmp_node];
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
@@ -75,7 +77,7 @@ void ScratchpadDatapath::initBaseAddress()
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , graph_); in_edge_it != in_edge_end; ++in_edge_it)
       {
-        int parent_id = vertex_to_name[source(*in_edge_it, graph_)];
+        int parent_id = vertexToName[source(*in_edge_it, graph_)];
         int parent_microop = microop.at(parent_id);
         if (parent_microop == LLVM_IR_GetElementPtr || parent_microop == LLVM_IR_Load)
         {
@@ -119,7 +121,7 @@ void ScratchpadDatapath::initBaseAddress()
 }
 
 /*
- * Modify: graph, edgetype, edgelatency, baseAddress, microop
+ * Modify scratchpad
  */
 void ScratchpadDatapath::completePartition()
 {
@@ -141,7 +143,7 @@ void ScratchpadDatapath::completePartition()
 }
 
 /*
- * Modify: benchName_membase.gz
+ * Modify: baseAddress
  */
 void ScratchpadDatapath::scratchpadPartition()
 {
@@ -215,6 +217,7 @@ void ScratchpadDatapath::scratchpadPartition()
       }
     }
   }
+  writeBaseAddress();
 }
 
 bool ScratchpadDatapath::step() {

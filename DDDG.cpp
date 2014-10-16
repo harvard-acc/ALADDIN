@@ -1,15 +1,15 @@
-#include "dddg.h"
+#include "DDDG.h"
+#include "BaseDatapath.h"
 
 gzFile dynamic_func_file;
-gzFile microop_file;
 gzFile instid_file;
 gzFile line_num_file;
 gzFile memory_trace;
 gzFile getElementPtr_trace;
-
 gzFile prevBasicBlock_trace;
 
-dddg::dddg()
+DDDG::DDDG(BaseDatapath *_datapath, std::string _trace_name)
+  : datapath(_datapath), trace_name(_trace_name)
 {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
@@ -17,63 +17,62 @@ dddg::dddg()
   last_parameter = 0;
   prev_bblock = "-1";
 }
-int dddg::num_edges()
+int DDDG::num_edges()
 {
   return register_edge_table.size() + memory_edge_table.size();
 }
-int dddg::num_nodes()
+int DDDG::num_nodes()
 {
-  return num_of_instructions;
+  return num_of_instructions + 1;
 }
-int dddg::num_of_register_dependency()
+int DDDG::num_of_register_dependency()
 {
   return num_of_reg_dep;
 }
-int dddg::num_of_memory_dependency()
+int DDDG::num_of_memory_dependency()
 {
   return num_of_mem_dep;
 }
-void dddg::output_method_call_graph(std::string bench)
+void DDDG::output_method_call_graph(std::string bench)
 {
   std::string output_file_name(bench);
   output_file_name += "_method_call_graph";
   write_string_file(output_file_name, method_call_graph.size(),
     method_call_graph);
 }
-void dddg::output_dddg(std::string dddg_file)
+void DDDG::output_dddg()
 {
-  ofstream dddg;
 
-  dddg.open(dddg_file.c_str());
-  //write title
-  dddg << "digraph DDDG {" << endl;
-  
-  for(auto it = register_edge_table.begin(); 
+  for(auto it = register_edge_table.begin();
     it != register_edge_table.end(); ++it)
-    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << it->second.par_id << "];" << endl;
+  {
+    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+  }
+
   //Memory Dependency
   for(auto it = memory_edge_table.begin();
     it != memory_edge_table.end(); ++it)
-    dddg << it->first << " -> " << it->second.sink_node << " [e_id = " << it->second.par_id << "];" << endl;
-  dddg << "}" << endl;
-  dddg.close();
+  {
+    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+  }
 }
-void dddg::parse_instruction_line(std::string line)
+void DDDG::parse_instruction_line(std::string line)
 {
   char curr_static_function[256];
-  int microop;
   char instid[256], bblockid[256];
   int line_num;
   char comma;
+  int microop;
   int count;
   sscanf(line.c_str(), "%d,%[^,],%[^,],%[^,],%d,%d\n", &line_num, curr_static_function, bblockid, instid, &microop, &count);
-  
-  prev_microop = curr_microop;
-  curr_microop = microop;
 
-  
+  prev_microop = curr_microop;
+  curr_microop = (uint8_t)microop;
+
+  datapath->insertMicroop((curr_microop));
+
   curr_instid = instid;
-  
+
   if (!active_method.empty())
   {
      char prev_static_function[256];
@@ -98,12 +97,12 @@ void dddg::parse_instruction_line(std::string line)
          curr_dynamic_function = oss.str();
        }
        active_method.push(curr_dynamic_function);
-       
+
         // if prev inst is a IRCALL instruction
        if (prev_microop == LLVM_IR_Call)
        {
          assert(callee_function == curr_static_function);
-         
+
          ostringstream oss;
          oss << num_of_instructions << "," << prev_static_function << "-" << prev_counts  << "," << active_method.top();
          method_call_graph.push_back(oss.str());
@@ -114,7 +113,7 @@ void dddg::parse_instruction_line(std::string line)
      {
        //calling it self
        if (prev_microop == LLVM_IR_Call && callee_function == curr_static_function)
-       { 
+       {
          //a new instantiation
          auto func_it = function_counter.find(curr_static_function);
          assert(func_it != function_counter.end());
@@ -154,7 +153,6 @@ void dddg::parse_instruction_line(std::string line)
   curr_bblock = bblockid;
   gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
-  gzprintf(microop_file, "%d\n", curr_microop);
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
   gzprintf(line_num_file, "%d\n", line_num);
   num_of_instructions++;
@@ -163,10 +161,10 @@ void dddg::parse_instruction_line(std::string line)
   parameter_size_per_inst.clear();
   parameter_label_per_inst.clear();
 }
-void dddg::parse_parameter(std::string line, int param_tag)
+void DDDG::parse_parameter(std::string line, int param_tag)
 {
   int size, is_reg;
-  double value; 
+  double value;
   char label[256];
   sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
   if (!last_parameter)
@@ -210,8 +208,6 @@ void dddg::parse_parameter(std::string line, int param_tag)
     if (param_tag == 1 && curr_microop == LLVM_IR_Load)
     {
       long long int mem_address = parameter_value_per_inst.back();
-      unsigned mem_size = parameter_size_per_inst.back();
-      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())
       {
@@ -243,17 +239,21 @@ void dddg::parse_parameter(std::string line, int param_tag)
     else if (param_tag == 2 && curr_microop == LLVM_IR_Store) //2nd of Store is the pointer while 1st is the value
     {
       long long int mem_address = parameter_value_per_inst[0];
-      unsigned mem_size = parameter_size_per_inst[0];
-      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())
         addr_it->second = num_of_instructions;
       else
         address_last_written.insert(make_pair(mem_address, num_of_instructions));
-      
+
       long long int base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];
       gzprintf(getElementPtr_trace, "%d,%s,%lld\n", num_of_instructions, base_label.c_str(), base_address);
+    }
+    else if (param_tag == 1 && curr_microop == LLVM_IR_Store)
+    {
+      long long int mem_address = parameter_value_per_inst[0];
+      unsigned mem_size = parameter_size_per_inst.back();
+      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr)
     {
@@ -264,12 +264,12 @@ void dddg::parse_parameter(std::string line, int param_tag)
   }
 }
 
-void dddg::parse_result(std::string line)
+void DDDG::parse_result(std::string line)
 {
   int size, is_reg;
   double value;
   char label[256];
-  
+
   sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
   assert(is_reg);
   char unique_reg_id[256];
@@ -279,24 +279,29 @@ void dddg::parse_result(std::string line)
     reg_it->second = num_of_instructions;
   else
     register_last_written[unique_reg_id] = num_of_instructions;
-  
+
   if (curr_microop == LLVM_IR_Alloca)
     gzprintf(getElementPtr_trace, "%d,%s,%lld\n", num_of_instructions, label, (long long int)value);
+  if (curr_microop == LLVM_IR_Load)
+  {
+    long long int mem_address = parameter_value_per_inst.back();
+    gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, size);
+  }
 }
 
-void dddg::parse_forward(std::string line)
+void DDDG::parse_forward(std::string line)
 {
   int size, is_reg;
   double value;
   char label[256];
-  
+
   sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
   assert(is_reg);
-  
+
   char unique_reg_id[256];
   assert(curr_microop == LLVM_IR_Call);
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
-  
+
   auto reg_it = register_last_written.find(unique_reg_id);
   int tmp_written_inst = num_of_instructions;
   if (last_call_source != -1)
@@ -306,9 +311,9 @@ void dddg::parse_forward(std::string line)
   else
     register_last_written[unique_reg_id] = tmp_written_inst;
 }
-int build_initial_dddg(std::string bench, std::string trace_file_name)
+bool DDDG::build_initial_dddg()
 {
-  if (!fileExists(trace_file_name))
+  if (!fileExists(trace_name))
   {
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << " ERROR: Input Trace Not Found  " << std::endl;
@@ -320,21 +325,18 @@ int build_initial_dddg(std::string bench, std::string trace_file_name)
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "      Generating DDDG          " << std::endl;
     std::cerr << "-------------------------------" << std::endl;
-  } 
-	
-  dddg graph_dep;
+  }
 
   FILE *tracefile;
-  
-  tracefile = fopen(trace_file_name.c_str(), "r");
+  tracefile = fopen(trace_name.c_str(), "r");
 
-  std::string func_file_name, microop_file_name, instid_file_name;
+  std::string bench = datapath->getBenchName();
+  std::string func_file_name, instid_file_name;
   std::string memory_trace_name, getElementPtr_trace_name;
   std::string resultVar_trace_name, line_num_file_name;
   std::string prevBasicBlock_trace_name;
 
   func_file_name = bench + "_dynamic_funcid.gz";
-  microop_file_name = bench + "_microop.gz";
   instid_file_name = bench + "_instid.gz";
   line_num_file_name = bench + "_linenum.gz";
   memory_trace_name = bench + "_memaddr.gz";
@@ -342,59 +344,52 @@ int build_initial_dddg(std::string bench, std::string trace_file_name)
   prevBasicBlock_trace_name = bench + "_prevBasicBlock.gz";
 
   dynamic_func_file  = gzopen(func_file_name.c_str(), "w");
-  microop_file = gzopen(microop_file_name.c_str(), "w");
 	instid_file = gzopen(instid_file_name.c_str(), "w");
 	line_num_file = gzopen(line_num_file_name.c_str(), "w");
   memory_trace = gzopen(memory_trace_name.c_str(), "w");
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
   prevBasicBlock_trace = gzopen(prevBasicBlock_trace_name.c_str(), "w");
 
-  
+
   char buffer[256];
-  while(!feof(tracefile)) 
+  while(!feof(tracefile))
   {
     if (fgets(buffer, sizeof(buffer), tracefile) == NULL)
       continue;
-    std::string wholeline(buffer); 
-    size_t pos_end_tag = wholeline.find(","); 
-    
+    std::string wholeline(buffer);
+    size_t pos_end_tag = wholeline.find(",");
+
     if(pos_end_tag == std::string::npos) { continue; }
-    std::string tag = wholeline.substr(0,pos_end_tag); 
+    std::string tag = wholeline.substr(0,pos_end_tag);
     std::string line_left = wholeline.substr(pos_end_tag + 1);
     if (tag.compare("0") == 0)
-      graph_dep.parse_instruction_line(line_left); 
+      parse_instruction_line(line_left);
     else if (tag.compare("r")  == 0)
-      graph_dep.parse_result(line_left);	
+      parse_result(line_left);
     else if (tag.compare("f")  == 0)
-      graph_dep.parse_forward(line_left);	
-    else 
-      graph_dep.parse_parameter(line_left, atoi(tag.c_str()));	
+      parse_forward(line_left);
+    else
+      parse_parameter(line_left, atoi(tag.c_str()));
  }
 
   fclose(tracefile);
-  
+
   gzclose(dynamic_func_file);
-  gzclose(microop_file);
   gzclose(instid_file);
   gzclose(line_num_file);
   gzclose(memory_trace);
   gzclose(getElementPtr_trace);
   gzclose(prevBasicBlock_trace);
-  
+
   std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "Num of Nodes: " << graph_dep.num_nodes() << std::endl;
-  std::cerr << "Num of Edges: " << graph_dep.num_edges() << std::endl;
-  std::cerr << "Num of Reg Edges: " << graph_dep.num_of_register_dependency() << std::endl;
-  std::cerr << "Num of MEM Edges: " << graph_dep.num_of_memory_dependency() << std::endl;
+  std::cerr << "Num of Nodes: " << num_nodes() << std::endl;
+  std::cerr << "Num of Edges: " << num_edges() << std::endl;
+  std::cerr << "Num of Reg Edges: " << num_of_register_dependency() << std::endl;
+  std::cerr << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::string graph_file;
-  graph_file = bench + "_graph";
-
-  graph_dep.output_dddg(graph_file);
-  graph_dep.output_method_call_graph(bench);
-	
+  output_dddg();
+  output_method_call_graph(bench);
   return 0;
-
 }
 

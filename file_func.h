@@ -27,6 +27,5 @@ void read_gzip_file_no_size(string gzip_file_name, vector<int> &output);
 void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size, vector< pair<unsigned, unsigned> > &output);
 void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size, vector<unsigned> &output);
 
-void parse_config(string bench, string config_file_name);
 bool fileExists(const string file_name);
 #endif
