@@ -1,0 +1,3 @@
+pipelining,1
+partition,cyclic,in,128,4
+unrolling,reduction,8,4
