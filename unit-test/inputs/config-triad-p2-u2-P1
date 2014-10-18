@@ -1,0 +1,5 @@
+pipelining,1
+partition,cyclic,a,128,2
+partition,cyclic,b,128,2
+partition,cyclic,c,128,2
+unrolling,triad,5,2

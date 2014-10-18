@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <map>
+#include <list>
 #include <set>
 #include <stdint.h>
 
@@ -87,19 +88,22 @@ class BaseDatapath
   BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t);
   virtual ~BaseDatapath();
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
-  std::string getBenchName() {return benchName;}
+  void insertMicroop(int node_microop) { microop.push_back(node_microop);}
   void setGlobalGraph();
   void setGraphForStepping();
   int clearGraph();
   void parse_config(std::string bench, std::string config_file);
 
   //Accessing stats
-  int getMicroop(unsigned int node_id) {return microop.at(node_id);}
-  int getNumOfConnectedNodes(unsigned int node_id) {return boost::degree(nameToVertex[node_id], graph_);}
-  std::string getBaseAddressLabel(unsigned int node_id) {return baseAddress[node_id].first;}
-  void insertMicroop(int node_microop) { microop.push_back(node_microop);}
   int getNumOfNodes() {return boost::num_vertices(graph_);}
   int getNumOfEdges() {return boost::num_edges(graph_);}
+  int getMicroop(unsigned int node_id) {return microop.at(node_id);}
+  int getNumOfConnectedNodes(unsigned int node_id) {return boost::degree(nameToVertex[node_id], graph_);}
+  int getUnrolledLoopBoundary(unsigned int region_id) {return loopBound.at(region_id);}
+  bool doesEdgeExist(unsigned int from, unsigned int to) {return edge(nameToVertex[from], nameToVertex[to], graph_).second;}
+  std::string getBenchName() {return benchName;}
+  std::string getBaseAddressLabel(unsigned int node_id) {return baseAddress[node_id].first;}
+  int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
 
   // Graph optimizations.
   void removeInductionDependence();
@@ -111,8 +115,8 @@ class BaseDatapath
   void loopFlatten();
   void loopUnrolling();
   void loopPipelining();
-  void removeSharedLoads();
   void storeBuffer();
+  void removeSharedLoads();
   void removeRepeatedStores();
   void treeHeightReduction();
 
@@ -122,6 +126,7 @@ class BaseDatapath
   void findMinRankNodes(
       unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
   void cleanLeafNodes();
+  bool doesEdgeExistVertex(Vertex from, Vertex to) {return edge(from, to, graph_).second;}
 
   // Configuration parsing and handling.
   bool readPipeliningConfig();
@@ -132,7 +137,6 @@ class BaseDatapath
   bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
   // State initialization.
-  void updateRegStats();
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<std::string> &methodid);
   void initPrevBasicBlock(std::vector<std::string> &prevBasicBlock);
@@ -147,11 +151,12 @@ class BaseDatapath
   void updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
   void updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
-
   void updateChildren(unsigned node_id);
-  void copyToExecutingQueue();
+  void updateRegStats();
+  
   int fireMemNodes();
   int fireNonMemNodes();
+  void copyToExecutingQueue();
   void initExecutingQueue();
   void addMemReadyNode( unsigned node_id, float latency_so_far);
   void addNonMemReadyNode( unsigned node_id, float latency_so_far);
@@ -191,6 +196,7 @@ class BaseDatapath
   std::vector<float> latestParents;
   std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
+  std::vector<int> loopBound;
 
   std::unordered_set<std::string> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;

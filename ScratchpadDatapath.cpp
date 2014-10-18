@@ -83,8 +83,8 @@ void ScratchpadDatapath::initBaseAddress()
         {
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
-          tmp_flag_GEP = 1;
           tmp_parent = source(*in_edge_it, graph_);
+          tmp_flag_GEP = 1;
           flag_GEP = 1;
           break;
         }
@@ -157,9 +157,6 @@ void ScratchpadDatapath::scratchpadPartition()
   std::cerr << "      ScratchPad Partition     " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   std::string bn(benchName);
-
-  std::string partition_file;
-  partition_file = bn + "_partition_config";
 
   std::unordered_map<unsigned, pair<long long int, unsigned> > address;
   initAddressAndSize(address);
