@@ -370,7 +370,7 @@ bool DDDG::build_initial_dddg()
       parse_forward(line_left);
     else
       parse_parameter(line_left, atoi(tag.c_str()));
- }
+  }
 
   fclose(tracefile);
 
@@ -381,15 +381,15 @@ bool DDDG::build_initial_dddg()
   gzclose(getElementPtr_trace);
   gzclose(prevBasicBlock_trace);
 
+  output_dddg();
+
   std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "Num of Nodes: " << num_nodes() << std::endl;
-  std::cerr << "Num of Edges: " << num_edges() << std::endl;
+  std::cerr << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
+  std::cerr << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
   std::cerr << "Num of Reg Edges: " << num_of_register_dependency() << std::endl;
   std::cerr << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  output_dddg();
-  output_method_call_graph(bench);
   return 0;
 }
 
