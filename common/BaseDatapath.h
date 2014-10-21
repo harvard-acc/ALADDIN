@@ -91,7 +91,6 @@ class BaseDatapath
   //Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   void insertMicroop(int node_microop) { microop.push_back(node_microop);}
-
   void setGlobalGraph();
   void setGraphForStepping();
   int clearGraph();
@@ -179,7 +178,7 @@ class BaseDatapath
   virtual void globalOptimizationPass() = 0;
 
   char* benchName;
-  int cycle;
+  int num_cycles;
   float cycleTime;
   //boost graph.
   Graph graph_;

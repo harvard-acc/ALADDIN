@@ -39,7 +39,7 @@ BaseDatapath::BaseDatapath(std::string bench, string trace_file, string config_f
   }
   parse_config(bench, config_file);
 
-  cycle = 0;
+  num_cycles = 0;
 }
 
 BaseDatapath::~BaseDatapath() {}
@@ -1058,24 +1058,33 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   activity_map st_activity;
 
   std::vector<std::string> comp_partition_names;
-  memory->getRegisterBlocks(comp_partition_names);
+  // TODO(samxi): The GEM5 integration currently doesn't integrate with the GEM5
+  // power model, so we just pass a null pointer in place of the MemoryInterface
+  // pointer. We need to change the way Aladdin tracks register power so that
+  // it's not actually part of the main memory structure, but part of the
+  // datapath instead, so then we can refactor this code.
+  if (memory)
+    memory->getRegisterBlocks(comp_partition_names);
 
-  float avg_power, avg_fu_power, avg_mem_power, total_area, fu_area, mem_area;
-  fu_area = 0;
-  mem_area = memory->getTotalArea();
-  for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+  float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0,
+        total_area = 0 , fu_area = 0, mem_area = 0;
+  if (memory)
   {
-    std::string p_name = *it;
-    ld_activity.insert({p_name, make_vector(cycle)});
-    st_activity.insert({p_name, make_vector(cycle)});
-    fu_area += memory->getArea(*it);
+    mem_area = memory->getTotalArea();
+    for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+    {
+      std::string p_name = *it;
+      ld_activity.insert({p_name, make_vector(num_cycles)});
+      st_activity.insert({p_name, make_vector(num_cycles)});
+      fu_area += memory->getArea(*it);
+    }
   }
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     std::string p_name = *it;
-    mul_activity.insert({p_name, make_vector(cycle)});
-    add_activity.insert({p_name, make_vector(cycle)});
-    bit_activity.insert({p_name, make_vector(cycle)});
+    mul_activity.insert({p_name, make_vector(num_cycles)});
+    add_activity.insert({p_name, make_vector(num_cycles)});
+    bit_activity.insert({p_name, make_vector(num_cycles)});
   }
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
@@ -1114,17 +1123,17 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   tmp_name += "_power";
   power_stats.open(tmp_name.c_str());
 
-  stats << "cycles," << cycle << "," << numTotalNodes << std::endl;
-  power_stats << "cycles," << cycle << "," << numTotalNodes << std::endl;
-  stats << cycle << "," ;
-  power_stats << cycle << "," ;
+  stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
+  power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
+  stats << num_cycles << "," ;
+  power_stats << num_cycles << "," ;
 
   int max_mul =  0;
   int max_add =  0;
   int max_bit =  0;
   int max_reg_read =  0;
   int max_reg_write =  0;
-  for (unsigned level_id = 0; ((int) level_id) < cycle; ++level_id)
+  for (unsigned level_id = 0; ((int) level_id) < num_cycles; ++level_id)
   {
     if (max_reg_read < regStats.at(level_id).reads )
       max_reg_read = regStats.at(level_id).reads ;
@@ -1153,10 +1162,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   stats << "reg" << std::endl;
   power_stats << "reg" << std::endl;
 
-  avg_power = 0;
-  avg_fu_power = 0;
-
-  for (unsigned tmp_level = 0; ((int)tmp_level) < cycle ; ++tmp_level)
+  for (unsigned tmp_level = 0; ((int)tmp_level) < num_cycles ; ++tmp_level)
   {
     stats << tmp_level << "," ;
     power_stats << tmp_level << ",";
@@ -1170,16 +1176,21 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
       power_stats  << tmp_mul_power << "," << tmp_add_power << ",0," ;
     }
     //For regs
-    int curr_reg_reads = regStats.at(tmp_level).reads;
-    int curr_reg_writes = regStats.at(tmp_level).writes;
-    float tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
-    for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+    float tmp_reg_power = 0;
+    int curr_reg_reads = 0, curr_reg_writes = 0;
+    if (memory)
     {
-      curr_reg_reads     += ld_activity.at(*it).at(tmp_level);
-      curr_reg_writes    += st_activity.at(*it).at(tmp_level);
-      tmp_reg_power      += memory->getReadPower(*it) * ld_activity.at(*it).at(tmp_level) +
-                            memory->getWritePower(*it) * st_activity.at(*it).at(tmp_level) +
-                            memory->getLeakagePower(*it);
+      tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
+      curr_reg_reads = regStats.at(tmp_level).reads;
+      curr_reg_writes = regStats.at(tmp_level).writes;
+      for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
+      {
+        curr_reg_reads     += ld_activity.at(*it).at(tmp_level);
+        curr_reg_writes    += st_activity.at(*it).at(tmp_level);
+        tmp_reg_power      += memory->getReadPower(*it) * ld_activity.at(*it).at(tmp_level) +
+                              memory->getWritePower(*it) * st_activity.at(*it).at(tmp_level) +
+                              memory->getLeakagePower(*it);
+      }
     }
     avg_fu_power += tmp_reg_power;
 
@@ -1189,8 +1200,9 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   stats.close();
   power_stats.close();
 
-  avg_mem_power = memory->getAveragePower(cycle);
-  avg_fu_power /= cycle;
+  if (memory)
+    avg_mem_power = memory->getAveragePower(num_cycles);
+  avg_fu_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
   //Summary output:
   //Cycle, Avg Power, Avg FU Power, Avg MEM Power, Total Area, FU Area, MEM Area
@@ -1198,7 +1210,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   std::cerr << "        Aladdin Results        " << std::endl;
   std::cerr << "===============================" << std::endl;
   std::cerr << "Running : " << benchName << std::endl;
-  std::cerr << "Cycle : " << cycle << " cycle" << std::endl;
+  std::cerr << "Cycle : " << num_cycles << " cycles" << std::endl;
   std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
@@ -1216,7 +1228,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   summary << "        Aladdin Results        " << std::endl;
   summary << "===============================" << std::endl;
   summary << "Running : " << benchName << std::endl;
-  summary << "Cycle : " << cycle << " cycle" << std::endl;
+  summary << "Cycle : " << num_cycles << " cycles" << std::endl;
   summary << "Avg Power: " << avg_power << " mW" << std::endl;
   summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
@@ -1384,7 +1396,7 @@ int BaseDatapath::clearGraph()
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   //bottom nodes first
-  std::vector<int> earliest_child(numTotalNodes, cycle);
+  std::vector<int> earliest_child(numTotalNodes, num_cycles);
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi)
   {
     unsigned node_id = vertexToName[*vi];
@@ -1404,7 +1416,7 @@ int BaseDatapath::clearGraph()
     }
   }
   updateRegStats();
-  return cycle;
+  return num_cycles;
 }
 void BaseDatapath::updateRegStats()
 {
@@ -1434,7 +1446,7 @@ void BaseDatapath::updateRegStats()
       int child_level = newLevel.at(child_id);
       if (child_level > max_children_level)
         max_children_level = child_level;
-      if (child_level > node_level  && child_level != cycle - 1)
+      if (child_level > node_level  && child_level != num_cycles - 1)
         children_levels.insert(child_level);
 
     }
@@ -1458,7 +1470,7 @@ bool BaseDatapath::step()
 {
   stepExecutingQueue();
   copyToExecutingQueue();
-  cycle++;
+  num_cycles++;
   if (executedNodes == totalConnectedNodes)
     return 1;
   return 0;
