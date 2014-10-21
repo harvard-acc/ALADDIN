@@ -234,7 +234,7 @@ void BaseDatapath::loopFlatten()
   std::vector<int> lineNum(numTotalNodes, -1);
   initLineNum(lineNum);
 
-  std::unordered_set<unsigned> to_remove_nodes;
+  std::vector<unsigned> to_remove_nodes;
 
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
@@ -245,7 +245,7 @@ void BaseDatapath::loopFlatten()
     if (is_compute_op(microop.at(node_id)))
       microop.at(node_id) = LLVM_IR_Move;
     else if (is_branch_op(microop.at(node_id)))
-      to_remove_nodes.insert(node_id);
+      to_remove_nodes.push_back(node_id);
   }
   updateGraphWithIsolatedNodes(to_remove_nodes);
   cleanLeafNodes();
@@ -257,7 +257,7 @@ void BaseDatapath::cleanLeafNodes()
 
   /*track the number of children each node has*/
   std::vector<int> num_of_children(numTotalNodes, 0);
-  std::unordered_set<unsigned> to_remove_nodes;
+  std::vector<unsigned> to_remove_nodes;
 
   std::vector< Vertex > topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
@@ -269,15 +269,15 @@ void BaseDatapath::cleanLeafNodes()
       continue;
     unsigned  node_id = vertexToName[node_vertex];
     int node_microop = microop.at(node_id);
-    if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) 
+    if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_)
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
-      && node_microop != LLVM_IR_Ret 
+      && node_microop != LLVM_IR_Ret
       && node_microop != LLVM_IR_Br
       && node_microop != LLVM_IR_Switch
       && node_microop != LLVM_IR_Call)
     {
-      to_remove_nodes.insert(node_id); 
+      to_remove_nodes.push_back(node_id);
       //iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_); in_edge_it != in_edge_end; ++in_edge_it)
@@ -467,7 +467,7 @@ void BaseDatapath::loopUnrolling()
   std::cerr << "         Loop Unrolling        " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::unordered_set<unsigned> to_remove_nodes;
+  std::vector<unsigned> to_remove_nodes;
   std::unordered_map<std::string, unsigned> inst_dynamic_counts;
   std::vector<unsigned> nodes_between;
   std::vector<newEdge> to_add_edges;
@@ -485,7 +485,7 @@ void BaseDatapath::loopUnrolling()
     Vertex node_vertex = nameToVertex[node_id];
     if (boost::degree(node_vertex, graph_) == 0)
       continue;
-    if (!first)
+    if (!first || is_call_op(microop.at(node_id)))
     {
       first = 1;
       loopBound.push_back(node_id);
@@ -541,7 +541,7 @@ void BaseDatapath::loopUnrolling()
           prev_branch = node_id;
         }
         else
-          to_remove_nodes.insert(node_id);
+          to_remove_nodes.push_back(node_id);
       }
     }
   }
@@ -550,8 +550,10 @@ void BaseDatapath::loopUnrolling()
   if (iter_counts == 0 && unrolling_config.size() != 0 )
   {
     std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "Loop Unrolling Factor is Larger than the Loop Trip Count." << std::endl;
-    std::cerr << "Loop Unrolling is NOT applied. Please choose a smaller unrolling factor." << std::endl;
+    std::cerr << "Loop Unrolling Factor is Larger than the Loop Trip Count."
+              << std::endl;
+    std::cerr << "Loop Unrolling is NOT applied. Please choose a smaller "
+              << "unrolling factor." << std::endl;
     std::cerr << "-------------------------------" << std::endl;
   }
   updateGraphWithNewEdges(to_add_edges);
@@ -667,10 +669,9 @@ void BaseDatapath::storeBuffer()
   initDynamicMethodID(dynamic_methodid);
   initPrevBasicBlock(prev_basic_block);
 
-  std::vector<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
+  std::vector<unsigned> to_remove_nodes;
 
-  int buffered_stores = 0;
   auto bound_it = loopBound.begin();
 
   unsigned node_id = 0;
@@ -690,13 +691,15 @@ void BaseDatapath::storeBuffer()
         out_edge_iter out_edge_it, out_edge_end;
 
         std::vector<Vertex> store_child;
-        for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
+        for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
+             out_edge_it != out_edge_end; ++out_edge_it)
         {
           Vertex child_vertex = target(*out_edge_it, graph_);
           int child_id = vertexToName[child_vertex];
           if (is_load_op(microop.at(child_id)))
           {
-            std::string load_unique_id (dynamic_methodid.at(child_id) + "-" + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
+            std::string load_unique_id (dynamic_methodid.at(child_id) + "-"
+                  + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
             if (dynamicMemoryOps.find(load_unique_id) != dynamicMemoryOps.end()
                || child_id >= (unsigned)*bound_it )
               continue;
@@ -707,38 +710,35 @@ void BaseDatapath::storeBuffer()
 
         if (store_child.size() > 0)
         {
-          buffered_stores++;
-
           bool parent_found = false;
-          Vertex store_vertex;
+          Vertex store_parent;
           in_edge_iter in_edge_it, in_edge_end;
-          for (tie(in_edge_it, in_edge_end) = in_edges(node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
+          for (tie(in_edge_it, in_edge_end) = in_edges(node, graph_);
+            in_edge_it != in_edge_end; ++in_edge_it)
           {
             //parent node that generates value
             if (edge_to_parid[*in_edge_it] == 1)
             {
               parent_found = true;
-              store_vertex = source(*in_edge_it, graph_);
+              store_parent = source(*in_edge_it, graph_);
               break;
             }
           }
 
           if (parent_found)
           {
-            for (auto store_it = store_child.begin(), store_E = store_child.end(); store_it != store_E; ++store_it)
+            for (auto load_it = store_child.begin(), E = store_child.end();
+              load_it != E; ++load_it)
             {
-              Vertex load_node = *store_it;
+              Vertex load_node = *load_it;
+              to_remove_nodes.push_back(vertexToName[load_node]);
 
               out_edge_iter out_edge_it, out_edge_end;
-              for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
-              {
-                to_remove_edges.push_back(*out_edge_it);
-                Vertex child_vertex = target(*out_edge_it, graph_);
-                to_add_edges.push_back({vertexToName[store_vertex], vertexToName[child_vertex], edge_to_parid[*out_edge_it]});
-              }
-
-              for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
-                to_remove_edges.push_back(*in_edge_it);
+              for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_);
+                out_edge_it != out_edge_end; ++out_edge_it)
+                to_add_edges.push_back({(unsigned)vertexToName[store_parent],
+                  (unsigned)vertexToName[target(*out_edge_it, graph_)],
+                  edge_to_parid[*out_edge_it]});
             }
           }
         }
@@ -749,8 +749,8 @@ void BaseDatapath::storeBuffer()
     if (bound_it == loopBound.end() )
       break;
   }
-  updateGraphWithIsolatedEdges(to_remove_edges);
   updateGraphWithNewEdges(to_add_edges);
+  updateGraphWithIsolatedNodes(to_remove_nodes);
   cleanLeafNodes();
 }
 /*
@@ -1032,7 +1032,7 @@ void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
       get(boost::edge_name, graph_)[add_edge(it->from, it->to, graph_).first] = it->parid;
   }
 }
-void BaseDatapath::updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes)
+void BaseDatapath::updateGraphWithIsolatedNodes(std::vector<unsigned> &to_remove_nodes)
 {
   for(auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it)
     clear_vertex(nameToVertex[*it], graph_);
@@ -1412,7 +1412,7 @@ void BaseDatapath::updateRegStats()
   {
     if (finalIsolated.at(node_id))
       continue;
-    if (is_control_op(microop.at(node_id)) || 
+    if (is_control_op(microop.at(node_id)) ||
         is_index_op(microop.at(node_id)))
       continue;
     int node_level = newLevel.at(node_id);
@@ -1659,16 +1659,16 @@ void BaseDatapath::parse_config(std::string bench, std::string config_file_name)
     type = wholeline.substr(0, pos_end_tag);
     rest_line = wholeline.substr(pos_end_tag + 1);
     if (!type.compare("flatten"))
-      flatten_config.push_back(rest_line); 
+      flatten_config.push_back(rest_line);
 
     else if (!type.compare("unrolling"))
-      unrolling_config.push_back(rest_line); 
+      unrolling_config.push_back(rest_line);
 
     else if (!type.compare("partition"))
       if (wholeline.find("complete") == std::string::npos)
-        partition_config.push_back(rest_line); 
-      else 
-        comp_partition_config.push_back(rest_line); 
+        partition_config.push_back(rest_line);
+      else
+        comp_partition_config.push_back(rest_line);
     else if (!type.compare("pipelining"))
       pipelining_config.push_back(rest_line);
     else

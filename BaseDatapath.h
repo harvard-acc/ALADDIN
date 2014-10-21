@@ -154,7 +154,7 @@ class BaseDatapath
   //Graph updates.
   void updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
-  void updateGraphWithIsolatedNodes(std::unordered_set<unsigned> &to_remove_nodes);
+  void updateGraphWithIsolatedNodes(std::vector<unsigned> &to_remove_nodes);
   void updateChildren(unsigned node_id);
   void updateRegStats();
 
