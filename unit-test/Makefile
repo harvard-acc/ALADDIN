@@ -6,21 +6,24 @@ TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_tree_height_reduction.o test_loop_flatten.o
 TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
-MACHINE_MODEL_OBJS = $(ALADDIN_HOME)/BaseDatapath.o \
-                     $(ALADDIN_HOME)/ScratchpadDatapath.o \
-                     $(ALADDIN_HOME)/Scratchpad.o
-UTILS_OBJS = $(ALADDIN_HOME)/file_func.o $(ALADDIN_HOME)/generic_func.o \
-             $(ALADDIN_HOME)/opcode_func.o
-DDDG_OBJS = $(ALADDIN_HOME)/DDDG.o
-TEST_DEPS = $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
+TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
-CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -I$(ALADDIN_HOME)
-LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -I$(ALADDIN_HOME)/common
+LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
+         -L$(ALADDIN_HOME) -laladdin
 
 all : $(TESTS)
 
+test : $(TESTS)
+	for unit_test in $(TESTS) ; do \
+		./$$unit_test ; \
+	done
+
+$(ALADDIN_HOME)/libaladdin.a :
+	$(MAKE) -C .. lib
+
 $(TESTS) : % : %.o $(TEST_DEPS)
-	$(CXX) $(CFLAGS) -o $@ $(TEST_DEPS) $*.o $(LFLAGS)
+	$(CXX) $(CFLAGS) -o $@ $*.o $(LFLAGS)
 
 %.o : %.cpp
 	$(CXX) -c $(CFLAGS) $< -o $*.o
