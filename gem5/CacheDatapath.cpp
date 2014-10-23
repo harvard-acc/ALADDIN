@@ -32,6 +32,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
   globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
+  system->registerAcceleratorStart();
   schedule(tickEvent, clockEdge(Cycles(1)));
 }
 
@@ -267,7 +268,9 @@ bool CacheDatapath::step() {
   else
   {
     dumpStats();
-    if (system->totalNumInsts == 0) //no cpu
+    system->registerAcceleratorExit();
+    if (system->totalNumInsts == 0 && //no cpu
+        system->numRunningAccelerators() == 0)
     {
       exitSimLoop("Aladdin called exit()");
     }
