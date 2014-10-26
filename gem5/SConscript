@@ -3,8 +3,11 @@ import sys
 Import('*')
 
 SimObject('CacheDatapath.py')
+SimObject('DmaScratchpadDatapath.py')
 
 Source('../common/BaseDatapath.cpp')
+Source('../common/ScratchpadDatapath.cpp')
+Source('../common/Scratchpad.cpp')
 Source('../common/DDDG.cpp')
 Source('../common/file_func.cpp')
 Source('../common/generic_func.cpp')
@@ -12,5 +15,7 @@ Source('../common/opcode_func.cpp')
 
 Source('aladdin_tlb.cc')
 Source('CacheDatapath.cpp')
+Source('DmaScratchpadDatapath.cpp')
 
 DebugFlag('CacheDatapath')
+DebugFlag('DmaScratchpadDatapath')

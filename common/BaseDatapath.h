@@ -164,6 +164,8 @@ class BaseDatapath
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
+  void markNodeCompleted(
+      std::vector<unsigned>::iterator& executingQueuePos, int& advance_to);
 
   // Stats output.
   void writeFinalLevel();

@@ -128,9 +128,7 @@ CacheDatapath::accessTLB (Addr addr, unsigned size, bool isLoad, int node_id)
   //form request
   Request *req = NULL;
   //physical request
-  typedef uint32_t FlagsType;
-  Flags<FlagsType> flags;
-  flags = 0;
+  Flags<FlagsType> flags = 0;
   //constructor for physical request only
   req = new Request (addr, size, flags, dataMasterId());
 
@@ -171,9 +169,7 @@ CacheDatapath::accessCache (Addr addr, unsigned size, bool isLoad, int node_id)
   //form request
   Request *req = NULL;
   //physical request
-  typedef uint32_t FlagsType;
-  Flags<FlagsType> flags;
-  flags = 0;
+  Flags<FlagsType> flags = 0;
   //constructor for physical request only
   req = new Request (addr, size, flags, dataMasterId());
 
@@ -204,7 +200,8 @@ CacheDatapath::accessCache (Addr addr, unsigned size, bool isLoad, int node_id)
   return true;
 }
 
-void CacheDatapath::globalOptimizationPass() {
+void CacheDatapath::globalOptimizationPass()
+{
   // Node removals must come first.
   removeInductionDependence();
   removePhiNodes();

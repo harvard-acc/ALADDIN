@@ -76,6 +76,7 @@ class CacheDatapath : public BaseDatapath, public MemObject {
         WaitingFromCache,
         Returned
     } MemAccessStatus;
+    typedef uint32_t FlagsType;
 
     // Wrapper for step() to match the function signature required by
     // EventWrapper.

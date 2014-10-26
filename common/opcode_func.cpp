@@ -84,6 +84,12 @@ bool is_index_op (unsigned microop)
   return false;
 }
 
+// TODO: Returns false by default. We need to define a fake DMA instruction.
+bool is_dma_op(unsigned microop)
+{
+  return false;
+}
+
 float node_latency (unsigned  microop)
 {
   switch(microop)
