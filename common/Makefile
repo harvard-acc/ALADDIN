@@ -11,7 +11,7 @@ LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
 all : $(EXE)
 
 lib : $(OBJS)
-	ar rcs libaladdin.a $(OBJS)
+	ar rcs $(ALADDIN_HOME)/libaladdin.a $(OBJS)
 
 $(EXE): $(OBJS)
 	$(CXX) $(CFLAGS) aladdin.cpp

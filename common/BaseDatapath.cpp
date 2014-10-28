@@ -176,7 +176,7 @@ void BaseDatapath::removePhiNodes()
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::vector<Edge> to_remove_edges;
+  std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   vertex_iter vi, vi_end;
@@ -192,24 +192,26 @@ void BaseDatapath::removePhiNodes()
     std::vector< pair<unsigned, int> > phi_child;
 
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); out_edge_it != out_edge_end; ++out_edge_it)
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); 
+      out_edge_it != out_edge_end; ++out_edge_it)
     {
-      to_remove_edges.push_back(*out_edge_it);
-      phi_child.push_back(make_pair(vertexToName[target(*out_edge_it, graph_)], edge_to_parid[*out_edge_it]));
+      to_remove_edges.insert(*out_edge_it);
+      phi_child.push_back(make_pair(vertexToName[target(*out_edge_it, graph_)], 
+                                     edge_to_parid[*out_edge_it]));
     }
     if (phi_child.size() == 0)
       continue;
     //find its parents
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, graph_); in_edge_it != in_edge_end; ++in_edge_it)
+    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, graph_); 
+      in_edge_it != in_edge_end; ++in_edge_it)
     {
       unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
-      to_remove_edges.push_back(*in_edge_it);
+      to_remove_edges.insert(*in_edge_it);
 
-      for (auto child_it = phi_child.begin(), chil_E = phi_child.end(); child_it != chil_E; ++child_it)
-      {
+      for (auto child_it = phi_child.begin(), chil_E = phi_child.end(); 
+        child_it != chil_E; ++child_it)
         to_add_edges.push_back({parent_id, child_it->first, child_it->second});
-      }
     }
     std::vector<pair<unsigned, int> >().swap(phi_child);
     removed_phi++;
@@ -364,7 +366,7 @@ void BaseDatapath::loopPipelining()
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
   vertex_iter vi, vi_end;
-  std::vector<Edge> to_remove_edges;
+  std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   //After loop unrolling, we define strict control dependences between basic block,
@@ -434,7 +436,7 @@ void BaseDatapath::loopPipelining()
       unsigned parent_id = vertexToName[parent_vertex];
       if (is_branch_op(microop.at(parent_id)))
         continue;
-      to_remove_edges.push_back(*in_edge_it);
+      to_remove_edges.insert(*in_edge_it);
       to_add_edges.push_back({parent_id, first_id, CONTROL_EDGE});
     }
     //remove control dependence between br node to its children
@@ -443,7 +445,7 @@ void BaseDatapath::loopPipelining()
     {
       if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
         continue;
-      to_remove_edges.push_back(*out_edge_it);
+      to_remove_edges.insert(*out_edge_it);
     }
     prev_branch = br_node;
     prev_first = first_id;
@@ -582,7 +584,7 @@ void BaseDatapath::removeSharedLoads()
 
   vertex_iter vi, vi_end;
 
-  std::vector<Edge> to_remove_edges;
+  std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   int shared_loads = 0;
@@ -629,11 +631,11 @@ void BaseDatapath::removeSharedLoads()
             Vertex prev_load_vertex = nameToVertex[prev_load];
             if (doesEdgeExistVertex(prev_load_vertex, child_vertex) == false)
               to_add_edges.push_back({prev_load, child_id, edge_to_parid[curr_edge]});
-            to_remove_edges.push_back(*out_edge_it);
+            to_remove_edges.insert(*out_edge_it);
           }
           in_edge_iter in_edge_it, in_edge_end;
           for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_); in_edge_it != in_edge_end; ++in_edge_it)
-            to_remove_edges.push_back(*in_edge_it);
+            to_remove_edges.insert(*in_edge_it);
         }
       }
       node_id++;
@@ -872,7 +874,7 @@ void BaseDatapath::treeHeightReduction()
     }
   }
 
-  std::vector<Edge> to_remove_edges;
+  std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
 
   //nodes with no outgoing edges to first (bottom nodes first)
@@ -959,7 +961,7 @@ void BaseDatapath::treeHeightReduction()
       continue;
 
     for(auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end(); it != E; it++)
-      to_remove_edges.push_back(*it);
+      to_remove_edges.insert(*it);
 
     std::map<unsigned, unsigned> rank_map;
     auto leaf_it = leaves.begin();
@@ -1037,7 +1039,7 @@ void BaseDatapath::updateGraphWithIsolatedNodes(std::vector<unsigned> &to_remove
   for(auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it)
     clear_vertex(nameToVertex[*it], graph_);
 }
-void BaseDatapath::updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges)
+void BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges)
 {
   for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it!=E; ++it)
     remove_edge(*it, graph_);
