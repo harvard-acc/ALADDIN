@@ -151,7 +151,7 @@ class BaseDatapath
       std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
 
   //Graph updates.
-  void updateGraphWithIsolatedEdges(std::vector<Edge> &to_remove_edges);
+  void updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
   void updateGraphWithIsolatedNodes(std::vector<unsigned> &to_remove_nodes);
   void updateChildren(unsigned node_id);
