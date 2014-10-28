@@ -76,7 +76,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
         virtual bool recvTimingResp(PacketPtr pkt);
         virtual void recvTimingSnoopReq(PacketPtr pkt) {}
         virtual void recvFunctionalSnoop(PacketPtr pkt){}
-        virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
         virtual bool isSnooping() const { return true; }
         DmaScratchpadDatapath* _datapath;
     };
@@ -96,11 +95,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     //gem5 tick
     EventWrapper<DmaScratchpadDatapath,
                  &DmaScratchpadDatapath::event_step> tickEvent;
-    // DMA response event.
-    /*
-    EventWrapper<DmaScratchpadDatapath,
-                 &DmaScratchpadDatapath::completeDmaAccess> dmaEvent;
-    */
 
     System *system;
 };

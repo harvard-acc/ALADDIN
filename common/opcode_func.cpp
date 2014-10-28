@@ -53,6 +53,7 @@ bool is_branch_op (unsigned microop)
   switch (microop)
   {
     case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_Call:
+      case LLVM_IR_DMALoad : case LLVM_IR_DMAStore:
       return true;
     default:
       return false;
@@ -61,7 +62,7 @@ bool is_branch_op (unsigned microop)
 
 bool is_call_op(unsigned microop)
 {
-  if (microop == LLVM_IR_Call)
+  if (microop == LLVM_IR_Call || microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore)
     return true;
   return false;
 }
@@ -84,12 +85,19 @@ bool is_index_op (unsigned microop)
   return false;
 }
 
-// TODO: Returns false by default. We need to define a fake DMA instruction.
-bool is_dma_op(unsigned microop)
+bool is_dma_load(unsigned microop)
 {
-  return false;
+  return microop == LLVM_IR_DMALoad ;
+}
+bool is_dma_store(unsigned microop)
+{
+  return microop == LLVM_IR_DMAStore ;
 }
 
+bool is_dma_op(unsigned microop) 
+{
+  return is_dma_load(microop) || is_dma_store(microop);
+}
 float node_latency (unsigned  microop)
 {
   switch(microop)

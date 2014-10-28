@@ -61,7 +61,6 @@ void DDDG::parse_instruction_line(std::string line)
   char curr_static_function[256];
   char instid[256], bblockid[256];
   int line_num;
-  char comma;
   int microop;
   int count;
   sscanf(line.c_str(), "%d,%[^,],%[^,],%[^,],%d,%d\n", &line_num, curr_static_function, bblockid, instid, &microop, &count);
@@ -77,7 +76,6 @@ void DDDG::parse_instruction_line(std::string line)
   {
      char prev_static_function[256];
      unsigned prev_counts;
-     char dash;  // TODO: Looks like this is unused.
      sscanf(active_method.top().c_str(), "%[^-]-%u", prev_static_function, &prev_counts);
      if (strcmp(curr_static_function, prev_static_function) != 0)
      {
@@ -199,7 +197,8 @@ void DDDG::parse_parameter(std::string line, int param_tag)
         last_call_source = reg_it->second;
     }
   }
-  if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store || curr_microop == LLVM_IR_GetElementPtr)
+  if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store 
+    || curr_microop == LLVM_IR_GetElementPtr || is_dma_op(curr_microop))
   {
     parameter_value_per_inst.push_back((long long int) value);
     parameter_size_per_inst.push_back(size);
@@ -287,6 +286,12 @@ void DDDG::parse_result(std::string line)
     long long int mem_address = parameter_value_per_inst.back();
     gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, size);
   }
+  if (is_dma_op(curr_microop))
+  {
+      long long int mem_address = parameter_value_per_inst[1];
+      unsigned mem_size = parameter_value_per_inst[2];
+      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
+  }
 }
 
 void DDDG::parse_forward(std::string line)
@@ -299,7 +304,7 @@ void DDDG::parse_forward(std::string line)
   assert(is_reg);
 
   char unique_reg_id[256];
-  assert(curr_microop == LLVM_IR_Call);
+  assert(is_call_op(curr_microop));
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
 
   auto reg_it = register_last_written.find(unique_reg_id);

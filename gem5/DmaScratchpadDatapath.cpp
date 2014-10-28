@@ -108,19 +108,20 @@ DmaScratchpadDatapath::stepExecutingQueue()
     }
     else if (is_dma_op(microop.at(node_id)))
     {
+      DPRINTF(DmaScratchpadDatapath, "node:%d is a dma oooop\n", node_id);
       DmaRequestStatus status = Ready;
-      if (dma_requests.find(node_id) == dma_requests.end())
-        dma_requests[node_id] = status;
+      Addr addr = actualAddress[node_id].first;
+      int size = actualAddress[node_id].second;
+      if (dma_requests.find(addr) == dma_requests.end())
+        dma_requests[addr] = status;
       else
-        status = dma_requests[node_id];
+        status = dma_requests[addr];
       if (status == Ready && inFlightNodes < MAX_INFLIGHT_NODES)
       {
         //first time see, do access
-        Addr addr = actualAddress[node_id].first;
-        int size = actualAddress[node_id].second / 16;
-        bool isLoad = is_load_op(microop.at(node_id));
+        bool isLoad = is_dma_load(microop.at(node_id));
         issueDmaRequest(addr, size, isLoad, node_id);
-        dma_requests[node_id] = Waiting;
+        dma_requests[addr] = Waiting;
         DPRINTF(DmaScratchpadDatapath, "node:%d is a dma request\n", node_id);
         ++it;
         ++index;
@@ -128,7 +129,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
       else if (status == Returned)
       {
         markNodeCompleted(it, index);
-        dma_requests[*it] = status;
+        dma_requests[addr] = status;
         inFlightNodes--;
       }
       else
@@ -198,25 +199,22 @@ DmaScratchpadDatapath::completeDmaAccess(PacketPtr pkt)
           "completeDmaAccess for addr:%#x %s\n",
           pkt->getAddr(),
           pkt->cmdString());
-  DatapathSenderState *state = dynamic_cast<DatapathSenderState *> (pkt->senderState);
 
   //Mark nodes ready to fire
-  unsigned node_id = state->node_id;
-  assert(dma_requests.find(node_id) != dma_requests.end());
-  assert(dma_requests[node_id] == Waiting);
-  dma_requests[node_id] = Returned;
-  DPRINTF(DmaScratchpadDatapath, "node:%d dma access is returned\n", node_id);
+  if (dma_requests.find(pkt->getAddr()) != dma_requests.end())
+    dma_requests[pkt->getAddr()] = Returned;
 }
 
 /* Issue a DMA request for memory. */
 void DmaScratchpadDatapath::issueDmaRequest(
     Addr addr, unsigned size, bool isLoad, int node_id)
 {
-  DPRINTF(DmaScratchpadDatapath, "issueDmaRequest for addr:%#x\n", addr);
+  DPRINTF(DmaScratchpadDatapath, "issueDmaRequest for addr:%#x, size:%u\n", addr, size);
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
+  uint8_t *data = new uint8_t[size];
   // Should ultimately delay this by the scratchpad latency.
-  spadPort.dmaAction(cmd, addr, size, NULL, NULL, clockEdge(Cycles(1)), flag);
+  spadPort.dmaAction(cmd, addr, size, NULL, data, clockEdge(Cycles(1)), flag);
 }
 
 bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
