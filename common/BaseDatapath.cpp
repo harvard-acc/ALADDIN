@@ -483,7 +483,8 @@ void BaseDatapath::loopUnrolling()
     if (nameToVertex.find(node_id) == nameToVertex.end())
       continue;
     Vertex node_vertex = nameToVertex[node_id];
-    if (boost::degree(node_vertex, graph_) == 0)
+    if (boost::degree(node_vertex, graph_) == 0 
+       && !is_call_op(microop.at(node_id)))
       continue;
     if (!first || is_call_op(microop.at(node_id)))
     {
@@ -882,7 +883,6 @@ void BaseDatapath::treeHeightReduction()
        || updated.at(node_id)
        || !is_associative(microop.at(node_id)) )
       continue;
-    int node_microop = microop.at(node_id);
     updated.at(node_id) = 1;
     int node_region = bound_region.at(node_id);
 

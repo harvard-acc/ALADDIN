@@ -1,0 +1,6 @@
+pipelining,1
+partition,cyclic,a,2048,2
+partition,cyclic,b,2048,2
+partition,cyclic,c,2048,2
+unrolling,triad,15,2
+flatten,triad,18
