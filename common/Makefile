@@ -22,5 +22,4 @@ $(EXE): $(OBJS)
 
 clean:
 	rm -f *.o
-	rm -f */*.o
 	rm -f aladdin

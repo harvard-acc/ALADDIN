@@ -7,7 +7,7 @@ int reduction(int *in)
 
   for (i = 0; i < size; i++)
     sum += in[i];
-  
+
   return sum;
 }
 

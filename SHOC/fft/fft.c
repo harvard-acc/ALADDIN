@@ -1,7 +1,7 @@
 #include "fft.h"
 //////BEGIN TWIDDLES ////////
 
-void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -39,8 +39,8 @@ void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 		}
 	}
 }
-void step2(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
-  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[], 
+void step2(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
+  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
   float cos_64[448],
@@ -61,7 +61,7 @@ void step2(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step3(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step3(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -86,8 +86,8 @@ void step3(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 		}
 	}
 }
-void step4(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
-  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[], 
+void step4(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
+  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
   float cos_64[448],
@@ -107,7 +107,7 @@ void step4(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 		store8(data_y, smem, hi*8+lo, 66, reversed);
 	}
 }
-void step5(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step5(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -134,7 +134,7 @@ void step5(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -178,7 +178,7 @@ void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step7(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step7(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -201,7 +201,7 @@ void step7(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step8(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step8(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -228,7 +228,7 @@ void step8(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step9(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step9(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -251,7 +251,7 @@ void step9(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	}
 
 }
-void step10(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
+void step10(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
@@ -276,10 +276,10 @@ void step10(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 			DATA_y[tid*8 + i] = data_y[i];
 		}
 	}
-	
+
 }
-void step11(TYPE work_x[], TYPE work_y[], TYPE DATA_x[], 
-  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[], 
+void step11(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
+  TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],
   float sin_64[448],
   float cos_64[448],
@@ -308,7 +308,7 @@ void step11(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 		}
 	}
 }
-void fft1D_512(TYPE work_x[512], TYPE work_y[512], 
+void fft1D_512(TYPE work_x[512], TYPE work_y[512],
 	TYPE DATA_x[THREADS*8],
 	TYPE DATA_y[THREADS*8],
 	TYPE data_x[ 8 ],
@@ -323,7 +323,7 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
 {
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	
+
 
   step1(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step2(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
