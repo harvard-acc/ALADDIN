@@ -1,3 +1,14 @@
+Aladdin Pre-Release, v0.2.1
+10-29-2014
+*Added unit tests for graph transformation.
+*Added helper functions for DMA integration.
+*Moved Scratchpad Aladdin files to the /common directory. General Aladdin
+components now belong to /common.
+*Use std::set to store the to_remove_edges instead of std::vector in case we
+remove the same edge twice.
+
+--Sam Xi and Sophia Shao
+
 Aladdin Pre-Release, v0.2.0
 10-17-2014
 *Implemented: Major refactoring of Aladdin for cache integration:
