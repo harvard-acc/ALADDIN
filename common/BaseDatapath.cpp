@@ -192,24 +192,24 @@ void BaseDatapath::removePhiNodes()
     std::vector< pair<unsigned, int> > phi_child;
 
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); 
+    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
       out_edge_it != out_edge_end; ++out_edge_it)
     {
       to_remove_edges.insert(*out_edge_it);
-      phi_child.push_back(make_pair(vertexToName[target(*out_edge_it, graph_)], 
+      phi_child.push_back(make_pair(vertexToName[target(*out_edge_it, graph_)],
                                      edge_to_parid[*out_edge_it]));
     }
     if (phi_child.size() == 0)
       continue;
     //find its parents
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, graph_); 
+    for (tie(in_edge_it, in_edge_end) = in_edges(*vi, graph_);
       in_edge_it != in_edge_end; ++in_edge_it)
     {
       unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
       to_remove_edges.insert(*in_edge_it);
 
-      for (auto child_it = phi_child.begin(), chil_E = phi_child.end(); 
+      for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
         child_it != chil_E; ++child_it)
         to_add_edges.push_back({parent_id, child_it->first, child_it->second});
     }
@@ -275,9 +275,7 @@ void BaseDatapath::cleanLeafNodes()
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
       && node_microop != LLVM_IR_Ret
-      && node_microop != LLVM_IR_Br
-      && node_microop != LLVM_IR_Switch
-      && node_microop != LLVM_IR_Call)
+      && !is_branch_op(node_microop))
     {
       to_remove_nodes.push_back(node_id);
       //iterate its parents
@@ -476,7 +474,7 @@ void BaseDatapath::loopUnrolling()
   std::vector<int> lineNum(numTotalNodes, -1);
   initLineNum(lineNum);
 
-  bool first = 0;
+  bool first = false;
   int iter_counts = 0;
   int prev_branch = -1;
 
@@ -485,22 +483,29 @@ void BaseDatapath::loopUnrolling()
     if (nameToVertex.find(node_id) == nameToVertex.end())
       continue;
     Vertex node_vertex = nameToVertex[node_id];
-    if (boost::degree(node_vertex, graph_) == 0 
+    if (boost::degree(node_vertex, graph_) == 0
        && !is_call_op(microop.at(node_id)))
       continue;
-    if (!first || is_call_op(microop.at(node_id)))
+    if (!first)
     {
-      first = 1;
+      first = true;
       loopBound.push_back(node_id);
       prev_branch = node_id;
     }
-    if (prev_branch != -1 && prev_branch != node_id)
+    assert(prev_branch != -1);
+    if (prev_branch != node_id) {
       to_add_edges.push_back({(unsigned)prev_branch, node_id, CONTROL_EDGE});
+    }
     if (!is_branch_op(microop.at(node_id)))
       nodes_between.push_back(node_id);
     else
     {
-      assert(is_branch_op(microop.at(node_id)));
+      //for the case that the first non-isolated node is also a call node;
+      if (is_call_op(microop.at(node_id)) && *loopBound.rbegin() != node_id)
+      {
+        loopBound.push_back(node_id);
+        prev_branch = node_id;
+      }
 
       int node_linenum = lineNum.at(node_id);
       auto unroll_it = unrolling_config.find(node_linenum);
@@ -510,10 +515,12 @@ void BaseDatapath::loopUnrolling()
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                    prev_node_it != E; prev_node_it++)
         {
-          if (doesEdgeExist(*prev_node_it, node_id) == false)
+          if (doesEdgeExist(*prev_node_it, node_id) == false) {
             to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
+          }
         }
         nodes_between.clear();
+        nodes_between.push_back(node_id);
         prev_branch = node_id;
       }
       else
@@ -537,10 +544,12 @@ void BaseDatapath::loopUnrolling()
           for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                      prev_node_it != E; prev_node_it++)
           {
-            if (doesEdgeExist(*prev_node_it, node_id) == false)
+            if (doesEdgeExist(*prev_node_it, node_id) == false) {
               to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
+            }
           }
           nodes_between.clear();
+          nodes_between.push_back(node_id);
           prev_branch = node_id;
         }
         else
