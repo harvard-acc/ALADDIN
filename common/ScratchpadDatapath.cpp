@@ -77,11 +77,13 @@ void ScratchpadDatapath::initBaseAddress()
       Vertex tmp_parent;
 
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , graph_); in_edge_it != in_edge_end; ++in_edge_it)
+      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , graph_);
+        in_edge_it != in_edge_end; ++in_edge_it)
       {
         int parent_id = vertexToName[source(*in_edge_it, graph_)];
         int parent_microop = microop.at(parent_id);
-        if (parent_microop == LLVM_IR_GetElementPtr || parent_microop == LLVM_IR_Load)
+        if (parent_microop == LLVM_IR_GetElementPtr 
+            || parent_microop == LLVM_IR_Load)
         {
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];

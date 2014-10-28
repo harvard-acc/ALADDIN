@@ -281,16 +281,14 @@ void DDDG::parse_result(std::string line)
 
   if (curr_microop == LLVM_IR_Alloca)
     gzprintf(getElementPtr_trace, "%d,%s,%lld\n", num_of_instructions, label, (long long int)value);
-  if (curr_microop == LLVM_IR_Load)
-  {
+  else if (curr_microop == LLVM_IR_Load) {
     long long int mem_address = parameter_value_per_inst.back();
     gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, size);
   }
-  if (is_dma_op(curr_microop))
-  {
-      long long int mem_address = parameter_value_per_inst[1];
-      unsigned mem_size = parameter_value_per_inst[2];
-      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
+  else if (is_dma_op(curr_microop)) {
+    long long int mem_address = parameter_value_per_inst[1];
+    unsigned mem_size = parameter_value_per_inst[2];
+    gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
   }
 }
 

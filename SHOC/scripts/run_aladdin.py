@@ -37,7 +37,7 @@ def main(kernel, part, unroll, pipe):
   print 'Changing directory to %s' % newdir
   
   os.chdir(newdir)
-  os.system('%s/aladdin %s %s %s ' % (os.getenv('ALADDIN_HOME'), kernel, trace_file, config_file)) 
+  os.system('%s/common/aladdin %s %s %s ' % (os.getenv('ALADDIN_HOME'), kernel, trace_file, config_file)) 
 
 if __name__ == '__main__':
   kernel = sys.argv[1]
