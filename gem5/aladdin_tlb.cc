@@ -2,7 +2,10 @@
 #include "CacheDatapath.h"
 #include "debug/CacheDatapath.hh"
 
-AladdinTLB::AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc, Cycles _hit_latency, Cycles _miss_latency, Addr _page_bytes, bool _is_perfect, unsigned _num_walks) :
+AladdinTLB::AladdinTLB(
+    CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
+    Cycles _hit_latency, Cycles _miss_latency, Addr _page_bytes,
+    bool _is_perfect, unsigned _num_walks) :
   datapath(_datapath),
   numEntries(_num_entries),
   assoc(_assoc),
@@ -28,6 +31,7 @@ AladdinTLB::~AladdinTLB()
 AladdinTLB::deHitQueueEvent::deHitQueueEvent(AladdinTLB *_tlb)
    : Event(Default_Pri, AutoDelete),
      tlb(_tlb) {}
+
 void
 AladdinTLB::deHitQueueEvent::process()
 {
@@ -35,15 +39,16 @@ AladdinTLB::deHitQueueEvent::process()
   tlb->datapath->finishTranslation(tlb->hitQueue.front());
   tlb->hitQueue.pop_front();
 }
+
 const char *
 AladdinTLB::deHitQueueEvent::description() const
 {
   return "TLB Hit";
 }
 
-AladdinTLB::outStandingWalkReturnEvent::outStandingWalkReturnEvent(AladdinTLB *_tlb)
-   : Event(Default_Pri, AutoDelete),
-     tlb(_tlb) {}
+AladdinTLB::outStandingWalkReturnEvent::outStandingWalkReturnEvent(
+    AladdinTLB *_tlb) : Event(Default_Pri, AutoDelete), tlb(_tlb) {}
+
 void
 AladdinTLB::outStandingWalkReturnEvent::process()
 {
@@ -59,6 +64,7 @@ AladdinTLB::outStandingWalkReturnEvent::process()
   tlb->missQueue.erase(vpn);
   tlb->outStandingWalks.pop_front();
 }
+
 const char *
 AladdinTLB::outStandingWalkReturnEvent::description() const
 {
@@ -114,6 +120,7 @@ AladdinTLB::name() const
 {
   return datapath->name() + ".tlb";
 }
+
 bool
 TLBMemory::lookup(Addr vpn, Addr& ppn, bool set_mru)
 {
@@ -162,23 +169,3 @@ TLBMemory::insert(Addr vpn, Addr ppn)
     entry->free = false;
     entry->setMRU();
 }
-/*
-void
-AladdinTLB::regStats()
-{
-    hits
-        .name(name()+".hits")
-        .desc("Number of hits in this TLB")
-        ;
-    misses
-        .name(name()+".misses")
-        .desc("Number of misses in this TLB")
-        ;
-    hitRate
-        .name(name()+".hitRate")
-        .desc("Hit rate for this TLB")
-        ;
-
-    hitRate = hits / (hits + misses);
-}
-*/

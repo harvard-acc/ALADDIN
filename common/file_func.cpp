@@ -122,7 +122,7 @@ void read_gzip_file_no_size(string gzip_file_name, vector<int> &output)
     i++;
   }
   gzclose(gzip_file);
-  
+
   if (i == 0)
   {
     cerr << "file not open " << gzip_file_name << endl;
@@ -153,7 +153,7 @@ void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size,
     i++;
   }
   gzclose(gzip_file);
-  
+
   if (i == 0)
   {
     cerr << "file not open " << gzip_file_name << endl;
@@ -252,4 +252,3 @@ bool fileExists (const string file_name)
     return true;
   return false;
 }
-

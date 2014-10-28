@@ -90,14 +90,6 @@ DmaScratchpadDatapath::stepExecutingQueue()
           scratchpad->increment_loads(node_part);
         else
           scratchpad->increment_stores(node_part);
-        /*
-        executedNodes++;
-        newLevel.at(node_id) = num_cycles;
-        executingQueue.erase(it);
-        updateChildren(node_id);
-        it = executingQueue.begin();
-        std::advance(it, index);
-        */
         markNodeCompleted(it, index);
       }
       else
@@ -142,14 +134,6 @@ DmaScratchpadDatapath::stepExecutingQueue()
     else
     {
       // Not a memory operation node, so it can be completed in one cycle.
-      /*
-      executedNodes++;
-      newLevel.at(node_id) = num_cycles;
-      executingQueue.erase(it);
-      updateChildren(node_id);
-      it = executingQueue.begin();
-      std::advance(it, index);
-      */
       markNodeCompleted(it, index);
     }
   }

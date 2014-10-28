@@ -33,12 +33,12 @@ void last_step_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE], int sum[SCA
   loop3_outter:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
     loop3_inner:for (i = 0; i < SCAN_BLOCK; ++i)
     {
-      bucket2[radixID * SCAN_BLOCK + i] = 
+      bucket2[radixID * SCAN_BLOCK + i] =
         bucket[radixID * SCAN_BLOCK + i ] + sum[radixID];
     }
 
 }
-void pp_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE], 
+void pp_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE],
   int sum[SCAN_RADIX])
 {
   local_scan(bucket);
@@ -57,8 +57,8 @@ int main()
   int max, min;
 	srand(8650341L);
   max = 2048;
-  min = 0;	
-  for(i=0; i<N; i++){ 
+  min = 0;
+  for(i=0; i<N; i++){
     bucket[i] = (TYPE)(((double) rand() / (RAND_MAX)) * (max-min) + min);
     bucket2[i] = (TYPE)(((double) rand() / (RAND_MAX)) * (max-min) + min);
   }

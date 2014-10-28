@@ -81,5 +81,4 @@ bool is_dma_store(unsigned microop);
 bool is_dma_op(unsigned microop);
 float node_latency (unsigned  microop);
 
-#endif  
-        
+#endif

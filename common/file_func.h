@@ -1,11 +1,11 @@
 #ifndef FILE_FUNC_H
 #define FILE_FUNC_H
 
-#include <iostream> 
+#include <iostream>
 #include <sstream> // std::istringstream
 #include <fstream>
 #include <stdlib.h>
-#include <string> 
+#include <string>
 #include <vector>
 #include <unordered_map>
 #include <assert.h>
@@ -22,7 +22,7 @@ void write_string_file(string file_name, unsigned size, vector<string> &output);
 void read_file(string file_name, vector<int> &output);
 void read_gzip_file(string gzip_file_name, unsigned size, vector<int> &output);
 void read_gzip_unsigned_file(string gzip_file_name, unsigned size, vector<unsigned> &output);
-void read_gzip_string_file ( string gzip_file_name, unsigned size, vector<string> &output);
+void read_gzip_string_file(string gzip_file_name, unsigned size, vector<string> &output);
 void read_gzip_file_no_size(string gzip_file_name, vector<int> &output);
 void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size, vector< pair<unsigned, unsigned> > &output);
 void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size, vector<unsigned> &output);

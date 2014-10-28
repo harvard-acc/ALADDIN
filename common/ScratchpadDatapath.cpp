@@ -7,7 +7,9 @@
 #include "ScratchpadDatapath.h"
 
 
-ScratchpadDatapath::ScratchpadDatapath(std::string bench, std::string trace_file, std::string config_file, float cycle_t) :
+ScratchpadDatapath::ScratchpadDatapath(
+    std::string bench, std::string trace_file,
+    std::string config_file, float cycle_t) :
     BaseDatapath(bench, trace_file, config_file, cycle_t) {}
 
 ScratchpadDatapath::~ScratchpadDatapath() {}

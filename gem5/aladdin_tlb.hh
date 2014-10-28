@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include "base/statistics.hh"
-//#include "params/AladdinTLB.hh"
 #include "mem/mem_object.hh"
 #include "mem/request.hh"
 
@@ -143,7 +142,9 @@ class AladdinTLB
     std::unordered_multimap<Addr, PacketPtr> missQueue;
 
   public:
-    AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc, Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes, bool _is_perfect, unsigned _num_walks);
+    AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
+               Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
+               bool _is_perfect, unsigned _num_walks);
     ~AladdinTLB();
 
     std::string name() const;

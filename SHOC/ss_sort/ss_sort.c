@@ -39,7 +39,7 @@ void last_step_scan(int bucket[BUCKETSIZE], int sum[SCAN_RADIX])
     //fully unroll
     loop3_inner:for (i = 0; i < SCAN_BLOCK; ++i)
     {
-      bucket[radixID * SCAN_BLOCK + i] = 
+      bucket[radixID * SCAN_BLOCK + i] =
         bucket[radixID * SCAN_BLOCK + i ] + sum[radixID];
     }
 
@@ -78,7 +78,7 @@ void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
     {
       b[bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + maskID];
       bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;
-    
+
     /*b[bucket[((a[blockID * ELEMENTSPERBLOCK + 1] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + 1];*/
     /*bucket[((a[blockID * ELEMENTSPERBLOCK + 1] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;*/
 
@@ -105,9 +105,9 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
       hist(bucket, a, exp);
     else
       hist(bucket, b, exp);
-      
+
     //SCAN
-    //ignore for now.    
+    //ignore for now.
     local_scan(bucket);
     sum_scan(sum, bucket);
     last_step_scan(bucket, sum);
@@ -123,7 +123,7 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
       update(a, bucket, b, exp);
       flag = 0;
     }
-    
+
     //copy(a, b);
 	}
 }
@@ -142,9 +142,9 @@ int main()
         float max, min;
 	srand(8650341L);
   max = 255;
-  min = 0;	
+  min = 0;
 
-        for(i=0; i<N; i++){ 
+        for(i=0; i<N; i++){
                 arr[i] = (TYPE)(((double) rand() / (RAND_MAX)) * (max-min) +
                 min);
         }

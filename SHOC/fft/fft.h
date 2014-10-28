@@ -117,4 +117,3 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
   float sin_512[448],
   float cos_512[448]
 );
-

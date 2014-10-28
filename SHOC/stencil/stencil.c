@@ -1,6 +1,6 @@
 #include "stencil.h"
 //The row/col sizes specified in SHOC:
-//{512, 1024, 2048, 4096} 
+//{512, 1024, 2048, 4096}
 
 
 void stencil (int *orig, int *sol, int const *filter)
@@ -81,7 +81,7 @@ int main()
 
  	srand(8650341L);
         max = 2147483646;
-        min = 0;	
+        min = 0;
   OrigImg = (int *)malloc(sizeof(int) * 34 * 34);
   Solution = (int *)malloc(sizeof(int) * 34 * 34);
   Filter = (int *) malloc(sizeof(int) * 3 * 3);
@@ -89,12 +89,12 @@ int main()
 	{
 		for(j=0;j<34 ;j++)
 		{
-			OrigImg[i * (34 ) + j] = (int)(( rand() * 1.0 * ( max-min) / (RAND_MAX)) + min); 
+			OrigImg[i * (34 ) + j] = (int)(( rand() * 1.0 * ( max-min) / (RAND_MAX)) + min);
 			Solution[i * (34 ) + j] = 0;
 			//printf("Orig: %d ", OrigImg[i*(34+2) +j]);
 		}
 		printf("\n");
-	}	
+	}
 
 	for(i=0;i<3;i++)
 	{
@@ -120,6 +120,6 @@ int main()
 			printf("\n");
 		}
 	printf("Success!!\n");
-	
+
 	return 0;
 }
