@@ -239,7 +239,7 @@ void ScratchpadDatapath::stepExecutingQueue()
         else
           scratchpad->increment_stores(node_part);
         executedNodes++;
-        newLevel.at(node_id) = cycle;
+        newLevel.at(node_id) = num_cycles;
         executingQueue.erase(it);
         updateChildren(node_id);
         it = executingQueue.begin();
@@ -254,7 +254,7 @@ void ScratchpadDatapath::stepExecutingQueue()
     else
     {
       executedNodes++;
-      newLevel.at(node_id) = cycle;
+      newLevel.at(node_id) = num_cycles;
       executingQueue.erase(it);
       updateChildren(node_id);
       it = executingQueue.begin();

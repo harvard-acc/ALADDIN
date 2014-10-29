@@ -77,7 +77,7 @@ void DDDG::parse_instruction_line(std::string line)
   {
      char prev_static_function[256];
      unsigned prev_counts;
-     char dash;
+     char dash;  // TODO: Looks like this is unused.
      sscanf(active_method.top().c_str(), "%[^-]-%u", prev_static_function, &prev_counts);
      if (strcmp(curr_static_function, prev_static_function) != 0)
      {

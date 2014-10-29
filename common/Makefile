@@ -15,8 +15,9 @@ $(EXE): $(OBJS)
 	$(CXX)  $(BITWIDTH) -o $(EXE) $(EXE).o $(OBJS) $(LFLAGS)
 
 %.o : %.h %.cpp
-	$(CXX) $(CFLAGS) $*.cpp
+	$(CXX) $(CFLAGS) -o $@ $*.cpp
 
 clean:
 	rm -f *.o
+	rm -f */*.o
 	rm -f aladdin

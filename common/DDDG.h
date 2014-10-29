@@ -1,5 +1,5 @@
-#ifndef DDDG_H
-#define DDDG_H
+#ifndef __DDDG_H__
+#define __DDDG_H__
 
 #include <stack>
 #include <string.h>

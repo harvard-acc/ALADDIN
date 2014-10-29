@@ -58,6 +58,9 @@ Input: gzip-file-name, size of elements, vector to write to
 void read_gzip_file(string gzip_file_name, unsigned size, std::vector<int> &output)
 {
   gzFile gzip_file;
+#ifdef DDEBUG
+  std::cerr << gzip_file_name << std::endl;
+#endif
   if (fileExists(gzip_file_name))
   {
     gzip_file = gzopen(gzip_file_name.c_str(), "r");
@@ -70,6 +73,9 @@ void read_gzip_file(string gzip_file_name, unsigned size, std::vector<int> &outp
       i++;
     }
     gzclose(gzip_file);
+#ifdef DDEBUG
+    std::cerr << "end of reading file" << gzip_file_name << std::endl;
+#endif
   }
   else
   {
