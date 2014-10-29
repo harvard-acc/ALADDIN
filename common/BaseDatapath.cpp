@@ -1476,6 +1476,20 @@ bool BaseDatapath::step()
   return 0;
 }
 
+// Marks a node as completed and advances the executing queue iterator.
+void BaseDatapath::markNodeCompleted(
+    std::vector<unsigned>::iterator& executingQueuePos,
+    int& advance_to)
+{
+  unsigned node_id = *executingQueuePos;
+  executedNodes++;
+  newLevel.at(node_id) = num_cycles;
+  executingQueue.erase(executingQueuePos);
+  updateChildren(node_id);
+  executingQueuePos = executingQueue.begin();
+  std::advance(executingQueuePos, advance_to);
+}
+
 void BaseDatapath::updateChildren(unsigned node_id)
 {
   Vertex node = nameToVertex[node_id];

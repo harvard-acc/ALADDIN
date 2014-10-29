@@ -15,7 +15,7 @@ class Scratchpad : public MemoryInterface
 {
  public:
   Scratchpad(unsigned p_ports_per_part);
-  ~Scratchpad();
+  virtual ~Scratchpad();
   void step();
   void setScratchpad(std::string baseName, unsigned size);
   void setCompScratchpad(std::string baseName, unsigned size);
