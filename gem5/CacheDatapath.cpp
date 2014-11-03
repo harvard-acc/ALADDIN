@@ -16,6 +16,8 @@ CacheDatapath::CacheDatapath(const Params *p) :
     tickEvent(this),
     retryPkt(NULL),
     isCacheBlocked(false),
+    load_queue(p->loadQueueSize, p->loadBandwidth),
+    store_queue(p->storeQueueSize, p->storeBandwidth),
     dtb(this,
         p->tlbEntries,
         p->tlbAssoc,
@@ -23,7 +25,8 @@ CacheDatapath::CacheDatapath(const Params *p) :
         p->tlbMissLatency,
         p->tlbPageBytes,
         p->isPerfectTLB,
-        p->numOutStandingWalks),
+        p->numOutStandingWalks,
+        p->tlbBandwidth),
     inFlightNodes(0),
     system(p->system)
 {
@@ -114,7 +117,7 @@ CacheDatapath::finishTranslation(PacketPtr pkt)
   unsigned node_id = state->node_id;
   assert(mem_accesses.find(node_id) != mem_accesses.end());
   assert(mem_accesses[node_id] == Translating);
-  mem_accesses[node_id] = Translated;
+  mem_accesses[node_id] = Ready;
   DPRINTF(CacheDatapath, "node:%d mem access is translated\n", node_id);
   delete state;
   delete pkt->req;
@@ -158,14 +161,28 @@ CacheDatapath::accessTLB (Addr addr, unsigned size, bool isLoad, int node_id)
 }
 
 bool
-CacheDatapath::accessCache (Addr addr, unsigned size, bool isLoad, int node_id)
+CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
 {
   DPRINTF(CacheDatapath, "accessCache for addr:%#x\n", addr);
-  if (isCacheBlocked)
-  {//already someone waiting
-    DPRINTF(CacheDatapath, "cache blocked...\n");
+  bool queues_available = (isLoad && load_queue.can_issue()) ||
+                          (!isLoad && store_queue.can_issue());
+  if (!queues_available)
+  {
+    DPRINTF(CacheDatapath, "Load/store queues are full or no more ports are available.\n");
     return false;
   }
+  if (isCacheBlocked)
+  {
+    DPRINTF(CacheDatapath, "MSHR is full. Waiting for misses to return.\n");
+    return false;
+  }
+
+  // Bandwidth limitations.
+  if (isLoad)
+    load_queue.issued_this_cycle ++;
+  else
+    store_queue.issued_this_cycle ++;
+
   //form request
   Request *req = NULL;
   //physical request
@@ -192,10 +209,16 @@ CacheDatapath::accessCache (Addr addr, unsigned size, bool isLoad, int node_id)
     assert(retryPkt == NULL);
     retryPkt = data_pkt;
     isCacheBlocked = true;
-    DPRINTF(CacheDatapath, "retry later...\n");
+    DPRINTF(CacheDatapath, "port is blocked. Will retry later...\n");
   }
   else
-    DPRINTF(CacheDatapath, "issued to dcache!\n");
+  {
+    if (isLoad)
+      DPRINTF(CacheDatapath, "load issued to dcache!\n");
+    else
+      DPRINTF(CacheDatapath, "store issued to dcache!\n");
+
+  }
 
   return true;
 }
@@ -247,11 +270,19 @@ void CacheDatapath::copyToExecutingQueue()
   }
 }
 
-void CacheDatapath::event_step() {
+void CacheDatapath::resetCacheCounters()
+{
+  load_queue.issued_this_cycle = 0;
+  store_queue.issued_this_cycle = 0;
+  dtb.resetRequestCounter();
+}
+void CacheDatapath::event_step()
+{
   step();
 }
 
 bool CacheDatapath::step() {
+  resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();
   DPRINTF(CacheDatapath, "Aladdin stepping @ Cycle:%d, executed:%d, total:%d\n", num_cycles, executedNodes, totalConnectedNodes);
@@ -289,17 +320,21 @@ void CacheDatapath::stepExecutingQueue()
         mem_accesses[node_id] = status;
       else
         status = mem_accesses[node_id];
-      if (status == Ready && inFlightNodes < MAX_INFLIGHT_NODES)
+      bool isLoad = is_load_op(microop.at(node_id));
+      if (status == Ready)
       {
-        //first time see, do access
+        // First time seeing this node. Start the memory access procedure.
         Addr addr = actualAddress[node_id].first;
         int size = actualAddress[node_id].second / 16;
-        bool isLoad = is_load_op(microop.at(node_id));
-        if (accessTLB(addr, size, isLoad, node_id))
+        if (dtb.canRequestTranslation() && accessTLB(addr, size, isLoad, node_id))
         {
           mem_accesses[node_id] = Translating;
+          dtb.incrementRequestCounter();
           DPRINTF(CacheDatapath, "node:%d mem access is translating\n", node_id);
-          inFlightNodes++;
+        }
+        else if (!dtb.canRequestTranslation())
+        {
+          DPRINTF(CacheDatapath, "node:%d TLB queue is full\n", node_id);
         }
         ++it;
         ++index;
@@ -308,25 +343,32 @@ void CacheDatapath::stepExecutingQueue()
       {
         Addr addr = actualAddress[node_id].first;
         int size = actualAddress[node_id].second / 16;
-        bool isLoad = is_load_op(microop.at(node_id));
         if (accessCache(addr, size, isLoad, node_id))
         {
           mem_accesses[node_id] = WaitingFromCache;
+          if (isLoad)
+            load_queue.in_flight ++;
+          else
+            store_queue.in_flight ++;
           DPRINTF(CacheDatapath, "node:%d mem access is accessing cache\n", node_id);
+        }
+        else
+        {
+          if (isLoad)
+            DPRINTF(CacheDatapath, "node:%d load queue is full\n", node_id);
+          else
+            DPRINTF(CacheDatapath, "node:%d store queue is full\n", node_id);
         }
         ++it;
         ++index;
       }
       else if (status == Returned)
       {
-        executedNodes++;
-        newLevel.at(node_id) = num_cycles;
-        mem_accesses[node_id] = status;
-        executingQueue.erase(it);
-        updateChildren(node_id);
-        it = executingQueue.begin();
-        std::advance(it, index);
-        inFlightNodes--;
+        if (isLoad)
+          load_queue.in_flight --;
+        else
+          store_queue.in_flight --;
+        markNodeCompleted(it, index);
       }
       else
       {
@@ -336,12 +378,7 @@ void CacheDatapath::stepExecutingQueue()
     }
     else
     {
-      executedNodes++;
-      newLevel.at(node_id) = num_cycles;
-      executingQueue.erase(it);
-      updateChildren(node_id);
-      it = executingQueue.begin();
-      std::advance(it, index);
+      markNodeCompleted(it, index);
     }
   }
 }

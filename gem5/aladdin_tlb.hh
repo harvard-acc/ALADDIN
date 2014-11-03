@@ -105,9 +105,9 @@ class AladdinTLB
     Addr pageBytes;
     bool isPerfectTLB;
     unsigned numOutStandingWalks;
+    unsigned numOccupiedMissQueueEntries;
 
     BaseTLBMemory *tlbMemory;
-
 
     class deHitQueueEvent : public Event
     {
@@ -144,7 +144,7 @@ class AladdinTLB
   public:
     AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
                Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
-               bool _is_perfect, unsigned _num_walks);
+               bool _is_perfect, unsigned _num_walks, unsigned _bandwidth);
     ~AladdinTLB();
 
     std::string name() const;
@@ -153,6 +153,14 @@ class AladdinTLB
 
     void insert(Addr vpn, Addr ppn);
 
+    bool canRequestTranslation();
+    void incrementRequestCounter() { requests_this_cycle ++; }
+    void resetRequestCounter() { requests_this_cycle = 0; }
+
+    /* Number of TLB translation requests in the current cycle. */
+    unsigned requests_this_cycle;
+    /* Maximum translation requests per cycle. */
+    unsigned bandwidth;
     //void regStats();
     /*
     Stats::Scalar hits;

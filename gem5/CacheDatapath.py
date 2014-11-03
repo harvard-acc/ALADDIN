@@ -10,20 +10,22 @@ class CacheDatapath(MemObject):
   configFileName = Param.String("Aladdin Config File")
   cycleTime = Param.Unsigned(6, "Clock Period: 6ns default")
 
-
   tlbEntries = Param.Int(0, "number entries in TLB (0 implies infinite)")
-
   tlbAssoc = Param.Int(4, "Number of sets in the TLB")
-
   tlbHitLatency = Param.Cycles(0, "number of cycles for a hit")
-
   tlbMissLatency = Param.Cycles(10, "number of cycles for a miss")
-
   tlbPageBytes = Param.Int(4096, "Page Size")
-
   isPerfectTLB = Param.Bool(False, "Is this TLB perfect (e.g. always hit)")
-
   numOutStandingWalks = Param.Int(4, "num of outstanding page walks")
+  loadQueueSize = Param.Int(16, "Size of the load queue.")
+  loadBandwidth = Param.Int(
+      1, "Number of loads that can be issued per cycle.")
+  storeQueueSize = Param.Int(16, "Size of the store queue.")
+  storeBandwidth = Param.Int(
+      1, "Number of stores that can be issued per cycle.")
+  tlbQueueSize = Param.Int(2, "Size of the TLB queue.")
+  tlbBandwidth = Param.Int(
+      1, "Number of translations that can be requested per cycle.")
 
   system = Param.System(Parent.any, "system object")
 

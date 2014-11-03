@@ -78,6 +78,28 @@ class CacheDatapath : public BaseDatapath, public MemObject {
     } MemAccessStatus;
     typedef uint32_t FlagsType;
 
+    /* Stores the number of load, stores, or TLB requests in flight as well as
+     * the size of the corresponding queue. */
+    struct mem_queue
+    {
+      const int size;  // Size of the queue.
+      const int bandwidth;  // Max requests per cycle.
+      int in_flight;  // Number of requests in the queue.
+      int issued_this_cycle;  // Number of requests issued in the current cycle.
+
+      mem_queue(int _size, int _bandwidth):
+          size(_size), bandwidth(_bandwidth),
+          in_flight(0), issued_this_cycle(0) {}
+
+      /* Returns true if we have not exceeded the cache's bandwidth or the size
+       * of the request queue.
+       */
+      bool can_issue()
+      {
+        return (in_flight < size) && (issued_this_cycle < bandwidth);
+      }
+    };
+
     // Wrapper for step() to match the function signature required by
     // EventWrapper.
     void event_step();
@@ -87,6 +109,7 @@ class CacheDatapath : public BaseDatapath, public MemObject {
     void stepExecutingQueue();
     void globalOptimizationPass();
     void initActualAddress();
+    void resetCacheCounters();
 
     class Node
     {
@@ -131,7 +154,10 @@ class CacheDatapath : public BaseDatapath, public MemObject {
     };
     PacketPtr retryPkt;
 
+    /* True if the cache's MSHRs are full. */
     bool isCacheBlocked;
+
+    /* Actual memory request addresses, obtained from the trace. */
     std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;
 
     /* TODO(samxi): I'd like to separate the cache interactions into its own
@@ -139,6 +165,10 @@ class CacheDatapath : public BaseDatapath, public MemObject {
      * that can't be a priority.
      */
     std::map<unsigned, MemAccessStatus> mem_accesses;
+    /* Load and store queues. */
+    mem_queue load_queue;
+    mem_queue store_queue;
+
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
     void writeTLBStats();

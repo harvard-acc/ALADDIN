@@ -5,7 +5,7 @@
 AladdinTLB::AladdinTLB(
     CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
     Cycles _hit_latency, Cycles _miss_latency, Addr _page_bytes,
-    bool _is_perfect, unsigned _num_walks) :
+    bool _is_perfect, unsigned _num_walks, unsigned _bandwidth) :
   datapath(_datapath),
   numEntries(_num_entries),
   assoc(_assoc),
@@ -13,7 +13,8 @@ AladdinTLB::AladdinTLB(
   missLatency(_miss_latency),
   pageBytes(_page_bytes),
   isPerfectTLB(_is_perfect),
-  numOutStandingWalks(_num_walks)
+  numOutStandingWalks(_num_walks),
+  bandwidth(_bandwidth)
 {
   if (numEntries > 0)
     tlbMemory = new TLBMemory (_num_entries, _assoc, _page_bytes);
@@ -52,6 +53,8 @@ AladdinTLB::outStandingWalkReturnEvent::outStandingWalkReturnEvent(
 void
 AladdinTLB::outStandingWalkReturnEvent::process()
 {
+  // TLB return events are free because only the CPU's hardware control units
+  // can write to the TLB; programs can only read the TLB.
   assert(!tlb->missQueue.empty());
   Addr vpn = tlb->outStandingWalks.front();
   //insert TLB entry; for now, vpn == ppn
@@ -61,6 +64,7 @@ AladdinTLB::outStandingWalkReturnEvent::process()
   for(auto it = range.first; it!= range.second; ++it)
     tlb->datapath->finishTranslation(it->second);
 
+  tlb->numOccupiedMissQueueEntries --;
   tlb->missQueue.erase(vpn);
   tlb->outStandingWalks.pop_front();
 }
@@ -102,6 +106,13 @@ AladdinTLB::translateTiming(PacketPtr pkt)
         outStandingWalks.push_back(vpn);
         outStandingWalkReturnEvent *mq = new outStandingWalkReturnEvent(this);
         datapath->schedule(mq, datapath->clockEdge(missLatency));
+        numOccupiedMissQueueEntries ++;
+        DPRINTF(CacheDatapath, "Allocated TLB miss entry for addr %#x, page %#x\n",
+                vaddr, vpn);
+      }
+      else
+      {
+        DPRINTF(CacheDatapath, "Collapsed into existing miss entry for page %#x\n", vpn);
       }
       misses++;
       missQueue.insert({vpn, pkt});
@@ -113,6 +124,13 @@ void
 AladdinTLB::insert(Addr vpn, Addr ppn)
 {
     tlbMemory->insert(vpn, ppn);
+}
+
+bool
+AladdinTLB::canRequestTranslation()
+{
+  return requests_this_cycle < bandwidth &&
+         numOccupiedMissQueueEntries < numOutStandingWalks;
 }
 
 std::string
