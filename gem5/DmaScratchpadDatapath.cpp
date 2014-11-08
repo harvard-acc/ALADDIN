@@ -198,8 +198,8 @@ void DmaScratchpadDatapath::issueDmaRequest(
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
   uint8_t *data = new uint8_t[size];
-  // Should ultimately delay this by the scratchpad latency.
-  spadPort.dmaAction(cmd, addr, size, NULL, data, clockEdge(Cycles(1)), flag);
+  spadPort.dmaAction(cmd, addr, size, NULL, data,
+                     clockEdge(Cycles(DMA_SETUP_LATENCY)), flag);
 }
 
 bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)

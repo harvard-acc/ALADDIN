@@ -96,6 +96,9 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     EventWrapper<DmaScratchpadDatapath,
                  &DmaScratchpadDatapath::event_step> tickEvent;
 
+    // Number of cycles required for the CPU to reinitiate a DMA transfer.
+    const unsigned int DMA_SETUP_LATENCY = 1000;
+
     System *system;
 };
 
