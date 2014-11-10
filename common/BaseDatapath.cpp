@@ -1078,6 +1078,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
     memory->getRegisterBlocks(comp_partition_names);
 
   float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0,
+        avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0,
         total_area = 0 , fu_area = 0, mem_area = 0;
   if (memory)
   {
@@ -1198,8 +1199,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
       {
         curr_reg_reads     += ld_activity.at(*it).at(tmp_level);
         curr_reg_writes    += st_activity.at(*it).at(tmp_level);
-        tmp_reg_power      += memory->getReadPower(*it) * ld_activity.at(*it).at(tmp_level) +
-                              memory->getWritePower(*it) * st_activity.at(*it).at(tmp_level) +
+        tmp_reg_power      += memory->getReadEnergy(*it) * ld_activity.at(*it).at(tmp_level) / cycleTime +
+                              memory->getWriteEnergy(*it) * st_activity.at(*it).at(tmp_level) / cycleTime +
                               memory->getLeakagePower(*it);
       }
     }
@@ -1212,7 +1213,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   power_stats.close();
 
   if (memory)
-    avg_mem_power = memory->getAveragePower(num_cycles);
+    memory->getAveragePower(num_cycles, avg_mem_power, 
+                         avg_mem_dynamic_power, avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
   //Summary output:
@@ -1225,6 +1227,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
+  std::cerr << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
+  std::cerr << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
   std::cerr << "Total Area: " << total_area << " uM^2" << std::endl;
   std::cerr << "FU Area: " << fu_area << " uM^2" << std::endl;
   std::cerr << "MEM Area: " << mem_area << " uM^2" << std::endl;
@@ -1243,6 +1247,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   summary << "Avg Power: " << avg_power << " mW" << std::endl;
   summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
+  summary << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
+  summary << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
   summary << "Total Area: " << total_area << " uM^2" << std::endl;
   summary << "FU Area: " << fu_area << " uM^2" << std::endl;
   summary << "MEM Area: " << mem_area << " uM^2" << std::endl;
@@ -1661,12 +1667,12 @@ bool BaseDatapath::readPartitionConfig(std::unordered_map<std::string, partition
   {
     getline(config_file, wholeline);
     if (wholeline.size() == 0) break;
-    unsigned size, p_factor;
+    unsigned size, p_factor, wordsize;
     char type[256];
     char base_addr[256];
-    sscanf(wholeline.c_str(), "%[^,],%[^,],%d,%d,\n", type, base_addr, &size, &p_factor);
+    sscanf(wholeline.c_str(), "%[^,],%[^,],%d,%d,%d\n", type, base_addr, &size, &wordsize, &p_factor);
     std::string p_type(type);
-    partition_config[base_addr] = {p_type, size, p_factor};
+    partition_config[base_addr] = {p_type, size, wordsize, p_factor};
   }
   config_file.close();
   return 1;

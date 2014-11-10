@@ -42,6 +42,19 @@ def main(directory, kernel, part, unroll, pipe):
   'stencil' : ['1156','1156','9'],
   'triad' : ['2048','2048','2048'],
   }
+  #wordsize in bytes
+  #sizeof(float) = 4
+  array_wordsize = {
+  'bb_gemm' : ['4','4','4'],
+  'fft' : ['4','4','4','4','4','4','4','4','4','4','4','4'],
+  'md' : ['4','4','4','4'],
+  'pp_scan' : ['4','4','4'],
+  'reduction' : ['4'],
+  'ss_sort' : ['4','4','4','4'],
+  'stencil' : ['4','4','4'],
+  'triad' : ['4','4','4'],
+  
+  }
 
   BaseFile = directory
   os.chdir(BaseFile)
@@ -62,12 +75,15 @@ def main(directory, kernel, part, unroll, pipe):
   names = array_names[kernel]
   types = array_partition_type[kernel]
   sizes = array_size[kernel]
+  wordsizes = array_wordsize[kernel]
   assert (len(names) == len(types) and len(names) == len(sizes))
-  for name,type,size in zip(names, types, sizes):
+  for name,type,size,wordsize in zip(names, types, sizes, wordsizes):
     if type == 'complete':
-      config.write('partition,'+ type + ',' + name + ',' + str(size) + "\n")
+      config.write('partition,'+ type + ',' + name + ',' + \
+      str(int(size)*int(wordsize)) + "\n")
     elif type == 'block' or type == 'cyclic':
-      config.write('partition,'+ type + ',' + name + ',' + str(size) + ',' + str(part) + "\n")
+      config.write('partition,'+ type + ',' + name + ',' + \
+      str(int(size)*int(wordsize)) + ',' + str(wordsize) + ',' + str(part) + "\n")
     else:
       print "Unknown partition type: " + type 
       sys.exit(0)
