@@ -10,15 +10,17 @@
 
 #include "power_delay.h"
 #include "MemoryInterface.h"
+#include "io.h"
+#include "cacti_interface.h"
 
 class Scratchpad : public MemoryInterface
 {
  public:
-  Scratchpad(unsigned p_ports_per_part);
+  Scratchpad(unsigned p_ports_per_part, float cycle_time);
   virtual ~Scratchpad();
   void step();
-  void setScratchpad(std::string baseName, unsigned size);
-  void setCompScratchpad(std::string baseName, unsigned size);
+  void setScratchpad(std::string baseName, unsigned num_of_bytes, unsigned wordsize);
+  void setCompScratchpad(std::string baseName, unsigned num_of_bytes);
   bool canService();
   bool canServicePartition(std::string baseName);
   bool partitionExist(std::string baseName);
@@ -32,16 +34,22 @@ class Scratchpad : public MemoryInterface
 
   void getMemoryBlocks(std::vector<std::string> &names);
   void getRegisterBlocks(std::vector<std::string> &names);
-  float getAveragePower(unsigned int cycles);
+
+  void getAveragePower(unsigned int cycles, float &avg_power,
+                     float &avg_dynamic, float &avg_leakage);
   float getTotalArea();
-  float getReadPower(std::string baseName);
-  float getWritePower(std::string baseName);
+  float getReadEnergy(std::string baseName);
+  float getWriteEnergy(std::string baseName);
   float getLeakagePower(std::string baseName);
   float getArea(std::string baseName);
+
+  /* Access cacti_interface() to calculate power/area. */
+  uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 
 private:
   unsigned numOfPartitions;
   unsigned numOfPortsPerPartition;
+  float cycleTime; //in ns
   std::unordered_map<std::string, unsigned> baseToPartitionID;
   /* Number of loads per partition. */
   std::map<std::string, unsigned> partition_loads;
@@ -51,8 +59,8 @@ private:
   std::vector<bool> compPartition;
   std::vector<unsigned> occupiedBWPerPartition;
   std::vector<unsigned> sizePerPartition;
-  std::vector<float> readPowerPerPartition;
-  std::vector<float> writePowerPerPartition;
+  std::vector<float> readEnergyPerPartition;
+  std::vector<float> writeEnergyPerPartition;
   std::vector<float> leakPowerPerPartition;
   std::vector<float> areaPerPartition;
 };

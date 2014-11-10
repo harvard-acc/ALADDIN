@@ -168,15 +168,16 @@ void ScratchpadDatapath::scratchpadPartition()
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
     std::string base_addr = it->first;
-    unsigned size = it->second.array_size; //num of words
+    unsigned size = it->second.array_size; //num of bytes
     unsigned p_factor = it->second.part_factor;
+    unsigned wordsize = it->second.wordsize; //in bytes
     unsigned per_size = ceil(size / p_factor);
 
     for ( unsigned i = 0; i < p_factor ; i++)
     {
       ostringstream oss;
       oss << base_addr << "-" << i;
-      scratchpad->setScratchpad(oss.str(), per_size);
+      scratchpad->setScratchpad(oss.str(), per_size, wordsize);
     }
   }
 

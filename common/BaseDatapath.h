@@ -48,7 +48,8 @@ class Scratchpad;
 struct partitionEntry
 {
   std::string type;
-  unsigned array_size; //num of elements
+  unsigned array_size; //num of bytes
+  unsigned wordsize; //in bytes
   unsigned part_factor;
 };
 struct regEntry

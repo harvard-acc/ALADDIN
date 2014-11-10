@@ -28,7 +28,8 @@ class MemoryInterface {
 
     /* Returns the average power consumed by the memory structure.
      */
-    virtual float getAveragePower(unsigned int cycles) = 0;
+    virtual void getAveragePower(unsigned int cycles, float &avg_power,
+                                float &avg_dynamic, float &avg_leak) = 0;
 
     /* Returns the total area of the memory structure.
      */
@@ -37,12 +38,22 @@ class MemoryInterface {
     /* Returns the power required for a read operation on the specified memory
      * block.
      */
-    virtual float getReadPower(std::string block_name) = 0;
+    /*virtual float getReadPower(std::string block_name) = 0;*/
+
+    /* Returns the energy required for a read operation on the specified memory
+     * block.
+     */
+    virtual float getReadEnergy(std::string block_name) = 0;
 
     /* Returns the power required for a write operation on the specified memory
      * block.
      */
-    virtual float getWritePower(std::string block_name) = 0;
+    /*virtual float getWritePower(std::string block_name) = 0;*/
+
+    /* Returns the energy required for a write operation on the specified memory
+     * block.
+     */
+    virtual float getWriteEnergy(std::string block_name) = 0;
 
     /* Returns the leakage power consumed when the specified memory block is
      * active.
