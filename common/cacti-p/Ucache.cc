@@ -189,13 +189,13 @@ void * calc_time_mt_wrapper(void * void_obj)
             {
               if (is_tag == true)
               {
-                tag_arr.back()->wt = (enum Wire_type) wr;
+                tag_arr.back()->wt = (enum CactiWire_type) wr;
                 tag_res->update_min_values(tag_arr.back());
                 tag_arr.push_back(new mem_array);
               }
               if (is_tag == false || g_ip->fully_assoc)
               {
-                data_arr.back()->wt = (enum Wire_type) wr;
+                data_arr.back()->wt = (enum CactiWire_type) wr;
                 data_res->update_min_values(data_arr.back());
                 data_arr.push_back(new mem_array);
               }
@@ -937,8 +937,8 @@ void update_dvs(uca_org_t *fin_res)
 {
 	if(fin_res->tag_array2 || fin_res->data_array2)
 	{
-//		Wire::print_wire();
-		Wire winit;//init before changing dvs
+//		CactiWire::print_wire();
+		CactiWire winit;//init before changing dvs
 //		fin_res->uca_q = vector<uca_org_t * >(g_ip->dvs_voltage.size());
 		for (unsigned int i=0; i< g_ip->dvs_voltage.size(); i++)
 		{
@@ -959,8 +959,8 @@ void update_dvs(uca_org_t *fin_res)
 //			g_ip->array_power_gated = false;
 
 			init_tech_params(g_ip->F_sz_um,true);
-			winit.wire_dvs_update();//Wire::wire_dvs_update();//Wire winit (1,1, false);
-//			Wire::print_wire();
+			winit.wire_dvs_update();//CactiWire::wire_dvs_update();//CactiWire winit (1,1, false);
+//			CactiWire::print_wire();
 
 			if(fin_res->tag_array2)
 			{
@@ -991,7 +991,7 @@ void update_dvs(uca_org_t *fin_res)
 			fin_res->uca_q[i]->find_cyc();
 
 //            output_UCA(fin_res->uca_q[i]);
-//            Wire::print_wire();
+//            CactiWire::print_wire();
 		}
 		//reset input to original values in *.cfg file
 		g_ip->specific_hp_vdd = false;
@@ -1011,19 +1011,19 @@ void update_pg(uca_org_t *fin_res)
 
 	if(fin_res->tag_array2 || fin_res->data_array2)
 	{
-		Wire winit;
+		CactiWire winit;
 		fin_res->uca_pg_reference = new uca_org_t();
 		/*
 			if (i == 0) {g_ip->hp_Vdd = 0.8; }
 			else g_ip->hp_Vdd = 1.1;
 			g_ip->specific_hp_vdd = true;
 			cout<<"VDD=====" << g_ip->hp_Vdd <<endl;
-			//Wire winit;
+			//CactiWire winit;
 			winit.wire_dvs_update();
-			Wire::print_wire();
+			CactiWire::print_wire();
 			init_tech_params(g_ip->F_sz_um,true);
-			winit.wire_dvs_update();//Wire::wire_dvs_update();//Wire winit (1,1, false);
-			Wire::print_wire();
+			winit.wire_dvs_update();//CactiWire::wire_dvs_update();//CactiWire winit (1,1, false);
+			CactiWire::print_wire();
 		 */
 		g_ip->array_power_gated = false;
 		g_ip->bitline_floating = false;
@@ -1032,10 +1032,10 @@ void update_pg(uca_org_t *fin_res)
 		g_ip->interconect_power_gated 	= false;
 		g_ip->power_gating 	= false;
 //		winit.wire_dvs_update();
-//		Wire::print_wire();
+//		CactiWire::print_wire();
 //		init_tech_params(g_ip->F_sz_um,true);
-//		winit.wire_dvs_update();//Wire::wire_dvs_update();//Wire winit (1,1, false);
-//		Wire::print_wire();
+//		winit.wire_dvs_update();//CactiWire::wire_dvs_update();//CactiWire winit (1,1, false);
+//		CactiWire::print_wire();
 		if(fin_res->tag_array2)
 		{
 			//			init_tech_params(g_ip->F_sz_um,true);
@@ -1068,7 +1068,7 @@ void update_pg(uca_org_t *fin_res)
 		fin_res->uca_pg_reference->find_cyc();
 
 //		output_UCA(fin_res->uca_pg_reference);
-//		Wire::print_wire();
+//		CactiWire::print_wire();
 	}
 	else
 	{

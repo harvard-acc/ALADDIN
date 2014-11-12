@@ -275,7 +275,8 @@ void BaseDatapath::cleanLeafNodes()
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
       && node_microop != LLVM_IR_Ret
-      && !is_branch_op(node_microop))
+      && !is_branch_op(node_microop)
+      && !is_dma_op(node_microop))
     {
       to_remove_nodes.push_back(node_id);
       //iterate its parents

@@ -150,12 +150,12 @@ Nuca::sim_nuca()
   nuca_org_t *opt_n;
   mem_array tag, data;
   list<nuca_org_t *> nuca_list;
-  Router *router_s[ROUTER_TYPES];
-  router_s[0] = new Router(64.0, 8, 4, &(g_tp.peri_global));
+  CactiRouter *router_s[ROUTER_TYPES];
+  router_s[0] = new CactiRouter(64.0, 8, 4, &(g_tp.peri_global));
   router_s[0]->print_router();
-  router_s[1] = new Router(128.0, 8, 4, &(g_tp.peri_global));
+  router_s[1] = new CactiRouter(128.0, 8, 4, &(g_tp.peri_global));
   router_s[1]->print_router();
-  router_s[2] = new Router(256.0, 8, 4, &(g_tp.peri_global));
+  router_s[2] = new CactiRouter(256.0, 8, 4, &(g_tp.peri_global));
   router_s[2]->print_router();
 
   int core_in; // to store no. of cores
@@ -259,8 +259,8 @@ Nuca::sim_nuca()
         double hlength = ures.cache_len; // u
 
         /* find delay, area, and power for wires */
-        wire_vertical[wr] = new Wire((enum Wire_type) wr, vlength);
-        wire_horizontal[wr] = new Wire((enum Wire_type) wr, hlength);
+        wire_vertical[wr] = new CactiWire((enum CactiWire_type) wr, vlength);
+        wire_horizontal[wr] = new CactiWire((enum CactiWire_type) wr, hlength);
 
 
         hor_hop_lat = calc_cycles(wire_horizontal[wr]->delay,
@@ -442,29 +442,29 @@ Nuca::print_nuca (nuca_org_t *fr)
 
   fr->router->print_router();
 
-  printf("\n\nWire stats:\n");
+  printf("\n\nCactiWire stats:\n");
   if (fr->h_wire->wt == Global) {
-    printf("\tWire type - Full swing global wires with least "
+    printf("\tCactiWire type - Full swing global wires with least "
         "possible delay\n");
   }
   else if (fr->h_wire->wt == Global_5) {
-    printf("\tWire type - Full swing global wires with "
+    printf("\tCactiWire type - Full swing global wires with "
         "5%% delay penalty\n");
   }
   else if (fr->h_wire->wt == Global_10) {
-    printf("\tWire type - Full swing global wires with "
+    printf("\tCactiWire type - Full swing global wires with "
         "10%% delay penalty\n");
   }
   else if (fr->h_wire->wt == Global_20) {
-    printf("\tWire type - Full swing global wires with "
+    printf("\tCactiWire type - Full swing global wires with "
         "20%% delay penalty\n");
   }
   else if (fr->h_wire->wt == Global_30) {
-    printf("\tWire type - Full swing global wires with "
+    printf("\tCactiWire type - Full swing global wires with "
         "30%% delay penalty\n");
   }
   else if(fr->h_wire->wt == Low_swing) {
-    printf("\tWire type - Low swing wires\n");
+    printf("\tCactiWire type - Low swing wires\n");
   }
 
   printf("\tHorizontal link delay - %g (ns)\n",

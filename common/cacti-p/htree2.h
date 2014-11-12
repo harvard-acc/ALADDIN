@@ -47,7 +47,7 @@
 class Htree2 : public Component
 {
   public:
-    Htree2(enum Wire_type wire_model,
+    Htree2(enum CactiWire_type wire_model,
         double mat_w, double mat_h, int add, int data_in, int search_data_in, int data_out, int search_data_out, int bl, int wl,
         enum Htree_type h_type, bool uca_tree_ = false, bool search_tree_ = false,
         TechnologyParameter::DeviceType *dt = &(g_tp.peri_global));
@@ -86,7 +86,7 @@ class Htree2 : public Component
     bool uca_tree; // should have full bandwidth to access all banks in the array simultaneously
     bool search_tree;
 
-    enum Wire_type wt;
+    enum CactiWire_type wt;
     double min_w_nmos;
     double min_w_pmos;
 

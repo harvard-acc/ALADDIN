@@ -42,22 +42,22 @@
 #include <iostream>
 #include <list>
 
-class Wire : public Component
+class CactiWire : public Component
 {
   public:
-    Wire(enum Wire_type wire_model, double len /* in u*/,
+    CactiWire(enum CactiWire_type wire_model, double len /* in u*/,
          int nsense = 1/* no. of sense amps connected to the low-swing wire */,
          double width_scaling = 1,
          double spacing_scaling = 1,
-         enum Wire_placement wire_placement = outside_mat,
+         enum CactiWire_placement wire_placement = outside_mat,
          double resistivity = CU_RESISTIVITY,
          TechnologyParameter::DeviceType *dt = &(g_tp.peri_global));
-    ~Wire();
+    ~CactiWire();
 
-    Wire( double width_scaling = 1,
+    CactiWire( double width_scaling = 1,
          double spacing_scaling = 1,
 //         bool reset_repeater_sizing = true,
-         enum Wire_placement wire_placement = outside_mat,
+         enum CactiWire_placement wire_placement = outside_mat,
          double resistivity = CU_RESISTIVITY,
          TechnologyParameter::DeviceType *dt = &(g_tp.peri_global)
     ); // should be used only once for initializing static members
@@ -72,10 +72,10 @@ class Wire : public Component
     double signal_rise_time();
     double sense_amp_input_cap();
 
-    enum Wire_type wt;
+    enum CactiWire_type wt;
     double wire_spacing;
     double wire_width;
-    enum Wire_placement wire_placement;
+    enum CactiWire_placement wire_placement;
     double repeater_size;
     double repeater_spacing;
     static double repeater_size_init; // value used in initialization should not be reused in final output

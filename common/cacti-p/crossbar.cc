@@ -34,7 +34,7 @@
 #define ASPECT_THRESHOLD .8
 #define ADJ 1
 
-Crossbar::Crossbar(
+CactiCrossbar::CactiCrossbar(
     double n_inp_,
     double n_out_,
     double flit_size_,
@@ -46,14 +46,14 @@ Crossbar::Crossbar(
   CB_ADJ = 1;
 }
 
-Crossbar::~Crossbar(){}
+CactiCrossbar::~CactiCrossbar(){}
 
-double Crossbar::output_buffer()
+double CactiCrossbar::output_buffer()
 {
 
-  //Wire winit(4, 4);
+  //CactiWire winit(4, 4);
   double l_eff = n_inp*flit_size*g_tp.wire_outside_mat.pitch;
-  Wire w1(g_ip->wt, l_eff);
+  CactiWire w1(g_ip->wt, l_eff);
   //double s1 = w1.repeater_size *l_eff*ADJ/w1.repeater_spacing;
   double s1 = w1.repeater_size * (l_eff <w1.repeater_spacing?  l_eff *ADJ/w1.repeater_spacing : ADJ);
   double pton_size = deviceType->n_to_p_eff_curr_drv_ratio;
@@ -88,10 +88,10 @@ double Crossbar::output_buffer()
   return input_cap + output_cap + ctr_cap;
 }
 
-void Crossbar::compute_power()
+void CactiCrossbar::compute_power()
 {
 
-  Wire winit(4, 4);
+  CactiWire winit(4, 4);
   double tri_cap = output_buffer();
   assert(tri_cap > 0);
   //area of a tristate logic
@@ -103,11 +103,11 @@ void Crossbar::compute_power()
   // effective no. of tristate buffers that need to be laid side by side
   int ntri = (int)ceil(g_tp.cell_h_def/(g_tp.wire_outside_mat.pitch));
   double wire_len = MAX(width*ntri*n_out, flit_size*g_tp.wire_outside_mat.pitch*n_out);
-  Wire w1(g_ip->wt, wire_len);
+  CactiWire w1(g_ip->wt, wire_len);
 
   area.w = wire_len;
   area.h = g_tp.wire_outside_mat.pitch*n_inp*flit_size * CB_ADJ;
-  Wire w2(g_ip->wt, area.h);
+  CactiWire w2(g_ip->wt, area.h);
 
   double aspect_ratio_cb = (area.h/area.w)*(n_out/n_inp);
   if (aspect_ratio_cb > 1) aspect_ratio_cb = 1/aspect_ratio_cb;
@@ -138,24 +138,24 @@ void Crossbar::compute_power()
 
   // delay calculation
   double l_eff = n_inp*flit_size*g_tp.wire_outside_mat.pitch;
-  Wire wdriver(g_ip->wt, l_eff);
+  CactiWire wdriver(g_ip->wt, l_eff);
   double res = g_tp.wire_outside_mat.R_per_um * (area.w+area.h) + tr_R_on(g_tp.min_w_nmos_*wdriver.repeater_size, NCH, 1);
   double cap = g_tp.wire_outside_mat.C_per_um * (area.w + area.h) + n_out*tri_inp_cap + n_inp*tri_out_cap;
   delay = horowitz(w1.signal_rise_time(), res*cap, deviceType->Vth/deviceType->Vdd, deviceType->Vth/deviceType->Vdd, RISE);
 
-  Wire wreset();
+  CactiWire wreset();
 }
 
-void Crossbar::print_crossbar()
+void CactiCrossbar::print_crossbar()
 {
-  cout << "\nCrossbar Stats (" << n_inp << "x" << n_out << ")\n\n";
+  cout << "\nCactiCrossbar Stats (" << n_inp << "x" << n_out << ")\n\n";
   cout << "Flit size        : " << flit_size << " bits" << endl;
   cout << "Width            : " << area.w << " u" << endl;
   cout << "Height           : " << area.h << " u" << endl;
   cout << "Dynamic Power    : " << power.readOp.dynamic*1e9 * MIN(n_inp, n_out) << " (nJ)" << endl;
   cout << "Leakage Power    : " << power.readOp.leakage*1e3 << " (mW)" << endl;
   cout << "Gate Leakage Power    : " << power.readOp.gate_leakage*1e3 << " (mW)" << endl;
-  cout << "Crossbar Delay   : " << delay*1e12 << " ps\n";
+  cout << "CactiCrossbar Delay   : " << delay*1e12 << " ps\n";
 }
 
 

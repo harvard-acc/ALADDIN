@@ -29,7 +29,7 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     tickEvent(this),
     system(params->system)
 {
-  scratchpad = new Scratchpad(params->spadPorts);
+  scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
   initActualAddress();
   ScratchpadDatapath::globalOptimizationPass();
@@ -100,7 +100,6 @@ DmaScratchpadDatapath::stepExecutingQueue()
     }
     else if (is_dma_op(microop.at(node_id)))
     {
-      DPRINTF(DmaScratchpadDatapath, "node:%d is a dma oooop\n", node_id);
       DmaRequestStatus status = Ready;
       Addr addr = actualAddress[node_id].first;
       int size = actualAddress[node_id].second;
@@ -143,6 +142,8 @@ bool
 DmaScratchpadDatapath::step() {
   stepExecutingQueue();
   copyToExecutingQueue();
+  DPRINTF(DmaScratchpadDatapath, "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
+     num_cycles, executedNodes, totalConnectedNodes);
   num_cycles++;
   if (executedNodes < totalConnectedNodes)
   {

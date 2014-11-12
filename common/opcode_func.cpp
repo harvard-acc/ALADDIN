@@ -54,7 +54,6 @@ bool is_branch_op (unsigned microop)
   switch (microop)
   {
     case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_Call:
-      case LLVM_IR_DMALoad : case LLVM_IR_DMAStore:
       return true;
     default:
       return false;
@@ -63,7 +62,7 @@ bool is_branch_op (unsigned microop)
 
 bool is_call_op(unsigned microop)
 {
-  if (microop == LLVM_IR_Call || microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore)
+  if (microop == LLVM_IR_Call)
     return true;
   return false;
 }

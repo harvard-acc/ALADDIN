@@ -31,7 +31,7 @@
 
 #include "arbiter.h"
 
-Arbiter::Arbiter(
+CactiArbiter::CactiArbiter(
     double n_req,
     double flit_size_,
     double output_len,
@@ -52,10 +52,10 @@ Arbiter::Arbiter(
   PTtr = 20*technology/2; /* pmos tr. length*/
 }
 
-Arbiter::~Arbiter(){}
+CactiArbiter::~CactiArbiter(){}
 
 double
-Arbiter::arb_req() {
+CactiArbiter::arb_req() {
   double temp = ((R-1)*(2*gate_C(NTn1, 0)+gate_C(PTn1, 0)) + 2*gate_C(NTn2, 0) +
       gate_C(PTn2, 0) + gate_C(NTi, 0) + gate_C(PTi, 0) +
       drain_C_(NTi, 0, 1, 1, g_tp.cell_h_def) + drain_C_(PTi, 1, 1, 1, g_tp.cell_h_def));
@@ -63,7 +63,7 @@ Arbiter::arb_req() {
 }
 
 double
-Arbiter::arb_pri() {
+CactiArbiter::arb_pri() {
   double temp = 2*(2*gate_C(NTn1, 0)+gate_C(PTn1, 0)); /* switching capacitance
                                                  of flip-flop is ignored */
   return temp;
@@ -71,20 +71,20 @@ Arbiter::arb_pri() {
 
 
 double
-Arbiter::arb_grant() {
+CactiArbiter::arb_grant() {
   double temp = drain_C_(NTn1, 0, 1, 1, g_tp.cell_h_def)*2 + drain_C_(PTn1, 1, 1, 1, g_tp.cell_h_def) + crossbar_ctrline();
   return temp;
 }
 
 double
-Arbiter::arb_int() {
+CactiArbiter::arb_int() {
   double temp  =  (drain_C_(NTn1, 0, 1, 1, g_tp.cell_h_def)*2 + drain_C_(PTn1, 1, 1, 1, g_tp.cell_h_def) +
       2*gate_C(NTn2, 0) + gate_C(PTn2, 0));
   return temp;
 }
 
 void
-Arbiter::compute_power() {
+CactiArbiter::compute_power() {
   power.readOp.dynamic =  (R*arb_req()*Vdd*Vdd/2 + R*arb_pri()*Vdd*Vdd/2 +
       arb_grant()*Vdd*Vdd + arb_int()*0.5*Vdd*Vdd);
   double nor1_leak = cmos_Isub_leakage(g_tp.min_w_nmos_*NTn1*2, min_w_pmos * PTn1*2, 2, nor);
@@ -98,14 +98,14 @@ Arbiter::compute_power() {
 }
 
 double //wire cap with triple spacing
-Arbiter::Cw3(double length) {
-  Wire wc(g_ip->wt, length, 1, 3, 3);
+CactiArbiter::Cw3(double length) {
+  CactiWire wc(g_ip->wt, length, 1, 3, 3);
   double temp = (wc.wire_cap(length,true));
   return temp;
 }
 
 double
-Arbiter::crossbar_ctrline() {
+CactiArbiter::crossbar_ctrline() {
   double temp = (Cw3(o_len * 1e-6 /* m */) +
       drain_C_(NTi, 0, 1, 1, g_tp.cell_h_def) + drain_C_(PTi, 1, 1, 1, g_tp.cell_h_def) +
       gate_C(NTi, 0) + gate_C(PTi, 0));
@@ -113,15 +113,15 @@ Arbiter::crossbar_ctrline() {
 }
 
 double
-Arbiter::transmission_buf_ctrcap() {
+CactiArbiter::transmission_buf_ctrcap() {
   double temp = gate_C(NTtr, 0)+gate_C(PTtr, 0);
   return temp;
 }
 
 
-void Arbiter::print_arbiter()
+void CactiArbiter::print_arbiter()
 {
-  cout << "\nArbiter Stats ("   << R << " input arbiter" << ")\n\n";
+  cout << "\nCactiArbiter Stats ("   << R << " input arbiter" << ")\n\n";
   cout << "Flit size        : " << flit_size << " bits" << endl;
   cout << "Dynamic Power    : " << power.readOp.dynamic*1e9 << " (nJ)" << endl;
   cout << "Leakage Power    : " << power.readOp.leakage*1e3 << " (mW)" << endl;

@@ -54,9 +54,9 @@ class nuca_org_t {
     Component nuca_pda;
     Component bank_pda;
     Component wire_pda;
-    Wire *h_wire;
-    Wire *v_wire;
-    Router *router;
+    CactiWire *h_wire;
+    CactiWire *v_wire;
+    CactiRouter *router;
     /* for particular network configuration
      * calculated based on a cycle accurate
      * simulation Ref: CACTI 6 - Tech report
@@ -92,7 +92,7 @@ class Nuca : public Component
 
     TechnologyParameter::DeviceType *deviceType;
     int wt_min, wt_max;
-    Wire *wire_vertical[WIRE_TYPES],
+    CactiWire *wire_vertical[WIRE_TYPES],
          *wire_horizontal[WIRE_TYPES];
 
 };

@@ -39,7 +39,7 @@
 
 using namespace std;
 
-class Crossbar;
+class CactiCrossbar;
 class Bank;
 
 class Component
