@@ -1,30 +1,24 @@
 #ifndef __POWER_DELAY_H__
 #define __POWER_DELAY_H__
 
-/*#define ADD_LATENCY 1*/
-/*#define MEMOP_LATENCY 1.43*/
-/*#define MUL_LATENCY 5.84*/
-
-/*The cache is characterized with 1ns/1GHz frequency, will update the FU power
- * model with 1GHz frequency soon.*/
 #define   CYCLE_TIME        1
-
 #define   ADD_LATENCY       1
 #define   MEMOP_LATENCY     1
 #define   MUL_LATENCY       1
 
 #define   RW_PORTS          1
-#define   ADD_int_power     0.0151
-#define   ADD_switch_power  0.00615
-#define   ADD_leak_power    0.00000129
-#define   ADD_area          280
-#define   MUL_int_power     0.72
-#define   MUL_switch_power  0.60
-#define   MUL_leak_power    0.025
-#define   MUL_area          4595
-#define   REG_int_power     0.0018
-#define   REG_sw_power      0.00013
-#define   REG_leak_power    0.000055
-#define   REG_area          7.98
+/* Function units power model with TSMC 40g @ 1GHz. */
+#define   ADD_int_power     0.0059475
+#define   ADD_switch_power  0.015593
+#define   ADD_leak_power    0.0015927
+#define   ADD_area          199.583996
+#define   MUL_int_power     0.4864
+#define   MUL_switch_power  0.6571
+#define   MUL_leak_power    0.0239328
+#define   MUL_area          2108.332748
+#define   REG_int_power     0.0005705625
+#define   REG_sw_power      0.0000752927
+#define   REG_leak_power    0.0000053278
+#define   REG_area          4.309200
 
 #endif
