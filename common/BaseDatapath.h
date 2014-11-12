@@ -42,6 +42,7 @@ typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 // Used heavily in reporting cycle-level statistics.
 typedef std::unordered_map< std::string, std::vector<int> > activity_map;
+typedef std::unordered_map< std::string, int> max_activity_map;
 
 class Scratchpad;
 

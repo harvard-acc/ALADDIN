@@ -1069,6 +1069,10 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   activity_map ld_activity;
   activity_map st_activity;
 
+  max_activity_map max_mul_per_function;
+  max_activity_map max_add_per_function;
+  max_activity_map max_bit_per_function;
+
   std::vector<std::string> comp_partition_names;
   // TODO(samxi): The GEM5 integration currently doesn't integrate with the GEM5
   // power model, so we just pass a null pointer in place of the MemoryInterface
@@ -1098,23 +1102,49 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
     mul_activity.insert({p_name, make_vector(num_cycles)});
     add_activity.insert({p_name, make_vector(num_cycles)});
     bit_activity.insert({p_name, make_vector(num_cycles)});
+    max_mul_per_function.insert({p_name, 0});
+    max_add_per_function.insert({p_name, 0});
+    max_bit_per_function.insert({p_name, 0});
   }
+  int num_adds_so_far = 0;
+  int num_muls_so_far = 0;
+  int num_bits_so_far = 0;
+  auto bound_it = loopBound.begin();
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
+    char func_id[256];
+    int count;
+    sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+    if (node_id == *bound_it)
+    {
+      if (max_mul_per_function[func_id] < num_muls_so_far)
+        max_mul_per_function[func_id] = num_muls_so_far;
+      if (max_add_per_function[func_id] < num_adds_so_far)
+        max_add_per_function[func_id] = num_adds_so_far;
+      if (max_bit_per_function[func_id] < num_bits_so_far)
+        max_bit_per_function[func_id] = num_bits_so_far;
+      num_adds_so_far = 0;
+      num_muls_so_far = 0;
+      num_bits_so_far = 0;
+      bound_it++;
+    }
     if (finalIsolated.at(node_id))
       continue;
     int tmp_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
-    char func_id[256];
-    int count;
-    sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
 
-    if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv)
+    if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv) {
       mul_activity[func_id].at(tmp_level) +=1;
-    else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub)
+      num_muls_so_far +=1;
+    }
+    else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub) {
       add_activity[func_id].at(tmp_level) +=1;
-    else if (is_bit_op(node_microop))
+      num_adds_so_far +=1;
+    }
+    else if (is_bit_op(node_microop)) {
       bit_activity[func_id].at(tmp_level) +=1;
+      num_bits_so_far +=1;
+    }
     else if (is_load_op(node_microop))
     {
       std::string base_addr = baseAddress[node_id].first;
@@ -1141,11 +1171,11 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   stats << num_cycles << "," ;
   power_stats << num_cycles << "," ;
 
-  int max_mul =  0;
-  int max_add =  0;
-  int max_bit =  0;
   int max_reg_read =  0;
   int max_reg_write =  0;
+  int max_add = 0;
+  int max_bit = 0;
+  int max_mul = 0;
   for (unsigned level_id = 0; ((int) level_id) < num_cycles; ++level_id)
   {
     if (max_reg_read < regStats.at(level_id).reads )
@@ -1159,9 +1189,9 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   {
     stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
     power_stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
-    max_bit += *max_element(bit_activity[*it].begin(), bit_activity[*it].end());
-    max_add += *max_element(add_activity[*it].begin(), add_activity[*it].end());
-    max_mul += *max_element(mul_activity[*it].begin(), mul_activity[*it].end());
+    max_bit += max_bit_per_function[*it];
+    max_add += max_add_per_function[*it];
+    max_mul += max_mul_per_function[*it];
   }
 
   //ADD_int_power, MUL_int_power, REG_int_power
@@ -1214,7 +1244,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   power_stats.close();
 
   if (memory)
-    memory->getAveragePower(num_cycles, avg_mem_power, 
+    memory->getAveragePower(num_cycles, avg_mem_power,
                          avg_mem_dynamic_power, avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
