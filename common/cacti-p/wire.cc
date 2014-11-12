@@ -32,13 +32,13 @@
 #include "wire.h"
 #include "cmath"
 // use this constructor to calculate wire stats
-Wire::Wire(
-    enum Wire_type wire_model,
+CactiWire::CactiWire(
+    enum CactiWire_type wire_model,
     double wl,
     int n,
     double w_s,
     double s_s,
-    enum Wire_placement wp,
+    enum CactiWire_placement wp,
     double resistivity,
     TechnologyParameter::DeviceType *dt
     ):wt(wire_model), wire_length(wl*1e-6), nsense(n), w_scale(w_s), s_scale(s_s),
@@ -49,8 +49,8 @@ Wire::Wire(
   in_rise_time   = 0;
   out_rise_time  = 0;
   if (initialized != 1) {
-    cout << "Wire not initialized. Initializing it with default values\n";
-    Wire winit;
+    cout << "CactiWire not initialized. Initializing it with default values\n";
+    CactiWire winit;
   }
   calculate_wire_stats();
   // change everything back to seconds, microns, and Joules
@@ -66,21 +66,21 @@ Wire::Wire(
 
     // the following values are for peripheral global technology
     // specified in the input config file
-    Component Wire::global;
-    Component Wire::global_5;
-    Component Wire::global_10;
-    Component Wire::global_20;
-    Component Wire::global_30;
-    Component Wire::low_swing;
+    Component CactiWire::global;
+    Component CactiWire::global_5;
+    Component CactiWire::global_10;
+    Component CactiWire::global_20;
+    Component CactiWire::global_30;
+    Component CactiWire::low_swing;
 
-    int Wire::initialized;
-    double Wire::wire_width_init;
-    double Wire::wire_spacing_init;
-    double Wire::repeater_size_init; // value used in initialization should not be reused in final output
-    double Wire::repeater_spacing_init;
+    int CactiWire::initialized;
+    double CactiWire::wire_width_init;
+    double CactiWire::wire_spacing_init;
+    double CactiWire::repeater_size_init; // value used in initialization should not be reused in final output
+    double CactiWire::repeater_spacing_init;
 
 
-Wire::Wire(double w_s, double s_s, /*bool reset_repeater_sizing,*/ enum Wire_placement wp, double resis, TechnologyParameter::DeviceType *dt)
+CactiWire::CactiWire(double w_s, double s_s, /*bool reset_repeater_sizing,*/ enum CactiWire_placement wp, double resis, TechnologyParameter::DeviceType *dt)
 {
   w_scale        = w_s;
   s_scale        = s_s;
@@ -116,14 +116,14 @@ Wire::Wire(double w_s, double s_s, /*bool reset_repeater_sizing,*/ enum Wire_pla
 
 
 
-Wire::~Wire()
+CactiWire::~CactiWire()
 {
 }
 
 
 
 void
-Wire::calculate_wire_stats()
+CactiWire::calculate_wire_stats()
 {
 
   if (wire_placement == outside_mat) {
@@ -232,7 +232,7 @@ Wire::calculate_wire_stats()
  * section 6.1.3)
  */
   double
-Wire::signal_fall_time ()
+CactiWire::signal_fall_time ()
 {
 
   /* rise time of inverter 1's output */
@@ -256,7 +256,7 @@ Wire::signal_fall_time ()
 
 
 
-double Wire::signal_rise_time ()
+double CactiWire::signal_rise_time ()
 {
 
   /* rise time of inverter 1's output */
@@ -280,7 +280,7 @@ double Wire::signal_rise_time ()
 
 
 
-/* Wire resistance and capacitance calculations
+/* CactiWire resistance and capacitance calculations
  *   wire width
  *
  *    /__/
@@ -294,7 +294,7 @@ double Wire::signal_rise_time ()
  *
  */
 
-double Wire::wire_cap (double len /* in m */, bool call_from_outside)
+double CactiWire::wire_cap (double len /* in m */, bool call_from_outside)
 {
 	//TODO: this should be consistent with the wire_res in technology file
   double sidewall, adj, tot_cap;
@@ -372,7 +372,7 @@ double Wire::wire_cap (double len /* in m */, bool call_from_outside)
 
 
   double
-Wire::wire_res (double len /*(in m)*/)
+CactiWire::wire_res (double len /*(in m)*/)
 {
 
 	  double aspect_ratio,alpha_scatter =1.05, dishing_thickness=0, barrier_thickness=0;
@@ -409,7 +409,7 @@ Wire::wire_res (double len /*(in m)*/)
  * (ref: Technical report 6)
  */
   void
-Wire::low_swing_model()
+CactiWire::low_swing_model()
 {
   double len = wire_length;
   double beta = pmos_to_nmos_sz_ratio();
@@ -504,7 +504,7 @@ Wire::low_swing_model()
    * NOTE: nmos is used as both pull up and pull down transistor
    * in the transmitter. This is because for low voltage swing, drive
    * resistance of nmos is less than pmos
-   * (for a detailed graph ref: On-Chip Wires: Scaling and Efficiency)
+   * (for a detailed graph ref: On-Chip CactiWires: Scaling and Efficiency)
    */
   timeconst = (tr_R_on(nsize, NCH, 1)*RES_ADJ) * (cwire +
       drain_C_(nsize, NCH, 1, 1, g_tp.cell_h_def)*2) +
@@ -551,7 +551,7 @@ Wire::low_swing_model()
 }
 
   double
-Wire::sense_amp_input_cap()
+CactiWire::sense_amp_input_cap()
 {
   return drain_C_(g_tp.w_iso, PCH, 1, 1, g_tp.cell_h_def) +
     gate_C(g_tp.w_sense_en + g_tp.w_sense_n, 0) +
@@ -560,7 +560,7 @@ Wire::sense_amp_input_cap()
 }
 
 
-void Wire::delay_optimal_wire (/*bool reset_repeater_sizing*/)
+void CactiWire::delay_optimal_wire (/*bool reset_repeater_sizing*/)
 {
   double len       = wire_length;
   //double min_wire_width = wire_width; //m
@@ -625,7 +625,7 @@ void Wire::delay_optimal_wire (/*bool reset_repeater_sizing*/)
 
 // calculate power/delay values for wires with suboptimal repeater sizing/spacing
 void
-Wire::init_wire(/*bool reset_repeater_sizing*/){
+CactiWire::init_wire(/*bool reset_repeater_sizing*/){
   wire_length = 1;
   delay_optimal_wire(/*reset_repeater_sizing*/);
     double sp, si;
@@ -660,7 +660,7 @@ Wire::init_wire(/*bool reset_repeater_sizing*/){
   }
   repeated_wire.pop_back();
   update_fullswing();
-  Wire *l_wire = new Wire(Low_swing, 0.001/* 1 mm*/, 1);
+  CactiWire *l_wire = new CactiWire(Low_swing, 0.001/* 1 mm*/, 1);
   low_swing.delay = l_wire->delay;
   low_swing.power = l_wire->power;
   delete l_wire;
@@ -668,7 +668,7 @@ Wire::init_wire(/*bool reset_repeater_sizing*/){
 
 
 
-void Wire::update_fullswing()
+void CactiWire::update_fullswing()
 {
 
   list<Component>::iterator citer;
@@ -728,7 +728,7 @@ void Wire::update_fullswing()
 
 
 
-powerDef Wire::wire_model (double space, double size, double *delay)
+powerDef CactiWire::wire_model (double space, double size, double *delay)
 {
   powerDef ptemp;
   double len = 1;
@@ -786,18 +786,18 @@ powerDef Wire::wire_model (double space, double size, double *delay)
 }
 
 void
-Wire::print_wire()
+CactiWire::print_wire()
 {
 
-  cout << "\nWire Properties at DVS level 0:\n\n";
+  cout << "\nCactiWire Properties at DVS level 0:\n\n";
   cout << "  Delay Optimal\n\tRepeater size - "<< global.area.h <<
     " \n\tRepeater spacing - " << global.area.w*1e3 << " (mm)"
     " \n\tDelay - " << global.delay*1e6 <<  " (ns/mm)"
     " \n\tPowerD - " << global.power.readOp.dynamic *1e6<< " (nJ/mm)"
     " \n\tPowerL - " << global.power.readOp.leakage << " (mW/mm)"
     " \n\tPowerLgate - " << global.power.readOp.gate_leakage << " (mW/mm)\n";
-  cout << "\tWire width - " <<wire_width_init*1e6 << " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init*1e6 << " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
   cout <<endl;
 
   cout << "  5% Overhead\n\tRepeater size - "<< global_5.area.h <<
@@ -806,8 +806,8 @@ Wire::print_wire()
     " \n\tPowerD - " << global_5.power.readOp.dynamic *1e6<< " (nJ/mm)"
     " \n\tPowerL - " << global_5.power.readOp.leakage << " (mW/mm)"
     " \n\tPowerLgate - " << global_5.power.readOp.gate_leakage << " (mW/mm)\n";
-  cout << "\tWire width - " <<wire_width_init*1e6 << " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init*1e6 << " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
   cout <<endl;
   cout << "  10% Overhead\n\tRepeater size - "<< global_10.area.h <<
     " \n\tRepeater spacing - " << global_10.area.w*1e3 << " (mm)"
@@ -815,8 +815,8 @@ Wire::print_wire()
     " \n\tPowerD - " << global_10.power.readOp.dynamic *1e6<< " (nJ/mm)"
     " \n\tPowerL - " << global_10.power.readOp.leakage << " (mW/mm)"
     " \n\tPowerLgate - " << global_10.power.readOp.gate_leakage << " (mW/mm)\n";
-  cout << "\tWire width - " <<wire_width_init*1e6 << " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init*1e6 << " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
   cout <<endl;
   cout << "  20% Overhead\n\tRepeater size - "<< global_20.area.h <<
     " \n\tRepeater spacing - " << global_20.area.w*1e3 << " (mm)"
@@ -824,8 +824,8 @@ Wire::print_wire()
     " \n\tPowerD - " << global_20.power.readOp.dynamic *1e6<< " (nJ/mm)"
     " \n\tPowerL - " << global_20.power.readOp.leakage << " (mW/mm)"
     " \n\tPowerLgate - " << global_20.power.readOp.gate_leakage << " (mW/mm)\n";
-  cout << "\tWire width - " <<wire_width_init*1e6 << " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init*1e6 << " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
   cout <<endl;
   cout << "  30% Overhead\n\tRepeater size - "<< global_30.area.h <<
     " \n\tRepeater spacing - " << global_30.area.w*1e3 << " (mm)"
@@ -833,8 +833,8 @@ Wire::print_wire()
     " \n\tPowerD - " << global_30.power.readOp.dynamic *1e6<< " (nJ/mm)"
     " \n\tPowerL - " << global_30.power.readOp.leakage << " (mW/mm)"
     " \n\tPowerLgate - " << global_30.power.readOp.gate_leakage << " (mW/mm)\n";
-  cout << "\tWire width - " <<wire_width_init*1e6 << " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init*1e6 << " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init*1e6 << " microns\n";
   cout <<endl;
   cout << "  Low-swing wire (1 mm) - Note: Unlike repeated wires, \n\tdelay and power "
             "values of low-swing wires do not\n\thave a linear relationship with length." <<
@@ -842,8 +842,8 @@ Wire::print_wire()
       " \n\tpowerD - " << low_swing.power.readOp.dynamic *1e9<< " (nJ)"
       " \n\tPowerL - " << low_swing.power.readOp.leakage << " (mW)"
       " \n\tPowerLgate - " << low_swing.power.readOp.gate_leakage << " (mW)\n";
-  cout << "\tWire width - " <<wire_width_init * 2 /* differential */<< " microns\n";
-  cout << "\tWire spacing - " <<wire_spacing_init * 2 /* differential */<< " microns\n";
+  cout << "\tCactiWire width - " <<wire_width_init * 2 /* differential */<< " microns\n";
+  cout << "\tCactiWire spacing - " <<wire_spacing_init * 2 /* differential */<< " microns\n";
   cout <<endl;
   cout <<endl;
 
@@ -854,7 +854,7 @@ Wire::print_wire()
 }
 
 void
-Wire::wire_dvs_update()
+CactiWire::wire_dvs_update()
 {
 
 	double i, j, del;
@@ -875,7 +875,7 @@ Wire::wire_dvs_update()
 	global_30.delay = del;
 	global_30.power = pow;
 
-	Wire *l_wire = new Wire(Low_swing, 0.001/* 1 mm*/, 1);
+	CactiWire *l_wire = new CactiWire(Low_swing, 0.001/* 1 mm*/, 1);
 	low_swing.delay = l_wire->delay;
 	low_swing.power = l_wire->power;
 	delete l_wire;

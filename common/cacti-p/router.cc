@@ -33,7 +33,7 @@
 
 #include "router.h"
 
-Router::Router(
+CactiRouter::CactiRouter(
     double flit_size_,
     double vc_buf, /* vc size = vc_buffer_size * flit_size */
     double vc_c,
@@ -54,7 +54,7 @@ Router::Router(
 
   Vdd = dt->Vdd;
 
-  /*Crossbar parameters. Transmisson gate is employed for connector*/
+  /*CactiCrossbar parameters. Transmisson gate is employed for connector*/
   NTtr = 10*technology*1e-6/2; /*Transmission gate's nmos tr. length*/
   PTtr = 20*technology*1e-6/2; /* pmos tr. length*/
   wt = 15*technology*1e-6/2; /*track width*/
@@ -72,24 +72,24 @@ Router::Router(
   calc_router_parameters();
 }
 
-Router::~Router(){}
+CactiRouter::~CactiRouter(){}
 
 
 double //wire cap with triple spacing
-Router::Cw3(double length) {
-  Wire wc(g_ip->wt, length, 1, 3, 3);
+CactiRouter::Cw3(double length) {
+  CactiWire wc(g_ip->wt, length, 1, 3, 3);
   return (wc.wire_cap(length));
 }
 
 /*Function to calculate the gate capacitance*/
 double
-Router::gate_cap(double w) {
+CactiRouter::gate_cap(double w) {
   return (double) gate_C (w*1e6 /*u*/, 0);
 }
 
 /*Function to calculate the diffusion capacitance*/
 double
-Router::diff_cap(double w, int type /*0 for n-mos and 1 for p-mos*/,
+CactiRouter::diff_cap(double w, int type /*0 for n-mos and 1 for p-mos*/,
     double s /*number of stacking transistors*/) {
   return (double) drain_C_(w*1e6 /*u*/, type, (int) s, 1, g_tp.cell_h_def);
 }
@@ -99,46 +99,46 @@ Router::diff_cap(double w, int type /*0 for n-mos and 1 for p-mos*/,
 
 // Model for simple transmission gate
 double
-Router::transmission_buf_inpcap() {
+CactiRouter::transmission_buf_inpcap() {
   return diff_cap(NTtr, 0, 1)+diff_cap(PTtr, 1, 1);
 }
 
 double
-Router::transmission_buf_outcap() {
+CactiRouter::transmission_buf_outcap() {
   return diff_cap(NTtr, 0, 1)+diff_cap(PTtr, 1, 1);
 }
 
 double
-Router::transmission_buf_ctrcap() {
+CactiRouter::transmission_buf_ctrcap() {
   return gate_cap(NTtr)+gate_cap(PTtr);
 }
 
 double
-Router::crossbar_inpline() {
+CactiRouter::crossbar_inpline() {
   return (Cw3(O*flit_size*wt) + O*transmission_buf_inpcap() + gate_cap(NTid) +
       gate_cap(PTid) + diff_cap(NTid, 0, 1) + diff_cap(PTid, 1, 1));
 }
 
 double
-Router::crossbar_outline() {
+CactiRouter::crossbar_outline() {
   return (Cw3(I*flit_size*ht) + I*transmission_buf_outcap() + gate_cap(NTod) +
       gate_cap(PTod) + diff_cap(NTod, 0, 1) + diff_cap(PTod, 1, 1));
 }
 
 double
-Router::crossbar_ctrline() {
+CactiRouter::crossbar_ctrline() {
   return (Cw3(0.5*O*flit_size*wt) + flit_size*transmission_buf_ctrcap() +
       diff_cap(NTi, 0, 1) + diff_cap(PTi, 1, 1) +
       gate_cap(NTi) + gate_cap(PTi));
 }
 
 double
-Router::tr_crossbar_power() {
+CactiRouter::tr_crossbar_power() {
   return (crossbar_inpline()*Vdd*Vdd*flit_size/2 +
       crossbar_outline()*Vdd*Vdd*flit_size/2)*2;
 }
 
-void Router::buffer_stats()
+void CactiRouter::buffer_stats()
 {
   DynamicParameter dyn_p;
   dyn_p.is_tag      = false;
@@ -203,10 +203,10 @@ void Router::buffer_stats()
 
 
   void
-Router::cb_stats ()
+CactiRouter::cb_stats ()
 {
   if (1) {
-    Crossbar c_b(I, O, flit_size);
+    CactiCrossbar c_b(I, O, flit_size);
     c_b.compute_power();
     crossbar.delay = c_b.delay;
     crossbar.power.readOp.dynamic = c_b.power.readOp.dynamic;
@@ -225,7 +225,7 @@ Router::cb_stats ()
 }
 
 void
-Router::get_router_power()
+CactiRouter::get_router_power()
 {
   /* calculate buffer stats */
   buffer_stats();
@@ -234,8 +234,8 @@ Router::get_router_power()
   cb_stats();
 
   /* calculate arbiter stats */
-  Arbiter vcarb(vc_count, flit_size, buffer.area.w);
-  Arbiter cbarb(I, flit_size, crossbar.area.w);
+  CactiArbiter vcarb(vc_count, flit_size, buffer.area.w);
+  CactiArbiter cbarb(I, flit_size, crossbar.area.w);
   vcarb.compute_power();
   cbarb.compute_power();
   arbiter.power.readOp.dynamic = vcarb.power.readOp.dynamic * I +
@@ -255,7 +255,7 @@ Router::get_router_power()
 }
 
   void
-Router::get_router_delay ()
+CactiRouter::get_router_delay ()
 {
   FREQUENCY=5; // move this to config file --TODO
   cycle_time = (1/(double)FREQUENCY)*1e3; //ps
@@ -268,14 +268,14 @@ Router::get_router_delay ()
 }
 
   void
-Router::get_router_area()
+CactiRouter::get_router_area()
 {
   area.h = I*buffer.area.h;
   area.w = buffer.area.w+crossbar.area.w;
 }
 
   void
-Router::calc_router_parameters()
+CactiRouter::calc_router_parameters()
 {
   /* calculate router frequency and pipeline cycles */
   get_router_delay();
@@ -288,10 +288,10 @@ Router::calc_router_parameters()
 }
 
   void
-Router::print_router()
+CactiRouter::print_router()
 {
-  cout << "\n\nRouter stats:\n";
-  cout << "\tRouter Area - "<< area.get_area()*1e-6<<"(mm^2)\n";
+  cout << "\n\nCactiRouter stats:\n";
+  cout << "\tCactiRouter Area - "<< area.get_area()*1e-6<<"(mm^2)\n";
   cout << "\tMaximum possible network frequency - " << (1/max_cyc)*1e3 << "GHz\n";
   cout << "\tNetwork frequency - " << FREQUENCY <<" GHz\n";
   cout << "\tNo. of Virtual channels - " << vc_count << "\n";
@@ -301,11 +301,11 @@ Router::print_router()
   cout << "\tSimple buffer Area - "<< buffer.area.get_area()*1e-6<<"(mm^2)\n";
   cout << "\tSimple buffer access (Read) - " << buffer.power.readOp.dynamic * 1e9 <<" (nJ)\n";
   cout << "\tSimple buffer leakage - " << buffer.power.readOp.leakage * 1e3 <<" (mW)\n";
-  cout << "\tCrossbar Area - "<< crossbar.area.get_area()*1e-6<<"(mm^2)\n";
+  cout << "\tCactiCrossbar Area - "<< crossbar.area.get_area()*1e-6<<"(mm^2)\n";
   cout << "\tCross bar access energy - " << crossbar.power.readOp.dynamic * 1e9<<" (nJ)\n";
   cout << "\tCross bar leakage power - " << crossbar.power.readOp.leakage * 1e3<<" (mW)\n";
-  cout << "\tArbiter access energy (VC arb + Crossbar arb) - "<<arbiter.power.readOp.dynamic * 1e9 <<" (nJ)\n";
-  cout << "\tArbiter leakage (VC arb + Crossbar arb) - "<<arbiter.power.readOp.leakage * 1e3 <<" (mW)\n";
+  cout << "\tCactiArbiter access energy (VC arb + CactiCrossbar arb) - "<<arbiter.power.readOp.dynamic * 1e9 <<" (nJ)\n";
+  cout << "\tCactiArbiter leakage (VC arb + CactiCrossbar arb) - "<<arbiter.power.readOp.leakage * 1e3 <<" (mW)\n";
 
 }
 

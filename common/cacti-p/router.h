@@ -47,10 +47,10 @@
 
 
 
-class Router : public Component
+class CactiRouter : public Component
 {
   public:
-    Router(
+    CactiRouter(
         double flit_size_,
         double vc_buf, /* vc size = vc_buffer_size * flit_size */
         double vc_count,
@@ -58,7 +58,7 @@ class Router : public Component
         double I_ = 5,
         double O_ = 5,
         double M_ = 0.6);
-    ~Router();
+    ~CactiRouter();
 
 
     void print_router();
@@ -76,8 +76,8 @@ class Router : public Component
     double Cw3(double len);
     double gate_cap(double w);
     double diff_cap(double w, int type /*0 for n-mos and 1 for p-mos*/, double stack);
-    enum Wire_type wtype;
-    enum Wire_placement wire_placement;
+    enum CactiWire_type wtype;
+    enum CactiWire_placement wire_placement;
     //corssbar
     double NTtr, PTtr, wt, ht, I, O, NTi, PTi, NTid, PTid, NTod, PTod, TriS1, TriS2;
     double M; //network load

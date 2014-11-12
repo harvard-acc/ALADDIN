@@ -98,7 +98,7 @@ class powerDef
     friend powerDef operator*(const powerDef & x, double const * const y);
 };
 
-enum Wire_type
+enum CactiWire_type
 {
     Global /* gloabl wires with repeaters */,
     Global_5 /* 5% delay penalty */,
@@ -173,7 +173,7 @@ class InputParameter
     unsigned int ic_proj_type;      // interconnect_projection_type
     unsigned int wire_is_mat_type;  // wire_inside_mat_type
     unsigned int wire_os_mat_type; // wire_outside_mat_type
-    enum Wire_type wt;
+    enum CactiWire_type wt;
     int force_wiretype;
     bool print_input_args;
     unsigned int nuca_cache_sz; // TODO
@@ -647,7 +647,7 @@ class mem_array
   powerDef power_matchline_to_wordline_drv;
 
   min_values_t *arr_min;
-  enum Wire_type wt;
+  enum CactiWire_type wt;
 
   // dram stats
   double activate_energy, read_energy, write_energy, precharge_energy,

@@ -264,7 +264,7 @@ Mat::Mat(const DynamicParameter & dyn_p)
   sa_mux_lev_1_predec = new Predec(sa_mux_lev_1_predec_blk_drv1, sa_mux_lev_1_predec_blk_drv2);
   sa_mux_lev_2_predec = new Predec(sa_mux_lev_2_predec_blk_drv1, sa_mux_lev_2_predec_blk_drv2);
 
-  subarray_out_wire   = new Wire(Global, (g_ip->cl_vertical?subarray.area.w:subarray.area.h),1,1,inside_mat);//should be subarray.area.w;  if with /2 means average length
+  subarray_out_wire   = new CactiWire(Global, (g_ip->cl_vertical?subarray.area.w:subarray.area.h),1,1,inside_mat);//should be subarray.area.w;  if with /2 means average length
 
   double driver_c_gate_load;
   double driver_c_wire_load;
@@ -316,7 +316,7 @@ Mat::Mat(const DynamicParameter & dyn_p)
   /* This means the subarray drivers are along the vertical (y) direction since / subarray.area.get_w() is used;
    * so the subarray_out_wire (actually the drivers) under the subarray and along the horizontal (x) direction
    * So as mentioned above @ line 271
-   * subarray_out_wire   = new Wire(g_ip->wt, subarray.area.h);//should be subarray.area.w
+   * subarray_out_wire   = new CactiWire(g_ip->wt, subarray.area.h);//should be subarray.area.w
    * change the out_wire (driver to along y direction need carefully rethinking
    * rather than just simply switch w with h )
    * */

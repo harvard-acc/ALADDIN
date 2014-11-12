@@ -57,7 +57,7 @@ int combination(int n, int m);
 #endif
 
 
-enum Wire_placement {
+enum CactiWire_placement {
     outside_mat,
     inside_mat,
     local_wires

@@ -65,7 +65,7 @@ class Mat : public Component
     Predec * sa_mux_lev_1_predec;
     Predec * sa_mux_lev_2_predec;
 
-    Wire   * subarray_out_wire;
+    CactiWire   * subarray_out_wire;
     Driver * bl_precharge_eq_drv;
     Driver * cam_bl_precharge_eq_drv;//bitline pre-charge circuit is separated for CAM and RAM arrays.
     Driver * ml_precharge_drv;//matchline prechange driver

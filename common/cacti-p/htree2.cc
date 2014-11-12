@@ -37,7 +37,7 @@
 #include <iostream>
 
 Htree2::Htree2(
-    enum Wire_type wire_model, double mat_w, double mat_h,
+    enum CactiWire_type wire_model, double mat_w, double mat_h,
     int a_bits, int d_inbits, int search_data_in, int d_outbits, int search_data_out, int bl, int wl, enum Htree_type htree_type,
     bool uca_tree_, bool search_tree_, TechnologyParameter::DeviceType *dt)
  :in_rise_time(0), out_rise_time(0),
@@ -103,7 +103,7 @@ Htree2::Htree2(
 // nand gate sizing calculation
 void Htree2::input_nand(double s1, double s2, double l_eff)
 {
-  Wire w1(wt, l_eff);
+  CactiWire w1(wt, l_eff);
   double pton_size = deviceType->n_to_p_eff_curr_drv_ratio;
   // input capacitance of a repeater  = input capacitance of nand.
   double nsize = s1*(1 + pton_size)/(2 + pton_size);
@@ -135,7 +135,7 @@ void Htree2::input_nand(double s1, double s2, double l_eff)
 // tristate buffer model consisting of not, nand, nor, and driver transistors
 void Htree2::output_buffer(double s1, double s2, double l_eff)
 {
-  Wire w1(wt, l_eff);
+  CactiWire w1(wt, l_eff);
   double pton_size = deviceType->n_to_p_eff_curr_drv_ratio;
   // input capacitance of repeater = input capacitance of nand + nor.
   double size = s1*(1 + pton_size)/(2 + pton_size + 1 + 2*pton_size);
@@ -264,7 +264,7 @@ Htree2::in_htree()
   //temp var
   double s1 = 0, s2 = 0, s3 = 0;
   double l_eff = 0;
-  Wire *wtemp1 = 0, *wtemp2 = 0, *wtemp3 = 0;
+  CactiWire *wtemp1 = 0, *wtemp2 = 0, *wtemp3 = 0;
   double len = 0, ht = 0;
   int option = 0;
 
@@ -333,8 +333,8 @@ Htree2::in_htree()
     if (h > v)
     {
       //the iteration considers only one horizontal link
-      wtemp1 = new Wire(wt, len); // hor
-      wtemp2 = new Wire(wt, len/2);  // ver
+      wtemp1 = new CactiWire(wt, len); // hor
+      wtemp2 = new CactiWire(wt, len/2);  // ver
       len_temp = len;
       len /= 2;
       wtemp3 = 0;
@@ -344,9 +344,9 @@ Htree2::in_htree()
     else if (v>0 && h>0)
     {
       //considers one horizontal link and one vertical link
-      wtemp1 = new Wire(wt, len); // hor
-      wtemp2 = new Wire(wt, ht);  // ver
-      wtemp3 = new Wire(wt, len/2);  // next hor
+      wtemp1 = new CactiWire(wt, len); // hor
+      wtemp2 = new CactiWire(wt, ht);  // ver
+      wtemp3 = new CactiWire(wt, len/2);  // next hor
       len_temp = len;
       ht_temp = ht;
       len /= 2;
@@ -359,8 +359,8 @@ Htree2::in_htree()
     {
       // considers only one vertical link
       assert(h == 0);
-      wtemp1 = new Wire(wt, ht); // ver
-      wtemp2 = new Wire(wt, ht/2);  // hor
+      wtemp1 = new CactiWire(wt, ht); // ver
+      wtemp2 = new CactiWire(wt, ht/2);  // hor
       ht_temp = ht;
       ht /= 2;
       wtemp3 = 0;
@@ -470,7 +470,7 @@ void Htree2::out_htree()
   //temp var
   double s1 = 0, s2 = 0, s3 = 0;
   double l_eff = 0;
-  Wire *wtemp1 = 0, *wtemp2 = 0, *wtemp3 = 0;
+  CactiWire *wtemp1 = 0, *wtemp2 = 0, *wtemp3 = 0;
   double len = 0, ht = 0;
   int option = 0;
 
@@ -539,8 +539,8 @@ void Htree2::out_htree()
 
     if(h > v) {
       //the iteration considers only one horizontal link
-      wtemp1 = new Wire(wt, len); // hor
-      wtemp2 = new Wire(wt, len/2);  // ver
+      wtemp1 = new CactiWire(wt, len); // hor
+      wtemp2 = new CactiWire(wt, len/2);  // ver
       len_temp = len;
       len /= 2;
       wtemp3 = 0;
@@ -549,9 +549,9 @@ void Htree2::out_htree()
     }
     else if (v>0 && h>0) {
       //considers one horizontal link and one vertical link
-      wtemp1 = new Wire(wt, len); // hor
-      wtemp2 = new Wire(wt, ht);  // ver
-      wtemp3 = new Wire(wt, len/2);  // next hor
+      wtemp1 = new CactiWire(wt, len); // hor
+      wtemp2 = new CactiWire(wt, ht);  // ver
+      wtemp3 = new CactiWire(wt, len/2);  // next hor
       len_temp = len;
       ht_temp = ht;
       len /= 2;
@@ -563,8 +563,8 @@ void Htree2::out_htree()
     else {
       // considers only one vertical link
       assert(h == 0);
-      wtemp1 = new Wire(wt, ht); // hor
-      wtemp2 = new Wire(wt, ht/2);  // ver
+      wtemp1 = new CactiWire(wt, ht); // hor
+      wtemp2 = new CactiWire(wt, ht/2);  // ver
       ht_temp = ht;
       ht /= 2;
       wtemp3 = 0;

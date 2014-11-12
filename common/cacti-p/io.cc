@@ -442,8 +442,8 @@ InputParameter::parse_cfg(const string & in_file)
       continue;
     }
 
-    if(!strncmp("-Wire inside mat", line, strlen("-Wire inside mat"))) {
-      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-CactiWire inside mat", line, strlen("-CactiWire inside mat"))) {
+      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("global", temp_var, strlen("global"))) {
         wire_is_mat_type = 2;
@@ -459,8 +459,8 @@ InputParameter::parse_cfg(const string & in_file)
       }
     }
 
-    if(!strncmp("-Wire outside mat", line, strlen("-Wire outside mat"))) {
-      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-CactiWire outside mat", line, strlen("-CactiWire outside mat"))) {
+      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("global", temp_var, strlen("global"))) {
         wire_os_mat_type = 2;
@@ -483,8 +483,8 @@ InputParameter::parse_cfg(const string & in_file)
       continue;
     }
 
-    if(!strncmp("-Wire signalling", line, strlen("-wire signalling"))) {
-      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-CactiWire signalling", line, strlen("-wire signalling"))) {
+      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("default", temp_var, strlen("default"))) {
         force_wiretype = 0;
@@ -762,10 +762,10 @@ InputParameter::display_ip()
     }
   cout << "Cache model                   : " << nuca << endl;
   cout << "Nuca bank                     : " << nuca_bank_count << endl;
-  cout << "Wire inside mat               : " << wire_is_mat_type << endl;
-  cout << "Wire outside mat              : " << wire_os_mat_type << endl;
+  cout << "CactiWire inside mat               : " << wire_is_mat_type << endl;
+  cout << "CactiWire outside mat              : " << wire_os_mat_type << endl;
   cout << "Interconnect projection       : " << ic_proj_type << endl;
-  cout << "Wire signalling               : " << force_wiretype << endl;
+  cout << "CactiWire signalling               : " << force_wiretype << endl;
   cout << "Print level                   : " << print_detail << endl;
   cout << "ECC overhead                  : " << add_ecc_b_ << endl;
   cout << "Page size                     : " << page_sz_bits << endl;
@@ -850,15 +850,15 @@ uca_org_t cacti_interface(const string & infile_name)
     g_ip->display_ip();
 
   init_tech_params(g_ip->F_sz_um, false);//this init is for initializing wires
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
 //  g_tp.peri_global.display();
 //  g_tp.sram_cell.display();
 
 
 //  For HighRadix Only
-//  ////  Wire wirea(g_ip->wt, 1000);
+//  ////  CactiWire wirea(g_ip->wt, 1000);
 //  ////  wirea.print_wire();
-//  ////  cout << "Wire Area " << wirea.area.get_area() << " sq. u" << endl;
+//  ////  cout << "CactiWire Area " << wirea.area.get_area() << " sq. u" << endl;
 //  //  winit.print_wire();
 //  //
 //    HighRadix *hr;
@@ -894,7 +894,7 @@ uca_org_t cacti_interface(const string & infile_name)
 
   solve(&fin_res);
 //  output_UCA(&fin_res);
-//  Wire::print_wire();
+//  CactiWire::print_wire();
   output_data_csv(fin_res);
 
   if (!g_ip->dvs_voltage.empty())
@@ -907,8 +907,8 @@ uca_org_t cacti_interface(const string & infile_name)
   }
   output_UCA(&fin_res);
 
-  Wire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
-  Wire::print_wire();
+  CactiWire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
+  CactiWire::print_wire();
 
   delete (g_ip);
   return fin_res;
@@ -1092,7 +1092,7 @@ uca_org_t cacti_interface(
   if (g_ip->print_input_args)
     g_ip->display_ip();
   init_tech_params(g_ip->F_sz_um, false);
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
 
   if (g_ip->nuca == 1)
   {
@@ -1282,7 +1282,7 @@ uca_org_t cacti_interface(
 	  exit(0);
 
   init_tech_params(g_ip->F_sz_um, false);
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
 
   //g_ip->display_ip();
   solve(&fin_res);
@@ -3221,8 +3221,8 @@ if(0){ //detailed power-gating output
 
 
 
-    //Wire wpr; //TODO: this must change, since this changes the wire value during dvs loop.
-    //Wire::print_wire();//move outside output UCA
+    //CactiWire wpr; //TODO: this must change, since this changes the wire value during dvs loop.
+    //CactiWire::print_wire();//move outside output UCA
 
     //cout << "FO4 = " << g_tp.FO4 << endl;
   }
@@ -3352,7 +3352,7 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
 
 
   init_tech_params(g_ip->F_sz_um, false);
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
 
   solve(&fin_res);
 
@@ -3368,8 +3368,8 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
 //  g_ip->display_ip();
 //  output_UCA(&fin_res);
 //  output_data_csv(fin_res);
-//  Wire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
-//  Wire::print_wire();
+//  CactiWire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
+//  CactiWire::print_wire();
  // delete (g_ip);
 
   return fin_res;
@@ -3497,7 +3497,7 @@ uca_org_t init_interface(InputParameter* const local_interface)
   g_ip->error_checking();
 
   init_tech_params(g_ip->F_sz_um, false);
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
   //solve(&fin_res);
   //g_ip->display_ip();
 
@@ -3518,7 +3518,7 @@ void reconfigure(InputParameter *local_interface, uca_org_t *fin_res)
   // Initialize technology parameters
   init_tech_params(g_ip->F_sz_um,false);
 
-  Wire winit; // Do not delete this line. It initializes wires.
+  CactiWire winit; // Do not delete this line. It initializes wires.
 
   // This corresponds to solve() in the initialization process.
   update_dvs(fin_res);

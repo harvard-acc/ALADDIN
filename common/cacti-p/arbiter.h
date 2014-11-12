@@ -41,15 +41,15 @@
 #include "mat.h"
 #include "wire.h"
 
-class Arbiter : public Component
+class CactiArbiter : public Component
 {
   public:
-    Arbiter(
+    CactiArbiter(
       double Req,
       double flit_sz,
       double output_len,
       TechnologyParameter::DeviceType *dt = &(g_tp.peri_global));
-    ~Arbiter();
+    ~CactiArbiter();
 
     void print_arbiter();
     double arb_req();

@@ -10,8 +10,8 @@
 
 #include "power_delay.h"
 #include "MemoryInterface.h"
-#include "io.h"
-#include "cacti_interface.h"
+#include "cacti-p/io.h"
+#include "cacti-p/cacti_interface.h"
 
 class Scratchpad : public MemoryInterface
 {

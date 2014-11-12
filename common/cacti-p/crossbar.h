@@ -42,15 +42,15 @@
 #include "mat.h"
 #include "wire.h"
 
-class Crossbar : public Component
+class CactiCrossbar : public Component
 {
   public:
-    Crossbar(
+    CactiCrossbar(
       double in,
       double out,
       double flit_sz,
       TechnologyParameter::DeviceType *dt = &(g_tp.peri_global));
-    ~Crossbar();
+    ~CactiCrossbar();
 
     void print_crossbar();
     double output_buffer();
