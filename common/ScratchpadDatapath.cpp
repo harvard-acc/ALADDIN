@@ -32,6 +32,7 @@ void ScratchpadDatapath::globalOptimizationPass() {
   scratchpadPartition();
   loopFlatten();
   loopUnrolling();
+  memoryAmbiguation();
   removeSharedLoads();
   storeBuffer();
   removeRepeatedStores();
