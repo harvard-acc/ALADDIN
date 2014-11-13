@@ -146,6 +146,8 @@ void BaseDatapath::memoryAmbiguation()
     {
       assert(is_load_op(node_microop));
       auto load_range = pair_per_load.equal_range(unique_id);
+      if (std::distance(load_range.first, load_range.second) == 1)
+        continue;
       for (auto load_store_it = load_range.first; load_store_it != load_range.second; ++load_store_it)
       {
         assert(paired_store.find(load_store_it->second) != paired_store.end());
@@ -153,7 +155,7 @@ void BaseDatapath::memoryAmbiguation()
         if (prev_store_it == last_store.end())
           continue;
         unsigned prev_store_id = prev_store_it->second;
-        if (doesEdgeExist(prev_store_id, node_id) == false)
+        if (!doesEdgeExist(prev_store_id, node_id))
         {
           to_add_edges.push_back({prev_store_id, node_id, -1});
           dynamicMemoryOps.insert(load_store_it->second + "-" + prev_basic_block.at(prev_store_id));
@@ -397,6 +399,8 @@ void BaseDatapath::loopPipelining()
         break;
       }
     }
+    if (first_non_isolated_node.find(*bound_it) == first_non_isolated_node.end())
+      first_non_isolated_node[*bound_it] = *bound_it;
     bound_it++;
     if (bound_it == loopBound.end() - 1 )
       break;
@@ -407,13 +411,14 @@ void BaseDatapath::loopPipelining()
   {
     unsigned br_node = first_it->first;
     unsigned first_id = first_it->second;
-    if (is_call_op(microop.at(br_node)))
+    if (is_call_op(microop.at(br_node))) {
+      prev_branch = -1;
       continue;
-
+    }
     if (prev_branch != -1)
     {
       //adding dependence between prev_first and first_id
-      if (doesEdgeExist(prev_first, first_id) == false)
+      if (!doesEdgeExist(prev_first, first_id))
         to_add_edges.push_back({(unsigned)prev_first, first_id, CONTROL_EDGE});
       //adding dependence between first_id and prev_branch's children
       out_edge_iter out_edge_it, out_edge_end;
@@ -424,7 +429,7 @@ void BaseDatapath::loopPipelining()
         if (child_id <= first_id
             || edge_to_parid[*out_edge_it] != CONTROL_EDGE)
           continue;
-        if (doesEdgeExist(first_id, child_id) == false)
+        if (!doesEdgeExist(first_id, child_id))
           to_add_edges.push_back({first_id, child_id, 1});
       }
     }
@@ -441,8 +446,9 @@ void BaseDatapath::loopPipelining()
     }
     //remove control dependence between br node to its children
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(nameToVertex[br_node], graph_); out_edge_it != out_edge_end; ++out_edge_it)
-    {
+    for (tie(out_edge_it, out_edge_end) = out_edges(nameToVertex[br_node], graph_); out_edge_it != out_edge_end; ++out_edge_it) {
+      if (is_call_op(microop.at(vertexToName[target(*out_edge_it, graph_)])))
+        continue;
       if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
         continue;
       to_remove_edges.insert(*out_edge_it);
@@ -514,10 +520,13 @@ void BaseDatapath::loopUnrolling()
       //not unrolling branch
       if (unroll_it == unrolling_config.end())
       {
+        //enforce dependences between branch nodes, including call nodes
+        if (!doesEdgeExist(prev_branch, node_id))
+          to_add_edges.push_back({(unsigned)prev_branch, node_id, CONTROL_EDGE});
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                    prev_node_it != E; prev_node_it++)
         {
-          if (doesEdgeExist(*prev_node_it, node_id) == false) {
+          if (!doesEdgeExist(*prev_node_it, node_id)) {
             to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
           }
         }
@@ -546,7 +555,7 @@ void BaseDatapath::loopUnrolling()
           for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                      prev_node_it != E; prev_node_it++)
           {
-            if (doesEdgeExist(*prev_node_it, node_id) == false) {
+            if (!doesEdgeExist(*prev_node_it, node_id)) {
               to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
             }
           }
@@ -640,7 +649,7 @@ void BaseDatapath::removeSharedLoads()
             Vertex child_vertex = target(curr_edge, graph_);
             unsigned child_id = vertexToName[child_vertex];
             Vertex prev_load_vertex = nameToVertex[prev_load];
-            if (doesEdgeExistVertex(prev_load_vertex, child_vertex) == false)
+            if (!doesEdgeExistVertex(prev_load_vertex, child_vertex))
               to_add_edges.push_back({prev_load, child_id, edge_to_parid[curr_edge]});
             to_remove_edges.insert(*out_edge_it);
           }
@@ -701,6 +710,13 @@ void BaseDatapath::storeBuffer()
       }
       if (is_store_op(microop.at(node_id)))
       {
+        //remove this store
+        std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+        //dynamic stores, cannot disambiguated in the static time, cannot remove
+        if (dynamicMemoryOps.find(store_unique_id) != dynamicMemoryOps.end()) {
+          ++node_id;
+          continue;
+        }
         Vertex node = nameToVertex[node_id];
         out_edge_iter out_edge_it, out_edge_end;
 
@@ -1041,7 +1057,7 @@ void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges)
 {
   for(auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it)
   {
-    if (it->from != it->to)
+    if (it->from != it->to && !doesEdgeExist(it->from, it->to))
       get(boost::edge_name, graph_)[add_edge(it->from, it->to, graph_).first] = it->parid;
   }
 }
