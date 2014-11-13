@@ -2,6 +2,7 @@
 #define __DMA_SCRATCHPAD_DATAPATH_H__
 
 #include <string>
+#include <deque>
 #include "base/types.hh"
 #include "base/trace.hh"
 #include "base/flags.hh"
@@ -12,6 +13,7 @@
 #include "sim/system.hh"
 #include "sim/sim_exit.hh"
 #include "sim/clocked_object.hh"
+#include "sim/eventq.hh"
 
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "params/DmaScratchpadDatapath.hh"
@@ -52,7 +54,7 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
 
     /* DMA access functions. */
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, int node_id);
-    void completeDmaAccess(PacketPtr pkt);
+    void completeDmaAccess(Addr addr);
 
   private:
     typedef enum {
@@ -61,7 +63,7 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
         Returned
     } DmaRequestStatus;
     std::map<unsigned, DmaRequestStatus> dma_requests;
-    std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;
+    std::unordered_map<unsigned, pair<Addr, unsigned> > actualAddress;
     int inFlightNodes;
 
     /* This port has to accept snoops but it doesn't need to do anything. See
@@ -79,13 +81,20 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
         virtual bool isSnooping() const { return true; }
         DmaScratchpadDatapath* _datapath;
     };
-
-    class DatapathSenderState : public Packet::SenderState
+    class DmaEvent : public Event
     {
+      private:
+        DmaScratchpadDatapath *datapath;
       public:
-        DatapathSenderState(unsigned _node_id) : node_id(_node_id) {}
-        unsigned node_id;
+        /** Constructor */
+        DmaEvent(DmaScratchpadDatapath *_dpath);
+        /** Process a dma event */
+        void process();
+        /** Returns the description of the tick event. */
+        const char *description() const;
     };
+    /** To store outstanding DMA requests. */
+    std::deque<Addr> dmaQueue;
 
     MasterID _dataMasterId;
 
@@ -95,10 +104,8 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     //gem5 tick
     EventWrapper<DmaScratchpadDatapath,
                  &DmaScratchpadDatapath::event_step> tickEvent;
-
     // Number of cycles required for the CPU to reinitiate a DMA transfer.
-    const unsigned int DMA_SETUP_LATENCY = 1000;
-
+    unsigned dmaSetupLatency;
     System *system;
 };
 

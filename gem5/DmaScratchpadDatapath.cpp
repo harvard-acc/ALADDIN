@@ -27,6 +27,7 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     _dataMasterId(params->system->getMasterId(name() + ".dmadata")),
     spadPort(this, params->system),
     tickEvent(this),
+    dmaSetupLatency(params->dmaSetupLatency),
     system(params->system)
 {
   scratchpad = new Scratchpad(params->spadPorts, cycleTime);
@@ -58,9 +59,8 @@ void DmaScratchpadDatapath::initActualAddress()
       break;
     unsigned node_id;
     long long int address;
-    int size;
-    sscanf(buffer, "%d,%lld,%d\n", &node_id, &address, &size);
-
+    unsigned size;
+    sscanf(buffer, "%d,%lld,%u\n", &node_id, &address, &size);
     actualAddress[node_id] = make_pair(address & MASK, size/8);
   }
   gzclose(gzip_file);
@@ -102,7 +102,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
     {
       DmaRequestStatus status = Ready;
       Addr addr = actualAddress[node_id].first;
-      int size = actualAddress[node_id].second;
+      unsigned size = actualAddress[node_id].second;
       if (dma_requests.find(addr) == dma_requests.end())
         dma_requests[addr] = status;
       else
@@ -178,16 +178,11 @@ DmaScratchpadDatapath::getMasterPort(const string &if_name, PortID idx)
 
 /* Mark the DMA request node as having completed. */
 void
-DmaScratchpadDatapath::completeDmaAccess(PacketPtr pkt)
+DmaScratchpadDatapath::completeDmaAccess(Addr addr)
 {
   DPRINTF(DmaScratchpadDatapath,
-          "completeDmaAccess for addr:%#x %s\n",
-          pkt->getAddr(),
-          pkt->cmdString());
-
-  //Mark nodes ready to fire
-  if (dma_requests.find(pkt->getAddr()) != dma_requests.end())
-    dma_requests[pkt->getAddr()] = Returned;
+          "completeDmaAccess for addr:%#x \n", addr);
+  dma_requests[addr] = Returned;
 }
 
 /* Issue a DMA request for memory. */
@@ -198,14 +193,29 @@ void DmaScratchpadDatapath::issueDmaRequest(
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
   uint8_t *data = new uint8_t[size];
-  spadPort.dmaAction(cmd, addr, size, NULL, data,
-                     clockEdge(Cycles(DMA_SETUP_LATENCY)), flag);
+  dmaQueue.push_back(addr);
+  DmaEvent *dma_event = new DmaEvent(this);
+  spadPort.dmaAction(cmd, addr, size, dma_event, data,
+                     clockEdge(Cycles(dmaSetupLatency)), flag);
 }
 
 bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
 {
-  _datapath->completeDmaAccess(pkt);
   return DmaPort::recvTimingResp(pkt);
+}
+
+DmaScratchpadDatapath::DmaEvent::DmaEvent(DmaScratchpadDatapath *_dpath)
+  : Event(Default_Pri, AutoDelete), datapath(_dpath) {}
+
+void DmaScratchpadDatapath::DmaEvent::process()
+{
+  assert(!datapath->dmaQueue.empty());
+  datapath->completeDmaAccess(datapath->dmaQueue.front());
+  datapath->dmaQueue.pop_front();
+}
+const char * DmaScratchpadDatapath::DmaEvent::description() const
+{
+  return "DmaScratchpad DMA receving request event";
 }
 
 ////////////////////////////////////////////////////////////////////////////

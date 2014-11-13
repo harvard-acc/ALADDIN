@@ -1,4 +1,5 @@
 #include "fft.h"
+#include "gem5/dma_interface.h"
 //////BEGIN TWIDDLES ////////
 
 void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
@@ -321,9 +322,14 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
   float cos_512[448]
 )
 {
-	int tid, hi, lo, i, j, stride;
+#ifdef DMA_MODE
+	dmaLoad(&work_x[0], 512*4*8);
+	dmaLoad(&work_y[0], 512*4*8);
+	dmaLoad(&DATA_y[0], THREADS*8*4*8);
+	dmaLoad(&DATA_y[0], THREADS*8*4*8);
+#endif
+  int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-
 
   step1(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step2(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
@@ -336,6 +342,11 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
   step9(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step10(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step11(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
+
+#ifdef DMA_MODE
+  dmaStore(&work_x[0], 512*4*8);
+	dmaStore(&work_y[0], 512*4*8);
+#endif
 }
 int main(){
 	TYPE a_x[512];

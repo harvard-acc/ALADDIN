@@ -1,5 +1,5 @@
 #include "ss_sort.h"
-
+#include "gem5/dma_interface.h"
 void print(int *a, int size)
 {
 	int i;
@@ -94,6 +94,9 @@ void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
 void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
 	int i, exp = 0;
   bool flag = 0;
+#ifdef DMA_MODE
+  dmaLoad(&a[0], N*4*8);
+#endif
 	for (exp = 0; exp < 2; exp+=2){
     //NEW TRY
     //BLOCKING
@@ -123,9 +126,10 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
       update(a, bucket, b, exp);
       flag = 0;
     }
-
-    //copy(a, b);
 	}
+#ifdef DMA_MODE
+  dmaStore(&a[0], N*4*8);
+#endif
 }
 
 int main()

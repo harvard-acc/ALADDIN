@@ -8,7 +8,9 @@ class DmaScratchpadDatapath(MemObject):
   benchName = Param.String("Aladdin Bench Name")
   traceFileName = Param.String("Aladdin Input Trace File")
   configFileName = Param.String("Aladdin Config File")
-  cycleTime = Param.Unsigned(6, "Clock Period: 6ns default")
+  cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
+  # Number of cycles required for the CPU to reinitiate a DMA transfer.
+  dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")
   spadPorts = Param.Unsigned(1, "Scratchpad ports per partition")
   system = Param.System(Parent.any, "system object")
 

@@ -1,60 +1,57 @@
 #include "md.h"
-void md_kernel(TYPE d_force_x[nAtoms],
-		TYPE d_force_y[nAtoms],
-		TYPE d_force_z[nAtoms],
-		TYPE position_x[nAtoms],
-		TYPE position_y[nAtoms],
-		TYPE position_z[nAtoms],
-		TYPE NL[32*32], int i)
-{
-	int j, jidx;
-	TYPE delx, dely, delz, r2inv, r2invTEMP, r2invTEMP2, r2invTEMP3, t1, t2, t3;
-
-  TYPE i_x = position_x[i];
-  TYPE i_y = position_y[i];
-  TYPE i_z = position_z[i];
-  TYPE fx = 0;
-  TYPE fy = 0;
-  TYPE fz = 0;
-  loop_j : for( j = 0; j < maxNeighbors; j++)
-  {
-    jidx = NL[i*32 + j];
-    TYPE j_x = position_x[jidx];
-    TYPE j_y = position_y[jidx];
-    TYPE j_z = position_z[jidx];
-    delx = i_x - j_x;
-    dely = i_y - j_y;
-    delz = i_z - j_z;
-    r2invTEMP = delx * delx;
-    r2invTEMP2 = dely * dely;
-    r2invTEMP3 = delz * delz;
-    t1 = r2invTEMP + r2invTEMP2;
-    t2 = t1 + r2invTEMP3;
-    r2inv = t2;
-    TYPE r6inv = r2inv * r2inv * r2inv;
-    TYPE force = r2inv*r6inv*(lj1*r6inv - lj2);
-    fx += delx * force;
-    fy += dely * force;
-    fz += delz * force;
-  }
-  d_force_x[i] = fx;
-  d_force_y[i] = fy;
-  d_force_z[i] = fz;
-
-}
-
-void md(TYPE d_force_x[nAtoms],
-		TYPE d_force_y[nAtoms],
-		TYPE d_force_z[nAtoms],
-		TYPE position_x[nAtoms],
-		TYPE position_y[nAtoms],
-		TYPE position_z[nAtoms],
-		TYPE NL[32*32])
-{
+#include "gem5/dma_interface.h"
+void md(TYPE d_force_x[nAtoms], TYPE d_force_y[nAtoms], TYPE d_force_z[nAtoms],
+      TYPE position_x[nAtoms], TYPE position_y[nAtoms], TYPE position_z[nAtoms],
+      TYPE NL[32*32]) {
+#ifdef DMA_MODE
+	dmaLoad(&d_force_x[0], nAtoms*4*8);
+	dmaLoad(&d_force_y[0], nAtoms*4*8);
+	dmaLoad(&d_force_z[0], nAtoms*4*8);
+	dmaLoad(&position_x[0], nAtoms*4*8);
+	dmaLoad(&position_y[0], nAtoms*4*8);
+	dmaLoad(&position_z[0], nAtoms*4*8);
+	dmaLoad(&NL[0], 32*32*4*8);
+#endif
 	int i, j, jidx;
 	TYPE delx, dely, delz, r2inv, r2invTEMP, r2invTEMP2, r2invTEMP3, t1, t2, t3;
 	loop_i : for (i = 0; i < nAtoms; i++)
-    md_kernel(d_force_x, d_force_y, d_force_z, position_x, position_y, position_z, NL, i);
+  {
+    TYPE i_x = position_x[i];
+    TYPE i_y = position_y[i];
+    TYPE i_z = position_z[i];
+    TYPE fx = 0;
+    TYPE fy = 0;
+    TYPE fz = 0;
+    loop_j : for( j = 0; j < maxNeighbors; j++)
+    {
+      jidx = NL[i*32 + j];
+      TYPE j_x = position_x[jidx];
+      TYPE j_y = position_y[jidx];
+      TYPE j_z = position_z[jidx];
+      delx = i_x - j_x;
+      dely = i_y - j_y;
+      delz = i_z - j_z;
+      r2invTEMP = delx * delx;
+      r2invTEMP2 = dely * dely;
+      r2invTEMP3 = delz * delz;
+      t1 = r2invTEMP + r2invTEMP2;
+      t2 = t1 + r2invTEMP3;
+      r2inv = t2;
+      TYPE r6inv = r2inv * r2inv * r2inv;
+      TYPE force = r2inv*r6inv*(lj1*r6inv - lj2);
+      fx += delx * force;
+      fy += dely * force;
+      fz += delz * force;
+    }
+    d_force_x[i] = fx;
+    d_force_y[i] = fy;
+    d_force_z[i] = fz;
+  }
+#ifdef DMA_MODE
+	dmaStore(&d_force_x[0], nAtoms*4*8);
+	dmaStore(&d_force_y[0], nAtoms*4*8);
+	dmaStore(&d_force_z[0], nAtoms*4*8);
+#endif
 }
 
 TYPE distance(

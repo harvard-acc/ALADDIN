@@ -1,9 +1,9 @@
 #include "pp_scan.h"
+#include "gem5/dma_interface.h"
 
 void print(int *a, int size)
 {
 	int i;
-
 	for (i = 0; i < size; i++)
 		printf("%u\t", a[i]);
 }
@@ -41,9 +41,15 @@ void last_step_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE], int sum[SCA
 void pp_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE],
   int sum[SCAN_RADIX])
 {
+#ifdef DMA_MODE
+	dmaLoad(&bucket[0], BUCKETSIZE*4*8);
+#endif
   local_scan(bucket);
   sum_scan(sum, bucket);
   last_step_scan(bucket, bucket2, sum);
+#ifdef DMA_MODE
+	dmaStore(&bucket2[0], BUCKETSIZE*4*8);
+#endif
 }
 
 int main()
