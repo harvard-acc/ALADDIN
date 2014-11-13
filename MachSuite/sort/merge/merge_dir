@@ -1,0 +1,23 @@
+#select memory resources
+set_directive_resource -core RAM_1P_BRAM "mergesort" a
+set_directive_resource -core RAM_1P_BRAM "merge" a
+
+#loop pipelining factors
+#set_directive_pipeline mergesort/mergesort_label1
+set_directive_pipeline mergesort/mergesort_label2
+
+set_directive_pipeline merge/merge_label1
+set_directive_pipeline merge/merge_label2
+set_directive_pipeline merge/merge_label3
+
+#loop unrolling
+#set_directive_unroll -factor 2  mergesort/mergesort_label1 
+#set_directive_unroll -factor 2  mergesort/mergesort_label2
+
+#set_directive_unroll -factor 2  merge/merge_label1
+#set_directive_unroll -factor 2  merge/merge_label2
+#set_directive_unroll -factor 2  merge/merge_label3
+
+#Array partitioning
+#set_directive_array_partition -factor 2 -type cyclic mergesort a 
+#set_directive_array_partition -factor 2 -type cyclic merge a

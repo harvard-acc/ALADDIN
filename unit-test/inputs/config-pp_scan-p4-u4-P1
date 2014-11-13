@@ -1,6 +1,6 @@
 pipelining,1
-partition,cyclic,bucket,128,4
-partition,cyclic,sum,16,4
+partition,cyclic,bucket,512,4,4
+partition,cyclic,sum,64,4,4
 unrolling,sum_scan,25,4
 unrolling,local_scan,16,4
 flatten,local_scan,17

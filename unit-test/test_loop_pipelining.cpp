@@ -17,7 +17,7 @@ SCENARIO("Test loopPipelining w/ Triad", "[triad]")
     ScratchpadDatapath *acc;
     Scratchpad *spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1);
+    spad = new Scratchpad(1, CYCLE_TIME);
     acc->setScratchpad(spad);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
@@ -70,7 +70,7 @@ SCENARIO("Test loopPipelining w/ Reduction", "[reduction]")
     ScratchpadDatapath *acc;
     Scratchpad *spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1);
+    spad = new Scratchpad(1, CYCLE_TIME);
     acc->setScratchpad(spad);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
