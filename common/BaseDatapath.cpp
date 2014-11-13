@@ -335,6 +335,7 @@ void BaseDatapath::removeInductionDependence()
 //called in the end of the whole flow
 void BaseDatapath::dumpStats()
 {
+  clearGraph();
   writeMicroop(microop);
   writeFinalLevel();
   writeGlobalIsolated();
@@ -1414,7 +1415,6 @@ void BaseDatapath::setGraphForStepping()
   std::cerr << "=============================================" << std::endl;
 
   newLevel.assign(numTotalNodes, 0);
-  regStats.assign(numTotalNodes, {0, 0, 0});
 
   edgeToParid = get(boost::edge_name, graph_);
 
@@ -1468,6 +1468,7 @@ int BaseDatapath::clearGraph()
 }
 void BaseDatapath::updateRegStats()
 {
+  regStats.assign(num_cycles, {0, 0, 0});
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
     if (finalIsolated.at(node_id))

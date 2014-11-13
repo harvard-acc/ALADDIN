@@ -10,6 +10,9 @@ class CacheDatapath(MemObject):
   configFileName = Param.String("Aladdin Config File")
   cycleTime = Param.Unsigned(6, "Clock Period: 6ns default")
 
+  cacheSize = Param.String("16kB", "Private cache size")
+  cacheAssoc = Param.Int(1, "Private cache associativity")
+  cacheHitLatency = Param.Int(1, "Hit latency")
   tlbEntries = Param.Int(0, "number entries in TLB (0 implies infinite)")
   tlbAssoc = Param.Int(4, "Number of sets in the TLB")
   tlbHitLatency = Param.Cycles(0, "number of cycles for a hit")

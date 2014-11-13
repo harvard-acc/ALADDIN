@@ -55,7 +55,11 @@ class CacheDatapath : public BaseDatapath, public MemObject {
     BaseMasterPort &getMasterPort(const std::string &if_name,
                                           PortID idx = InvalidPortID);
 
-    void finishTranslation(PacketPtr pkt);
+    /* Complete the translation process. @was_miss is true if the request
+     * originally missed, because the datapath must retry the instruction
+     * instead of directly receiving the translation.
+     */
+    void finishTranslation(PacketPtr pkt, bool was_miss);
 
     void parse_config();
     bool fileExists (const string file_name)

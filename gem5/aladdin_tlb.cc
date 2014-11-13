@@ -37,7 +37,7 @@ void
 AladdinTLB::deHitQueueEvent::process()
 {
   assert(!tlb->hitQueue.empty());
-  tlb->datapath->finishTranslation(tlb->hitQueue.front());
+  tlb->datapath->finishTranslation(tlb->hitQueue.front(), false);
   tlb->hitQueue.pop_front();
 }
 
@@ -62,7 +62,7 @@ AladdinTLB::outStandingWalkReturnEvent::process()
 
   auto range = tlb->missQueue.equal_range(vpn);
   for(auto it = range.first; it!= range.second; ++it)
-    tlb->datapath->finishTranslation(it->second);
+    tlb->datapath->finishTranslation(it->second, true);
 
   tlb->numOccupiedMissQueueEntries --;
   tlb->missQueue.erase(vpn);

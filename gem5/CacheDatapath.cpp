@@ -110,14 +110,21 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
 }
 
 void
-CacheDatapath::finishTranslation(PacketPtr pkt)
+CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
 {
   DPRINTF(CacheDatapath, "finishTranslation for addr:%#x %s\n", pkt->getAddr(), pkt->cmdString());
   DatapathSenderState *state = dynamic_cast<DatapathSenderState *> (pkt->senderState);
   unsigned node_id = state->node_id;
   assert(mem_accesses.find(node_id) != mem_accesses.end());
   assert(mem_accesses[node_id] == Translating);
-  mem_accesses[node_id] = Ready;
+  /* If the TLB missed, we need to retry the complete instruction, as the dcache
+   * state may have changed during the waiting time, so we go back to Ready
+   * instead of Translated. The next translation request should hit.
+   */
+  if (was_miss)
+    mem_accesses[node_id] = Ready;
+  else
+    mem_accesses[node_id] = Translated;
   DPRINTF(CacheDatapath, "node:%d mem access is translated\n", node_id);
   delete state;
   delete pkt->req;
