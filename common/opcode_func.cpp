@@ -42,40 +42,33 @@ bool is_bit_op(unsigned microop)
 {
   switch (microop)
   {
-    case LLVM_IR_Shl: case LLVM_IR_LShr: case LLVM_IR_AShr : 
+    case LLVM_IR_Shl: case LLVM_IR_LShr: case LLVM_IR_AShr :
       case LLVM_IR_And : case LLVM_IR_Or: case LLVM_IR_Xor :
       return true;
     default:
       return false;
   }
 }
+
+bool is_control_op (unsigned microop)
+{
+  if (microop == LLVM_IR_PHI)
+    return true;
+  return is_branch_op(microop);
+}
+
 bool is_branch_op (unsigned microop)
 {
-  switch (microop)
-  {
-    case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_Call:
-      return true;
-    default:
-      return false;
-  }
+  if (microop == LLVM_IR_Br || microop == LLVM_IR_Switch)
+    return true;
+  return is_call_op(microop);
 }
 
 bool is_call_op(unsigned microop)
 {
   if (microop == LLVM_IR_Call)
     return true;
-  return false;
-}
-
-bool is_control_op (unsigned microop)
-{
-  switch (microop)
-  {
-    case LLVM_IR_Br : case LLVM_IR_Switch : case LLVM_IR_PHI: case LLVM_IR_Call:
-      return true;
-    default:
-      return false;
-  }
+  return is_dma_op(microop);
 }
 
 bool is_index_op (unsigned microop)
@@ -94,7 +87,7 @@ bool is_dma_store(unsigned microop)
   return microop == LLVM_IR_DMAStore ;
 }
 
-bool is_dma_op(unsigned microop) 
+bool is_dma_op(unsigned microop)
 {
   return is_dma_load(microop) || is_dma_store(microop);
 }

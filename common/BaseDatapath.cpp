@@ -277,8 +277,7 @@ void BaseDatapath::cleanLeafNodes()
       && node_microop != LLVM_IR_SilentStore
       && node_microop != LLVM_IR_Store
       && node_microop != LLVM_IR_Ret
-      && !is_branch_op(node_microop)
-      && !is_dma_op(node_microop))
+      && !is_branch_op(node_microop))
     {
       to_remove_nodes.push_back(node_id);
       //iterate its parents
@@ -501,7 +500,8 @@ void BaseDatapath::loopUnrolling()
       prev_branch = node_id;
     }
     assert(prev_branch != -1);
-    if (prev_branch != node_id) {
+    if (prev_branch != node_id &&
+      !(is_dma_op(microop.at(prev_branch)) && is_dma_op(microop.at(node_id))) ) {
       to_add_edges.push_back({(unsigned)prev_branch, node_id, CONTROL_EDGE});
     }
     if (!is_branch_op(microop.at(node_id)))
@@ -520,13 +520,19 @@ void BaseDatapath::loopUnrolling()
       //not unrolling branch
       if (unroll_it == unrolling_config.end())
       {
-        //enforce dependences between branch nodes, including call nodes
-        if (!doesEdgeExist(prev_branch, node_id))
+        // Enforce dependences between branch nodes, including call nodes
+        // Except for the case that both two branches are DMA operations.
+        // (Two DMA operations can go in parallel.)
+        if (!doesEdgeExist(prev_branch, node_id) &&
+              !( is_dma_op(microop.at(prev_branch)) &&
+                  is_dma_op(microop.at(node_id)) ) )
           to_add_edges.push_back({(unsigned)prev_branch, node_id, CONTROL_EDGE});
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
                    prev_node_it != E; prev_node_it++)
         {
-          if (!doesEdgeExist(*prev_node_it, node_id)) {
+          if (!doesEdgeExist(*prev_node_it, node_id) &&
+              !( is_dma_op(microop.at(*prev_node_it)) &&
+                   is_dma_op(microop.at(node_id)) )  ) {
             to_add_edges.push_back({*prev_node_it, node_id, CONTROL_EDGE});
           }
         }
@@ -1443,7 +1449,7 @@ void BaseDatapath::setGraphForStepping()
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
-    if (boost::degree(*vi, graph_) != 0)
+    if (boost::degree(*vi, graph_) != 0 || is_dma_op(microop.at(vertexToName[*vi])))
     {
       finalIsolated.at(vertexToName[*vi]) = 0;
       numParents.at(vertexToName[*vi]) = boost::in_degree(*vi, graph_);
