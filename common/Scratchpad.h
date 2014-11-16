@@ -35,8 +35,8 @@ class Scratchpad : public MemoryInterface
   void getMemoryBlocks(std::vector<std::string> &names);
   void getRegisterBlocks(std::vector<std::string> &names);
 
-  void getAveragePower(unsigned int cycles, float &avg_power,
-                     float &avg_dynamic, float &avg_leakage);
+  void getAveragePower(unsigned int cycles, float *avg_power,
+                       float *avg_dynamic, float *avg_leakage);
   float getTotalArea();
   float getReadEnergy(std::string baseName);
   float getWriteEnergy(std::string baseName);

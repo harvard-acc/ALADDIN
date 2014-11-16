@@ -113,13 +113,9 @@ unsigned Scratchpad::findPartitionID(std::string baseName)
   }
 }
 // power in mW, energy in nJ, time in ns
-void Scratchpad::getAveragePower(unsigned int cycles, float &avg_power,
-             float &avg_dynamic, float &avg_leak)
+void Scratchpad::getAveragePower(unsigned int cycles, float *avg_power,
+                                 float *avg_dynamic, float *avg_leak)
 {
-  avg_power = 0;
-  avg_dynamic = 0;
-  avg_leak = 0;
-
   float load_energy = 0;
   float store_energy = 0;
   float leakage_power = 0;
@@ -134,9 +130,9 @@ void Scratchpad::getAveragePower(unsigned int cycles, float &avg_power,
 
   // Load power and store power are computed per cycle, so we have to average
   // the aggregated per cycle power.
-  avg_dynamic = (load_energy + store_energy) * 1000 / (cycleTime *cycles) ;
-  avg_leak = leakage_power;
-  avg_power =  avg_dynamic + avg_leak;
+  *avg_dynamic = (load_energy + store_energy) * 1000 / (cycleTime *cycles) ;
+  *avg_leak = leakage_power;
+  *avg_power =  *avg_dynamic + *avg_leak;
 }
 
 float Scratchpad::getTotalArea() {
