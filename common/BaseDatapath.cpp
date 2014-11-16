@@ -1268,7 +1268,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
 
   if (memory)
     memory->getAveragePower(num_cycles, avg_mem_power,
-                         avg_mem_dynamic_power, avg_mem_leakage_power);
+                            avg_mem_dynamic_power, avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
   //Summary output:
