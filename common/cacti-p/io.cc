@@ -442,8 +442,8 @@ InputParameter::parse_cfg(const string & in_file)
       continue;
     }
 
-    if(!strncmp("-CactiWire inside mat", line, strlen("-CactiWire inside mat"))) {
-      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-Wire inside mat", line, strlen("-Wire inside mat"))) {
+      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("global", temp_var, strlen("global"))) {
         wire_is_mat_type = 2;
@@ -459,8 +459,8 @@ InputParameter::parse_cfg(const string & in_file)
       }
     }
 
-    if(!strncmp("-CactiWire outside mat", line, strlen("-CactiWire outside mat"))) {
-      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-Wire outside mat", line, strlen("-Wire outside mat"))) {
+      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("global", temp_var, strlen("global"))) {
         wire_os_mat_type = 2;
@@ -483,8 +483,8 @@ InputParameter::parse_cfg(const string & in_file)
       continue;
     }
 
-    if(!strncmp("-CactiWire signalling", line, strlen("-wire signalling"))) {
-      sscanf(line, "-CactiWire%[^\"]\"%[^\"]\"", jk, temp_var);
+    if(!strncmp("-Wire signalling", line, strlen("-wire signalling"))) {
+      sscanf(line, "-Wire%[^\"]\"%[^\"]\"", jk, temp_var);
 
       if (!strncmp("default", temp_var, strlen("default"))) {
         force_wiretype = 0;
@@ -762,10 +762,10 @@ InputParameter::display_ip()
     }
   cout << "Cache model                   : " << nuca << endl;
   cout << "Nuca bank                     : " << nuca_bank_count << endl;
-  cout << "CactiWire inside mat               : " << wire_is_mat_type << endl;
-  cout << "CactiWire outside mat              : " << wire_os_mat_type << endl;
+  cout << "Wire inside mat               : " << wire_is_mat_type << endl;
+  cout << "Wire outside mat              : " << wire_os_mat_type << endl;
   cout << "Interconnect projection       : " << ic_proj_type << endl;
-  cout << "CactiWire signalling               : " << force_wiretype << endl;
+  cout << "Wire signalling               : " << force_wiretype << endl;
   cout << "Print level                   : " << print_detail << endl;
   cout << "ECC overhead                  : " << add_ecc_b_ << endl;
   cout << "Page size                     : " << page_sz_bits << endl;
@@ -848,7 +848,6 @@ uca_org_t cacti_interface(const string & infile_name)
 	  exit(0);
   if (g_ip->print_input_args)
     g_ip->display_ip();
-
   init_tech_params(g_ip->F_sz_um, false);//this init is for initializing wires
   CactiWire winit; // Do not delete this line. It initializes wires.
 //  g_tp.peri_global.display();

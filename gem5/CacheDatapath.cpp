@@ -3,7 +3,10 @@
  */
 
 #include <string>
+#include <vector>
 
+#include "aladdin/common/cacti-p/cacti_interface.h"
+#include "aladdin/common/cacti-p/io.h"
 #include "debug/CacheDatapath.hh"
 #include "CacheDatapath.h"
 
@@ -18,6 +21,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
     isCacheBlocked(false),
     load_queue(p->loadQueueSize, p->loadBandwidth),
     store_queue(p->storeQueueSize, p->storeBandwidth),
+    cacti_cfg(p->cactiConfig),
     dtb(this,
         p->tlbEntries,
         p->tlbAssoc,
@@ -332,7 +336,7 @@ void CacheDatapath::stepExecutingQueue()
       {
         // First time seeing this node. Start the memory access procedure.
         Addr addr = actualAddress[node_id].first;
-        int size = actualAddress[node_id].second / 16;
+        int size = actualAddress[node_id].second;
         if (dtb.canRequestTranslation() && accessTLB(addr, size, isLoad, node_id))
         {
           mem_accesses[node_id] = Translating;
@@ -349,14 +353,18 @@ void CacheDatapath::stepExecutingQueue()
       else if (status == Translated)
       {
         Addr addr = actualAddress[node_id].first;
-        int size = actualAddress[node_id].second / 16;
+        int size = actualAddress[node_id].second;
         if (accessCache(addr, size, isLoad, node_id))
         {
           mem_accesses[node_id] = WaitingFromCache;
-          if (isLoad)
+          if (isLoad) {
             load_queue.in_flight ++;
-          else
+            dcache_stats.total_loads ++;
+          }
+          else {
             store_queue.in_flight ++;
+            dcache_stats.total_stores ++;
+          }
           DPRINTF(CacheDatapath, "node:%d mem access is accessing cache\n", node_id);
         }
         else
@@ -390,10 +398,23 @@ void CacheDatapath::stepExecutingQueue()
   }
 }
 
-void CacheDatapath::dumpStats() {
+void CacheDatapath::dumpStats()
+{
+  computeCactiResults();
   writeTLBStats();
   BaseDatapath::dumpStats();
-  writePerCycleActivity(nullptr);
+  writePerCycleActivity(this);
+}
+
+void CacheDatapath::computeCactiResults()
+{
+  DPRINTF(CacheDatapath,
+          "Invoking CACTI for cache power and area estimates.\n");
+  uca_org_t cacti_result = cacti_interface(cacti_cfg);
+  readEnergy = cacti_result.power.readOp.dynamic * 1e9;
+  writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+  leakagePower = cacti_result.power.readOp.leakage * 1000;
+  area = cacti_result.area;
 }
 
 void CacheDatapath::writeTLBStats()
@@ -407,6 +428,38 @@ void CacheDatapath::writeTLBStats()
   tlb_stats << "system.datapath.tlb.misses " << dtb.misses << " # number of TLB misses" << std::endl;
   tlb_stats << "system.datapath.tlb.hitRate " << dtb.hits * 1.0 / (dtb.hits + dtb.misses) << " # hit rate for Aladdin TLB" << std::endl;
   tlb_stats.close();
+}
+
+/* Returns average power over the specified number of cycles. */
+void CacheDatapath::getAveragePower(
+    unsigned int cycles, float &avg_power, float &avg_dynamic, float &avg_leak)
+{
+  avg_dynamic = (dcache_stats.total_loads * readEnergy +
+                 dcache_stats.total_stores * writeEnergy) / (cycles * cycleTime);
+  avg_leak = leakagePower;
+  avg_power = avg_dynamic + avg_leak;
+}
+
+void CacheDatapath::getMemoryBlocks(std::vector<std::string>& names) {}
+
+void CacheDatapath::getRegisterBlocks(std::vector<std::string>& names) {}
+
+float CacheDatapath::getTotalArea() { return area; }
+
+float CacheDatapath::getReadEnergy( std::string block_name) {
+  return readEnergy;
+}
+
+float CacheDatapath::getWriteEnergy(std::string block_name) {
+  return writeEnergy;
+}
+
+float CacheDatapath::getLeakagePower(std::string block_name) {
+  return leakagePower;
+}
+
+float CacheDatapath::getArea(std::string block_name) {
+  return area;
 }
 
 ////////////////////////////////////////////////////////////////////////////

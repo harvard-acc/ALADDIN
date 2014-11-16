@@ -26,10 +26,9 @@ class MemoryInterface {
      */
     virtual void getRegisterBlocks(std::vector<std::string>& names) = 0;
 
-    /* Returns the average power consumed by the memory structure.
-     */
+    /* Returns the average power consumed by the memory structure.  */
     virtual void getAveragePower(unsigned int cycles, float &avg_power,
-                                float &avg_dynamic, float &avg_leak) = 0;
+                                 float &avg_dynamic, float &avg_leak) = 0;
 
     /* Returns the total area of the memory structure.
      */
