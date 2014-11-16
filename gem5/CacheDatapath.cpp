@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "base/statistics.hh"
 #include "aladdin/common/cacti-p/cacti_interface.h"
 #include "aladdin/common/cacti-p/io.h"
 #include "debug/CacheDatapath.hh"
@@ -19,9 +20,17 @@ CacheDatapath::CacheDatapath(const Params *p) :
     tickEvent(this),
     retryPkt(NULL),
     isCacheBlocked(false),
-    load_queue(p->loadQueueSize, p->loadBandwidth),
-    store_queue(p->storeQueueSize, p->storeBandwidth),
-    cacti_cfg(p->cactiConfig),
+    load_queue(
+      p->loadQueueSize,
+      p->loadBandwidth,
+      "load_queue",
+      p->loadQueueCacheConfig),
+    store_queue(
+      p->storeQueueSize,
+      p->storeBandwidth,
+      "store_queue",
+      p->storeQueueCacheConfig),
+    cacti_cfg(p->cactiCacheConfig),
     dtb(this,
         p->tlbEntries,
         p->tlbAssoc,
@@ -30,20 +39,40 @@ CacheDatapath::CacheDatapath(const Params *p) :
         p->tlbPageBytes,
         p->isPerfectTLB,
         p->numOutStandingWalks,
-        p->tlbBandwidth),
+        p->tlbBandwidth,
+        p->tlbCactiConfig),
     inFlightNodes(0),
     system(p->system)
 {
+  /*
+  load_queue = new MemoryQueue(
+      p->loadQueueSize,
+      p->loadBandwidth,
+      "load_queue",
+      p->loadQueueCacheConfig),
+  store_queue = new MemoryQueue(
+      p->storeQueueSize,
+      p->storeBandwidth,
+      "store_queue",
+      p->storeQueueCacheConfig),
+  */
   initActualAddress();
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
+  registerStats();
   num_cycles = 0;
   system->registerAcceleratorStart();
   schedule(tickEvent, clockEdge(Cycles(1)));
 }
 
-CacheDatapath::~CacheDatapath() {}
+CacheDatapath::~CacheDatapath()
+{
+  /*
+  delete load_queue;
+  delete store_queue;
+  */
+}
 
 BaseMasterPort &
 CacheDatapath::getMasterPort(const string &if_name,
@@ -85,6 +114,14 @@ CacheDatapath::DcachePort::recvRetry()
 {
   DPRINTF(CacheDatapath, "recvRetry for addr:");
   assert(datapath->isCacheBlocked && datapath->retryPkt != NULL );
+
+  /* A retry constitutes a read of the load/store queues. This code must be
+   * executed first, before the retryPkt is nullified. */
+  if (datapath->retryPkt->cmd == MemCmd::ReadReq)
+    datapath->load_queue.readStats ++;
+  else if (datapath->retryPkt->cmd == MemCmd::WriteReq)
+    datapath->store_queue.readStats ++;
+
   DPRINTF(CacheDatapath, "%#x \n", datapath->retryPkt->getAddr());
   if (datapath->dcachePort.sendTimingReq(datapath->retryPkt))
   {
@@ -108,6 +145,11 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
   assert(mem_accesses[node_id] == WaitingFromCache);
   mem_accesses[node_id] = Returned;
   DPRINTF(CacheDatapath, "node:%d mem access is returned\n", node_id);
+  /* Data that is returned gets written back into the load store queues. */
+  if (pkt->cmd == MemCmd::ReadReq)
+    load_queue.writeStats ++;
+  else if (pkt->cmd == MemCmd::WriteReq)
+    store_queue.writeStats ++;
   delete state;
   delete pkt->req;
   delete pkt;
@@ -189,10 +231,14 @@ CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
   }
 
   // Bandwidth limitations.
-  if (isLoad)
+  if (isLoad) {
     load_queue.issued_this_cycle ++;
-  else
+    load_queue.writeStats ++;
+  }
+  else {
     store_queue.issued_this_cycle ++;
+    store_queue.writeStats ++;
+  }
 
   //form request
   Request *req = NULL;
@@ -228,7 +274,6 @@ CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
       DPRINTF(CacheDatapath, "load issued to dcache!\n");
     else
       DPRINTF(CacheDatapath, "store issued to dcache!\n");
-
   }
 
   return true;
@@ -287,6 +332,20 @@ void CacheDatapath::resetCacheCounters()
   store_queue.issued_this_cycle = 0;
   dtb.resetRequestCounter();
 }
+
+void CacheDatapath::registerStats()
+{
+  using namespace Stats;
+  // TODO: This will fail with multiple accelerators because statistics cannot
+  // have the same name.
+  loads.name("aladdin_total_loads")
+       .desc("Total number of dcache loads")
+       .flags(total | nonan);
+  stores.name("aladdin_total_stores")
+        .desc("Total number of dcache stores.")
+        .flags(total | nonan);
+}
+
 void CacheDatapath::event_step()
 {
   step();
@@ -359,11 +418,11 @@ void CacheDatapath::stepExecutingQueue()
           mem_accesses[node_id] = WaitingFromCache;
           if (isLoad) {
             load_queue.in_flight ++;
-            dcache_stats.total_loads ++;
+            loads ++;
           }
           else {
             store_queue.in_flight ++;
-            dcache_stats.total_stores ++;
+            stores ++;
           }
           DPRINTF(CacheDatapath, "node:%d mem access is accessing cache\n", node_id);
         }
@@ -401,7 +460,6 @@ void CacheDatapath::stepExecutingQueue()
 void CacheDatapath::dumpStats()
 {
   computeCactiResults();
-  writeTLBStats();
   BaseDatapath::dumpStats();
   writePerCycleActivity(this);
 }
@@ -415,29 +473,72 @@ void CacheDatapath::computeCactiResults()
   writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
   leakagePower = cacti_result.power.readOp.leakage * 1000;
   area = cacti_result.area;
+
+  dtb.computeCactiResults();
+  load_queue.computeCactiResults();
+  store_queue.computeCactiResults();
 }
 
-void CacheDatapath::writeTLBStats()
-{
-  std::string bn(benchName);
-
-  ofstream tlb_stats;
-  std::string tmp_name = bn + "_tlb_stats";
-  tlb_stats.open(tmp_name.c_str());
-  tlb_stats << "system.datapath.tlb.hits " << dtb.hits << " # number of TLB hits" << std::endl;
-  tlb_stats << "system.datapath.tlb.misses " << dtb.misses << " # number of TLB misses" << std::endl;
-  tlb_stats << "system.datapath.tlb.hitRate " << dtb.hits * 1.0 / (dtb.hits + dtb.misses) << " # hit rate for Aladdin TLB" << std::endl;
-  tlb_stats.close();
-}
-
-/* Returns average power over the specified number of cycles. */
+/* Returns total memory power over the specified number of cycles.
+ * TODO: This is a major misnomer since it's called averagePower but only
+ * returns memory power. We need to change this after stripping out the
+ * dependence on MemoryInterface.
+ */
 void CacheDatapath::getAveragePower(
-    unsigned int cycles, float &avg_power, float &avg_dynamic, float &avg_leak)
+    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
 {
-  avg_dynamic = (dcache_stats.total_loads * readEnergy +
-                 dcache_stats.total_stores * writeEnergy) / (cycles * cycleTime);
-  avg_leak = leakagePower;
-  avg_power = avg_dynamic + avg_leak;
+  float avg_cache_pwr, avg_cache_leak, avg_cache_ac_pwr;
+  float avg_lq_pwr, avg_lq_leak, avg_lq_ac_pwr;
+  float avg_sq_pwr, avg_sq_leak, avg_sq_ac_pwr;
+  float avg_tlb_pwr, avg_tlb_leak, avg_tlb_ac_pwr;
+
+  avg_cache_ac_pwr = (loads.value() * readEnergy + stores.value() * writeEnergy) /
+                      (cycles * cycleTime);
+  avg_cache_leak = leakagePower;
+  avg_cache_pwr = avg_cache_ac_pwr + avg_cache_leak;
+
+  load_queue.getAveragePower(cycles, cycleTime, &avg_lq_pwr, &avg_lq_ac_pwr, &avg_lq_leak);
+  store_queue.getAveragePower(cycles, cycleTime, &avg_sq_pwr, &avg_sq_ac_pwr, &avg_sq_leak);
+  dtb.getAveragePower(cycles, cycleTime, &avg_tlb_pwr, &avg_tlb_ac_pwr, &avg_tlb_leak);
+
+  *avg_dynamic = avg_cache_ac_pwr + avg_lq_ac_pwr + avg_sq_ac_pwr + avg_tlb_ac_pwr;
+  *avg_leak = avg_cache_leak + avg_lq_leak + avg_sq_leak + avg_tlb_leak;
+  *avg_power = avg_cache_pwr + avg_lq_pwr + avg_sq_pwr + avg_tlb_pwr;
+
+  // TODO: Right now we'll always dump the power summary file. That might not be
+  // the best thing to do. Address when MemoryInterface is removed.
+  std::string power_file_name = std::string(benchName) + "_power_stats.txt";
+  std::ofstream power_file(power_file_name.c_str());
+
+  power_file << "system.datapath.dcache.average_pwr " << avg_cache_pwr
+             << " # Average dcache dynamic and leakage power." << std::endl;
+  power_file << "system.datapath.dcache.dynamic_pwr " << avg_cache_ac_pwr
+             << " # Average dcache dynamic power." << std::endl;
+  power_file << "system.datapath.dcache.leakage_pwr " << avg_cache_leak
+             << " # Average dcache leakage power." << std::endl;
+
+  power_file << "system.datapath.tlb.average_pwr " << avg_tlb_pwr
+             << " # Average tlb dynamic and leakage power." << std::endl;
+  power_file << "system.datapath.tlb.dynamic_pwr " << avg_tlb_ac_pwr
+             << " # Average tlb dynamic power." << std::endl;
+  power_file << "system.datapath.tlb.leakage_pwr " << avg_tlb_leak
+             << " # Average tlb leakage power." << std::endl;
+
+  power_file << "system.datapath.load_queue.average_pwr " << avg_lq_pwr
+             << " # Average load queue dynamic and leakage power." << std::endl;
+  power_file << "system.datapath.load_queue.dynamic_pwr " << avg_lq_ac_pwr
+             << " # Average load queue dynamic power." << std::endl;
+  power_file << "system.datapath.load_queue.leakage_pwr " << avg_lq_leak
+             << " # Average load queue leakage power." << std::endl;
+
+  power_file << "system.datapath.store_queue.average_pwr " << avg_sq_pwr
+             << " # Average store queue dynamic and leakage power." << std::endl;
+  power_file << "system.datapath.store_queue.dynamic_pwr " << avg_sq_ac_pwr
+             << " # Average store queue dynamic power." << std::endl;
+  power_file << "system.datapath.store_queue.leakage_pwr " << avg_sq_leak
+             << " # Average store queue leakage power." << std::endl;
+
+  power_file.close();
 }
 
 void CacheDatapath::getMemoryBlocks(std::vector<std::string>& names) {}

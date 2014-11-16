@@ -1105,9 +1105,9 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   if (memory)
     memory->getRegisterBlocks(comp_partition_names);
 
-  float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0,
-        avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0,
-        total_area = 0 , fu_area = 0, mem_area = 0;
+  float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0;
+  float avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0;
+  float total_area = 0 , fu_area = 0, mem_area = 0;
   if (memory)
   {
     mem_area = memory->getTotalArea();
@@ -1267,8 +1267,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   power_stats.close();
 
   if (memory)
-    memory->getAveragePower(num_cycles, avg_mem_power,
-                            avg_mem_dynamic_power, avg_mem_leakage_power);
+    memory->getAveragePower(num_cycles, &avg_mem_power,
+                            &avg_mem_dynamic_power, &avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
   //Summary output:

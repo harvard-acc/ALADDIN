@@ -4,15 +4,17 @@
 #include <string>
 
 //gem5 Headers
-#include "base/types.hh"
-#include "base/trace.hh"
 #include "base/flags.hh"
-#include "mem/request.hh"
-#include "mem/packet.hh"
+#include "base/statistics.hh"
+#include "base/trace.hh"
+#include "base/types.hh"
 #include "mem/mem_object.hh"
-#include "sim/system.hh"
-#include "sim/sim_exit.hh"
+#include "mem/packet.hh"
+#include "mem/request.hh"
 #include "sim/clocked_object.hh"
+#include "sim/sim_exit.hh"
+#include "sim/system.hh"
+
 #include "params/CacheDatapath.hh"
 
 #include "aladdin/common/BaseDatapath.h"
@@ -76,8 +78,8 @@ class CacheDatapath :
 
     /* Generic memory interface functions. */
     void computeCactiResults();
-    void getAveragePower(unsigned int cycles, float &avg_power,
-                         float &avg_dynamic, float &avg_leak);
+    void getAveragePower(unsigned int cycles, float *avg_power,
+                         float *avg_dynamic, float *avg_leak);
     void getMemoryBlocks(std::vector<std::string>& names);
     void getRegisterBlocks(std::vector<std::string>& names);
     float getTotalArea();
@@ -85,6 +87,83 @@ class CacheDatapath :
     float getWriteEnergy(std::string block_name);
     float getLeakagePower(std::string block_name);
     float getArea(std::string block_name);
+
+    /* Stores the number of load, stores, or TLB requests in flight as well as
+     * the size of the corresponding queue. */
+    class MemoryQueue
+    {
+      public:
+        MemoryQueue(int _size,
+                    int _bandwidth,
+                    std::string _name,
+                    std::string _cacti_config):
+            size(_size), bandwidth(_bandwidth),
+            in_flight(0), issued_this_cycle(0),
+            name(_name), cacti_config(_cacti_config)
+        {
+          readStats.name(name + "_reads")
+                   .desc("Number of reads to the " + name)
+                   .flags(Stats::total | Stats::nonan);
+          writeStats.name(name + "_writes")
+                    .desc("Number of writes to the " + name)
+                    .flags(Stats::total | Stats::nonan);
+        }
+
+        /* Returns true if we have not exceeded the cache's bandwidth or the
+         * size of the request queue.
+         */
+        bool can_issue()
+        {
+          return (in_flight < size) && (issued_this_cycle < bandwidth);
+        }
+
+        void computeCactiResults()
+        {
+          uca_org_t cacti_result = cacti_interface(cacti_config);
+          readEnergy = cacti_result.power.readOp.dynamic * 1e9;
+          writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+          leakagePower = cacti_result.power.readOp.leakage * 1000;
+          area = cacti_result.area;
+        }
+
+        void getAveragePower(
+            unsigned int cycles, unsigned int cycleTime,
+            float *avg_power, float *avg_dynamic, float *avg_leak)
+        {
+          *avg_dynamic = (readStats.value() * readEnergy +
+                         writeStats.value() * writeEnergy) /
+                        (cycles * cycleTime);
+          *avg_leak = leakagePower;
+          *avg_power = *avg_dynamic + *avg_leak;
+        }
+
+        const int size;  // Size of the queue.
+        const int bandwidth;  // Max requests per cycle.
+        int in_flight;  // Number of requests in the queue.
+        int issued_this_cycle;  // Requests issued in the current cycle.
+        Stats::Scalar readStats;
+        Stats::Scalar writeStats;
+
+      private:
+        std::string name;  // Specifies whether this is a load or store queue.
+        std::string cacti_config;  // CACTI config file.
+        float readEnergy;
+        float writeEnergy;
+        float leakagePower;
+        float area;
+    };
+
+    /* Load and store queues. */
+    MemoryQueue load_queue;
+    MemoryQueue store_queue;
+    // TODO: These are provided by GEM5 directly but I have no idea how to
+    // access them. Based on an extensive Google search, there doesn't seem like
+    // a good answer even exists - all the power modeling appears to be done
+    // after the fact rather than during runtime. For now, I'm just going to
+    // track total loads and stores, regardless of whether they hit or miss.
+    // Simulations confirm that they agree with GEM5's cache stats.
+    Stats::Scalar loads;
+    Stats::Scalar stores;
 
   private:
     // TODO: The XIOSim integration has something very similar to this. We
@@ -98,37 +177,15 @@ class CacheDatapath :
     } MemAccessStatus;
     typedef uint32_t FlagsType;
 
-    /* Stores the number of load, stores, or TLB requests in flight as well as
-     * the size of the corresponding queue. */
-    struct mem_queue
-    {
-      const int size;  // Size of the queue.
-      const int bandwidth;  // Max requests per cycle.
-      int in_flight;  // Number of requests in the queue.
-      int issued_this_cycle;  // Number of requests issued in the current cycle.
-
-      mem_queue(int _size, int _bandwidth):
-          size(_size), bandwidth(_bandwidth),
-          in_flight(0), issued_this_cycle(0) {}
-
-      /* Returns true if we have not exceeded the cache's bandwidth or the size
-       * of the request queue.
-       */
-      bool can_issue()
-      {
-        return (in_flight < size) && (issued_this_cycle < bandwidth);
-      }
+    /* Type of accesses and responses to and from a memory structure. */
+    enum AccessResponseType {
+      MEM_READ = 0,
+      MEM_WRITE = 1,
+      NUM_ACCESS_TYPES = 2
     };
 
-    /* Tracks total loads and stores for power. */
-    struct cache_stats
-    {
-      unsigned total_loads;
-      unsigned total_stores;
-      unsigned load_queue_stall_cycles;
-      unsigned store_queue_stall_cycles;
-    };
-
+    // Register accelerator statistics.
+    void registerStats();
     // Wrapper for step() to match the function signature required by
     // EventWrapper.
     void event_step();
@@ -194,17 +251,12 @@ class CacheDatapath :
      * that can't be a priority.
      */
     std::map<unsigned, MemAccessStatus> mem_accesses;
-    /* Load and store queues. */
-    mem_queue load_queue;
-    mem_queue store_queue;
 
-    /* Statistics and configs for computing power from CACTI. */
-    cache_stats dcache_stats;
+    /* CACTI configuration file for the main cache. */
     std::string cacti_cfg;
 
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
-    void writeTLBStats();
 
     AladdinTLB dtb;
 

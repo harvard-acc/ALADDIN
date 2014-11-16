@@ -97,6 +97,7 @@ class AladdinTLB
 {
   private:
     CacheDatapath *datapath;
+    void regStats();
 
     unsigned numEntries;
     unsigned assoc;
@@ -106,6 +107,13 @@ class AladdinTLB
     bool isPerfectTLB;
     unsigned numOutStandingWalks;
     unsigned numOccupiedMissQueueEntries;
+    std::string cacti_cfg;  // CACTI 6.5+ config file.
+
+    // Power from CACTI.
+    float readEnergy;
+    float writeEnergy;
+    float leakagePower;
+    float area;
 
     BaseTLBMemory *tlbMemory;
 
@@ -144,7 +152,8 @@ class AladdinTLB
   public:
     AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
                Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
-               bool _is_perfect, unsigned _num_walks, unsigned _bandwidth);
+               bool _is_perfect, unsigned _num_walks, unsigned _bandwidth,
+               std::string _cacti_config);
     ~AladdinTLB();
 
     std::string name() const;
@@ -156,19 +165,22 @@ class AladdinTLB
     bool canRequestTranslation();
     void incrementRequestCounter() { requests_this_cycle ++; }
     void resetRequestCounter() { requests_this_cycle = 0; }
+    void computeCactiResults();
+    void getAveragePower(
+        unsigned int cycles, unsigned int cycleTime,
+        float *avg_power, float *avg_dynamic, float *avg_leak);
 
     /* Number of TLB translation requests in the current cycle. */
     unsigned requests_this_cycle;
     /* Maximum translation requests per cycle. */
     unsigned bandwidth;
-    //void regStats();
-    /*
+
     Stats::Scalar hits;
     Stats::Scalar misses;
+    Stats::Scalar reads;
+    Stats::Scalar updates;
     Stats::Formula hitRate;
-    */
-    unsigned hits;
-    unsigned misses;
+
 };
 
 #endif
