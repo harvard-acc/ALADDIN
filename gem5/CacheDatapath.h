@@ -177,13 +177,6 @@ class CacheDatapath :
     } MemAccessStatus;
     typedef uint32_t FlagsType;
 
-    /* Type of accesses and responses to and from a memory structure. */
-    enum AccessResponseType {
-      MEM_READ = 0,
-      MEM_WRITE = 1,
-      NUM_ACCESS_TYPES = 2
-    };
-
     // Register accelerator statistics.
     void registerStats();
     // Wrapper for step() to match the function signature required by

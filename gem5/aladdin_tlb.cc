@@ -73,7 +73,7 @@ AladdinTLB::outStandingWalkReturnEvent::process()
   tlb->numOccupiedMissQueueEntries --;
   tlb->missQueue.erase(vpn);
   tlb->outStandingWalks.pop_front();
-  updates++;  // Upon completion, increment TLB
+  tlb->updates++;  // Upon completion, increment TLB
 }
 
 const char *
