@@ -27,11 +27,11 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "merge.h"
-int temp[size];
+#include "gem5/dma_interface.h"
+int temp[NUM];
 
-void merge(int a[size], int start, int m, int stop){
+void merge(int a[NUM], int start, int m, int stop){
     int i, j, k;
 
     merge_label1 : for(i=start; i <= m; i++){
@@ -58,14 +58,14 @@ void merge(int a[size], int start, int m, int stop){
         }
     }
 }
-
-void mergesort(int a[size]){
+void mergesort(int a[NUM]){
+#ifdef DMA_MODE
+  dmaLoad(&a[0],4096*4*8);
+#endif
     int start, stop;
     int i, m, from, mid, to;
-
     start = 0;
-    stop  = size;
-
+    stop  = NUM;
     mergesort_label1 : for(m = 1; m < stop - start; m += m){
         mergesort_label2 : for(i = start; i < stop; i += m + m){
             from = i;
@@ -79,4 +79,7 @@ void mergesort(int a[size]){
             }
         }
     }
+#ifdef DMA_MODE
+  dmaStore(&a[0],4096*4*8);
+#endif
 }

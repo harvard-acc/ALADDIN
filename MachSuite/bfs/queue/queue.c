@@ -32,7 +32,7 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 */
 
 #include "queue.h"
-
+#include "gem5/dma_interface.h"
 #define Q_PUSH(node) { queue[q_in==0?N_NODES-1:q_in-1]=node; q_in=(q_in+1)%N_NODES; }
 #define Q_PEEK() (queue[q_out])
 #define Q_POP() { q_out = (q_out+1)%N_NODES; }
@@ -42,17 +42,17 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
             node_index_t starting_node, level_t level[N_NODES], 
             edge_index_t level_counts[N_LEVELS])
 {
+#ifdef DMA_MODE
+  dmaLoad(&nodes[0],512*8*8);
+  dmaLoad(&edges[0],4096*8*8);
+  dmaLoad(&level[0],256*1*8);
+#endif
   node_index_t queue[N_NODES];
   node_index_t q_in, q_out;
   node_index_t dummy;
   node_index_t n;
   edge_index_t e;
   int i;
-
-  /*init_levels: for( n=0; n<N_NODES; n++ )*/
-  /*level[n] = MAX_LEVEL;*/
-  /*init_horizons: for( i=0; i<N_LEVELS; i++ )*/
-  /*level_counts[i] = 0;*/
 
   q_in = 1;
   q_out = 0;
@@ -86,4 +86,7 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
     printf(" %d", level_counts[i]);
   printf("\n");
   */
+#ifdef DMA_MODE
+  dmaStore(&level[0],256*1*8);
+#endif
 }

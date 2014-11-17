@@ -32,15 +32,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <math.h>
 
-#define size 4096
+#define NUM 4096
 
-void mergesort(int a[size]);
+void mergesort(int a[NUM]);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 
 struct bench_args_t {
-        int a[size];
+        int a[NUM];
 };
 int INPUT_SIZE = sizeof(struct bench_args_t);
 

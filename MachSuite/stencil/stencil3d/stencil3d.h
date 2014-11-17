@@ -48,7 +48,7 @@ SC 2008
 //Set number of iterations to execute
 #define MAX_ITERATION 1
 //MACROs
-#define size (row_size * col_size * height_size)
+#define NUM (row_size * col_size * height_size)
 #define indx(_row_size,_col_size,_i,_j,_k) ((_i)+_row_size*((_j)+_col_size*(_k)))
 
 void stencil3d( TYPE C0, TYPE C1, TYPE orig[row_size * col_size * height_size],

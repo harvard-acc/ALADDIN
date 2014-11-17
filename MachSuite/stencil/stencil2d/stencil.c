@@ -27,10 +27,12 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "stencil.h"
-
+#include "gem5/dma_interface.h"
 void stencil (TYPE orig[row_size * col_size], TYPE sol[row_size * col_size], TYPE filter[f_size]){
+#ifdef DMA_MODE
+  dmaLoad(&orig[0],8192*4*8);
+#endif
     int i, j, k1, k2;
     TYPE temp, mul;
     temp = (TYPE)0;
@@ -46,4 +48,7 @@ void stencil (TYPE orig[row_size * col_size], TYPE sol[row_size * col_size], TYP
             sol[(i * col_size) + j] = temp;
         }
     }
+#ifdef DMA_MODE
+  dmaStore(&sol[0],8192*4*8);
+#endif
 }

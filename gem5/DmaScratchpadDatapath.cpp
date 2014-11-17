@@ -25,7 +25,7 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     MemObject(params),
     inFlightNodes(0),
     _dataMasterId(params->system->getMasterId(name() + ".dmadata")),
-    spadPort(this, params->system),
+    spadPort(this, params->system, params->maxDmaRequests),
     tickEvent(this),
     dmaSetupLatency(params->dmaSetupLatency),
     system(params->system)

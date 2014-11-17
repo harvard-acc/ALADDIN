@@ -19,7 +19,7 @@
 *   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 #include "aes.h"
-
+#include "gem5/dma_interface.h"
 #define F(x)   (((x)<<1) ^ ((((x)>>7) & 1) * 0x1b))
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
 
@@ -191,6 +191,11 @@ void aes_expandEncKey(uint8_t *k, uint8_t *rc)
 /* -------------------------------------------------------------------------- */
 void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 {
+#ifdef DMA_MODE
+  dmaLoad(ctx,96*1*8);
+  dmaLoad(&k[0],32*1*8);
+  dmaLoad(&buf[0],16*1*8);
+#endif
     //INIT
     uint8_t rcon = 1;
     uint8_t i;
@@ -216,5 +221,8 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     aes_shiftRows(buf);
     aes_expandEncKey(ctx->key, &rcon); 
     aes_addRoundKey(buf, ctx->key);
+#ifdef DMA_MODE
+  dmaStore(ctx,96*1*8);
+#endif
 } /* aes256_encrypt */
 

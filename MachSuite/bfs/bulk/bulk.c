@@ -31,19 +31,22 @@ implementations based on:
 Harish and Narayanan. "Accelerating large graph algorithms on the GPU using CUDA." HiPC, 2007.
 Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CPU and GPU." PACT, 2011.
 */
-
 #include "bulk.h"
-
+#include "gem5/dma_interface.h"
 void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES], 
             node_index_t starting_node, level_t level[N_NODES], 
             edge_index_t level_counts[N_LEVELS])
 {
+#ifdef DMA_MODE
+  dmaLoad(&nodes[0],512*8*8);
+  dmaLoad(&edges[0],4096*8*8);
+  dmaLoad(&level[0],256*1*8);
+#endif
   node_index_t n;
   edge_index_t e;
   level_t horizon;
   int i;
   edge_index_t cnt;
-
   level[starting_node] = 0;
   level_counts[0] = 1;
 
@@ -68,4 +71,7 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
     if( (level_counts[horizon+1]=cnt)==0 )
       break;
   }
+#ifdef DMA_MODE
+  dmaStore(&level[0],256*1*8);
+#endif
 }

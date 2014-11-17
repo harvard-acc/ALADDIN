@@ -30,11 +30,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Based on algorithm described here:
 http://www.cs.berkeley.edu/~mhoemmen/matrix-seminar/slides/UCB_sparse_tutorial_1.pdf
 */
-
 #include "ellpack.h"
-
+#include "gem5/dma_interface.h"
 void ellpack(TYPE nzval[N*L], int cols[N*L], TYPE vec[N], TYPE out[N])
 { 
+#ifdef DMA_MODE
+  dmaLoad(&nzval[0],4940*8*8);
+  dmaLoad(&cols[0],4940*4*8);
+  dmaLoad(&vec[0],494*8*8);
+#endif
     int i, j; 
     TYPE Si;
 
@@ -46,4 +50,7 @@ void ellpack(TYPE nzval[N*L], int cols[N*L], TYPE vec[N], TYPE out[N])
         }
         out[i] = sum;
     }
+#ifdef DMA_MODE
+  dmaStore(&out[0],494*8*8);
+#endif
 }

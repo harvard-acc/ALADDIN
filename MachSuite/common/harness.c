@@ -16,10 +16,8 @@ int main(int argc, char **argv)
   int n;
 
   //assert( argc==3 && "Usage: ./benchmark <input_file> <check_file>" );
-  //in_file = argv[1];
-  //check_file = argv[2];
-  in_file = "input.data";
-  check_file = "check.data";
+  in_file = argv[1];
+  check_file = argv[2];
 
   // Load input data
   input = malloc(INPUT_SIZE);

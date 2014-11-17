@@ -72,8 +72,8 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     class SpadPort : public DmaPort
     {
       public:
-        SpadPort (DmaScratchpadDatapath *dev, System *s) :
-            DmaPort(dev, s), _datapath(dev) {}
+        SpadPort (DmaScratchpadDatapath *dev, System *s, unsigned max_req) :
+            DmaPort(dev, s, max_req), _datapath(dev) {}
       protected:
         virtual bool recvTimingResp(PacketPtr pkt);
         virtual void recvTimingSnoopReq(PacketPtr pkt) {}

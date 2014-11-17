@@ -32,10 +32,12 @@ implementation based on algorithm described in:
 K. Datta, M. Murphy, V. Volkov, S. Williams, J. Carter, L. Oliker, D. Patterson, J. Shalf, K. Yelick
 SC 2008
 */
-
 #include "stencil3d.h"
-
-void stencil3d(TYPE C0, TYPE C1, TYPE orig[size], TYPE sol[size]) {
+#include "gem5/dma_interface.h"
+void stencil3d(TYPE C0, TYPE C1, TYPE orig[NUM], TYPE sol[NUM]) {
+#ifdef DMA_MODE
+  dmaLoad(&orig[0],16384*4*8);
+#endif
     int i, j, k;
     TYPE sum1, sum2, mul1, mul2, diff;
 
@@ -59,4 +61,7 @@ void stencil3d(TYPE C0, TYPE C1, TYPE orig[size], TYPE sol[size]) {
             }
         }
     }
+#ifdef DMA_MODE
+  dmaStore(&sol[0],16384*4*8);
+#endif
 }

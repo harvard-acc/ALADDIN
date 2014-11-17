@@ -27,21 +27,21 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "needwun.h"
-
+#include "gem5/dma_interface.h"
 void needwun(char SEQA[N], char SEQB[M], char allignedA[sum_size], char allignedB[sum_size], 
              int A[dyn_size], char ptr[dyn_size]){
-
+#ifdef DMA_MODE
+  dmaLoad(&SEQA[0],128*1*8);
+  dmaLoad(&SEQB[0],128*1*8);
+#endif
     int score, match, mismatch, gap,
         choice1, choice2, choice3, max,
         i, j, i_t, j_t,
         Mul1, Mul2, Mul3;
-
     match       = 1;
     mismatch    = -1;
     gap         = -1;
-
     init_row : for(i = 0; i < N1; i++){
         A[i]   = i * mismatch;
     }
@@ -121,4 +121,8 @@ void needwun(char SEQA[N], char SEQB[M], char allignedA[sum_size], char alligned
             j--;
         }
     }
+#ifdef DMA_MODE
+  dmaStore(&allignedB[0],256*1*8);
+  dmaStore(&allignedB[0],256*1*8);
+#endif
 }

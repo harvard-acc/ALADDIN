@@ -11,6 +11,7 @@ class DmaScratchpadDatapath(MemObject):
   cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
   # Number of cycles required for the CPU to reinitiate a DMA transfer.
   dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")
+  maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
   spadPorts = Param.Unsigned(1, "Scratchpad ports per partition")
   system = Param.System(Parent.any, "system object")
 

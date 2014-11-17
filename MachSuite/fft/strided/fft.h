@@ -2,20 +2,20 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define size 1024
+#define NUM 1024
 #define twoPI 6.28318530717959
 
-void fft(double real[size], double img[size], double real_twid[size], double img_twid[size]);
+void fft(double real[NUM], double img[NUM], double real_twid[NUM], double img_twid[NUM]);
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 
 struct bench_args_t {
-        double real[size];
-        double img[size];
-        double real_twid[size];
-        double img_twid[size];
+        double real[NUM];
+        double img[NUM];
+        double real_twid[NUM];
+        double img_twid[NUM];
 };
 int INPUT_SIZE = sizeof(struct bench_args_t);
 

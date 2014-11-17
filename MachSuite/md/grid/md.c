@@ -27,21 +27,21 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include "md.h"
-
+#include "gem5/dma_interface.h"
 #define MIN(x,y) ( (x)<(y) ? (x) : (y) )
 #define MAX(x,y) ( (x)>(y) ? (x) : (y) )
-
-void md( int n_points[blockSide][blockSide][blockSide],
-         dvector_t d_force[blockSide][blockSide][blockSide][densityFactor],
+void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockSide][blockSide][blockSide][densityFactor],
          dvector_t position[blockSide][blockSide][blockSide][densityFactor] )
 {
+#ifdef DMA_MODE
+  dmaLoad(&n_points[0],64*4*8);
+  dmaLoad(&position[0],1920*8*8);
+#endif
   ivector_t b0, b1; // b0 is the current block, b1 is b0 or a neighboring block
   dvector_t p, q; // p is a point in b0, q is a point in either b0 or b1
   int p_idx, q_idx;
   double dx, dy, dz, r2inv, r6inv, potential, f;
-
   // Iterate over the grid, block by block
   loop_grid0_x: for( b0.x=0; b0.x<blockSide; b0.x++ ) {
   loop_grid0_y: for( b0.y=0; b0.y<blockSide; b0.y++ ) {
@@ -84,5 +84,8 @@ void md( int n_points[blockSide][blockSide][blockSide],
   } // loop_p
   }}} // loop_grid1_*
   }}} // loop_grid0_*
+#ifdef DMA_MODE
+  dmaStore(&d_force[0],1920*8*8);
+#endif
 }
 
