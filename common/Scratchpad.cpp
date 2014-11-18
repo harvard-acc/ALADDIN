@@ -216,7 +216,7 @@ uca_org_t Scratchpad::cactiWrapper(unsigned num_of_bytes, unsigned wordsize)
   int single_ended_read_ports = 0;
   int search_ports = 0;
   int banks = 1;
-  double tech_node = 40; // in nm
+  double tech_node = 45; // in nm
   //# following three parameters are meaningful only for main memories
   int page_sz = 0;
   int burst_length = 8;

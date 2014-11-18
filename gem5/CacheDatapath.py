@@ -30,7 +30,6 @@ class CacheDatapath(MemObject):
   storeBandwidth = Param.Int(
       1, "Number of stores that can be issued per cycle.")
   storeQueueCacheConfig = Param.String("", "Store queue CACTI config file.")
-  tlbQueueSize = Param.Int(2, "Size of the TLB queue.")
   tlbBandwidth = Param.Int(
       1, "Number of translations that can be requested per cycle.")
 
