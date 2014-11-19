@@ -120,7 +120,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
       else if (status == Returned)
       {
         markNodeCompleted(it, index);
-        dma_requests[addr] = status;
+        dma_requests.erase(addr);
         inFlightNodes--;
       }
       else

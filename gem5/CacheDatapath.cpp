@@ -20,6 +20,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
     tickEvent(this),
     retryPkt(NULL),
     isCacheBlocked(false),
+    cacheLineSize(p->cacheLineSize),
     load_queue(
       p->loadQueueSize,
       p->loadBandwidth,
@@ -138,12 +139,24 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
 {
   DPRINTF(CacheDatapath, "completeDataAccess for addr:%#x %s\n", pkt->getAddr(), pkt->cmdString());
   DatapathSenderState *state = dynamic_cast<DatapathSenderState *> (pkt->senderState);
-
-  //Mark nodes ready to fire
   unsigned node_id = state->node_id;
-  assert(mem_accesses.find(node_id) != mem_accesses.end());
-  assert(mem_accesses[node_id] == WaitingFromCache);
-  mem_accesses[node_id] = Returned;
+  /* Loop through the executingQueue to update the status of memory
+   * operations, mark nodes accessing data on the same cache line ready to fire*/
+  Addr blockAddr = pkt->getAddr() / cacheLineSize;
+  if (mem_accesses[node_id] != Returned)
+  {
+    for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
+    {
+      unsigned node_id = *it;
+      if (is_memory_op(microop.at(node_id)) && mem_accesses[node_id] == WaitingFromCache) 
+      {
+        Addr addr = actualAddress[node_id].first;
+        if (addr / cacheLineSize == blockAddr)
+          mem_accesses[node_id] = Returned;
+      }
+    }
+  }
+  assert(mem_accesses[node_id] == Returned);
   DPRINTF(CacheDatapath, "node:%d mem access is returned\n", node_id);
   /* Data that is returned gets written back into the load store queues. */
   if (pkt->cmd == MemCmd::ReadReq)
@@ -442,6 +455,7 @@ void CacheDatapath::stepExecutingQueue()
           load_queue.in_flight --;
         else
           store_queue.in_flight --;
+        mem_accesses.erase(node_id);
         markNodeCompleted(it, index);
       }
       else
@@ -501,9 +515,9 @@ void CacheDatapath::getAveragePower(
   store_queue.getAveragePower(cycles, cycleTime, &avg_sq_pwr, &avg_sq_ac_pwr, &avg_sq_leak);
   dtb.getAveragePower(cycles, cycleTime, &avg_tlb_pwr, &avg_tlb_ac_pwr, &avg_tlb_leak);
 
-  *avg_dynamic = avg_cache_ac_pwr + avg_lq_ac_pwr + avg_sq_ac_pwr + avg_tlb_ac_pwr;
-  *avg_leak = avg_cache_leak + avg_lq_leak + avg_sq_leak + avg_tlb_leak;
-  *avg_power = avg_cache_pwr + avg_lq_pwr + avg_sq_pwr + avg_tlb_pwr;
+  *avg_dynamic = avg_cache_ac_pwr;
+  *avg_leak = avg_cache_leak;
+  *avg_power = avg_cache_pwr;
 
   // TODO: Right now we'll always dump the power summary file. That might not be
   // the best thing to do. Address when MemoryInterface is removed.
@@ -516,6 +530,8 @@ void CacheDatapath::getAveragePower(
              << " # Average dcache dynamic power." << std::endl;
   power_file << "system.datapath.dcache.leakage_pwr " << avg_cache_leak
              << " # Average dcache leakage power." << std::endl;
+  power_file << "system.datapath.dcache.area " << area
+             << " # dcache area." << std::endl;
 
   power_file << "system.datapath.tlb.average_pwr " << avg_tlb_pwr
              << " # Average tlb dynamic and leakage power." << std::endl;
@@ -523,6 +539,8 @@ void CacheDatapath::getAveragePower(
              << " # Average tlb dynamic power." << std::endl;
   power_file << "system.datapath.tlb.leakage_pwr " << avg_tlb_leak
              << " # Average tlb leakage power." << std::endl;
+  power_file << "system.datapath.tlb.area " << dtb.getArea()
+             << " # tlb area." << std::endl;
 
   power_file << "system.datapath.load_queue.average_pwr " << avg_lq_pwr
              << " # Average load queue dynamic and leakage power." << std::endl;
@@ -530,6 +548,8 @@ void CacheDatapath::getAveragePower(
              << " # Average load queue dynamic power." << std::endl;
   power_file << "system.datapath.load_queue.leakage_pwr " << avg_lq_leak
              << " # Average load queue leakage power." << std::endl;
+  power_file << "system.datapath.load_queue.area " << load_queue.getArea()
+             << " # load_queue area." << std::endl;
 
   power_file << "system.datapath.store_queue.average_pwr " << avg_sq_pwr
              << " # Average store queue dynamic and leakage power." << std::endl;
@@ -537,6 +557,8 @@ void CacheDatapath::getAveragePower(
              << " # Average store queue dynamic power." << std::endl;
   power_file << "system.datapath.store_queue.leakage_pwr " << avg_sq_leak
              << " # Average store queue leakage power." << std::endl;
+  power_file << "system.datapath.store_queue.area " << store_queue.getArea()
+             << " # store_queue area." << std::endl;
 
   power_file.close();
 }

@@ -30,7 +30,12 @@ void generate_binary()
   memset(&data.allignedB, 0, (N+M));
   memset(&data.A, 0, dyn_size);
   memset(&data.ptr, 0, dyn_size);
-
+  int j = 0;
+  int mismatch = -1;
+  for (j = 0;  j < N1; j++)
+    data.A[j] = j * mismatch;
+  for (j = 0;  j < M1; j++)
+    data.A[j*N1] = j * mismatch;
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );

@@ -11,6 +11,7 @@ class CacheDatapath(MemObject):
   cycleTime = Param.Unsigned(6, "Clock Period: 6ns default")
 
   cacheSize = Param.String("16kB", "Private cache size")
+  cacheLineSize = Param.Int("64", "Cache line size (in bytes)")
   cacheAssoc = Param.Int(1, "Private cache associativity")
   cacheHitLatency = Param.Int(1, "Hit latency")
   cactiCacheConfig = Param.String("", "CACTI cache config file")

@@ -6,6 +6,8 @@
 #include "aladdin_tlb.hh"
 #include "CacheDatapath.h"
 #include "debug/CacheDatapath.hh"
+/*hack, to fix*/
+#define MIN_CACTI_SIZE 64
 
 AladdinTLB::AladdinTLB(
     CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
@@ -168,10 +170,21 @@ AladdinTLB::computeCactiResults()
 {
   DPRINTF(CacheDatapath, "Invoking CACTI for TLB power and area estimates.\n");
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
-  readEnergy = cacti_result.power.readOp.dynamic * 1e9;
-  writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
-  leakagePower = cacti_result.power.readOp.leakage * 1000;
-  area = cacti_result.area;
+  if (numEntries >= MIN_CACTI_SIZE)
+  {
+    readEnergy = cacti_result.power.readOp.dynamic * 1e9;
+    writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+    leakagePower = cacti_result.power.readOp.leakage * 1000;
+    area = cacti_result.area;
+  }
+  else
+  {
+    /*Assuming it scales linearly with cache size*/
+    readEnergy = cacti_result.power.readOp.dynamic * 1e9 * numEntries / MIN_CACTI_SIZE;
+    writeEnergy = cacti_result.power.writeOp.dynamic * 1e9 * numEntries / MIN_CACTI_SIZE;
+    leakagePower = cacti_result.power.readOp.leakage * 1000 * numEntries / MIN_CACTI_SIZE;
+    area = cacti_result.area * numEntries / MIN_CACTI_SIZE;
+  }
 }
 
 void

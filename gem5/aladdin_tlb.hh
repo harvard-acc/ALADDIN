@@ -169,7 +169,7 @@ class AladdinTLB
     void getAveragePower(
         unsigned int cycles, unsigned int cycleTime,
         float *avg_power, float *avg_dynamic, float *avg_leak);
-
+    float getArea() {return area;}
     /* Number of TLB translation requests in the current cycle. */
     unsigned requests_this_cycle;
     /* Maximum translation requests per cycle. */

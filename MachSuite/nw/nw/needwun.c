@@ -42,13 +42,13 @@ void needwun(char SEQA[N], char SEQB[M], char allignedA[sum_size], char alligned
     match       = 1;
     mismatch    = -1;
     gap         = -1;
-    init_row : for(i = 0; i < N1; i++){
-        A[i]   = i * mismatch;
-    }
+    /*init_row : for(i = 0; i < N1; i++){*/
+    /*A[i]   = i * mismatch;*/
+    /*}*/
 
-    init_col : for(i = 0; i <M1; i++){
-        A[i * N1] = i * mismatch;
-    }
+    /*init_col : for(i = 0; i <M1; i++){*/
+    /*A[i * N1] = i * mismatch;*/
+    /*}*/
 
     //matrix Filling Loop
     fill_out : for(i = 1; i < M1; i++){

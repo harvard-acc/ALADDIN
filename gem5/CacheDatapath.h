@@ -22,7 +22,8 @@
 
 #define MASK 0x7fffffff
 #define MAX_INFLIGHT_NODES 100
-
+/*hack, to fix*/
+#define MIN_CACTI_SIZE 64
 /* Multiple inheritance is unfortunately unavoidable here. BaseDatapath is
  * meant to generalize for integration with any simulator, and in this
  * particular case, GEM5 requires us to interface with its APIs. I don't see any
@@ -120,10 +121,21 @@ class CacheDatapath :
         void computeCactiResults()
         {
           uca_org_t cacti_result = cacti_interface(cacti_config);
-          readEnergy = cacti_result.power.readOp.dynamic * 1e9;
-          writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
-          leakagePower = cacti_result.power.readOp.leakage * 1000;
-          area = cacti_result.area;
+          if (size >= MIN_CACTI_SIZE)
+          {
+            readEnergy = cacti_result.power.readOp.dynamic * 1e9;
+            writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+            leakagePower = cacti_result.power.readOp.leakage * 1000;
+            area = cacti_result.area;
+          }
+          else
+          {
+            /*Assuming it scales linearly with cache size*/
+            readEnergy = cacti_result.power.readOp.dynamic * 1e9 * size / MIN_CACTI_SIZE;
+            writeEnergy = cacti_result.power.writeOp.dynamic * 1e9 * size / MIN_CACTI_SIZE;
+            leakagePower = cacti_result.power.readOp.leakage * 1000 * size / MIN_CACTI_SIZE;
+            area = cacti_result.area * size / MIN_CACTI_SIZE;
+          }
         }
 
         void getAveragePower(
@@ -136,6 +148,7 @@ class CacheDatapath :
           *avg_leak = leakagePower;
           *avg_power = *avg_dynamic + *avg_leak;
         }
+        float getArea() {return area;}
 
         const int size;  // Size of the queue.
         const int bandwidth;  // Max requests per cycle.
@@ -235,6 +248,9 @@ class CacheDatapath :
 
     /* True if the cache's MSHRs are full. */
     bool isCacheBlocked;
+
+    /* Private L1 Cache Size */
+    unsigned cacheLineSize;
 
     /* Actual memory request addresses, obtained from the trace. */
     std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;

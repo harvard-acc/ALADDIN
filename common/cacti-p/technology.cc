@@ -1782,7 +1782,7 @@ void init_tech_params(double technology, bool is_tag)
       += curr_alpha * n_to_p_eff_curr_drv_ratio[peri_global_tech_type];
     g_tp.peri_global.long_channel_leakage_reduction
       += curr_alpha * long_channel_leakage_reduction[peri_global_tech_type];
-      //use LOP devices to reduce leakage power
+    /* use LOP devices to reduce leakage power, to mach SRAM compiler */
     g_tp.peri_global.I_off_n   += curr_alpha * I_off_n[2][g_ip->temp - 300];//*pow(g_tp.peri_global.Vdd/g_tp.peri_global.Vdd_default,3);//Consider the voltage change may affect the current density as well. TODO: polynomial curve-fitting based on MASTAR may not be accurate enough
     g_tp.peri_global.I_off_p   += curr_alpha * I_off_n[2][g_ip->temp - 300];//*pow(g_tp.peri_global.Vdd/g_tp.peri_global.Vdd_default,3);//To mimic the Vdd effect on Ioff (for the same device, dvs should not change default Ioff---only changes if device is different?? but MASTAR shows different results)
     //g_tp.peri_global.I_off_n   += curr_alpha * I_off_n[peri_global_tech_type][g_ip->temp - 300];//*pow(g_tp.peri_global.Vdd/g_tp.peri_global.Vdd_default,3);//Consider the voltage change may affect the current density as well. TODO: polynomial curve-fitting based on MASTAR may not be accurate enough
@@ -1836,7 +1836,7 @@ void init_tech_params(double technology, bool is_tag)
     g_tp.sram_cell.R_pch_on  += curr_alpha * Rpchannelon[ram_cell_tech_type];
     g_tp.sram_cell.n_to_p_eff_curr_drv_ratio += curr_alpha * n_to_p_eff_curr_drv_ratio[ram_cell_tech_type];
     g_tp.sram_cell.long_channel_leakage_reduction += curr_alpha * long_channel_leakage_reduction[ram_cell_tech_type];
-    //use lop mode to reduce leakage 
+    /* use lop mode to reduce leakage, to match SRAM compiler */
     g_tp.sram_cell.I_off_n   += curr_alpha * I_off_n[2][g_ip->temp - 300];//**pow(g_tp.sram_cell.Vdd/g_tp.sram_cell.Vdd_default,4);
     g_tp.sram_cell.I_off_p   += curr_alpha * I_off_n[2][g_ip->temp - 300];//**pow(g_tp.sram_cell.Vdd/g_tp.sram_cell.Vdd_default,4);
     //g_tp.sram_cell.I_off_n   += curr_alpha * I_off_n[ram_cell_tech_type][g_ip->temp - 300];//**pow(g_tp.sram_cell.Vdd/g_tp.sram_cell.Vdd_default,4);
@@ -1886,8 +1886,11 @@ void init_tech_params(double technology, bool is_tag)
     g_tp.cam_cell.R_pch_on  += curr_alpha * Rpchannelon[ram_cell_tech_type];
     g_tp.cam_cell.n_to_p_eff_curr_drv_ratio += curr_alpha * n_to_p_eff_curr_drv_ratio[ram_cell_tech_type];
     g_tp.cam_cell.long_channel_leakage_reduction += curr_alpha * long_channel_leakage_reduction[ram_cell_tech_type];
-    g_tp.cam_cell.I_off_n   += curr_alpha * I_off_n[ram_cell_tech_type][g_ip->temp - 300];//*pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
-    g_tp.cam_cell.I_off_p   += curr_alpha * I_off_n[ram_cell_tech_type][g_ip->temp - 300];//**pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
+    /* use LOP devices to reduce leakage power, to match SRAM compiler */
+    g_tp.cam_cell.I_off_n   += curr_alpha * I_off_n[2][g_ip->temp - 300];//*pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
+    g_tp.cam_cell.I_off_p   += curr_alpha * I_off_n[2][g_ip->temp - 300];//**pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
+    //g_tp.cam_cell.I_off_n   += curr_alpha * I_off_n[ram_cell_tech_type][g_ip->temp - 300];//*pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
+    //g_tp.cam_cell.I_off_p   += curr_alpha * I_off_n[ram_cell_tech_type][g_ip->temp - 300];//**pow(g_tp.cam_cell.Vdd/g_tp.cam_cell.Vdd_default,4);
     g_tp.cam_cell.I_g_on_n   += curr_alpha * I_g_on_n[ram_cell_tech_type][g_ip->temp - 300];
     g_tp.cam_cell.I_g_on_p   += curr_alpha * I_g_on_n[ram_cell_tech_type][g_ip->temp - 300];
 
