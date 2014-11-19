@@ -895,6 +895,7 @@ uca_org_t cacti_interface(const string & infile_name)
 //  CactiWire::print_wire();
   output_data_csv(fin_res);
 
+  /* Commented out by Sophia, 40nm failed update_dvs()
   if (!g_ip->dvs_voltage.empty())
   {
 	  update_dvs(&fin_res);
@@ -904,7 +905,8 @@ uca_org_t cacti_interface(const string & infile_name)
 	  update_pg(&fin_res);//this is needed for compute area overhead of power-gating, even the gated power is calculated together un-gated leakage
   }
   output_UCA(&fin_res);
-
+  */
+  fin_res.power.readOp.leakage *= g_ip->nbanks;
   CactiWire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
   CactiWire::print_wire();
 
@@ -1778,7 +1780,8 @@ void output_data_csv(const uca_org_t & fin_res)
 //        	file << fin_res.power.readOp.dynamic*1000/fin_res.cycle_time << ", ";
 //        }
 
-    file <<( fin_res.power.readOp.leakage + fin_res.power.readOp.gate_leakage )*1000 << ", ";
+    file <<( fin_res.power.readOp.leakage)*1000 << ", ";
+    //file <<( fin_res.power.readOp.leakage + fin_res.power.readOp.gate_leakage )*1000 << ", ";
 //    file << fin_res.leak_power_with_sleep_transistors_in_mats*1000 << ", ";
 //    file << fin_res.data_array.refresh_power / fin_res.data_array.total_power.readOp.leakage << ", ";
     file << fin_res.area*1e-6 << ", ";
@@ -3353,7 +3356,7 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
   CactiWire winit; // Do not delete this line. It initializes wires.
 
   solve(&fin_res);
-
+  /* Turn off these two optimizations. 40nm failed update_dvs()
   if (!g_ip->dvs_voltage.empty())
   {
 	  update_dvs(&fin_res);
@@ -3362,6 +3365,7 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
   {
 	  update_pg(&fin_res);//this is needed for compute area overhead of power-gating, even the gated power is calculated together un-gated leakage
   }
+  */
 
 //  g_ip->display_ip();
 //  output_UCA(&fin_res);

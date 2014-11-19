@@ -520,6 +520,10 @@ void BaseDatapath::loopUnrolling()
       //not unrolling branch
       if (unroll_it == unrolling_config.end())
       {
+        if (!is_call_op(microop.at(node_id))) {
+          nodes_between.push_back(node_id);
+          continue;
+        }
         // Enforce dependences between branch nodes, including call nodes
         // Except for the case that both two branches are DMA operations.
         // (Two DMA operations can go in parallel.)
@@ -1107,6 +1111,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
 
   float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0;
   float avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0;
+  float avg_fu_dynamic_power = 0, avg_fu_leakage_power = 0;
   float total_area = 0 , fu_area = 0, mem_area = 0;
   if (memory)
   {
@@ -1156,11 +1161,11 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
     int tmp_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
 
-    if (node_microop == LLVM_IR_Mul || node_microop == LLVM_IR_UDiv) {
+    if (is_mul_op(node_microop)) {
       mul_activity[func_id].at(tmp_level) +=1;
       num_muls_so_far +=1;
     }
-    else if  (node_microop == LLVM_IR_Add || node_microop == LLVM_IR_Sub) {
+    else if  (is_add_op(node_microop)) {
       add_activity[func_id].at(tmp_level) +=1;
       num_adds_so_far +=1;
     }
@@ -1239,6 +1244,7 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
       float tmp_mul_power = (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle ;
       float tmp_add_power = (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle;
       avg_fu_power += tmp_mul_power + tmp_add_power;
+      avg_fu_leakage_power += mul_leakage_per_cycle + add_leakage_per_cycle;
       power_stats  << tmp_mul_power << "," << tmp_add_power << ",0," ;
     }
     //For regs
@@ -1256,9 +1262,11 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
         tmp_reg_power      += memory->getReadEnergy(*it) * ld_activity.at(*it).at(tmp_level) / cycleTime +
                               memory->getWriteEnergy(*it) * st_activity.at(*it).at(tmp_level) / cycleTime +
                               memory->getLeakagePower(*it);
+        avg_fu_leakage_power += memory->getLeakagePower(*it);
       }
     }
     avg_fu_power += tmp_reg_power;
+    avg_fu_dynamic_power = avg_fu_power - avg_fu_leakage_power;
 
     stats << curr_reg_reads << "," << curr_reg_writes <<std::endl;
     power_stats << tmp_reg_power << std::endl;
@@ -1270,6 +1278,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
     memory->getAveragePower(num_cycles, &avg_mem_power,
                             &avg_mem_dynamic_power, &avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
+  avg_fu_dynamic_power /= num_cycles;
+  avg_fu_leakage_power /= num_cycles;
   avg_power = avg_fu_power + avg_mem_power;
   //Summary output:
   //Cycle, Avg Power, Avg FU Power, Avg MEM Power, Total Area, FU Area, MEM Area
@@ -1280,6 +1290,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   std::cerr << "Cycle : " << num_cycles << " cycles" << std::endl;
   std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
+  std::cerr << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
+  std::cerr << "Avg FU leakage Power: " << avg_fu_leakage_power << " mW" << std::endl;
   std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
   std::cerr << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
   std::cerr << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
@@ -1300,6 +1312,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   summary << "Cycle : " << num_cycles << " cycles" << std::endl;
   summary << "Avg Power: " << avg_power << " mW" << std::endl;
   summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
+  summary << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
+  summary << "Avg FU leakage Power: " << avg_fu_leakage_power << " mW" << std::endl;
   summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
   summary << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
   summary << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
@@ -1445,14 +1459,13 @@ void BaseDatapath::setGraphForStepping()
   latestParents.assign(numTotalNodes, 0);
   executedNodes = 0;
   totalConnectedNodes = 0;
-
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
+  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    if (boost::degree(*vi, graph_) != 0 || is_dma_op(microop.at(vertexToName[*vi])))
+    Vertex node = nameToVertex[node_id];
+    if (boost::degree(node, graph_) != 0 || is_dma_op(microop.at(node_id)))
     {
-      finalIsolated.at(vertexToName[*vi]) = 0;
-      numParents.at(vertexToName[*vi]) = boost::in_degree(*vi, graph_);
+      finalIsolated.at(node_id) = 0;
+      numParents.at(node_id) = boost::in_degree(node, graph_);
       totalConnectedNodes++;
     }
   }

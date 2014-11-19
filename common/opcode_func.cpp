@@ -91,17 +91,30 @@ bool is_dma_op(unsigned microop)
 {
   return is_dma_load(microop) || is_dma_store(microop);
 }
-float node_latency (unsigned  microop)
+bool is_mul_op(unsigned microop)
 {
   switch(microop)
   {
-    case LLVM_IR_Add:  case LLVM_IR_Sub:
-      return ADD_LATENCY;
-    case LLVM_IR_Mul: case LLVM_IR_UDiv:
-      return MUL_LATENCY;
-    case LLVM_IR_Load : case LLVM_IR_Store: case LLVM_IR_Ret:
-      return MEMOP_LATENCY;
+    case LLVM_IR_Mul: case LLVM_IR_UDiv: case LLVM_IR_FMul : case LLVM_IR_SDiv :
+    case LLVM_IR_FDiv : case LLVM_IR_URem : case LLVM_IR_SRem : case LLVM_IR_FRem:
+      return true;
     default:
-      return 0;
+      return false;
   }
+}
+bool is_add_op(unsigned microop)
+{
+  if (microop == LLVM_IR_Add || microop == LLVM_IR_Sub)
+    return true;
+  return false;
+}
+float node_latency (unsigned  microop)
+{
+  if (is_mul_op(microop))
+    return MUL_LATENCY;
+  if (is_add_op(microop))
+    return ADD_LATENCY;
+  if (is_memory_op(microop) || microop == LLVM_IR_Ret)
+    return MEMOP_LATENCY;
+  return 0;
 }
