@@ -129,8 +129,7 @@ InputParameter::parse_cfg(const string & in_file)
     }
 
     if (!strncmp("-single ended", line, strlen("-single ended"))) {
-      sscanf(line, "-single %[(:-~)*]%d", jk,
-          &(num_se_rd_ports));
+      sscanf(line, "-single ended read ports %d", &(num_se_rd_ports));
       continue;
     }
 
