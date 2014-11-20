@@ -143,20 +143,20 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
   /* Loop through the executingQueue to update the status of memory
    * operations, mark nodes accessing data on the same cache line ready to fire*/
   Addr blockAddr = pkt->getAddr() / cacheLineSize;
-  if (mem_accesses[node_id] != Returned)
+  if (mem_accesses.find(node_id) != mem_accesses.end())
   {
     for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
     {
-      unsigned node_id = *it;
-      if (is_memory_op(microop.at(node_id)) && mem_accesses[node_id] == WaitingFromCache) 
+      unsigned n_id = *it;
+      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id] == WaitingFromCache) 
       {
-        Addr addr = actualAddress[node_id].first;
+        Addr addr = actualAddress[n_id].first;
         if (addr / cacheLineSize == blockAddr)
-          mem_accesses[node_id] = Returned;
+          mem_accesses[n_id] = Returned;
       }
     }
+    assert(mem_accesses[node_id] == Returned);
   }
-  assert(mem_accesses[node_id] == Returned);
   DPRINTF(CacheDatapath, "node:%d mem access is returned\n", node_id);
   /* Data that is returned gets written back into the load store queues. */
   if (pkt->cmd == MemCmd::ReadReq)
