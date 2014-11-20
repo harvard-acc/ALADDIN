@@ -13,7 +13,7 @@ AladdinTLB::AladdinTLB(
     CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
     Cycles _hit_latency, Cycles _miss_latency, Addr _page_bytes,
     bool _is_perfect, unsigned _num_walks, unsigned _bandwidth,
-    std::string _cacti_config) :
+    std::string _cacti_config, std::string _accelerator_name) :
   datapath(_datapath),
   numEntries(_num_entries),
   assoc(_assoc),
@@ -21,15 +21,17 @@ AladdinTLB::AladdinTLB(
   missLatency(_miss_latency),
   pageBytes(_page_bytes),
   isPerfectTLB(_is_perfect),
+  numOccupiedMissQueueEntries(0),
   numOutStandingWalks(_num_walks),
   cacti_cfg(_cacti_config),
+  requests_this_cycle(0),
   bandwidth(_bandwidth)
 {
   if (numEntries > 0)
     tlbMemory = new TLBMemory (_num_entries, _assoc, _page_bytes);
   else
     tlbMemory = new InfiniteTLBMemory();
-  regStats();
+  regStats(_accelerator_name);
 }
 
 AladdinTLB::~AladdinTLB()
@@ -144,23 +146,23 @@ AladdinTLB::canRequestTranslation()
 }
 
 void
-AladdinTLB::regStats()
+AladdinTLB::regStats(std::string accelerator_name)
 {
   using namespace Stats;
-  hits.name("system.datapath.tlb.hits")
+  hits.name("system." + accelerator_name + ".tlb.hits")
       .desc("TLB hits")
       .flags(total | nonan);
-  misses.name("system.datapath.tlb.misses")
+  misses.name("system." + accelerator_name + ".tlb.misses")
         .desc("TLB misses")
         .flags(total | nonan);
-  hitRate.name("system.datapath.tlb.hitRate")
+  hitRate.name("system." + accelerator_name + ".tlb.hitRate")
          .desc("TLB hit rate")
          .flags(total | nonan);
   hitRate = hits / (hits + misses);
-  reads.name("system.datapath.tlb.reads")
+  reads.name("system." + accelerator_name + ".tlb.reads")
        .desc("TLB reads")
        .flags(total | nonan);
-  updates.name("system.datapath.tlb.updates")
+  updates.name("system." + accelerator_name + ".tlb.updates")
          .desc("TLB updates")
          .flags(total | nonan);
 }

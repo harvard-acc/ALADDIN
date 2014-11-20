@@ -97,7 +97,7 @@ class AladdinTLB
 {
   private:
     CacheDatapath *datapath;
-    void regStats();
+    void regStats(std::string accelerator_name);
 
     unsigned numEntries;
     unsigned assoc;
@@ -153,7 +153,7 @@ class AladdinTLB
     AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
                Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
                bool _is_perfect, unsigned _num_walks, unsigned _bandwidth,
-               std::string _cacti_config);
+               std::string _cacti_config, std::string _accelerator_name);
     ~AladdinTLB();
 
     std::string name() const;

@@ -1,3 +1,6 @@
+#include <sstream>
+#include <boost/tokenizer.hpp>
+
 #include "opcode_func.h"
 #include "BaseDatapath.h"
 
@@ -1664,6 +1667,7 @@ bool BaseDatapath::readUnrollingConfig(std::unordered_map<int, int > &unrolling_
     char func[256];
     int line_num, factor;
     sscanf(wholeline.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
+    std::cout << "Function: " << func << ", line number: " << line_num << std::endl;
     unrolling_config[line_num] =factor;
   }
   config_file.close();
@@ -1843,4 +1847,16 @@ void BaseDatapath::parse_config(std::string bench, std::string config_file_name)
   }
 }
 
-
+/* Tokenizes an input string and returns a vector. */
+void BaseDatapath::tokenizeString(std::string input,
+                                  std::vector<int>& tokenized_list)
+{
+  using namespace boost;
+  tokenizer<> tok(input);
+  for(tokenizer<>::iterator beg = tok.begin(); beg != tok.end(); ++beg)
+  {
+    int value;
+    istringstream(*beg) >> value;
+    tokenized_list.push_back(value);
+  }
+}

@@ -3,6 +3,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "base/statistics.hh"
@@ -21,17 +22,16 @@ CacheDatapath::CacheDatapath(const Params *p) :
     retryPkt(NULL),
     isCacheBlocked(false),
     cacheLineSize(p->cacheLineSize),
-    load_queue(
-      p->loadQueueSize,
-      p->loadBandwidth,
-      "load_queue",
-      p->loadQueueCacheConfig),
-    store_queue(
-      p->storeQueueSize,
-      p->storeBandwidth,
-      "store_queue",
-      p->storeQueueCacheConfig),
     cacti_cfg(p->cactiCacheConfig),
+    accelerator_name(p->acceleratorName),
+    load_queue(p->loadQueueSize,
+               p->loadBandwidth,
+               p->acceleratorName + ".load_queue",
+               p->loadQueueCacheConfig),
+    store_queue(p->storeQueueSize,
+                p->storeBandwidth,
+                p->acceleratorName + ".store_queue",
+                p->storeQueueCacheConfig),
     dtb(this,
         p->tlbEntries,
         p->tlbAssoc,
@@ -41,39 +41,24 @@ CacheDatapath::CacheDatapath(const Params *p) :
         p->isPerfectTLB,
         p->numOutStandingWalks,
         p->tlbBandwidth,
-        p->tlbCactiConfig),
+        p->tlbCactiConfig,
+        p->acceleratorName),
+    accelerator_id(p->acceleratorId),
     inFlightNodes(0),
     system(p->system)
 {
-  /*
-  load_queue = new MemoryQueue(
-      p->loadQueueSize,
-      p->loadBandwidth,
-      "load_queue",
-      p->loadQueueCacheConfig),
-  store_queue = new MemoryQueue(
-      p->storeQueueSize,
-      p->storeBandwidth,
-      "store_queue",
-      p->storeQueueCacheConfig),
-  */
+  tokenizeString(p->acceleratorDeps, accelerator_deps);
   initActualAddress();
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
   registerStats();
+  system->registerAcceleratorStart(accelerator_id, accelerator_deps);
   num_cycles = 0;
-  system->registerAcceleratorStart();
   schedule(tickEvent, clockEdge(Cycles(1)));
 }
 
-CacheDatapath::~CacheDatapath()
-{
-  /*
-  delete load_queue;
-  delete store_queue;
-  */
-}
+CacheDatapath::~CacheDatapath() {}
 
 BaseMasterPort &
 CacheDatapath::getMasterPort(const string &if_name,
@@ -349,12 +334,10 @@ void CacheDatapath::resetCacheCounters()
 void CacheDatapath::registerStats()
 {
   using namespace Stats;
-  // TODO: This will fail with multiple accelerators because statistics cannot
-  // have the same name.
-  loads.name("aladdin_total_loads")
+  loads.name(accelerator_name + "_total_loads")
        .desc("Total number of dcache loads")
        .flags(total | nonan);
-  stores.name("aladdin_total_stores")
+  stores.name(accelerator_name + "_total_stores")
         .desc("Total number of dcache stores.")
         .flags(total | nonan);
 }
@@ -365,12 +348,23 @@ void CacheDatapath::event_step()
 }
 
 bool CacheDatapath::step() {
+  // TODO: Pull as much GEM5 common code as I can between CacheDatapath and
+  // DmaScratchpadDatapath.
+  // If all the dependencies have not yet been fulfilled, do not proceed with
+  // execution.
+  if (system->numAcceleratorDepsRemaining(accelerator_id) > 0)
+  {
+    // Maybe add a counter for number of cycles spent waiting here.
+    schedule(tickEvent, clockEdge(Cycles(1)));
+    return true;
+  }
   resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();
-  DPRINTF(CacheDatapath, "Aladdin stepping @ Cycle:%d, executed:%d, total:%d\n", num_cycles, executedNodes, totalConnectedNodes);
+  DPRINTF(CacheDatapath,
+          "Aladdin stepping @ Cycle:%d, executed:%d, total:%d\n",
+          num_cycles, executedNodes, totalConnectedNodes);
   num_cycles++;
-  //FIXME: exit condition
   if (executedNodes < totalConnectedNodes)
   {
     schedule(tickEvent, clockEdge(Cycles(1)));
@@ -379,7 +373,7 @@ bool CacheDatapath::step() {
   else
   {
     dumpStats();
-    system->registerAcceleratorExit();
+    system->registerAcceleratorExit(accelerator_id);
     if (system->totalNumInsts == 0 && //no cpu
         system->numRunningAccelerators() == 0)
     {
@@ -491,6 +485,7 @@ void CacheDatapath::computeCactiResults()
   dtb.computeCactiResults();
   load_queue.computeCactiResults();
   store_queue.computeCactiResults();
+  cacti_result.cleanup();
 }
 
 /* Returns total memory power over the specified number of cycles.

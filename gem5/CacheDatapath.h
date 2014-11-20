@@ -264,6 +264,15 @@ class CacheDatapath :
     /* CACTI configuration file for the main cache. */
     std::string cacti_cfg;
 
+    // Accelerator ID assigned by the system.
+    int accelerator_id;
+    // Unique datapath name based on the accelerator_id.
+    std::string accelerator_name;
+    // Dependencies of this accelerator. Dependencies are expressed as
+    // accelerator ids. All the dependencies must complete execution before this
+    // accelerator can begin execution.
+    std::vector<int> accelerator_deps;
+
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
 

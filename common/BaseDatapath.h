@@ -176,6 +176,9 @@ class BaseDatapath
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
 
+  // Miscellaneous
+  void tokenizeString(std::string input, std::vector<int>& tokenized_list);
+
   virtual bool step();
   virtual void dumpStats();
   virtual void stepExecutingQueue() = 0;

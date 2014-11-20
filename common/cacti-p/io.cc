@@ -907,6 +907,7 @@ uca_org_t cacti_interface(const string & infile_name)
   output_UCA(&fin_res);
   */
   fin_res.power.readOp.leakage *= g_ip->nbanks;
+
   CactiWire wprint;//reset wires to original configuration as in *.cfg file (dvs level 0)
   CactiWire::print_wire();
 

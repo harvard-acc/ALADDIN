@@ -96,6 +96,11 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     /** To store outstanding DMA requests. */
     std::deque<Addr> dmaQueue;
 
+    // TODO: Refactor these as part of the GEM5 common components.
+    int accelerator_id;
+    std::vector<int> accelerator_deps;
+    std::string datapath_name;
+
     MasterID _dataMasterId;
 
     //const unsigned int _cacheLineSize;

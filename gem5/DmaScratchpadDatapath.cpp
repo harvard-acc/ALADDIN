@@ -2,6 +2,9 @@
  * to main memory via DMA.
  */
 
+#include <string>
+#include <sstream>
+
 #include "base/types.hh"
 #include "base/trace.hh"
 #include "base/flags.hh"
@@ -24,19 +27,24 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
                        params->cycleTime),
     MemObject(params),
     inFlightNodes(0),
+    accelerator_id(params->acceleratorId),
     _dataMasterId(params->system->getMasterId(name() + ".dmadata")),
     spadPort(this, params->system, params->maxDmaRequests),
     tickEvent(this),
     dmaSetupLatency(params->dmaSetupLatency),
     system(params->system)
 {
+  std::stringstream name_builder;
+  name_builder << "datapath" << accelerator_id;
+  datapath_name = name_builder.str();
+  tokenizeString(params->acceleratorDeps, accelerator_deps);
   scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
   initActualAddress();
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
-  system->registerAcceleratorStart();
+  system->registerAcceleratorStart(accelerator_id, accelerator_deps);
   schedule(tickEvent, clockEdge(Cycles(1)));
 }
 
@@ -140,6 +148,14 @@ DmaScratchpadDatapath::stepExecutingQueue()
 
 bool
 DmaScratchpadDatapath::step() {
+  // If the dependencies have not yet been fulfilled, do not proceed with
+  // execution.
+  if (system->numAcceleratorDepsRemaining(accelerator_id) > 0)
+  {
+    schedule(tickEvent, clockEdge(Cycles(1)));
+    // Maybe add a counter for number of cycles spent waiting here.
+    return true;
+  }
   stepExecutingQueue();
   copyToExecutingQueue();
   DPRINTF(DmaScratchpadDatapath, "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
@@ -153,7 +169,7 @@ DmaScratchpadDatapath::step() {
   else
   {
     dumpStats();
-    system->registerAcceleratorExit();
+    system->registerAcceleratorExit(accelerator_id);
     if (system->totalNumInsts == 0 &&  // no cpu
         system->numRunningAccelerators() == 0)
     {

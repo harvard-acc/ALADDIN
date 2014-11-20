@@ -9,6 +9,8 @@ class DmaScratchpadDatapath(MemObject):
   traceFileName = Param.String("Aladdin Input Trace File")
   configFileName = Param.String("Aladdin Config File")
   cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
+  acceleratorId = Param.Int(-1, "Accelerator Id")
+  acceleratorDeps = Param.String("", "Accelerator dependencies.")
   # Number of cycles required for the CPU to reinitiate a DMA transfer.
   dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")
   maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
