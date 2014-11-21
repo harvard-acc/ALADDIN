@@ -119,9 +119,13 @@ DmaScratchpadDatapath::stepExecutingQueue()
       {
         //first time see, do access
         bool isLoad = is_dma_load(microop.at(node_id));
-        issueDmaRequest(addr, size, isLoad, node_id);
-        dma_requests[addr] = Waiting;
-        DPRINTF(DmaScratchpadDatapath, "node:%d is a dma request\n", node_id);
+        /* HACK!!! dmaStore sometimes goes out-of-order...schedule it until the
+         * very end, fix this after ISCA. --Sophia*/
+        if (isLoad || executedNodes >= totalConnectedNodes-5) {
+          issueDmaRequest(addr, size, isLoad, node_id);
+          dma_requests[addr] = Waiting;
+          DPRINTF(DmaScratchpadDatapath, "node:%d is a dma request\n", node_id);
+        }
         ++it;
         ++index;
       }
@@ -212,7 +216,7 @@ void DmaScratchpadDatapath::issueDmaRequest(
   dmaQueue.push_back(addr);
   DmaEvent *dma_event = new DmaEvent(this);
   spadPort.dmaAction(cmd, addr, size, dma_event, data,
-                     clockEdge(Cycles(dmaSetupLatency)), flag);
+                     Cycles(dmaSetupLatency), flag);
 }
 
 bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)

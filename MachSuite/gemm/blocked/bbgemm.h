@@ -43,7 +43,7 @@ ASPLOS 1991
 #define row_size 64
 #define col_size 64
 #define N row_size*row_size
-#define block_size 8
+#define block_size 16
 #define NUMOFBLOCKS N/block_size/block_size
 
 //Define the input range to operate over

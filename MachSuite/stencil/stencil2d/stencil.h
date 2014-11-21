@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 
 //Define input sizes
-#define col_size 64
-#define row_size 128
+#define col_size 66
+#define row_size 130
 #define f_size 9
 
 //Data Bounds
