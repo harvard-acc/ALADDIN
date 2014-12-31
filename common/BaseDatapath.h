@@ -18,6 +18,8 @@
 #include <set>
 #include <stdint.h>
 
+#include "mysql_connection.h"
+
 #include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
@@ -87,7 +89,8 @@ struct RQEntryComp
 class BaseDatapath
 {
  public:
-  BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t);
+  BaseDatapath(std::string bench, string trace_file,
+               string config_file, float cycle_t);
   virtual ~BaseDatapath();
 
   //Change graph.
@@ -123,6 +126,11 @@ class BaseDatapath
   void removeSharedLoads();
   void removeRepeatedStores();
   void treeHeightReduction();
+
+  // Specify the experiment to be associated with this simulation. Calling this
+  // method will result in the summary data being written to a datbaase when the
+  // simulation is complete.
+  void setExperimentParameters(std::string experiment_name);
 
  protected:
   //Graph transformation helpers.
@@ -176,6 +184,15 @@ class BaseDatapath
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
 
+  // Gets the experiment id for experiment_name. If this is a new
+  // experiment_name that doesn't exist in the database, it creates a new unique
+  // experiment id and inserts it and the name into the database.
+  int getExperimentId(sql::Connection *con);
+  /* Writes the current simulation configuration parameters into the appropriate
+   * database table. Since different accelerators have different configuration
+   * parameters, this is left pure virtual. */
+  virtual int writeConfiguration(sql::Connection *con) = 0;
+
   // Miscellaneous
   void tokenizeString(std::string input, std::vector<int>& tokenized_list);
 
@@ -187,6 +204,14 @@ class BaseDatapath
   char* benchName;
   int num_cycles;
   float cycleTime;
+  std::string trace_file;
+  std::string config_file;
+  /* True if the summarized results should be stored to a database, false
+   * otherwise */
+  bool use_db;
+  /* A string identifier for a set of related simulations. For storing results
+   * into databases, this is required. */
+  std::string experiment_name;
   //boost graph.
   Graph graph_;
   std::unordered_map<unsigned, Vertex> nameToVertex;

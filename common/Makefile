@@ -1,8 +1,11 @@
 .PHONY: all clean
 EXE = aladdin
 
+ifeq ($(wildcard $(MYSQL_HOME)),)
+    $(error Set MYSQL_HOME to a valid location)
+endif
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o
-UTILS_OBJS = file_func.o generic_func.o opcode_func.o
+UTILS_OBJS = file_func.o generic_func.o opcode_func.o DatabaseConfig.o
 DDDG_OBJS = DDDG.o
 OBJS = $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
@@ -17,13 +20,13 @@ ifndef NTHREADS
 endif
 CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
              technology.o arbiter.o  basic_circuit.o  component.o  htree2.o \
-						 mat.o router.o uca.o area.o crossbar.o io.o nuca.o subarray.o \
-						 wire.o powergating.o
+             mat.o router.o uca.o area.o crossbar.o io.o nuca.o subarray.o \
+             wire.o powergating.o
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
-LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p -I$(MYSQL_HOME)
+LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex -lmysqlcppconn
 
 all : $(EXE)
 

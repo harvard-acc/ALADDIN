@@ -5,6 +5,7 @@
 
 #include "BaseDatapath.h"
 #include "Scratchpad.h"
+#include "mysql_connection.h"
 
 class ScratchpadDatapath : public BaseDatapath {
 
@@ -24,6 +25,7 @@ class ScratchpadDatapath : public BaseDatapath {
 
   protected:
     Scratchpad *scratchpad;
+    int writeConfiguration(sql::Connection *con);
 };
 
 #endif

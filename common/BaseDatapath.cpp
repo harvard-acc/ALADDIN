@@ -1,13 +1,25 @@
 #include <sstream>
 #include <boost/tokenizer.hpp>
 
+#include "mysql_connection.h"
+#include "mysql_driver.h"
+#include "cppconn/driver.h"
+#include "cppconn/exception.h"
+#include "cppconn/resultset.h"
+#include "cppconn/statement.h"
+#include "DatabaseConfig.h"
+
 #include "opcode_func.h"
 #include "BaseDatapath.h"
 
-BaseDatapath::BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t)
+BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
+                           std::string config_file, float cycle_t)
 {
   benchName = (char*) bench.c_str();
   cycleTime = cycle_t;
+  this->trace_file = trace_file;
+  this->config_file = config_file;
+  use_db = false;
   DDDG *dddg;
   dddg = new DDDG(this, trace_file);
   /*Build Initial DDDG*/
@@ -1327,6 +1339,82 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   summary << "        Aladdin Results        " << std::endl;
   summary << "===============================" << std::endl;
   summary.close();
+
+  if (!use_db)
+    return;
+  sql::Driver *driver;
+  sql::Connection *con;
+  sql::Statement *stmt;
+  driver = sql::mysql::get_mysql_driver_instance();
+  con = driver->connect(DB_URL, DB_USER, DB_PASS);
+  con->setSchema("aladdin");
+  con->setAutoCommit(0); // Begin transaction.
+  int config_id = writeConfiguration(con);
+  int experiment_id = getExperimentId(con);
+  stmt = con->createStatement();
+  std::string fullBenchName(benchName);
+  std::string benchmark = fullBenchName.substr(
+      fullBenchName.find_last_of("/")+1);
+  stringstream query;
+  query << "insert into summary (cycles, avg_power, avg_fu_power, "
+           "avg_mem_ac, avg_mem_leakage, fu_area, mem_area, "
+           "avg_mem_power, total_area, benchmark, experiment_id, config_id) "
+           "values (";
+  query << num_cycles << "," << avg_power << "," << avg_fu_power << ","
+        << avg_mem_dynamic_power << "," << avg_mem_leakage_power << ","
+        << fu_area << "," << mem_area << "," << avg_mem_power << ","
+        << total_area << "," << "\"" << benchmark << "\"," << experiment_id
+        << "," << config_id << ")";
+  stmt->execute(query.str());
+  con->commit();  // End transaction.
+  delete stmt;
+  delete con;
+}
+
+void BaseDatapath::setExperimentParameters(std::string experiment_name)
+{
+  use_db = true;
+  this->experiment_name = experiment_name;
+}
+
+/* Returns the experiment_id for the experiment_name. If the experiment_name
+ * does not exist in the database, then a new experiment_id is created and
+ * inserted into the database. */
+int BaseDatapath::getExperimentId(sql::Connection *con)
+{
+  sql::ResultSet *res;
+  sql::Statement *stmt = con->createStatement();
+  stringstream query;
+  query << "select id from experiments where strcmp(name, \""
+        << experiment_name << "\") = 0";
+  res = stmt->executeQuery(query.str());
+  int experiment_id;
+  if (res && res->next())
+  {
+    experiment_id = res->getInt(1);
+    delete stmt;
+    delete res;
+  }
+  else
+  {
+    // Get the next highest experiment id and insert it into the database.
+    query.str("");  // Clear stringstream.
+    stmt = con->createStatement();
+    res = stmt->executeQuery("select max(id) from experiments");
+    if (res && res->next())
+      experiment_id = res->getInt(1) + 1;
+    else
+      experiment_id = 1;
+    delete res;
+    delete stmt;
+    stmt = con->createStatement();
+    // TODO: Somehow (elegantly) add support for an experiment description.
+    query << "insert into experiments (id, name) values ("
+          << experiment_id << ",\"" << experiment_name << "\")";
+    stmt->execute(query.str());
+    delete stmt;
+  }
+  return experiment_id;
 }
 
 void BaseDatapath::writeGlobalIsolated()
@@ -1667,7 +1755,6 @@ bool BaseDatapath::readUnrollingConfig(std::unordered_map<int, int > &unrolling_
     char func[256];
     int line_num, factor;
     sscanf(wholeline.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
-    std::cout << "Function: " << func << ", line number: " << line_num << std::endl;
     unrolling_config[line_num] =factor;
   }
   config_file.close();
