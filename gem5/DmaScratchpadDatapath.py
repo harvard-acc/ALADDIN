@@ -15,6 +15,9 @@ class DmaScratchpadDatapath(MemObject):
   dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")
   maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
   spadPorts = Param.Unsigned(1, "Scratchpad ports per partition")
+  useDb = Param.Bool(False, "Store results in database.")
+  experimentName = Param.String("NULL", "Experiment name. String identifier "
+      "for a set of related simulations.")
   system = Param.System(Parent.any, "system object")
 
   spad_port = MasterPort("DmaScratchpadDatapath data port")

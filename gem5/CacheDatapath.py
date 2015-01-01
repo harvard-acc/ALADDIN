@@ -16,6 +16,7 @@ class CacheDatapath(MemObject):
   cacheSize = Param.String("16kB", "Private cache size")
   cacheLineSize = Param.Int("64", "Cache line size (in bytes)")
   cacheAssoc = Param.Int(1, "Private cache associativity")
+  l2cacheSize = Param.String("128kB", "Shared L2 cache size")
   cacheHitLatency = Param.Int(1, "Hit latency")
   cactiCacheConfig = Param.String("", "CACTI cache config file")
   tlbEntries = Param.Int(0, "number entries in TLB (0 implies infinite)")
@@ -36,6 +37,9 @@ class CacheDatapath(MemObject):
   storeQueueCacheConfig = Param.String("", "Store queue CACTI config file.")
   tlbBandwidth = Param.Int(
       1, "Number of translations that can be requested per cycle.")
+  useDb = Param.Bool(False, "Store results in database.")
+  experimentName = Param.String("NULL", "Experiment name. String identifier "
+      "for a set of related simulations.")
 
   system = Param.System(Parent.any, "system object")
 

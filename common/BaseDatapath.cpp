@@ -1417,6 +1417,43 @@ int BaseDatapath::getExperimentId(sql::Connection *con)
   return experiment_id;
 }
 
+void BaseDatapath::getCommonConfigParameters(
+    int &unrolling_factor, bool &pipelining, int &partition_factor)
+{
+  // First, collect pipelining, unrolling, and partitioning parameters. We'll
+  // assume that all parameters are uniform for all loops, and we'll insert a
+  // path to the actual config file if we need to look up the actual
+  // configurations.
+  std::unordered_map<int, int> unrolling_config;
+  BaseDatapath::readUnrollingConfig(unrolling_config);
+  unrolling_factor = unrolling_config.empty() ?
+      1 : unrolling_config.begin()->second;
+  pipelining = readPipeliningConfig();
+  std::unordered_map<std::string, partitionEntry> partition_config;
+  BaseDatapath::readPartitionConfig(partition_config);
+  partition_factor = partition_config.empty() ?
+      1 : partition_config.begin()->second.part_factor;
+}
+
+int BaseDatapath::getLastInsertId(sql::Connection *con)
+{
+  sql::Statement *stmt = con->createStatement();
+  sql::ResultSet *res = stmt->executeQuery("select last_insert_id()");
+  int new_config_id = -1;
+  if (res && res->next())
+  {
+    new_config_id = res->getInt(1);
+  }
+  else
+  {
+    std::cerr << "An unknown error occurred retrieving the config id."
+              << std::endl;
+  }
+  delete stmt;
+  delete res;
+  return new_config_id;
+}
+
 void BaseDatapath::writeGlobalIsolated()
 {
   std::string file_name(benchName);

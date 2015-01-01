@@ -6,6 +6,14 @@
 #include <sstream>
 #include <vector>
 
+#include "mysql_connection.h"
+#include "mysql_driver.h"
+#include "cppconn/driver.h"
+#include "cppconn/exception.h"
+#include "cppconn/resultset.h"
+#include "cppconn/statement.h"
+#include "aladdin/common/DatabaseConfig.h"
+
 #include "base/statistics.hh"
 #include "aladdin/common/cacti-p/cacti_interface.h"
 #include "aladdin/common/cacti-p/io.h"
@@ -21,7 +29,10 @@ CacheDatapath::CacheDatapath(const Params *p) :
     tickEvent(this),
     retryPkt(NULL),
     isCacheBlocked(false),
+    cacheSize(p->cacheSize),
     cacheLineSize(p->cacheLineSize),
+    cacheHitLatency(p->cacheHitLatency),
+    cacheAssoc(p->cacheAssoc),
     cacti_cfg(p->cactiCacheConfig),
     accelerator_name(p->acceleratorName),
     load_queue(p->loadQueueSize,
@@ -47,6 +58,8 @@ CacheDatapath::CacheDatapath(const Params *p) :
     inFlightNodes(0),
     system(p->system)
 {
+  BaseDatapath::use_db = p->useDb;
+  BaseDatapath::experiment_name = p->experimentName;
   tokenizeString(p->acceleratorDeps, accelerator_deps);
   initActualAddress();
   setGlobalGraph();
@@ -133,7 +146,7 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
     for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
     {
       unsigned n_id = *it;
-      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id] == WaitingFromCache) 
+      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id] == WaitingFromCache)
       {
         Addr addr = actualAddress[n_id].first;
         if (addr / cacheLineSize == blockAddr)
@@ -556,6 +569,38 @@ void CacheDatapath::getAveragePower(
              << " # store_queue area." << std::endl;
 
   power_file.close();
+}
+
+int CacheDatapath::writeConfiguration(sql::Connection *con)
+{
+  int unrolling_factor, partition_factor;
+  bool pipelining;
+  getCommonConfigParameters(
+      unrolling_factor, pipelining, partition_factor);
+
+  sql::Statement *stmt = con->createStatement();
+  stringstream query;
+  query << "insert into configs (id, memory_type, trace_file, "
+           "config_file, pipelining, unrolling, partitioning, "
+           "cache_size, cache_line_sz, cache_assoc, cache_hit_latency, "
+           "is_perfect_tlb, tlb_page_size, tlb_assoc, tlb_miss_latency, "
+           "tlb_hit_latency, tlb_max_outstanding_walks, tlb_bandwidth, "
+           "tlb_entries, load_queue_size, store_queue_size, load_bandwidth, "
+           "store_bandwidth) values (";
+  query << "NULL" << ",\"cache\"" << "," << "\"" << trace_file << "\"" << ",\""
+        << config_file << "\"," << pipelining << "," << unrolling_factor << ","
+        << partition_factor << ",\"" << cacheSize << "\"," << cacheLineSize
+        << "," << cacheAssoc << "," << cacheHitLatency << ","
+        << dtb.getIsPerfectTLB() << "," << dtb.getPageBytes() << ","
+        << dtb.getAssoc() << "," << dtb.getMissLatency() << ","
+        << dtb.getHitLatency() << "," << dtb.getNumOutStandingWalks() << ","
+        << dtb.bandwidth << "," << dtb.getNumEntries() << "," << load_queue.size
+        << "," << store_queue.size << "," << load_queue.bandwidth << ","
+        << store_queue.bandwidth << ")";
+  stmt->execute(query.str());
+  delete stmt;
+  // Get the newly added config_id.
+  return getLastInsertId(con);
 }
 
 void CacheDatapath::getMemoryBlocks(std::vector<std::string>& names) {}

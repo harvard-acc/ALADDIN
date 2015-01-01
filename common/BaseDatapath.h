@@ -184,14 +184,23 @@ class BaseDatapath
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
 
-  // Gets the experiment id for experiment_name. If this is a new
-  // experiment_name that doesn't exist in the database, it creates a new unique
-  // experiment id and inserts it and the name into the database.
+  /* Gets the experiment id for experiment_name. If this is a new
+   * experiment_name that doesn't exist in the database, it creates a new unique
+   * experiment id and inserts it and the name into the database. */
   int getExperimentId(sql::Connection *con);
+
   /* Writes the current simulation configuration parameters into the appropriate
    * database table. Since different accelerators have different configuration
    * parameters, this is left pure virtual. */
   virtual int writeConfiguration(sql::Connection *con) = 0;
+
+  /* Returns the last auto_incremented column value. This is used to get the
+   * newly inserted config.id field. */
+  int getLastInsertId(sql::Connection *con);
+
+  /* Extracts the base Aladdin configuration parameters from the config file. */
+  void getCommonConfigParameters(
+      int &unrolling_factor, bool &pipelining, int &partition_factor);
 
   // Miscellaneous
   void tokenizeString(std::string input, std::vector<int>& tokenized_list);

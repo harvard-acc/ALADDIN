@@ -15,6 +15,8 @@
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 
+#include "mysql_connection.h"
+
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "params/DmaScratchpadDatapath.hh"
 
@@ -56,6 +58,9 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, int node_id);
     void completeDmaAccess(Addr addr);
 
+  protected:
+    int writeConfiguration(sql::Connection *con);
+
   private:
     typedef enum {
         Ready,
@@ -72,8 +77,10 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     class SpadPort : public DmaPort
     {
       public:
-        SpadPort (DmaScratchpadDatapath *dev, System *s, unsigned max_req) :
-            DmaPort(dev, s, max_req), _datapath(dev) {}
+        SpadPort (DmaScratchpadDatapath *dev, System *s, unsigned _max_req) :
+            DmaPort(dev, s, _max_req), max_req(_max_req), _datapath(dev) {}
+        // Maximum DMA requests that can be queued.
+        const unsigned max_req;
       protected:
         virtual bool recvTimingResp(PacketPtr pkt);
         virtual void recvTimingSnoopReq(PacketPtr pkt) {}

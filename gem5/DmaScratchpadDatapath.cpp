@@ -15,6 +15,12 @@
 #include "sim/sim_exit.hh"
 #include "sim/clocked_object.hh"
 
+#include "mysql_connection.h"
+#include "cppconn/exception.h"
+#include "cppconn/resultset.h"
+#include "cppconn/statement.h"
+#include "aladdin/common/DatabaseConfig.h"
+
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "debug/DmaScratchpadDatapath.hh"
 #include "DmaScratchpadDatapath.h"
@@ -34,6 +40,8 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     dmaSetupLatency(params->dmaSetupLatency),
     system(params->system)
 {
+  BaseDatapath::use_db = params->useDb;
+  BaseDatapath::experiment_name = params->experimentName;
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
@@ -236,6 +244,27 @@ void DmaScratchpadDatapath::DmaEvent::process()
 const char * DmaScratchpadDatapath::DmaEvent::description() const
 {
   return "DmaScratchpad DMA receving request event";
+}
+
+int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
+{
+  int unrolling_factor, partition_factor;
+  bool pipelining;
+  getCommonConfigParameters(unrolling_factor, pipelining, partition_factor);
+
+  sql::Statement *stmt = con->createStatement();
+  stringstream query;
+  query << "insert into configs (id, memory_type, trace_file, "
+           "config_file, pipelining, unrolling, partitioning, "
+           "max_dma_requests, dma_setup_latency) values (";
+  query << "NULL" << ",\"spad\"" << "," << "\"" << trace_file << "\"" << ",\""
+        << config_file << "\"," << pipelining << "," << unrolling_factor << ","
+        << partition_factor << "," << spadPort.max_req << ","
+        << dmaSetupLatency << ")";
+  stmt->execute(query.str());
+  delete stmt;
+  // Get the newly added config_id.
+  return getLastInsertId(con);
 }
 
 ////////////////////////////////////////////////////////////////////////////

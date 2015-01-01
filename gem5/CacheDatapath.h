@@ -15,6 +15,7 @@
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
 
+#include "mysql_connection.h"
 #include "params/CacheDatapath.hh"
 
 #include "aladdin/common/BaseDatapath.h"
@@ -178,6 +179,8 @@ class CacheDatapath :
     Stats::Scalar loads;
     Stats::Scalar stores;
 
+  protected:
+    int writeConfiguration(sql::Connection *con);
   private:
     // TODO: The XIOSim integration has something very similar to this. We
     // should be able to combine them into a common data type.
@@ -232,7 +235,6 @@ class CacheDatapath :
 
     MasterID _dataMasterId;
 
-    //const unsigned int _cacheLineSize;
     DcachePort dcachePort;
 
     //gem5 tick
@@ -249,8 +251,11 @@ class CacheDatapath :
     /* True if the cache's MSHRs are full. */
     bool isCacheBlocked;
 
-    /* Private L1 Cache Size */
+    /* L1 cache parameters. */
+    std::string cacheSize;  // Because of GEM5's stupid xxkB format.
     unsigned cacheLineSize;
+    unsigned cacheHitLatency;
+    unsigned cacheAssoc;
 
     /* Actual memory request addresses, obtained from the trace. */
     std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;

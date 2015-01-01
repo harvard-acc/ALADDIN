@@ -158,10 +158,17 @@ class AladdinTLB
 
     std::string name() const;
 
+    /* Getters. */
+    unsigned getNumEntries() { return numEntries; }
+    unsigned getAssoc() { return assoc; }
+    Cycles getHitLatency() { return hitLatency; }
+    Cycles getMissLatency() { return missLatency; }
+    Addr getPageBytes() { return pageBytes; }
+    bool getIsPerfectTLB() { return isPerfectTLB; }
+    unsigned getNumOutStandingWalks() { return numOutStandingWalks; }
+
     bool translateTiming(PacketPtr pkt);
-
     void insert(Addr vpn, Addr ppn);
-
     bool canRequestTranslation();
     void incrementRequestCounter() { requests_this_cycle ++; }
     void resetRequestCounter() { requests_this_cycle = 0; }

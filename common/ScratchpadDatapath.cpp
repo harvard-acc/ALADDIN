@@ -283,19 +283,10 @@ void ScratchpadDatapath::dumpStats()
 
 int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
 {
-  // First, collect pipelining, unrolling, and partitioning parameters. We'll
-  // assume that all parameters are uniform for all loops.
-  std::unordered_map<int, int> unrolling_config;
-  BaseDatapath::readUnrollingConfig(unrolling_config);
-  int unrolling_factor = unrolling_config.empty() ?
-      1 : unrolling_config.begin()->second;
-  int pipelining = readPipeliningConfig() ? 1 : 0;
-  std::unordered_map<std::string, partitionEntry> partition_config;
-  BaseDatapath::readPartitionConfig(partition_config);
-  int partition_factor = partition_config.empty() ?
-      1 : partition_config.begin()->second.part_factor;
+  int unrolling_factor, partition_factor;
+  bool pipelining;
+  getCommonConfigParameters(unrolling_factor, pipelining, partition_factor);
 
-  sql::ResultSet *res;
   sql::Statement *stmt = con->createStatement();
   stringstream query;
   query << "insert into configs (id, memory_type, trace_file, "
@@ -306,20 +297,5 @@ int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
   stmt->execute(query.str());
   delete stmt;
   // Get the newly added config_id.
-  stmt = con->createStatement();
-  res = stmt->executeQuery("select last_insert_id()");
-  int new_config_id = -1;
-  if (res && res->next())
-  {
-    new_config_id = res->getInt(1);
-  }
-  else
-  {
-    std::cerr << "An unknown error occurred retrieving the config id."
-              << std::endl;
-    return -1;
-  }
-  delete stmt;
-  delete res;
-  return new_config_id;
+  return getLastInsertId(con);
 }
