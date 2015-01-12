@@ -1,4 +1,9 @@
 .PHONY: all clean
+
+ifeq ($(wildcard $(MYSQL_HOME)),)
+    $(error Set MYSQL_HOME to a valid location)
+endif
+
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_loop_pipelining.o \
             test_loop_unrolling.o test_rm_induction_var.o test_rm_phi.o \
@@ -8,9 +13,10 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
-CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -I$(ALADDIN_HOME)/common
+CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
+         -I$(ALADDIN_HOME)/common -I$(MYSQL_HOME) -DDDEBUG
 LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin
+         -L$(ALADDIN_HOME) -laladdin -lmysqlcppconn
 
 all : $(TESTS)
 
@@ -20,7 +26,7 @@ test : $(TESTS)
 	done
 
 $(ALADDIN_HOME)/libaladdin.a :
-	$(MAKE) -C .. lib
+	$(MAKE) -C ../common lib
 
 $(TESTS) : % : %.o $(TEST_DEPS)
 	$(CXX) $(CFLAGS) -o $@ $*.o $(LFLAGS)
