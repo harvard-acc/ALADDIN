@@ -9,24 +9,6 @@ Scratchpad::Scratchpad(unsigned p_ports_per_part, float cycle_time)
 
 Scratchpad::~Scratchpad() {}
 
-void Scratchpad::setCompScratchpad(std::string baseName, unsigned num_of_bytes)
-{
-  assert(!partitionExist(baseName));
-  //size: number of words
-  unsigned new_id = baseToPartitionID.size();
-  baseToPartitionID[baseName] = new_id;
-
-  compPartition.push_back(true);
-  occupiedBWPerPartition.push_back(0);
-  sizePerPartition.push_back(num_of_bytes);
-  //set
-  // The correct way to do this is to find the read/write energy of register,
-  // todo
-  readEnergyPerPartition.push_back(num_of_bytes * 8 * (REG_int_power + REG_sw_power)* cycleTime);
-  writeEnergyPerPartition.push_back(num_of_bytes * 8 * (REG_int_power + REG_sw_power)* cycleTime);
-  leakPowerPerPartition.push_back(num_of_bytes * 8 * REG_leak_power);
-  areaPerPartition.push_back(num_of_bytes * 8 * REG_area);
-}
 void Scratchpad::setScratchpad(std::string baseName, unsigned num_of_bytes, unsigned wordsize)
 //wordsize in bytes
 {
@@ -67,8 +49,6 @@ bool Scratchpad::addressRequest(std::string baseName)
   if (canServicePartition(baseName))
   {
     unsigned partition_id = findPartitionID(baseName);
-    if (compPartition.at(partition_id))
-      return true;
     assert(occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition);
     occupiedBWPerPartition.at(partition_id)++;
     return true;
@@ -91,9 +71,7 @@ bool Scratchpad::canService()
 bool Scratchpad::canServicePartition(std::string baseName)
 {
   unsigned partition_id = findPartitionID(baseName);
-  if (compPartition.at(partition_id))
-    return 1;
-  else if (occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition)
+  if (occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition)
     return 1;
   else
     return 0;
@@ -122,7 +100,7 @@ void Scratchpad::getAveragePower(unsigned int cycles, float *avg_power,
   for (auto it = partition_loads.begin(); it != partition_loads.end(); ++it)
     load_energy += it->second * getReadEnergy(it->first);
   for (auto it = partition_stores.begin(); it != partition_stores.end(); ++it)
-    store_energy += it->second * getReadEnergy(it->first);
+    store_energy += it->second * getWriteEnergy(it->first);
   std::vector<std::string> all_partitions;
   getMemoryBlocks(all_partitions);
   for (auto it = all_partitions.begin(); it != all_partitions.end(); ++it)
@@ -164,17 +142,6 @@ void Scratchpad::increment_loads(std::string partition)
 void Scratchpad::increment_stores(std::string partition)
 {
   partition_stores[partition]++;
-}
-
-void Scratchpad::getRegisterBlocks(std::vector<std::string> &names)
-{
-  for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
-  {
-    std::string base_name = base_it->first;
-    unsigned base_id = base_it->second;
-    if (compPartition.at(base_id))
-      names.push_back(base_name);
-  }
 }
 
 float Scratchpad::getReadEnergy(std::string baseName)

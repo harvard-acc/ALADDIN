@@ -22,6 +22,10 @@ class ScratchpadDatapath : public BaseDatapath {
     virtual void stepExecutingQueue();
     virtual bool step();
     virtual void dumpStats();
+    virtual double getTotalMemArea();
+    virtual void getAverageMemPower(
+        unsigned int cycles, float *avg_power,
+        float *avg_dynamic, float *avg_leak);
 
   protected:
     Scratchpad *scratchpad;

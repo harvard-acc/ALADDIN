@@ -25,6 +25,7 @@
 #define MAX_INFLIGHT_NODES 100
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64
+
 /* Multiple inheritance is unfortunately unavoidable here. BaseDatapath is
  * meant to generalize for integration with any simulator, and in this
  * particular case, GEM5 requires us to interface with its APIs. I don't see any
@@ -34,12 +35,9 @@
  * Fortunately for us, BaseDatapath and MemObject are entirely separate and do
  * not have any name collisions, so as long as we keep it that way and we use
  * the right interfaces in the right places, we'll be fine.
- *
- * TODO: Collapse BaseDatapath and MemoryInterface into a single class. Then we
- * can get rid of MemoryInterface entirely.
  */
 class CacheDatapath :
-    public BaseDatapath, public MemObject, public MemoryInterface {
+    public BaseDatapath, public MemObject {
 
   public:
     typedef CacheDatapathParams Params;
@@ -78,13 +76,13 @@ class CacheDatapath :
       return false;
     }
 
-    /* Generic memory interface functions. */
+    /* Memory interface functions. */
+    void getAverageMemPower(unsigned int cycles, float *avg_power,
+                            float *avg_dynamic, float *avg_leak);
+    double getTotalMemArea();
     void computeCactiResults();
-    void getAveragePower(unsigned int cycles, float *avg_power,
-                         float *avg_dynamic, float *avg_leak);
     void getMemoryBlocks(std::vector<std::string>& names);
     void getRegisterBlocks(std::vector<std::string>& names);
-    float getTotalArea();
     float getReadEnergy(std::string block_name);
     float getWriteEnergy(std::string block_name);
     float getLeakagePower(std::string block_name);

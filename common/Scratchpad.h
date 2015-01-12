@@ -9,18 +9,16 @@
 #include <vector>
 
 #include "power_delay.h"
-#include "MemoryInterface.h"
 #include "cacti-p/io.h"
 #include "cacti-p/cacti_interface.h"
 
-class Scratchpad : public MemoryInterface
+class Scratchpad
 {
  public:
   Scratchpad(unsigned p_ports_per_part, float cycle_time);
   virtual ~Scratchpad();
   void step();
   void setScratchpad(std::string baseName, unsigned num_of_bytes, unsigned wordsize);
-  void setCompScratchpad(std::string baseName, unsigned num_of_bytes);
   bool canService();
   bool canServicePartition(std::string baseName);
   bool partitionExist(std::string baseName);
@@ -33,7 +31,6 @@ class Scratchpad : public MemoryInterface
   void increment_stores(std::string partition);
 
   void getMemoryBlocks(std::vector<std::string> &names);
-  void getRegisterBlocks(std::vector<std::string> &names);
 
   void getAveragePower(unsigned int cycles, float *avg_power,
                        float *avg_dynamic, float *avg_leakage);

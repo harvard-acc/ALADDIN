@@ -267,6 +267,17 @@ int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
   return getLastInsertId(con);
 }
 
+double DmaScratchpadDatapath::getTotalMemArea()
+{
+  return scratchpad->getTotalArea();
+}
+
+void DmaScratchpadDatapath::getAverageMemPower(
+    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
+{
+  scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
+}
+
 ////////////////////////////////////////////////////////////////////////////
 //
 //  The SimObjects we use to get the Datapath information into the simulator

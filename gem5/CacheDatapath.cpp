@@ -482,7 +482,7 @@ void CacheDatapath::dumpStats()
 {
   computeCactiResults();
   BaseDatapath::dumpStats();
-  writePerCycleActivity(this);
+  writePerCycleActivity();
 }
 
 void CacheDatapath::computeCactiResults()
@@ -501,12 +501,8 @@ void CacheDatapath::computeCactiResults()
   cacti_result.cleanup();
 }
 
-/* Returns total memory power over the specified number of cycles.
- * TODO: This is a major misnomer since it's called averagePower but only
- * returns memory power. We need to change this after stripping out the
- * dependence on MemoryInterface.
- */
-void CacheDatapath::getAveragePower(
+/* Returns total memory power over the specified number of cycles. */
+void CacheDatapath::getAverageMemPower(
     unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
 {
   float avg_cache_pwr, avg_cache_leak, avg_cache_ac_pwr;
@@ -527,8 +523,7 @@ void CacheDatapath::getAveragePower(
   *avg_leak = avg_cache_leak;
   *avg_power = avg_cache_pwr;
 
-  // TODO: Right now we'll always dump the power summary file. That might not be
-  // the best thing to do. Address when MemoryInterface is removed.
+  // TODO: Write this detailed data to the database as well.
   std::string power_file_name = std::string(benchName) + "_power_stats.txt";
   std::ofstream power_file(power_file_name.c_str());
 
@@ -599,7 +594,6 @@ int CacheDatapath::writeConfiguration(sql::Connection *con)
         << store_queue.bandwidth << ")";
   stmt->execute(query.str());
   delete stmt;
-  // Get the newly added config_id.
   return getLastInsertId(con);
 }
 
@@ -607,21 +601,25 @@ void CacheDatapath::getMemoryBlocks(std::vector<std::string>& names) {}
 
 void CacheDatapath::getRegisterBlocks(std::vector<std::string>& names) {}
 
-float CacheDatapath::getTotalArea() { return area; }
+double CacheDatapath::getTotalMemArea() { return area; }
 
-float CacheDatapath::getReadEnergy( std::string block_name) {
+float CacheDatapath::getReadEnergy( std::string block_name)
+{
   return readEnergy;
 }
 
-float CacheDatapath::getWriteEnergy(std::string block_name) {
+float CacheDatapath::getWriteEnergy(std::string block_name)
+{
   return writeEnergy;
 }
 
-float CacheDatapath::getLeakagePower(std::string block_name) {
+float CacheDatapath::getLeakagePower(std::string block_name)
+{
   return leakagePower;
 }
 
-float CacheDatapath::getArea(std::string block_name) {
+float CacheDatapath::getArea(std::string block_name)
+{
   return area;
 }
 

@@ -12,7 +12,6 @@
 
 #include "ScratchpadDatapath.h"
 
-
 ScratchpadDatapath::ScratchpadDatapath(
     std::string bench, std::string trace_file,
     std::string config_file, float cycle_t):
@@ -149,7 +148,7 @@ void ScratchpadDatapath::completePartition()
     std::string base_addr = it->first;
     unsigned size = it->second;
 
-    scratchpad->setCompScratchpad(base_addr, size);
+    registers.createRegister(base_addr, size, cycleTime);
   }
 }
 
@@ -243,13 +242,24 @@ void ScratchpadDatapath::stepExecutingQueue()
     if (is_memory_op(microop.at(node_id)))
     {
       std::string node_part = baseAddress[node_id].first;
-      if(scratchpad->canServicePartition(node_part))
+      if (registers.has(node_part) ||
+          scratchpad->canServicePartition(node_part))
       {
-        assert(scratchpad->addressRequest(node_part));
-        if (is_load_op(microop.at(node_id)))
-          scratchpad->increment_loads(node_part);
+        if (registers.has(node_part))
+        {
+          if (is_load_op(microop.at(node_id)))
+            registers.getRegister(node_part)->increment_loads();
+          else
+            registers.getRegister(node_part)->increment_stores();
+        }
         else
-          scratchpad->increment_stores(node_part);
+        {
+          assert(scratchpad->addressRequest(node_part));
+          if (is_load_op(microop.at(node_id)))
+            scratchpad->increment_loads(node_part);
+          else
+            scratchpad->increment_stores(node_part);
+        }
         executedNodes++;
         newLevel.at(node_id) = num_cycles;
         executingQueue.erase(it);
@@ -278,7 +288,7 @@ void ScratchpadDatapath::stepExecutingQueue()
 void ScratchpadDatapath::dumpStats()
 {
   BaseDatapath::dumpStats();
-  writePerCycleActivity(scratchpad);
+  writePerCycleActivity();
 }
 
 int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
@@ -298,4 +308,15 @@ int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
   delete stmt;
   // Get the newly added config_id.
   return getLastInsertId(con);
+}
+
+double ScratchpadDatapath::getTotalMemArea()
+{
+  return scratchpad->getTotalArea();
+}
+
+void ScratchpadDatapath::getAverageMemPower(
+    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
+{
+  scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
 }

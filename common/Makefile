@@ -4,7 +4,7 @@ EXE = aladdin
 ifeq ($(wildcard $(MYSQL_HOME)),)
     $(error Set MYSQL_HOME to a valid location)
 endif
-MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o
+MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o Registers.o
 UTILS_OBJS = file_func.o generic_func.o opcode_func.o DatabaseConfig.o
 DDDG_OBJS = DDDG.o
 OBJS = $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)

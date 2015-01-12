@@ -54,6 +54,10 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     void stepExecutingQueue();
     void initActualAddress();
 
+    virtual double getTotalMemArea();
+    virtual void getAverageMemPower(unsigned int cycles, float *avg_power,
+                              float *avg_dynamic, float *avg_leak);
+
     /* DMA access functions. */
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, int node_id);
     void completeDmaAccess(Addr addr);

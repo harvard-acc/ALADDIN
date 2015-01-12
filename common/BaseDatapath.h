@@ -1,6 +1,17 @@
 #ifndef __BASE_DATAPATH__
 #define __BASE_DATAPATH__
 
+/* Base class of all datapath types. Child classes must implement the following
+ * abstract methods:
+ *
+ * globalOptimizationPass()
+ * stepExecutingQueue()
+ * getTotalMemArea()
+ * getAverageMemPower()
+ * writeConfiguration()
+ *
+ */
+
 #include <boost/graph/graphviz.hpp>
 #include <boost/config.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -24,7 +35,7 @@
 #include "file_func.h"
 #include "opcode_func.h"
 #include "generic_func.h"
-#include "MemoryInterface.h"
+#include "Registers.h"
 #include "Scratchpad.h"
 
 #define CONTROL_EDGE 11
@@ -180,9 +191,15 @@ class BaseDatapath
   // Stats output.
   void writeFinalLevel();
   void writeGlobalIsolated();
-  void writePerCycleActivity(MemoryInterface* memory);
+  void writePerCycleActivity();
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
+
+  // Memory structures.
+  virtual double getTotalMemArea() = 0;
+  virtual void getAverageMemPower(
+      unsigned int cycles, float *avg_power,
+      float *avg_dynamic, float *avg_leak) = 0;
 
   /* Gets the experiment id for experiment_name. If this is a new
    * experiment_name that doesn't exist in the database, it creates a new unique
@@ -230,6 +247,9 @@ class BaseDatapath
   //Graph node and edge attributes.
   unsigned numTotalNodes;
   unsigned numTotalEdges;
+
+  // Completely partitioned arrays.
+  Registers registers;
 
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
