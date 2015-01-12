@@ -9,7 +9,7 @@ SCENARIO("Test treeHeightReduction w/ Reduction", "[reduction]")
 {
   GIVEN("Test Reduction w/ Input Size 128")
   {
-    std::string bench("reduction-128");
+    std::string bench("outputs/reduction-128");
     std::string trace_file("inputs/reduction-128-trace");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
 

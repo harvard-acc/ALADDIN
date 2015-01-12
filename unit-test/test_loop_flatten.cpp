@@ -10,7 +10,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]")
   GIVEN("Test pp_scan w/ Input Size 128, cyclic partition with a factor of 4, "
         "loop unrolling with a factor of 4, enable loop pipelining")
   {
-    std::string bench("pp_scan-128");
+    std::string bench("outputs/pp_scan-128");
     std::string trace_file("inputs/pp_scan-128-trace");
     std::string config_file("inputs/config-pp_scan-p4-u4-P1");
 
