@@ -1086,7 +1086,7 @@ void BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges)
 }
 
 //initFunctions
-void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
+void BaseDatapath::writePerCycleActivity()
 {
   std::string bn(benchName);
 
@@ -1104,28 +1104,19 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   max_activity_map max_bit_per_function;
 
   std::vector<std::string> comp_partition_names;
-  // TODO(samxi): The GEM5 integration currently doesn't integrate with the GEM5
-  // power model, so we just pass a null pointer in place of the MemoryInterface
-  // pointer. We need to change the way Aladdin tracks register power so that
-  // it's not actually part of the main memory structure, but part of the
-  // datapath instead, so then we can refactor this code.
-  if (memory)
-    memory->getRegisterBlocks(comp_partition_names);
+  registers.getRegisterNames(comp_partition_names);
 
   float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0;
   float avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0;
   float avg_fu_dynamic_power = 0, avg_fu_leakage_power = 0;
   float total_area = 0 , fu_area = 0, mem_area = 0;
-  if (memory)
+  mem_area = getTotalMemArea();
+  for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
   {
-    mem_area = memory->getTotalArea();
-    for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
-    {
-      std::string p_name = *it;
-      ld_activity.insert({p_name, make_vector(num_cycles)});
-      st_activity.insert({p_name, make_vector(num_cycles)});
-      fu_area += memory->getArea(*it);
-    }
+    std::string p_name = *it;
+    ld_activity.insert({p_name, make_vector(num_cycles)});
+    st_activity.insert({p_name, make_vector(num_cycles)});
+    fu_area += registers.getArea(*it);
   }
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
@@ -1251,22 +1242,20 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
       power_stats  << tmp_mul_power << "," << tmp_add_power << ",0," ;
     }
     //For regs
-    float tmp_reg_power = 0;
-    int curr_reg_reads = 0, curr_reg_writes = 0;
-    if (memory)
+    int curr_reg_reads = regStats.at(tmp_level).reads;
+    int curr_reg_writes = regStats.at(tmp_level).writes;
+    float tmp_reg_power = (REG_int_power + REG_sw_power) *
+                          (curr_reg_reads + curr_reg_writes) * 32 +
+                          reg_leakage_per_cycle;
+    for (auto it = comp_partition_names.begin();
+         it != comp_partition_names.end() ; ++it)
     {
-      tmp_reg_power = (REG_int_power + REG_sw_power) *(regStats.at(tmp_level).reads + regStats.at(tmp_level).writes) * 32  + reg_leakage_per_cycle;
-      curr_reg_reads = regStats.at(tmp_level).reads;
-      curr_reg_writes = regStats.at(tmp_level).writes;
-      for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
-      {
-        curr_reg_reads     += ld_activity.at(*it).at(tmp_level);
-        curr_reg_writes    += st_activity.at(*it).at(tmp_level);
-        tmp_reg_power      += memory->getReadEnergy(*it) * ld_activity.at(*it).at(tmp_level) / cycleTime +
-                              memory->getWriteEnergy(*it) * st_activity.at(*it).at(tmp_level) / cycleTime +
-                              memory->getLeakagePower(*it);
-        avg_fu_leakage_power += memory->getLeakagePower(*it);
-      }
+      curr_reg_reads += ld_activity.at(*it).at(tmp_level);
+      curr_reg_writes += st_activity.at(*it).at(tmp_level);
+      tmp_reg_power += (registers.getReadEnergy(*it) * ld_activity.at(*it).at(tmp_level) +
+                        registers.getWriteEnergy(*it) * st_activity.at(*it).at(tmp_level))/cycleTime +
+                        registers.getLeakagePower(*it);
+      avg_fu_leakage_power += registers.getLeakagePower(*it);
     }
     avg_fu_power += tmp_reg_power;
     avg_fu_dynamic_power = avg_fu_power - avg_fu_leakage_power;
@@ -1277,9 +1266,8 @@ void BaseDatapath::writePerCycleActivity(MemoryInterface* memory)
   stats.close();
   power_stats.close();
 
-  if (memory)
-    memory->getAveragePower(num_cycles, &avg_mem_power,
-                            &avg_mem_dynamic_power, &avg_mem_leakage_power);
+  getAverageMemPower(num_cycles, &avg_mem_power,
+                     &avg_mem_dynamic_power, &avg_mem_leakage_power);
   avg_fu_power /= num_cycles;
   avg_fu_dynamic_power /= num_cycles;
   avg_fu_leakage_power /= num_cycles;
