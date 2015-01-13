@@ -14,7 +14,7 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
 CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
-         -I$(ALADDIN_HOME)/common -I$(MYSQL_HOME) -DDDEBUG
+         -I$(ALADDIN_HOME)/common -I$(MYSQL_HOME)
 LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
          -L$(ALADDIN_HOME) -laladdin -lmysqlcppconn
 
