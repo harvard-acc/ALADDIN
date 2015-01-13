@@ -1,7 +1,6 @@
 #include "fft.h"
 #include "gem5/dma_interface.h"
 //////BEGIN TWIDDLES ////////
-
 void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
   int reversed[],

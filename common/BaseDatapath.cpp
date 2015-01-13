@@ -352,6 +352,7 @@ void BaseDatapath::removeInductionDependence()
 void BaseDatapath::dumpStats()
 {
   clearGraph();
+  dumpGraph();
   writeMicroop(microop);
   writeFinalLevel();
   writeGlobalIsolated();
@@ -815,7 +816,6 @@ void BaseDatapath::storeBuffer()
  */
 void BaseDatapath::removeRepeatedStores()
 {
-
   std::unordered_set<int> flatten_config;
   if (!readFlattenConfig(flatten_config)&& loopBound.size() <= 2)
     return;
@@ -835,60 +835,40 @@ void BaseDatapath::removeRepeatedStores()
   initDynamicMethodID(dynamic_methodid);
   initPrevBasicBlock(prev_basic_block);
 
-  vertex_iter vi, vi_end;
-
   int shared_stores = 0;
   int node_id = numTotalNodes - 1;
   auto bound_it = loopBound.end();
   bound_it--;
   bound_it--;
-  while (node_id >=0 )
-  {
+  while (node_id >=0 ) {
     unordered_map<unsigned, int> address_store_map;
-    while (node_id >= *bound_it && node_id >= 0)
-    {
-      if (nameToVertex.find(node_id) == nameToVertex.end())
-      {
+
+    while (node_id >= *bound_it && node_id >= 0) {
+      if (nameToVertex.find(node_id) == nameToVertex.end()
+         || boost::degree(nameToVertex[node_id], graph_) == 0
+         || !is_store_op(microop.at(node_id))) {
         --node_id;
         continue;
       }
-      if (boost::degree(nameToVertex[node_id], graph_) == 0 )
-      {
-        --node_id;
-        continue;
-      }
-      int node_microop = microop.at(node_id);
-      if (is_store_op(node_microop))
-      {
-        long long int node_address = address[node_id];
-        auto addr_it = address_store_map.find(node_address);
-        if (addr_it == address_store_map.end())
-          address_store_map[node_address] = node_id;
-        else
-        {
-          //remove this store
-          std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
-          //dynamic stores, cannot disambiguated in the run time, cannot remove
-          if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end())
-          {
-            Vertex node = nameToVertex[node_id];
-            //if it has children, ignore it
-            if (boost::out_degree(node, graph_)== 0)
-            {
-              microop.at(node_id) = LLVM_IR_SilentStore;
-              shared_stores++;
-            }
-          }
+      long long int node_address = address[node_id];
+      auto addr_it = address_store_map.find(node_address);
+
+      if (addr_it == address_store_map.end())
+        address_store_map[node_address] = node_id;
+      else {
+        //remove this store
+        std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+        //dynamic stores, cannot disambiguated in the run time, cannot remove
+        if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end()
+            && boost::out_degree(nameToVertex[node_id], graph_)== 0) {
+            microop.at(node_id) = LLVM_IR_SilentStore;
+            shared_stores++;
         }
       }
       --node_id;
     }
-    if (bound_it == loopBound.begin())
-      break;
 
-    --bound_it;
-
-    if (bound_it == loopBound.begin())
+    if (--bound_it == loopBound.begin())
       break;
   }
   cleanLeafNodes();
@@ -1590,6 +1570,17 @@ void BaseDatapath::setGraphForStepping()
   initExecutingQueue();
 }
 
+void BaseDatapath::dumpGraph()
+{
+  std::unordered_map<Vertex, unsigned> vertexToMicroop;
+  BGL_FORALL_VERTICES(v, graph_, Graph) 
+      vertexToMicroop[v] = microop.at(get(boost::vertex_index, graph_, v));
+  std::string bn(benchName);
+  std::ofstream out(bn + "_graph.dot");
+  write_graphviz(out, graph_,
+                    boost::make_label_writer(vertexToMicroop));
+
+}
 int BaseDatapath::clearGraph()
 {
   std::vector< Vertex > topo_nodes;

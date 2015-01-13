@@ -63,65 +63,59 @@ void ScratchpadDatapath::initBaseAddress()
   std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
   initGetElementPtr(getElementPtr);
 
+  edgeToParid = get(boost::edge_name, graph_);
+
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
   {
     if (boost::degree(*vi, graph_) == 0)
       continue;
-    Vertex tmp_node;
-    tmp_node = *vi;
-    unsigned node_id = vertexToName[tmp_node];
+    Vertex curr_node = *vi;
+    unsigned node_id = vertexToName[curr_node];
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
-    bool flag_GEP = 0;
-    bool no_gep_parent = 0;
+    bool modified = 0;
     //iterate its parents, until it finds the root parent
-    while (!no_gep_parent)
-    {
-      bool tmp_flag_GEP = 0;
-      Vertex tmp_parent;
-
+    while (true) {
+      bool found_parent = 0;
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(tmp_node , graph_);
-        in_edge_it != in_edge_end; ++in_edge_it)
-      {
-        int parent_id = vertexToName[source(*in_edge_it, graph_)];
+
+      for (tie(in_edge_it, in_edge_end) = in_edges(curr_node , graph_);
+                             in_edge_it != in_edge_end; ++in_edge_it) {
+        int edge_parid = edgeToParid[*in_edge_it];
+        if (node_microop == LLVM_IR_Load && edge_parid != 1
+              || node_microop == LLVM_IR_GetElementPtr && edge_parid != 1
+              || node_microop == LLVM_IR_Store && edge_parid != 2)
+          continue;
+
+        unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         int parent_microop = microop.at(parent_id);
         if (parent_microop == LLVM_IR_GetElementPtr
-            || parent_microop == LLVM_IR_Load)
-        {
+            || parent_microop == LLVM_IR_Load) {
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
-          tmp_parent = source(*in_edge_it, graph_);
-          tmp_flag_GEP = 1;
-          flag_GEP = 1;
+          curr_node = source(*in_edge_it, graph_);
+          found_parent = 1;
+          modified = 1;
           break;
         }
-        else if (parent_microop == LLVM_IR_Alloca)
-        {
+        else if (parent_microop == LLVM_IR_Alloca) {
           std::string part_name = getElementPtr[parent_id].first;
           baseAddress[node_id] = getElementPtr[parent_id];
-          flag_GEP = 1;
+          modified = 1;
           break;
         }
       }
-      if (tmp_flag_GEP)
-      {
-        if (!flag_GEP)
-          flag_GEP = 1;
-        tmp_node = tmp_parent;
-      }
-      else
-        no_gep_parent = 1;
+      if (!found_parent)
+        break;
     }
-    if (!flag_GEP)
+    if (!modified)
       baseAddress[node_id] = getElementPtr[node_id];
 
     std::string part_name = baseAddress[node_id].first;
     if (part_config.find(part_name) == part_config.end() &&
-          comp_part_config.find(part_name) == comp_part_config.end() )
-    {
+          comp_part_config.find(part_name) == comp_part_config.end() ) {
       std::cerr << "Unknown partition : " << part_name << "@inst: "
                 << node_id << std::endl;
       exit(-1);
@@ -177,7 +171,7 @@ void ScratchpadDatapath::scratchpadPartition()
     unsigned size = it->second.array_size; //num of bytes
     unsigned p_factor = it->second.part_factor;
     unsigned wordsize = it->second.wordsize; //in bytes
-    unsigned per_size = ceil(size / p_factor);
+    unsigned per_size = ceil( ((float)size) / p_factor);
 
     for ( unsigned i = 0; i < p_factor ; i++)
     {
@@ -189,8 +183,7 @@ void ScratchpadDatapath::scratchpadPartition()
 
   for(unsigned node_id = 0; node_id < numTotalNodes; node_id++)
   {
-    int node_microop = microop.at(node_id);
-    if (!is_memory_op(node_microop))
+    if (!is_memory_op(microop.at(node_id)))
       continue;
 
     if (baseAddress.find(node_id) == baseAddress.end())

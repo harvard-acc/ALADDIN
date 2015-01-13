@@ -110,6 +110,7 @@ class BaseDatapath
   void setGlobalGraph();
   void setGraphForStepping();
   int clearGraph();
+  void dumpGraph();
 
   //Accessing graph stats.
   int getNumOfNodes() {return boost::num_vertices(graph_);}

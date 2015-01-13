@@ -5,6 +5,39 @@
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
 
+SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]")
+{
+  GIVEN("Test c[i]=a[i] casew/ Input Size 32")
+  {
+    std::string bench("outputs/triad-initbase");
+    std::string trace_file("inputs/triad-initbase-trace");
+    std::string config_file("inputs/config-triad-initbase-p1-u1-P1");
+
+    ScratchpadDatapath *acc;
+    Scratchpad *spad;
+    acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
+    spad = new Scratchpad(1, CYCLE_TIME);
+    acc->setScratchpad(spad);
+    acc->setGlobalGraph();
+    acc->removeInductionDependence();
+    acc->removePhiNodes();
+    WHEN("Test initBaseAddress()")
+    {
+      acc->initBaseAddress();
+      THEN("The baseAddress of memory operations should be either "
+          "'a', 'b' or 'c' for Triad.")
+      {
+        REQUIRE(acc->getBaseAddressLabel(3).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(5).compare("c") == 0);
+        REQUIRE(acc->getBaseAddressLabel(11).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(13).compare("c") == 0);
+        REQUIRE(acc->getBaseAddressLabel(19).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(21).compare("c") == 0);
+      }
+    }
+  }
+}
+
 SCENARIO("Test initBaseAddress w/ Triad", "[triad]")
 {
   GIVEN("Test Triad w/ Input Size 128")
