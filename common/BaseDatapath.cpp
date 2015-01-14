@@ -1655,7 +1655,6 @@ bool BaseDatapath::readUnrollingConfig(std::unordered_map<int, int > &unrolling_
     char func[256];
     int line_num, factor;
     sscanf(wholeline.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
-    std::cout << "Function: " << func << ", line number: " << line_num << std::endl;
     unrolling_config[line_num] =factor;
   }
   config_file.close();

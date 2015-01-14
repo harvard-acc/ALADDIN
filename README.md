@@ -1,4 +1,4 @@
-ALADDIN v0.2.1 Pre-release
+ALADDIN v0.3.0 Pre-release
 ============================================
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators.
@@ -96,7 +96,7 @@ Build:
 
    ```
    cd $ALADDIN_HOME
-   make
+   make -j4
    ```
 
 Run:
@@ -187,9 +187,9 @@ Step-by-step:
   cat config_example
   ```
   ```
-  partition,cyclic,a,2048,2  //cyclic partition array a, size 2048, with partition factor 2
-  partition,cyclic,b,2048,2  //cyclic partition array b, size 2048, with partition factor 2
-  partition,cyclic,c,2048,2  //cyclic partition array c, size 2048, with partition factor 2
+  partition,cyclic,a,8192,4,2  //cyclic partition array a, size 8192B, wordsize is 4B, with partition factor 2
+  partition,cyclic,b,8192,4,2  //cyclic partition array b, size 8192B, wordsize is 4B, with partition factor 2
+  partition,cyclic,c,8192,4,2  //cyclic partition array c, size 8192B, wordsize is 4B, with partition factor 2
   unrolling,triad,5,2        //unroll loop in triad, define at line 5 in triad.c, with unrolling factor 2
   pipelining,1               //enable loop pipelining, applied to all loops
   ```
@@ -197,23 +197,23 @@ Step-by-step:
   The format of config file is:
 
   ```
-  partition,cyclic,array_name,array_size,partition_factor
+  partition,cyclic,array_name,array_size_in_bytes,wordsize,partition_factor
   unrolling,function_name,loop_increment_happened_at_line,unrolling_factor
   ```
 
   Two more configs:
 
   ```
-  partition,complete,array_name,array_size //convert the array into register
+  partition,complete,array_name,array_size_in_bytes //convert the array into register
   flatten,function_name,loop_increment_happend_at_line  //flatten the loop
   ```
 
   Note that you need to explicitly config how to partition each array in your
   source code. If you do not want to partition the array, declare it as
-  partition_factor in your config file, like:
+  partition_factor 1 in your config file, like:
 
   ```
-  partition,cyclic,your-array,1
+  partition,cyclic,your-array,size-of-the-array,wordsize-of-each-element,1
   ```
 
 4. Run Aladdin
@@ -225,7 +225,7 @@ Step-by-step:
 
    ```
    cd $ALADDIN_HOME/SHOC/triad/example
-   $ALADDIN_HOME/aladdin triad $ALADDIN_HOME/SHOC/triad/dynamic_trace config_example
+   $ALADDIN_HOME/common/aladdin triad $ALADDIN_HOME/SHOC/triad/dynamic_trace config_example
    ```
 
    Aladdin will print out the different stages of optimizations and scheduling as
