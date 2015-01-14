@@ -17,7 +17,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]")
     ScratchpadDatapath *acc;
     Scratchpad *spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1);
+    spad = new Scratchpad(1, CYCLE_TIME);
     acc->setScratchpad(spad);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
