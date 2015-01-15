@@ -29,7 +29,7 @@
 #include <set>
 #include <stdint.h>
 
-#include "mysql_connection.h"
+#include "DatabaseDeps.h"
 
 #include "DDDG.h"
 #include "file_func.h"
@@ -97,6 +97,25 @@ struct RQEntryComp
   { return left.node_id < right.node_id; }
 };
 
+// Data to print out to file, stdout, or database.
+struct summary_data_t
+{
+  std::string benchName;
+  int num_cycles;
+  float avg_power;
+  float avg_mem_power;
+  float avg_fu_power;
+  float avg_fu_dynamic_power;
+  float fu_leakage_power;
+  float avg_mem_dynamic_power;
+  float mem_leakage_power;
+  float total_area;
+  float fu_area;
+  float mem_area;
+  float max_mul;
+  float max_add;
+};
+
 class BaseDatapath
 {
  public:
@@ -139,10 +158,12 @@ class BaseDatapath
   void removeRepeatedStores();
   void treeHeightReduction();
 
+#ifdef USE_DB
   // Specify the experiment to be associated with this simulation. Calling this
   // method will result in the summary data being written to a datbaase when the
   // simulation is complete.
   void setExperimentParameters(std::string experiment_name);
+#endif
 
  protected:
   //Graph transformation helpers.
@@ -221,6 +242,7 @@ class BaseDatapath
          max_activity_map &max_mul_per_function,
          max_activity_map &max_add_per_function,
          max_activity_map &max_bit_per_function);
+  void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
@@ -229,6 +251,7 @@ class BaseDatapath
       float *avg_dynamic, float *avg_leak) = 0;
   virtual void getMemoryBlocks(std::vector<std::string> &names) = 0;
 
+#ifdef USE_DB
   /* Gets the experiment id for experiment_name. If this is a new
    * experiment_name that doesn't exist in the database, it creates a new unique
    * experiment id and inserts it and the name into the database. */
@@ -246,6 +269,9 @@ class BaseDatapath
   /* Extracts the base Aladdin configuration parameters from the config file. */
   void getCommonConfigParameters(
       int &unrolling_factor, bool &pipelining, int &partition_factor);
+
+  void writeSummaryToDatabase(summary_data_t& summary);
+#endif
 
   // Miscellaneous
   void tokenizeString(std::string input, std::vector<int>& tokenized_list);

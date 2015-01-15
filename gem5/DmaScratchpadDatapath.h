@@ -15,8 +15,7 @@
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 
-#include "mysql_connection.h"
-
+#include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "params/DmaScratchpadDatapath.hh"
 
@@ -63,7 +62,9 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     void completeDmaAccess(Addr addr);
 
   protected:
+#ifdef USE_DB
     int writeConfiguration(sql::Connection *con);
+#endif
 
   private:
     typedef enum {

@@ -1,13 +1,15 @@
+####### USER OPTIONS ########
+# Comment out the following line to build without MySQL dependencies.
+USE_DB = 1
+#############################
+
 .PHONY: all clean
 EXE = aladdin
 
-ifeq ($(wildcard $(MYSQL_HOME)),)
-    $(error Set MYSQL_HOME to a valid location)
-endif
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o Registers.o
-UTILS_OBJS = file_func.o generic_func.o opcode_func.o DatabaseConfig.o
+UTILS_OBJS = file_func.o generic_func.o opcode_func.o
 DDDG_OBJS = DDDG.o
-OBJS = $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
+OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
 
 OBJ_DIR = obj
@@ -25,8 +27,17 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p -I$(MYSQL_HOME)
-LFLAGS = $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex -lmysqlcppconn
+CFLAGS += $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
+LFLAGS += $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+
+ifeq ($(USE_DB), 1)
+ifeq ($(wildcard $(MYSQL_HOME)),)
+    $(error Set MYSQL_HOME to a valid location)
+endif
+LFLAGS += -lmysqlcppconn
+CFLAGS += -I$(MYSQL_HOME) -DUSE_DB
+OBJS += DatabaseConfig.o
+endif
 
 all : $(EXE)
 

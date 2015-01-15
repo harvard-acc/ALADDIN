@@ -15,11 +15,7 @@
 #include "sim/sim_exit.hh"
 #include "sim/clocked_object.hh"
 
-#include "mysql_connection.h"
-#include "cppconn/exception.h"
-#include "cppconn/resultset.h"
-#include "cppconn/statement.h"
-#include "aladdin/common/DatabaseConfig.h"
+#include "aladdin/common/DatabaseDeps.h"
 
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "debug/DmaScratchpadDatapath.hh"
@@ -246,6 +242,7 @@ const char * DmaScratchpadDatapath::DmaEvent::description() const
   return "DmaScratchpad DMA receving request event";
 }
 
+#ifdef USE_DB
 int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
 {
   int unrolling_factor, partition_factor;
@@ -266,6 +263,7 @@ int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
   // Get the newly added config_id.
   return getLastInsertId(con);
 }
+#endif
 
 double DmaScratchpadDatapath::getTotalMemArea()
 {

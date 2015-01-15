@@ -15,11 +15,11 @@
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
 
-#include "mysql_connection.h"
-#include "params/CacheDatapath.hh"
-
+#include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/BaseDatapath.h"
 #include "aladdin_tlb.hh"
+
+#include "params/CacheDatapath.hh"
 
 #define MASK 0x7fffffff
 #define MAX_INFLIGHT_NODES 100
@@ -178,7 +178,10 @@ class CacheDatapath :
     Stats::Scalar stores;
 
   protected:
+#ifdef USE_DB
     int writeConfiguration(sql::Connection *con);
+#endif
+
   private:
     // TODO: The XIOSim integration has something very similar to this. We
     // should be able to combine them into a common data type.

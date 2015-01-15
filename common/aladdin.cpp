@@ -36,9 +36,6 @@ int main( int argc, const char *argv[])
   std::string trace_file(argv[2]);
   std::string config_file(argv[3]);
   std::string experiment_name;
-  bool use_db = (argc == 5);
-  if (use_db)
-    experiment_name = std::string(argv[4]);
 
   std::cout << bench << "," << trace_file << "," << config_file <<  std::endl;
 
@@ -47,8 +44,14 @@ int main( int argc, const char *argv[])
 
   spad = new Scratchpad(1, CYCLE_TIME);
   acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
+#ifdef USE_DB
+  bool use_db = (argc == 5);
   if (use_db)
+  {
+    experiment_name = std::string(argv[4]);
     acc->setExperimentParameters(experiment_name);
+  }
+#endif
   acc->setScratchpad(spad);
   //get the complete graph
   acc->setGlobalGraph();

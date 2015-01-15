@@ -4,12 +4,7 @@
 
 #include <string>
 
-#include "mysql_connection.h"
-#include "cppconn/driver.h"
-#include "cppconn/exception.h"
-#include "cppconn/resultset.h"
-#include "cppconn/statement.h"
-
+#include "DatabaseDeps.h"
 #include "ScratchpadDatapath.h"
 
 ScratchpadDatapath::ScratchpadDatapath(
@@ -284,6 +279,7 @@ void ScratchpadDatapath::dumpStats()
   BaseDatapath::writePerCycleActivity();
 }
 
+#ifdef USE_DB
 int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
 {
   int unrolling_factor, partition_factor;
@@ -302,6 +298,7 @@ int ScratchpadDatapath::writeConfiguration(sql::Connection *con)
   // Get the newly added config_id.
   return getLastInsertId(con);
 }
+#endif
 
 double ScratchpadDatapath::getTotalMemArea()
 {

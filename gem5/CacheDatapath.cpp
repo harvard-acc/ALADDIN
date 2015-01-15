@@ -6,13 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include "mysql_connection.h"
-#include "mysql_driver.h"
-#include "cppconn/driver.h"
-#include "cppconn/exception.h"
-#include "cppconn/resultset.h"
-#include "cppconn/statement.h"
-#include "aladdin/common/DatabaseConfig.h"
+#include "aladdin/common/DatabaseDeps.h"
 
 #include "base/statistics.hh"
 #include "aladdin/common/cacti-p/cacti_interface.h"
@@ -566,6 +560,7 @@ void CacheDatapath::getAverageMemPower(
   power_file.close();
 }
 
+#ifdef USE_DB
 int CacheDatapath::writeConfiguration(sql::Connection *con)
 {
   int unrolling_factor, partition_factor;
@@ -596,6 +591,7 @@ int CacheDatapath::writeConfiguration(sql::Connection *con)
   delete stmt;
   return getLastInsertId(con);
 }
+#endif
 
 void CacheDatapath::getMemoryBlocks(std::vector<std::string>& names) {}
 
