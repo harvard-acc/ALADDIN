@@ -37,3 +37,4 @@ $(TESTS) : % : %.o $(TEST_DEPS)
 clean:
 	rm -f *.o
 	rm -f $(TESTS)
+	rm $(ALADDIN_HOME)/libaladdin.a

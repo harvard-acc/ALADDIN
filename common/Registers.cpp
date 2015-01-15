@@ -35,6 +35,20 @@ double Registers::getArea(std::string baseName)
   return regs[baseName]->getArea();
 }
 
+double Registers::getTotalArea()
+{
+  float total_area = 0;
+  for (auto it = regs.begin(); it != regs.end(); it++)
+    total_area += getArea(it->first);
+  return total_area;
+}
+double Registers::getTotalLeakagePower()
+{
+  float total_leakage = 0;
+  for (auto it = regs.begin(); it != regs.end(); it++)
+    total_leakage += getLeakagePower(it->first);
+  return total_leakage;
+}
 double Registers::getReadEnergy(std::string baseName)
 {
   return regs[baseName]->getReadEnergy();

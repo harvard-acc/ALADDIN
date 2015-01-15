@@ -78,9 +78,9 @@ void ScratchpadDatapath::initBaseAddress()
       for (tie(in_edge_it, in_edge_end) = in_edges(curr_node , graph_);
                              in_edge_it != in_edge_end; ++in_edge_it) {
         int edge_parid = edgeToParid[*in_edge_it];
-        if (node_microop == LLVM_IR_Load && edge_parid != 1
-              || node_microop == LLVM_IR_GetElementPtr && edge_parid != 1
-              || node_microop == LLVM_IR_Store && edge_parid != 2)
+        if ( ( node_microop == LLVM_IR_Load && edge_parid != 1 )
+             || ( node_microop == LLVM_IR_GetElementPtr && edge_parid != 1 )
+             || ( node_microop == LLVM_IR_Store && edge_parid != 2) )
           continue;
 
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
@@ -274,12 +274,17 @@ void ScratchpadDatapath::stepExecutingQueue()
 
 void ScratchpadDatapath::dumpStats() {
   BaseDatapath::dumpStats();
-  writePerCycleActivity();
+  BaseDatapath::writePerCycleActivity();
 }
 
 double ScratchpadDatapath::getTotalMemArea()
 {
   return scratchpad->getTotalArea();
+}
+
+void ScratchpadDatapath::getMemoryBlocks(std::vector<std::string> &names)
+{
+  scratchpad->getMemoryBlocks(names);
 }
 
 void ScratchpadDatapath::getAverageMemPower(

@@ -187,12 +187,39 @@ class BaseDatapath
   void writePerCycleActivity();
   void writeBaseAddress();
   void writeMicroop(std::vector<int> &microop);
+  void initPerCycleActivity(
+         std::vector<std::string> &comp_partition_names,
+         std::vector<std::string> &spad_partition_names,
+         activity_map &ld_activity, activity_map &st_activity,
+         activity_map &mul_activity, activity_map &add_activity,
+         activity_map &bit_activity,
+         max_activity_map &max_mul_per_function,
+         max_activity_map &max_add_per_function,
+         max_activity_map &max_bit_per_function,
+         int num_cycles);
+  void updatePerCycleActivity(
+         activity_map &ld_activity, activity_map &st_activity,
+         activity_map &mul_activity, activity_map &add_activity,
+         activity_map &bit_activity,
+         max_activity_map &max_mul_per_function,
+         max_activity_map &max_add_per_function,
+         max_activity_map &max_bit_per_function);
+  void outputPerCycleActivity(
+         std::vector<std::string> &comp_partition_names,
+         std::vector<std::string> &spad_partition_names,
+         activity_map &ld_activity, activity_map &st_activity,
+         activity_map &mul_activity, activity_map &add_activity,
+         activity_map &bit_activity,
+         max_activity_map &max_mul_per_function,
+         max_activity_map &max_add_per_function,
+         max_activity_map &max_bit_per_function);
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
   virtual void getAverageMemPower(
       unsigned int cycles, float *avg_power,
       float *avg_dynamic, float *avg_leak) = 0;
+  virtual void getMemoryBlocks(std::vector<std::string> &names) = 0;
 
   // Miscellaneous
   void tokenizeString(std::string input, std::vector<int>& tokenized_list);
