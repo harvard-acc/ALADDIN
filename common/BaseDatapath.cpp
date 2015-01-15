@@ -4,7 +4,8 @@
 #include "opcode_func.h"
 #include "BaseDatapath.h"
 
-BaseDatapath::BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t)
+BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
+                           std::string config_file, float cycle_t)
 {
   benchName = (char*) bench.c_str();
   cycleTime = cycle_t;
@@ -1371,55 +1372,58 @@ void BaseDatapath::outputPerCycleActivity(
                   + MUL_area * max_mul
                   + REG_area * 32 * max_reg;
   float total_area = mem_area + fu_area;
-  //Summary output:
-  //Cycle, Avg Power, Avg FU Power, Avg MEM Power, Total Area, FU Area, MEM Area
-  std::cerr << "===============================" << std::endl;
-  std::cerr << "        Aladdin Results        " << std::endl;
-  std::cerr << "===============================" << std::endl;
-  std::cerr << "Running : " << benchName << std::endl;
-  std::cerr << "Cycle : " << num_cycles << " cycles" << std::endl;
-  std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
-  std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
-  std::cerr << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
-  std::cerr << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
-  std::cerr << "Avg SRAM Power: " << avg_mem_power << " mW" << std::endl;
-  std::cerr << "Avg SRAM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  std::cerr << "Avg SRAM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
-  std::cerr << "Total Area: " << total_area << " uM^2" << std::endl;
-  std::cerr << "FU Area: " << fu_area << " uM^2" << std::endl;
-  std::cerr << "SRAM Area: " << mem_area << " uM^2" << std::endl;
-  std::cerr << "SRAM size: " << mem_size / 1024 << " KB" << std::endl;
-  std::cerr << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
-  std::cerr << "Num of Adders (32-bit): " << max_add << std::endl;
-  std::cerr << "===============================" << std::endl;
-  std::cerr << "        Aladdin Results        " << std::endl;
-  std::cerr << "===============================" << std::endl;
+  // Summary output.
+  summary_data_t summary;
+  summary.benchName = benchName;
+  summary.num_cycles = num_cycles;
+  summary.avg_power = avg_power;
+  summary.avg_fu_power = avg_fu_power;
+  summary.avg_fu_dynamic_power = avg_fu_dynamic_power;
+  summary.fu_leakage_power = fu_leakage_power;
+  summary.avg_mem_power = avg_mem_power;
+  summary.avg_mem_dynamic_power = avg_mem_dynamic_power;
+  summary.mem_leakage_power = mem_leakage_power;
+  summary.total_area = total_area;
+  summary.fu_area = fu_area;
+  summary.mem_area = mem_area;
+  summary.max_mul = max_mul;
+  summary.max_add = max_add;
 
-  ofstream summary;
+  writeSummary(std::cerr, summary);
+  ofstream summary_file;
   file_name = bn + "_summary";
-  summary.open(file_name.c_str());
-  summary << "===============================" << std::endl;
-  summary << "        Aladdin Results        " << std::endl;
-  summary << "===============================" << std::endl;
-  summary << "Running : " << benchName << std::endl;
-  summary << "Cycle : " << num_cycles << " cycles" << std::endl;
-  summary << "Avg Power: " << avg_power << " mW" << std::endl;
-  summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
-  summary << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
-  summary << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
-  summary << "Avg SRAM Power: " << avg_mem_power << " mW" << std::endl;
-  summary << "Avg SRAM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  summary << "Avg SRAM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
-  summary << "Total Area: " << total_area << " uM^2" << std::endl;
-  summary << "FU Area: " << fu_area << " uM^2" << std::endl;
-  summary << "SRAM Area: " << mem_area << " uM^2" << std::endl;
-  summary << "SRAM size: " << mem_size << " B" << std::endl;
-  summary << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
-  summary << "Num of Adders (32-bit): " << max_add << std::endl;
-  summary << "===============================" << std::endl;
-  summary << "        Aladdin Results        " << std::endl;
-  summary << "===============================" << std::endl;
-  summary.close();
+  summary_file.open(file_name.c_str());
+  writeSummary(summary_file, summary);
+  summary_file.close();
+
+}
+
+void BaseDatapath::writeSummary(std::ostream& outfile, summary_data_t& summary)
+{
+  outfile << "===============================" << std::endl;
+  outfile << "        Aladdin Results        " << std::endl;
+  outfile << "===============================" << std::endl;
+  outfile << "Running : " << summary.benchName << std::endl;
+  outfile << "Cycle : " << summary.num_cycles << " cycles" << std::endl;
+  outfile << "Avg Power: " << summary.avg_power << " mW" << std::endl;
+  outfile << "Avg FU Power: " << summary.avg_fu_power << " mW" << std::endl;
+  outfile << "Avg FU Dynamic Power: " << summary.avg_fu_dynamic_power
+          << " mW" << std::endl;
+  outfile << "Avg FU leakage Power: " << summary.fu_leakage_power
+          << " mW" << std::endl;
+  outfile << "Avg MEM Power: " << summary.avg_mem_power << " mW" << std::endl;
+  outfile << "Avg MEM Dynamic Power: " << summary.avg_mem_dynamic_power
+          << " mW" << std::endl;
+  outfile << "Avg MEM Leakage Power: " << summary.mem_leakage_power
+          << " mW" << std::endl;
+  outfile << "Total Area: " << summary.total_area << " uM^2" << std::endl;
+  outfile << "FU Area: " << summary.fu_area << " uM^2" << std::endl;
+  outfile << "MEM Area: " << summary.mem_area << " uM^2" << std::endl;
+  outfile << "Num of Multipliers (32-bit): " << summary.max_mul  << std::endl;
+  outfile << "Num of Adders (32-bit): " << summary.max_add << std::endl;
+  outfile << "===============================" << std::endl;
+  outfile << "        Aladdin Results        " << std::endl;
+  outfile << "===============================" << std::endl;
 }
 
 void BaseDatapath::writeGlobalIsolated()
@@ -1428,6 +1432,7 @@ void BaseDatapath::writeGlobalIsolated()
   file_name += "_isolated.gz";
   write_gzip_bool_file(file_name, finalIsolated.size(), finalIsolated);
 }
+
 void BaseDatapath::writeBaseAddress()
 {
   ostringstream file_name;
@@ -2047,3 +2052,127 @@ void BaseDatapath::tokenizeString(std::string input,
     tokenized_list.push_back(value);
   }
 }
+
+#ifdef USE_DB
+void BaseDatapath::setExperimentParameters(std::string experiment_name)
+{
+  use_db = true;
+  this->experiment_name = experiment_name;
+}
+
+void BaseDatapath::getCommonConfigParameters(
+    int &unrolling_factor, bool &pipelining, int &partition_factor)
+{
+  // First, collect pipelining, unrolling, and partitioning parameters. We'll
+  // assume that all parameters are uniform for all loops, and we'll insert a
+  // path to the actual config file if we need to look up the actual
+  // configurations.
+  std::unordered_map<int, int> unrolling_config;
+  BaseDatapath::readUnrollingConfig(unrolling_config);
+  unrolling_factor = unrolling_config.empty() ?
+      1 : unrolling_config.begin()->second;
+  pipelining = readPipeliningConfig();
+  std::unordered_map<std::string, partitionEntry> partition_config;
+  BaseDatapath::readPartitionConfig(partition_config);
+  partition_factor = partition_config.empty() ?
+      1 : partition_config.begin()->second.part_factor;
+}
+
+/* Returns the experiment_id for the experiment_name. If the experiment_name
+ * does not exist in the database, then a new experiment_id is created and
+ * inserted into the database. */
+int BaseDatapath::getExperimentId(sql::Connection *con)
+{
+  sql::ResultSet *res;
+  sql::Statement *stmt = con->createStatement();
+  stringstream query;
+  query << "select id from experiments where strcmp(name, \""
+        << experiment_name << "\") = 0";
+  res = stmt->executeQuery(query.str());
+  int experiment_id;
+  if (res && res->next())
+  {
+    experiment_id = res->getInt(1);
+    delete stmt;
+    delete res;
+  }
+  else
+  {
+    // Get the next highest experiment id and insert it into the database.
+    query.str("");  // Clear stringstream.
+    stmt = con->createStatement();
+    res = stmt->executeQuery("select max(id) from experiments");
+    if (res && res->next())
+      experiment_id = res->getInt(1) + 1;
+    else
+      experiment_id = 1;
+    delete res;
+    delete stmt;
+    stmt = con->createStatement();
+    // TODO: Somehow (elegantly) add support for an experiment description.
+    query << "insert into experiments (id, name) values ("
+          << experiment_id << ",\"" << experiment_name << "\")";
+    stmt->execute(query.str());
+    delete stmt;
+  }
+  return experiment_id;
+}
+
+int BaseDatapath::getLastInsertId(sql::Connection *con)
+{
+  sql::Statement *stmt = con->createStatement();
+  sql::ResultSet *res = stmt->executeQuery("select last_insert_id()");
+  int new_config_id = -1;
+  if (res && res->next())
+  {
+    new_config_id = res->getInt(1);
+  }
+  else
+  {
+    std::cerr << "An unknown error occurred retrieving the config id."
+              << std::endl;
+  }
+  delete stmt;
+  delete res;
+  return new_config_id;
+}
+
+void BaseDatapath::writeSummaryToDatabase(summary_data_t& summary)
+{
+  sql::Driver *driver;
+  sql::Connection *con;
+  sql::Statement *stmt;
+  driver = sql::mysql::get_mysql_driver_instance();
+  con = driver->connect(DB_URL, DB_USER, DB_PASS);
+  con->setSchema("aladdin");
+  con->setAutoCommit(0); // Begin transaction.
+  int config_id = writeConfiguration(con);
+  int experiment_id = getExperimentId(con);
+  stmt = con->createStatement();
+  std::string fullBenchName(benchName);
+  std::string benchmark = fullBenchName.substr(
+      fullBenchName.find_last_of("/")+1);
+  stringstream query;
+  query << "insert into summary (cycles, avg_power, avg_fu_power, "
+           "avg_mem_ac, avg_mem_leakage, fu_area, mem_area, "
+           "avg_mem_power, total_area, benchmark, experiment_id, config_id) "
+           "values (";
+  query << summary.num_cycles << ","
+        << summary.avg_power << ","
+        << summary.avg_fu_power << ","
+        << summary.avg_mem_dynamic_power << ","
+        << summary.mem_leakage_power << ","
+        << summary.fu_area << ","
+        << summary.mem_area << ","
+        << summary.avg_mem_power << ","
+        << summary.total_area << ","
+        << "\"" << benchmark << "\","
+        << experiment_id
+        << ","
+        << config_id << ")";
+  stmt->execute(query.str());
+  con->commit();  // End transaction.
+  delete stmt;
+  delete con;
+}
+#endif

@@ -95,6 +95,25 @@ struct RQEntryComp
   { return left.node_id < right.node_id; }
 };
 
+// Data to print out to file, stdout, or database.
+struct summary_data_t
+{
+  std::string benchName;
+  int num_cycles;
+  float avg_power;
+  float avg_mem_power;
+  float avg_fu_power;
+  float avg_fu_dynamic_power;
+  float fu_leakage_power;
+  float avg_mem_dynamic_power;
+  float mem_leakage_power;
+  float total_area;
+  float fu_area;
+  float mem_area;
+  float max_mul;
+  float max_add;
+};
+
 class BaseDatapath
 {
  public:
@@ -224,6 +243,7 @@ class BaseDatapath
          max_activity_map &max_mul_per_function,
          max_activity_map &max_add_per_function,
          max_activity_map &max_bit_per_function);
+  void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
