@@ -110,14 +110,13 @@ int main()
 
 	stencil(&OrigImg[0], &Solution[0], &Filter[0]);
 
-	for(i=0;i<(34);i++)
+	for(i=0;i<(4);i++)
 		{
-			for(j=0;j<34;j++)
+			for(j=0;j<4;j++)
 			{
 				printf("%d, %d, %d,%d\n ", i, j, OrigImg[i*(34 ) + j], Solution[i *
         (34) + j]);
 			}
-			printf("\n");
 		}
 	printf("Success!!\n");
 

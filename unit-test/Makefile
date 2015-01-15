@@ -1,9 +1,5 @@
 .PHONY: all clean
 
-ifeq ($(wildcard $(MYSQL_HOME)),)
-    $(error Set MYSQL_HOME to a valid location)
-endif
-
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_loop_pipelining.o \
             test_loop_unrolling.o test_rm_induction_var.o test_rm_phi.o \

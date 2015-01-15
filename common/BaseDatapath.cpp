@@ -1148,10 +1148,20 @@ void BaseDatapath::updatePerCycleActivity(
      max_activity_map &max_add_per_function,
      max_activity_map &max_bit_per_function)
 {
+  /*We use two ways to count the number of functional units in accelerators: one
+   * assumes that functional units can be reused in the same region; the other
+   * assumes no reuse of functional units. The advantage of reusing is that it
+   * elimates the cost of duplicating functional units which can lead to high
+   * leakage power and area. However, additional wires and muxes may need to be
+   * added for reusing.
+   * In the current model, we assume that multipliers can be reused, since the
+   * leakage power and area of multipliers are relatively significant, and no
+   * reuse for adders. This way of modeling is consistent with our observation
+   * of accelerators generated with Vivado.*/
   std::vector<std::string> dynamic_methodid(numTotalNodes, "");
   initDynamicMethodID(dynamic_methodid);
 
-  int num_adds_so_far = 0, num_muls_so_far = 0, num_bits_so_far = 0;
+  int num_adds_so_far = 0, num_bits_so_far = 0;
   auto bound_it = loopBound.begin();
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
@@ -1160,14 +1170,11 @@ void BaseDatapath::updatePerCycleActivity(
 
     sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
     if (node_id == *bound_it) {
-      if (max_mul_per_function[func_id] < num_muls_so_far)
-        max_mul_per_function[func_id] = num_muls_so_far;
       if (max_add_per_function[func_id] < num_adds_so_far)
         max_add_per_function[func_id] = num_adds_so_far;
       if (max_bit_per_function[func_id] < num_bits_so_far)
         max_bit_per_function[func_id] = num_bits_so_far;
       num_adds_so_far = 0;
-      num_muls_so_far = 0;
       num_bits_so_far = 0;
       bound_it++;
     }
@@ -1176,11 +1183,9 @@ void BaseDatapath::updatePerCycleActivity(
     int node_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
 
-    if (is_mul_op(node_microop)) {
+    if (is_mul_op(node_microop))
       mul_activity[func_id].at(node_level) +=1;
-      num_muls_so_far +=1;
-    }
-    else if  (is_add_op(node_microop)) {
+    else if (is_add_op(node_microop)) {
       add_activity[func_id].at(node_level) +=1;
       num_adds_so_far +=1;
     }
@@ -1199,6 +1204,9 @@ void BaseDatapath::updatePerCycleActivity(
         st_activity[base_addr].at(node_level) += 1;
     }
   }
+  for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
+    max_mul_per_function[*it] = *(std::max_element(mul_activity[*it].begin(),
+                                                 mul_activity[*it].end()));
 }
 
 void BaseDatapath::outputPerCycleActivity(

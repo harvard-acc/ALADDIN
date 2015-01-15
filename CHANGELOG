@@ -1,15 +1,18 @@
 Aladdin Pre-Release, v0.3.0
-01-13-2015
+01-15-2015
 
 *Added wordsize as a new column in the config file for array partition. Now the
 config file format for array partition is:
 partition,cyclic,array_name,array_size_in_bytes,wordsize,partition_factor
+partition,complete,array_name,array_size_in_bytes
 *Refactored registers (completely partitioned array) and elimated MemoryInterface.
+*Dump the final DDDG into a bench_graph.dot file (in dot format). Users can view
+the DDDG directly with dot.
 *Fixed a bug in register power calculation.
 *Fixed a bug in initBaseAddress().
 *Fully integrated CACTI-P into Aladdin to dynamically calculated SRAM power/area.
 *Switched the dynamic power calculation in memory to energy calculation. Keep
-leakage power calculation the same
+leakage power calculation the same.
 
 --Sam Xi and Sophia Shao
 
