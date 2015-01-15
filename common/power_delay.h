@@ -1,17 +1,11 @@
 #ifndef __POWER_DELAY_H__
 #define __POWER_DELAY_H__
 
-/*#define ADD_LATENCY 1*/
-/*#define MEMOP_LATENCY 1.43*/
-/*#define MUL_LATENCY 5.84*/
 
-/*The cache is characterized with 1ns/1GHz frequency, will update the FU power
- * model with 1GHz frequency soon.*/
 #define   CYCLE_TIME        1
-
 #define   ADD_LATENCY       1
-#define   MEMOP_LATENCY     1
-#define   MUL_LATENCY       1
+#define   MEMOP_LATENCY     1.43
+#define   MUL_LATENCY       5.84
 
 #define   RW_PORTS          1
 #define   ADD_int_power     0.0151
