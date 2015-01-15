@@ -216,6 +216,7 @@ class BaseDatapath
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
+  virtual unsigned getTotalMemSize() = 0;
   virtual void getAverageMemPower(
       unsigned int cycles, float *avg_power,
       float *avg_dynamic, float *avg_leak) = 0;

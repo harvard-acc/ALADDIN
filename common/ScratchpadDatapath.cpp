@@ -282,6 +282,11 @@ double ScratchpadDatapath::getTotalMemArea()
   return scratchpad->getTotalArea();
 }
 
+unsigned ScratchpadDatapath::getTotalMemSize()
+{
+  return scratchpad->getTotalSize();
+}
+
 void ScratchpadDatapath::getMemoryBlocks(std::vector<std::string> &names)
 {
   scratchpad->getMemoryBlocks(names);

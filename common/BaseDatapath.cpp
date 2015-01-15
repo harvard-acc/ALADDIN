@@ -1339,6 +1339,7 @@ void BaseDatapath::outputPerCycleActivity(
   float avg_power = avg_fu_power + avg_mem_power;
 
   float mem_area = getTotalMemArea();
+  unsigned mem_size = getTotalMemSize();
   float fu_area = registers.getTotalArea()
                   + ADD_area * max_add
                   + MUL_area * max_mul
@@ -1355,12 +1356,13 @@ void BaseDatapath::outputPerCycleActivity(
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   std::cerr << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
   std::cerr << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
-  std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
-  std::cerr << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  std::cerr << "Avg MEM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
+  std::cerr << "Avg SRAM Power: " << avg_mem_power << " mW" << std::endl;
+  std::cerr << "Avg SRAM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
+  std::cerr << "Avg SRAM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
   std::cerr << "Total Area: " << total_area << " uM^2" << std::endl;
   std::cerr << "FU Area: " << fu_area << " uM^2" << std::endl;
-  std::cerr << "MEM Area: " << mem_area << " uM^2" << std::endl;
+  std::cerr << "SRAM Area: " << mem_area << " uM^2" << std::endl;
+  std::cerr << "SRAM size: " << mem_size / 1024 << " KB" << std::endl;
   std::cerr << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
   std::cerr << "Num of Adders (32-bit): " << max_add << std::endl;
   std::cerr << "===============================" << std::endl;
@@ -1379,12 +1381,13 @@ void BaseDatapath::outputPerCycleActivity(
   summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   summary << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
   summary << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
-  summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
-  summary << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  summary << "Avg MEM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
+  summary << "Avg SRAM Power: " << avg_mem_power << " mW" << std::endl;
+  summary << "Avg SRAM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
+  summary << "Avg SRAM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
   summary << "Total Area: " << total_area << " uM^2" << std::endl;
   summary << "FU Area: " << fu_area << " uM^2" << std::endl;
-  summary << "MEM Area: " << mem_area << " uM^2" << std::endl;
+  summary << "SRAM Area: " << mem_area << " uM^2" << std::endl;
+  summary << "SRAM size: " << mem_size << " B" << std::endl;
   summary << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
   summary << "Num of Adders (32-bit): " << max_add << std::endl;
   summary << "===============================" << std::endl;

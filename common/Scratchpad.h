@@ -35,6 +35,7 @@ class Scratchpad
   void getAveragePower(unsigned int cycles, float *avg_power,
                        float *avg_dynamic, float *avg_leakage);
   float getTotalArea();
+  unsigned getTotalSize();
   float getReadEnergy(std::string baseName);
   float getWriteEnergy(std::string baseName);
   float getLeakagePower(std::string baseName);
@@ -53,7 +54,6 @@ private:
   /* Number of stores per partition. */
   std::map<std::string, unsigned> partition_stores;
 
-  std::vector<bool> compPartition;
   std::vector<unsigned> occupiedBWPerPartition;
   std::vector<unsigned> sizePerPartition;
   std::vector<float> readEnergyPerPartition;

@@ -17,7 +17,6 @@ void Scratchpad::setScratchpad(std::string baseName, unsigned num_of_bytes, unsi
   unsigned new_id = baseToPartitionID.size();
   baseToPartitionID[baseName] = new_id;
 
-  compPartition.push_back(false);
   occupiedBWPerPartition.push_back(0);
   sizePerPartition.push_back(num_of_bytes);
   //set read/write/leak/area per partition
@@ -61,10 +60,8 @@ bool Scratchpad::canService()
   for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
   {
     std::string base_name = base_it->first;
-    //unsigned base_id = base_it->second;
-    //if (!compPartition.at(base_id))
-      if (canServicePartition(base_name))
-        return 1;
+    if (canServicePartition(base_name))
+      return 1;
   }
   return 0;
 }
@@ -129,11 +126,17 @@ void Scratchpad::getMemoryBlocks(std::vector<std::string> &names)
   {
     std::string base_name = base_it->first;
     unsigned base_id = base_it->second;
-    if (!compPartition.at(base_id))
-      names.push_back(base_name);
+    names.push_back(base_name);
   }
 }
-
+unsigned Scratchpad::getTotalSize()
+{
+  unsigned total_size = 0;
+  for(auto it = sizePerPartition.begin();
+      it != sizePerPartition.end(); ++it)
+    total_size += *it;
+  return total_size;
+}
 void Scratchpad::increment_loads(std::string partition)
 {
   partition_loads[partition]++;
