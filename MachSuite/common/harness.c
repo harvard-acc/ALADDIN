@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <sys/stat.h>
 extern int INPUT_SIZE;
 void run_benchmark( void *args );
 
@@ -23,7 +24,7 @@ int main(int argc, char **argv)
   input = malloc(INPUT_SIZE);
   assert( input!=NULL && "Out of memory" );
   in_fd = open( in_file, O_RDONLY );
-  
+
   n = 0;
   while(n<INPUT_SIZE) {
     status = read(in_fd, &input[n], INPUT_SIZE-n);

@@ -61,7 +61,9 @@ class Registers
     void getRegisterNames(std::vector<std::string> &names);
     Register* getRegister(std::string baseName) { return regs[baseName]; }
     double getArea(std::string baseName);
+    double getTotalArea();
     double getLeakagePower(std::string baseName);
+    double getTotalLeakagePower();
     double getReadEnergy(std::string baseName);
     double getWriteEnergy(std::string baseName);
     bool has(std::string baseName);

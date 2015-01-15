@@ -1077,60 +1077,101 @@ void BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges)
     remove_edge(*it, graph_);
 }
 
-//initFunctions
+/*
+ * Write per cycle activity to bench_stats. The format is:
+ * cycle_num,num-of-muls,num-of-adds,num-of-bitwise-ops,num-of-reg-reads,num-of-reg-writes
+ * If it is called from ScratchpadDatapath, it also outputs per cycle memory
+ * activity for each partitioned array.
+ */
 void BaseDatapath::writePerCycleActivity()
 {
   std::string bn(benchName);
 
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  initDynamicMethodID(dynamic_methodid);
-
-  activity_map mul_activity;
-  activity_map add_activity;
-  activity_map bit_activity;
-  activity_map ld_activity;
-  activity_map st_activity;
+  activity_map mul_activity, add_activity, bit_activity;
+  activity_map ld_activity, st_activity;
 
   max_activity_map max_mul_per_function;
   max_activity_map max_add_per_function;
   max_activity_map max_bit_per_function;
 
   std::vector<std::string> comp_partition_names;
+  std::vector<std::string> mem_partition_names;
   registers.getRegisterNames(comp_partition_names);
+  getMemoryBlocks(mem_partition_names);
 
-  float avg_power = 0, avg_fu_power = 0, avg_mem_power = 0;
-  float avg_mem_dynamic_power = 0, avg_mem_leakage_power = 0;
-  float avg_fu_dynamic_power = 0, avg_fu_leakage_power = 0;
-  float total_area = 0 , fu_area = 0, mem_area = 0;
-  mem_area = getTotalMemArea();
+
+  initPerCycleActivity(comp_partition_names, mem_partition_names,
+                       ld_activity, st_activity,
+                       mul_activity, add_activity, bit_activity,
+                       max_mul_per_function, max_add_per_function,
+                       max_bit_per_function,
+                       num_cycles);
+
+  updatePerCycleActivity(ld_activity, st_activity,
+                         mul_activity, add_activity, bit_activity,
+                         max_mul_per_function, max_add_per_function,
+                         max_bit_per_function);
+
+  outputPerCycleActivity(comp_partition_names, mem_partition_names,
+                         ld_activity, st_activity,
+                         mul_activity, add_activity, bit_activity,
+                         max_mul_per_function, max_add_per_function,
+                         max_bit_per_function);
+
+}
+
+void BaseDatapath::initPerCycleActivity(
+     std::vector<std::string> &comp_partition_names,
+     std::vector<std::string> &mem_partition_names,
+     activity_map &ld_activity, activity_map &st_activity,
+     activity_map &mul_activity, activity_map &add_activity,
+     activity_map &bit_activity,
+     max_activity_map &max_mul_per_function,
+     max_activity_map &max_add_per_function,
+     max_activity_map &max_bit_per_function,
+     int num_cycles)
+{
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
   {
-    std::string p_name = *it;
-    ld_activity.insert({p_name, make_vector(num_cycles)});
-    st_activity.insert({p_name, make_vector(num_cycles)});
-    fu_area += registers.getArea(*it);
+    ld_activity.insert({*it, make_vector(num_cycles)});
+    st_activity.insert({*it, make_vector(num_cycles)});
+  }
+  for (auto it = mem_partition_names.begin(); it != mem_partition_names.end() ; ++it)
+  {
+    ld_activity.insert({*it, make_vector(num_cycles)});
+    st_activity.insert({*it, make_vector(num_cycles)});
   }
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
-    std::string p_name = *it;
-    mul_activity.insert({p_name, make_vector(num_cycles)});
-    add_activity.insert({p_name, make_vector(num_cycles)});
-    bit_activity.insert({p_name, make_vector(num_cycles)});
-    max_mul_per_function.insert({p_name, 0});
-    max_add_per_function.insert({p_name, 0});
-    max_bit_per_function.insert({p_name, 0});
+    mul_activity.insert({*it, make_vector(num_cycles)});
+    add_activity.insert({*it, make_vector(num_cycles)});
+    bit_activity.insert({*it, make_vector(num_cycles)});
+    max_mul_per_function.insert({*it, 0});
+    max_add_per_function.insert({*it, 0});
+    max_bit_per_function.insert({*it, 0});
   }
-  int num_adds_so_far = 0;
-  int num_muls_so_far = 0;
-  int num_bits_so_far = 0;
+}
+
+void BaseDatapath::updatePerCycleActivity(
+     activity_map &ld_activity, activity_map &st_activity,
+     activity_map &mul_activity, activity_map &add_activity,
+     activity_map &bit_activity,
+     max_activity_map &max_mul_per_function,
+     max_activity_map &max_add_per_function,
+     max_activity_map &max_bit_per_function)
+{
+  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
+  initDynamicMethodID(dynamic_methodid);
+
+  int num_adds_so_far = 0, num_muls_so_far = 0, num_bits_so_far = 0;
   auto bound_it = loopBound.begin();
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
     char func_id[256];
     int count;
+
     sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
-    if (node_id == *bound_it)
-    {
+    if (node_id == *bound_it) {
       if (max_mul_per_function[func_id] < num_muls_so_far)
         max_mul_per_function[func_id] = num_muls_so_far;
       if (max_add_per_function[func_id] < num_adds_so_far)
@@ -1144,52 +1185,74 @@ void BaseDatapath::writePerCycleActivity()
     }
     if (finalIsolated.at(node_id))
       continue;
-    int tmp_level = newLevel.at(node_id);
+    int node_level = newLevel.at(node_id);
     int node_microop = microop.at(node_id);
 
     if (is_mul_op(node_microop)) {
-      mul_activity[func_id].at(tmp_level) +=1;
+      mul_activity[func_id].at(node_level) +=1;
       num_muls_so_far +=1;
     }
     else if  (is_add_op(node_microop)) {
-      add_activity[func_id].at(tmp_level) +=1;
+      add_activity[func_id].at(node_level) +=1;
       num_adds_so_far +=1;
     }
     else if (is_bit_op(node_microop)) {
-      bit_activity[func_id].at(tmp_level) +=1;
+      bit_activity[func_id].at(node_level) +=1;
       num_bits_so_far +=1;
     }
-    else if (is_load_op(node_microop))
-    {
+    else if (is_load_op(node_microop)) {
       std::string base_addr = baseAddress[node_id].first;
-      // These memory ops include those that go to the scratchpad, which we
-      // account for independently.
       if (ld_activity.find(base_addr) != ld_activity.end())
-        ld_activity[base_addr].at(tmp_level) += 1;
+        ld_activity[base_addr].at(node_level) += 1;
     }
-    else if (is_store_op(node_microop))
-    {
+    else if (is_store_op(node_microop)) {
       std::string base_addr = baseAddress[node_id].first;
       if (st_activity.find(base_addr) != st_activity.end())
-        st_activity[base_addr].at(tmp_level) += 1;
+        st_activity[base_addr].at(node_level) += 1;
     }
   }
+}
+
+void BaseDatapath::outputPerCycleActivity(
+     std::vector<std::string> &comp_partition_names,
+     std::vector<std::string> &mem_partition_names,
+     activity_map &ld_activity, activity_map &st_activity,
+     activity_map &mul_activity, activity_map &add_activity,
+     activity_map &bit_activity,
+     max_activity_map &max_mul_per_function,
+     max_activity_map &max_add_per_function,
+     max_activity_map &max_bit_per_function)
+{
   ofstream stats, power_stats;
-  std::string tmp_name = bn + "_stats";
-  stats.open(tmp_name.c_str());
-  tmp_name += "_power";
-  power_stats.open(tmp_name.c_str());
+  std::string bn(benchName);
+  std::string file_name = bn + "_stats";
+  stats.open(file_name.c_str());
+  file_name += "_power";
+  power_stats.open(file_name.c_str());
 
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   stats << num_cycles << "," ;
   power_stats << num_cycles << "," ;
 
-  int max_reg_read =  0;
-  int max_reg_write =  0;
-  int max_add = 0;
-  int max_bit = 0;
-  int max_mul = 0;
+  /*Start writing the second line*/
+  for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
+  {
+    stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
+    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
+  }
+  stats << "reg,";
+  power_stats << "reg,";
+  for (auto it = mem_partition_names.begin();
+       it != mem_partition_names.end() ; ++it) {
+    stats << *it << "-read," << *it << "-write,";
+  }
+  stats << std::endl;
+  power_stats << std::endl;
+  /*Finish writing the second line*/
+
+  /*Caculating the number of FUs and leakage power*/
+  int max_reg_read =  0, max_reg_write = 0;
   for (unsigned level_id = 0; ((int) level_id) < num_cycles; ++level_id)
   {
     if (max_reg_read < regStats.at(level_id).reads )
@@ -1198,72 +1261,93 @@ void BaseDatapath::writePerCycleActivity()
       max_reg_write = regStats.at(level_id).writes ;
   }
   int max_reg = max_reg_read + max_reg_write;
-
+  int max_add = 0, max_bit = 0, max_mul = 0;
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
-    stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
-    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
     max_bit += max_bit_per_function[*it];
     max_add += max_add_per_function[*it];
     max_mul += max_mul_per_function[*it];
   }
 
-  //ADD_int_power, MUL_int_power, REG_int_power
-  float add_leakage_per_cycle = ADD_leak_power * max_add;
-  float mul_leakage_per_cycle = MUL_leak_power * max_mul;
-  float reg_leakage_per_cycle = REG_leak_power * 32 * max_reg;
+  float add_leakage_power = ADD_leak_power * max_add;
+  float mul_leakage_power = MUL_leak_power * max_mul;
+  float reg_leakage_power = registers.getTotalLeakagePower()
+                            + REG_leak_power * 32 * max_reg;
+  float fu_leakage_power = mul_leakage_power
+                           + add_leakage_power
+                           + reg_leakage_power;
+  /*Finish caculating the number of FUs and leakage power*/
 
-  fu_area += ADD_area * max_add + MUL_area * max_mul + REG_area * 32 * max_reg;
-  total_area = mem_area + fu_area;
+  float fu_dynamic_energy = 0;
 
-  stats << "reg" << std::endl;
-  power_stats << "reg" << std::endl;
-
-  for (unsigned tmp_level = 0; ((int)tmp_level) < num_cycles ; ++tmp_level)
+  /*Start writing per cycle activity */
+  for (unsigned curr_level = 0; ((int)curr_level) < num_cycles ; ++curr_level)
   {
-    stats << tmp_level << "," ;
-    power_stats << tmp_level << ",";
+    stats << curr_level << "," ;
+    power_stats << curr_level << ",";
     //For FUs
     for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
     {
-      stats << mul_activity[*it].at(tmp_level) << "," << add_activity[*it].at(tmp_level) << "," << bit_activity[*it].at(tmp_level) << ",";
-      float tmp_mul_power = (MUL_switch_power + MUL_int_power) * mul_activity[*it].at(tmp_level) + mul_leakage_per_cycle ;
-      float tmp_add_power = (ADD_switch_power + ADD_int_power) * add_activity[*it].at(tmp_level) + add_leakage_per_cycle;
-      avg_fu_power += tmp_mul_power + tmp_add_power;
-      avg_fu_leakage_power += mul_leakage_per_cycle + add_leakage_per_cycle;
-      power_stats  << tmp_mul_power << "," << tmp_add_power << ",0," ;
+      float curr_mul_dynamic_power = (MUL_switch_power + MUL_int_power)
+                                       * mul_activity[*it].at(curr_level);
+      float curr_add_dynamic_power = (ADD_switch_power + ADD_int_power)
+                                       * add_activity[*it].at(curr_level);
+      fu_dynamic_energy += ( curr_mul_dynamic_power + curr_add_dynamic_power )
+                            * cycleTime;
+
+      stats       << mul_activity[*it].at(curr_level) << ","
+                  << add_activity[*it].at(curr_level) << ","
+                  << bit_activity[*it].at(curr_level) << ",";
+      power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
+                  << curr_add_dynamic_power + add_leakage_power << ","
+                  << "0," ;
     }
     //For regs
-    int curr_reg_reads = regStats.at(tmp_level).reads;
-    int curr_reg_writes = regStats.at(tmp_level).writes;
-    float tmp_reg_power = (REG_int_power + REG_sw_power) *
-                          (curr_reg_reads + curr_reg_writes) * 32 +
-                          reg_leakage_per_cycle;
+    int curr_reg_reads = regStats.at(curr_level).reads;
+    int curr_reg_writes = regStats.at(curr_level).writes;
+    float curr_reg_dynamic_energy = (REG_int_power + REG_sw_power)
+                                  *(curr_reg_reads + curr_reg_writes)
+                                  * 32 * cycleTime;
     for (auto it = comp_partition_names.begin();
          it != comp_partition_names.end() ; ++it)
     {
-      curr_reg_reads += ld_activity.at(*it).at(tmp_level);
-      curr_reg_writes += st_activity.at(*it).at(tmp_level);
-      tmp_reg_power += (registers.getReadEnergy(*it) * ld_activity.at(*it).at(tmp_level) +
-                        registers.getWriteEnergy(*it) * st_activity.at(*it).at(tmp_level))/cycleTime +
-                        registers.getLeakagePower(*it);
-      avg_fu_leakage_power += registers.getLeakagePower(*it);
+      curr_reg_reads += ld_activity.at(*it).at(curr_level);
+      curr_reg_writes += st_activity.at(*it).at(curr_level);
+      curr_reg_dynamic_energy += registers.getReadEnergy(*it)
+                                   * ld_activity.at(*it).at(curr_level)
+                                 + registers.getWriteEnergy(*it)
+                                   * st_activity.at(*it).at(curr_level);
     }
-    avg_fu_power += tmp_reg_power;
-    avg_fu_dynamic_power = avg_fu_power - avg_fu_leakage_power;
+    fu_dynamic_energy += curr_reg_dynamic_energy;
 
-    stats << curr_reg_reads << "," << curr_reg_writes <<std::endl;
-    power_stats << tmp_reg_power << std::endl;
+    stats << curr_reg_reads << "," << curr_reg_writes << "," ;
+    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
+
+    for (auto it = mem_partition_names.begin();
+         it != mem_partition_names.end() ; ++it)
+      stats << ld_activity.at(*it).at(curr_level) << ","
+            << st_activity.at(*it).at(curr_level) << ",";
+    stats << std::endl;
+    power_stats << std::endl;
   }
   stats.close();
   power_stats.close();
 
+  float avg_mem_power =0, avg_mem_dynamic_power = 0, mem_leakage_power = 0;
+
   getAverageMemPower(num_cycles, &avg_mem_power,
-                     &avg_mem_dynamic_power, &avg_mem_leakage_power);
-  avg_fu_power /= num_cycles;
-  avg_fu_dynamic_power /= num_cycles;
-  avg_fu_leakage_power /= num_cycles;
-  avg_power = avg_fu_power + avg_mem_power;
+                     &avg_mem_dynamic_power, &mem_leakage_power);
+
+  float avg_fu_dynamic_power = fu_dynamic_energy / (cycleTime * num_cycles);
+  float avg_fu_power = avg_fu_dynamic_power + fu_leakage_power;
+  float avg_power = avg_fu_power + avg_mem_power;
+
+  float mem_area = getTotalMemArea();
+  float fu_area = registers.getTotalArea()
+                  + ADD_area * max_add
+                  + MUL_area * max_mul
+                  + REG_area * 32 * max_reg;
+  float total_area = mem_area + fu_area;
   //Summary output:
   //Cycle, Avg Power, Avg FU Power, Avg MEM Power, Total Area, FU Area, MEM Area
   std::cerr << "===============================" << std::endl;
@@ -1274,20 +1358,22 @@ void BaseDatapath::writePerCycleActivity()
   std::cerr << "Avg Power: " << avg_power << " mW" << std::endl;
   std::cerr << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   std::cerr << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
-  std::cerr << "Avg FU leakage Power: " << avg_fu_leakage_power << " mW" << std::endl;
+  std::cerr << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
   std::cerr << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
   std::cerr << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  std::cerr << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
+  std::cerr << "Avg MEM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
   std::cerr << "Total Area: " << total_area << " uM^2" << std::endl;
   std::cerr << "FU Area: " << fu_area << " uM^2" << std::endl;
   std::cerr << "MEM Area: " << mem_area << " uM^2" << std::endl;
+  std::cerr << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
+  std::cerr << "Num of Adders (32-bit): " << max_add << std::endl;
   std::cerr << "===============================" << std::endl;
   std::cerr << "        Aladdin Results        " << std::endl;
   std::cerr << "===============================" << std::endl;
 
   ofstream summary;
-  tmp_name = bn + "_summary";
-  summary.open(tmp_name.c_str());
+  file_name = bn + "_summary";
+  summary.open(file_name.c_str());
   summary << "===============================" << std::endl;
   summary << "        Aladdin Results        " << std::endl;
   summary << "===============================" << std::endl;
@@ -1296,13 +1382,15 @@ void BaseDatapath::writePerCycleActivity()
   summary << "Avg Power: " << avg_power << " mW" << std::endl;
   summary << "Avg FU Power: " << avg_fu_power << " mW" << std::endl;
   summary << "Avg FU Dynamic Power: " << avg_fu_dynamic_power << " mW" << std::endl;
-  summary << "Avg FU leakage Power: " << avg_fu_leakage_power << " mW" << std::endl;
+  summary << "Avg FU leakage Power: " << fu_leakage_power << " mW" << std::endl;
   summary << "Avg MEM Power: " << avg_mem_power << " mW" << std::endl;
   summary << "Avg MEM Dynamic Power: " << avg_mem_dynamic_power << " mW" << std::endl;
-  summary << "Avg MEM Leakage Power: " << avg_mem_leakage_power << " mW" << std::endl;
+  summary << "Avg MEM Leakage Power: " << mem_leakage_power << " mW" << std::endl;
   summary << "Total Area: " << total_area << " uM^2" << std::endl;
   summary << "FU Area: " << fu_area << " uM^2" << std::endl;
   summary << "MEM Area: " << mem_area << " uM^2" << std::endl;
+  summary << "Num of Multipliers (32-bit): " << max_mul  << std::endl;
+  summary << "Num of Adders (32-bit): " << max_add << std::endl;
   summary << "===============================" << std::endl;
   summary << "        Aladdin Results        " << std::endl;
   summary << "===============================" << std::endl;
@@ -1329,7 +1417,7 @@ void BaseDatapath::writePerCycleActivity()
            "avg_mem_power, total_area, benchmark, experiment_id, config_id) "
            "values (";
   query << num_cycles << "," << avg_power << "," << avg_fu_power << ","
-        << avg_mem_dynamic_power << "," << avg_mem_leakage_power << ","
+        << avg_mem_dynamic_power << "," << mem_leakage_power << ","
         << fu_area << "," << mem_area << "," << avg_mem_power << ","
         << total_area << "," << "\"" << benchmark << "\"," << experiment_id
         << "," << config_id << ")";
@@ -1337,8 +1425,9 @@ void BaseDatapath::writePerCycleActivity()
   con->commit();  // End transaction.
   delete stmt;
   delete con;
-}
 
+
+}
 void BaseDatapath::setExperimentParameters(std::string experiment_name)
 {
   use_db = true;
@@ -1573,7 +1662,7 @@ void BaseDatapath::setGraphForStepping()
 void BaseDatapath::dumpGraph()
 {
   std::unordered_map<Vertex, unsigned> vertexToMicroop;
-  BGL_FORALL_VERTICES(v, graph_, Graph) 
+  BGL_FORALL_VERTICES(v, graph_, Graph)
       vertexToMicroop[v] = microop.at(get(boost::vertex_index, graph_, v));
   std::string bn(benchName);
   std::ofstream out(bn + "_graph.dot");

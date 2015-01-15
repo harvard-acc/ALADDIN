@@ -482,7 +482,7 @@ void CacheDatapath::dumpStats()
 {
   computeCactiResults();
   BaseDatapath::dumpStats();
-  writePerCycleActivity();
+  BaseDatapath::writePerCycleActivity();
 }
 
 void CacheDatapath::computeCactiResults()

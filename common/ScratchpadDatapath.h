@@ -26,6 +26,7 @@ class ScratchpadDatapath : public BaseDatapath {
     virtual void getAverageMemPower(
         unsigned int cycles, float *avg_power,
         float *avg_dynamic, float *avg_leak);
+    virtual void getMemoryBlocks(std::vector<std::string> &names);
 
   protected:
     Scratchpad *scratchpad;
