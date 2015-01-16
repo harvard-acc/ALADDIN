@@ -91,6 +91,7 @@ void ScratchpadDatapath::initBaseAddress()
           //remove address calculation directly
           baseAddress[node_id] = getElementPtr[parent_id];
           curr_node = source(*in_edge_it, graph_);
+          node_microop = parent_microop;
           found_parent = 1;
           modified = 1;
           break;
