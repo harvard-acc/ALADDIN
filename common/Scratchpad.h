@@ -8,7 +8,7 @@
 #include <map>
 #include <vector>
 
-#include "power_delay.h"
+#include "power_func.h"
 #include "cacti-p/io.h"
 #include "cacti-p/cacti_interface.h"
 

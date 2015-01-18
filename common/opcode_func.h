@@ -1,4 +1,4 @@
-#include "power_delay.h"
+#include "power_func.h"
 
 #ifndef OPCODE_FUNC_H
 #define OPCODE_FUNC_H

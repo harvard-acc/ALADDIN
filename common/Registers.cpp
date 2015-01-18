@@ -1,6 +1,5 @@
 #include <cassert>
 
-#include "power_delay.h"
 #include "Registers.h"
 
 Registers::~Registers()
