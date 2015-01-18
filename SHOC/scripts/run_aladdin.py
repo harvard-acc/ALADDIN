@@ -6,7 +6,7 @@ import os.path
 import llvm_compile
 import config
 
-def main(kernel, part, unroll, pipe):
+def main(kernel, part, unroll, pipe, clock_period):
 
   if not 'ALADDIN_HOME' in os.environ:
     raise Exception('Set ALADDIN_HOME directory as an environment variable')
@@ -37,12 +37,14 @@ def main(kernel, part, unroll, pipe):
   print 'Changing directory to %s' % newdir
 
   os.chdir(newdir)
-  os.system('%s/common/aladdin %s %s %s ' % (os.getenv('ALADDIN_HOME'), kernel, trace_file, config_file))
+  os.system('%s/common/aladdin %s %s %s %s' % \
+                (os.getenv('ALADDIN_HOME'), kernel, trace_file, config_file, clock_period))
 
 if __name__ == '__main__':
   kernel = sys.argv[1]
   part = sys.argv[2]
   unroll = sys.argv[3]
   pipe = sys.argv[4]
-  main(kernel, part, unroll, pipe)
+  clock_period = sys.argv[5]
+  main(kernel, part, unroll, pipe, clock_period)
 

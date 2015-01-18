@@ -1246,6 +1246,19 @@ void BaseDatapath::outputPerCycleActivity(
      max_activity_map &max_add_per_function,
      max_activity_map &max_bit_per_function)
 {
+  /*Set the constants*/
+  float add_int_power, add_switch_power, add_leak_power, add_area;
+  float mul_int_power, mul_switch_power, mul_leak_power, mul_area;
+  float reg_int_power_per_bit, reg_switch_power_per_bit;
+  float reg_leak_power_per_bit, reg_area_per_bit;
+
+  getAdderPowerArea(cycleTime, &add_int_power, &add_switch_power,
+                    &add_leak_power, &add_area);
+  getMultiplierPowerArea(cycleTime, &mul_int_power, &mul_switch_power,
+                         &mul_leak_power, &mul_area);
+  getRegisterPowerArea(cycleTime, &reg_int_power_per_bit,
+                       &reg_switch_power_per_bit, &reg_leak_power_per_bit,
+                       &reg_area_per_bit);
   ofstream stats, power_stats;
   std::string bn(benchName);
   std::string file_name = bn + "_stats";
@@ -1292,10 +1305,10 @@ void BaseDatapath::outputPerCycleActivity(
     max_mul += max_mul_per_function[*it];
   }
 
-  float add_leakage_power = ADD_leak_power * max_add;
-  float mul_leakage_power = MUL_leak_power * max_mul;
+  float add_leakage_power = add_leak_power * max_add;
+  float mul_leakage_power = mul_leak_power * max_mul;
   float reg_leakage_power = registers.getTotalLeakagePower()
-                            + REG_leak_power * 32 * max_reg;
+                            + reg_leak_power_per_bit * 32 * max_reg;
   float fu_leakage_power = mul_leakage_power
                            + add_leakage_power
                            + reg_leakage_power;
@@ -1311,9 +1324,9 @@ void BaseDatapath::outputPerCycleActivity(
     //For FUs
     for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
     {
-      float curr_mul_dynamic_power = (MUL_switch_power + MUL_int_power)
+      float curr_mul_dynamic_power = (mul_switch_power + mul_int_power)
                                        * mul_activity[*it].at(curr_level);
-      float curr_add_dynamic_power = (ADD_switch_power + ADD_int_power)
+      float curr_add_dynamic_power = (add_switch_power + add_int_power)
                                        * add_activity[*it].at(curr_level);
       fu_dynamic_energy += ( curr_mul_dynamic_power + curr_add_dynamic_power )
                             * cycleTime;
@@ -1328,7 +1341,7 @@ void BaseDatapath::outputPerCycleActivity(
     //For regs
     int curr_reg_reads = regStats.at(curr_level).reads;
     int curr_reg_writes = regStats.at(curr_level).writes;
-    float curr_reg_dynamic_energy = (REG_int_power + REG_sw_power)
+    float curr_reg_dynamic_energy = (reg_int_power_per_bit + reg_switch_power_per_bit)
                                   *(curr_reg_reads + curr_reg_writes)
                                   * 32 * cycleTime;
     for (auto it = comp_partition_names.begin();
@@ -1368,9 +1381,9 @@ void BaseDatapath::outputPerCycleActivity(
   float mem_area = getTotalMemArea();
   unsigned mem_size = getTotalMemSize();
   float fu_area = registers.getTotalArea()
-                  + ADD_area * max_add
-                  + MUL_area * max_mul
-                  + REG_area * 32 * max_reg;
+                  + add_area * max_add
+                  + mul_area * max_mul
+                  + reg_area_per_bit * 32 * max_reg;
   float total_area = mem_area + fu_area;
   // Summary output.
   summary_data_t summary;
