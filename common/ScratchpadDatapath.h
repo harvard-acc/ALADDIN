@@ -10,10 +10,9 @@ class ScratchpadDatapath : public BaseDatapath {
 
   public:
     ScratchpadDatapath(std::string bench, std::string trace_file,
-                       std::string config_file, float cycle_t);
+                       std::string config_file);
     ~ScratchpadDatapath();
 
-    void setScratchpad(Scratchpad *spad);
     void globalOptimizationPass();
     void completePartition();
     void scratchpadPartition();

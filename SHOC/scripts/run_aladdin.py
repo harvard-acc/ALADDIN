@@ -19,7 +19,7 @@ def main(kernel, part, unroll, pipe, clock_period):
   BENCH_HOME = ALADDIN_HOME + '/SHOC/' + kernel
 
   os.chdir(BENCH_HOME)
-  d = 'p%s_u%s_P%s' % (part, unroll, pipe)
+  d = 'p%s_u%s_P%s_%sns' % (part, unroll, pipe, clock_period)
 
   #Run LLVM-Tracer to generate the dynamic trace
   #Only need to run once to generate the design space of each algorithm
@@ -27,7 +27,7 @@ def main(kernel, part, unroll, pipe, clock_period):
   llvm_compile.main(BENCH_HOME, kernel)
 
   #Generate accelerator design config file
-  config.main(BENCH_HOME, kernel, part, unroll, pipe)
+  config.main(BENCH_HOME, kernel, part, unroll, pipe, clock_period)
 
   print 'Start Aladdin'
   trace_file = BENCH_HOME+ '/' + 'dynamic_trace.gz'

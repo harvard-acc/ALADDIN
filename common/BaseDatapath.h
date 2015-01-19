@@ -117,7 +117,7 @@ struct summary_data_t
 class BaseDatapath
 {
  public:
-  BaseDatapath(std::string bench, string trace_file, string config_file, float cycle_t);
+  BaseDatapath(std::string bench, string trace_file, string config_file);
   virtual ~BaseDatapath();
 
   //Change graph.
@@ -264,6 +264,8 @@ class BaseDatapath
   char* benchName;
   int num_cycles;
   float cycleTime;
+  std::string trace_file;
+  std::string config_file;
   //boost graph.
   Graph graph_;
   std::unordered_map<unsigned, Vertex> nameToVertex;

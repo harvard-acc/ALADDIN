@@ -5,10 +5,11 @@
 #include "BaseDatapath.h"
 
 BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
-                           std::string config_file, float cycle_t)
+                           std::string config_file)
 {
   benchName = (char*) bench.c_str();
-  cycleTime = cycle_t;
+  this->trace_file = trace_file;
+  this->config_file = config_file;
   DDDG *dddg;
   dddg = new DDDG(this, trace_file);
   /*Build Initial DDDG*/
@@ -1977,21 +1978,21 @@ void BaseDatapath::parse_config(std::string bench, std::string config_file_name)
       break;
     type = wholeline.substr(0, pos_end_tag);
     rest_line = wholeline.substr(pos_end_tag + 1);
-    if (!type.compare("flatten"))
+    if (!type.compare("flatten")) {
       flatten_config.push_back(rest_line);
-
-    else if (!type.compare("unrolling"))
+    } else if (!type.compare("unrolling")) {
       unrolling_config.push_back(rest_line);
-
-    else if (!type.compare("partition"))
+    } else if (!type.compare("partition")) {
       if (wholeline.find("complete") == std::string::npos)
         partition_config.push_back(rest_line);
       else
         comp_partition_config.push_back(rest_line);
-    else if (!type.compare("pipelining"))
+    } else if (!type.compare("pipelining")) {
       pipelining_config.push_back(rest_line);
-    else
-    {
+    } else if (!type.compare("cycle_time")) {
+      // Update the global cycle time parameter.
+      cycleTime = stof(rest_line);
+    } else {
       cerr << "what else? " << wholeline << endl;
       exit(0);
     }
