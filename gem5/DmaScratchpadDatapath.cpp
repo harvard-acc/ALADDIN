@@ -25,8 +25,7 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     const DmaScratchpadDatapathParams* params) :
     ScratchpadDatapath(params->benchName,
                        params->traceFileName,
-                       params->configFileName,
-                       params->cycleTime),
+                       params->configFileName),
     MemObject(params),
     inFlightNodes(0),
     accelerator_id(params->acceleratorId),

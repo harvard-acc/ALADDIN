@@ -18,11 +18,12 @@ int main( int argc, const char *argv[])
    std::cout << logo << endl;
 
 
-  if(argc < 5)
+  if(argc < 4)
   {
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "Aladdin takes:                 " << std::endl;
-    std::cerr << "./aladdin <bench> <dynamic trace> <config file> <clock period> <experiment_name>" << endl;
+    std::cerr << "./aladdin <bench> <dynamic trace> <config file> <experiment_name>"
+              << endl;
     std::cerr << "   experiment_name is an optional parameter, only used to \n"
               << "   identify results stored in a local database." << std::endl;
     std::cerr << "-------------------------------" << std::endl;
@@ -35,38 +36,32 @@ int main( int argc, const char *argv[])
   std::string bench(argv[1]);
   std::string trace_file(argv[2]);
   std::string config_file(argv[3]);
-  float clock_period = atoi(argv[4]);
   std::string experiment_name;
 
-  std::cout << bench << "," << trace_file << "," << config_file <<  "," << clock_period << std::endl;
+  std::cout << bench << "," << trace_file << "," << config_file <<  "," << std::endl;
 
   ScratchpadDatapath *acc;
-  Scratchpad *spad;
 
-  spad = new Scratchpad(1, clock_period);
-  acc = new ScratchpadDatapath(bench, trace_file, config_file, clock_period);
+  acc = new ScratchpadDatapath(bench, trace_file, config_file);
 #ifdef USE_DB
-  bool use_db = (argc == 6);
+  bool use_db = (argc == 5);
   if (use_db)
   {
     experiment_name = std::string(argv[4]);
     acc->setExperimentParameters(experiment_name);
   }
 #endif
-  acc->setScratchpad(spad);
-  //get the complete graph
+  // Get the complete graph.
   acc->setGlobalGraph();
   acc->globalOptimizationPass();
-  /*Profiling*/
+  /* Profiling */
   acc->setGraphForStepping();
 
-  //Scheduling
-  while(!acc->step())
-    spad->step();
+  // Scheduling
+  while(!acc->step()) {}
   int cycles = acc->clearGraph();
 
   acc->dumpStats();
   delete acc;
-  delete spad;
   return 0;
 }
