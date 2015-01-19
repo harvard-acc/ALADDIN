@@ -94,13 +94,24 @@ DmaScratchpadDatapath::stepExecutingQueue()
     if (is_memory_op(microop.at(node_id)))
     {
       std::string node_part = baseAddress[node_id].first;
-      if(scratchpad->canServicePartition(node_part))
+      if (registers.has(node_part) ||
+          scratchpad->canServicePartition(node_part))
       {
-        assert(scratchpad->addressRequest(node_part));
-        if (is_load_op(microop.at(node_id)))
-          scratchpad->increment_loads(node_part);
+        if (registers.has(node_part))
+        {
+          if (is_load_op(microop.at(node_id)))
+            registers.getRegister(node_part)->increment_loads();
+          else
+            registers.getRegister(node_part)->increment_stores();
+        }
         else
-          scratchpad->increment_stores(node_part);
+        {
+          assert(scratchpad->addressRequest(node_part));
+          if (is_load_op(microop.at(node_id)))
+            scratchpad->increment_loads(node_part);
+          else
+            scratchpad->increment_stores(node_part);
+        }
         markNodeCompleted(it, index);
       }
       else
