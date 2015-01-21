@@ -15,8 +15,7 @@
 #include "CacheDatapath.h"
 
 CacheDatapath::CacheDatapath(const Params *p) :
-    BaseDatapath(
-        p->benchName, p->traceFileName, p->configFileName, p->cycleTime),
+    BaseDatapath(p->benchName, p->traceFileName, p->configFileName),
     MemObject(p),
     _dataMasterId(p->system->getMasterId(name() + ".data")),
     dcachePort(this),

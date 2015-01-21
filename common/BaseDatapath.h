@@ -119,8 +119,7 @@ struct summary_data_t
 class BaseDatapath
 {
  public:
-  BaseDatapath(std::string bench, string trace_file,
-               string config_file, float cycle_t);
+  BaseDatapath(std::string bench, string trace_file, string config_file);
   virtual ~BaseDatapath();
 
   //Change graph.

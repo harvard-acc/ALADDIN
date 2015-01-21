@@ -9,20 +9,22 @@
 
 ScratchpadDatapath::ScratchpadDatapath(
     std::string bench, std::string trace_file,
-    std::string config_file, float cycle_t):
-    BaseDatapath(bench, trace_file, config_file, cycle_t) {}
-
-ScratchpadDatapath::~ScratchpadDatapath() {}
-
-void ScratchpadDatapath::setScratchpad(Scratchpad *spad)
+    std::string config_file):
+    BaseDatapath(bench, trace_file, config_file)
 {
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "      Setting ScratchPad       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  scratchpad = spad;
+  scratchpad = new Scratchpad(1, cycleTime);
 }
 
-void ScratchpadDatapath::globalOptimizationPass() {
+ScratchpadDatapath::~ScratchpadDatapath()
+{
+  delete scratchpad;
+}
+
+void ScratchpadDatapath::globalOptimizationPass()
+{
   // Node removals must come first.
   removeInductionDependence();
   removePhiNodes();
@@ -218,7 +220,15 @@ void ScratchpadDatapath::scratchpadPartition()
 }
 
 bool ScratchpadDatapath::step() {
-  return BaseDatapath::step();
+  if (!BaseDatapath::step())
+  {
+    scratchpad->step();
+    return false;
+  }
+  else
+  {
+    return true;
+  }
 }
 
 void ScratchpadDatapath::stepExecutingQueue()
@@ -249,12 +259,7 @@ void ScratchpadDatapath::stepExecutingQueue()
           else
             scratchpad->increment_stores(node_part);
         }
-        executedNodes++;
-        newLevel.at(node_id) = num_cycles;
-        executingQueue.erase(it);
-        updateChildren(node_id);
-        it = executingQueue.begin();
-        std::advance(it, index);
+        markNodeCompleted(it, index);
       }
       else
       {
@@ -264,12 +269,7 @@ void ScratchpadDatapath::stepExecutingQueue()
     }
     else
     {
-      executedNodes++;
-      newLevel.at(node_id) = num_cycles;
-      executingQueue.erase(it);
-      updateChildren(node_id);
-      it = executingQueue.begin();
-      std::advance(it, index);
+      markNodeCompleted(it, index);
     }
   }
 }
