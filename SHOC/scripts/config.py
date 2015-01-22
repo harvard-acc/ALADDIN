@@ -168,4 +168,5 @@ if __name__ == '__main__':
   part = sys.argv[3]
   unroll = sys.argv[4]
   pipe = sys.argv[5]
-  main(directory, kernel, part, unroll, pipe)
+  cycle_time = sys.argv[6]
+  main(directory, kernel, part, unroll, pipe, cycle_time)
