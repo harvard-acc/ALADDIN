@@ -221,7 +221,6 @@ uca_org_t Scratchpad::cactiWrapper(unsigned num_of_bytes, unsigned wordsize)
   int wire_inside_mat_type_in = 2; // 2 - global, 0 - local, 1 - semi-global
   int wire_outside_mat_type_in = 2; // 2 - global
   int REPEATERS_IN_HTREE_SEGMENTS_in = 1;//TODO for now only wires with repeaters are supported
-  int p_input = 0; //print input parameters
   int VERTICAL_HTREE_WIRES_OVER_THE_ARRAY_in = 0;
   int BROADCAST_ADDR_DATAIN_OVER_VERTICAL_HTREES_in = 0;
   int force_wiretype = 1;

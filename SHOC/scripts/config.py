@@ -4,11 +4,11 @@ import os
 import shutil
 
 
-def main(directory, kernel, part, unroll, pipe):
+def main(directory, kernel, part, unroll, pipe, cycle_time):
 
   print '--Running config.main()'
-  
-  d = 'p%s_u%s_P%s' % (part, unroll, pipe)
+
+  d = 'p%s_u%s_P%s_%sns' % (part, unroll, pipe, cycle_time)
 
   print 'Kernel = %s, Part = %s, unroll = %s' % (kernel, part, unroll)
 
@@ -53,15 +53,15 @@ def main(directory, kernel, part, unroll, pipe):
   'ss_sort' : ['4','4','4','4'],
   'stencil' : ['4','4','4'],
   'triad' : ['4','4','4'],
-  
+
   }
 
   BaseFile = directory
   os.chdir(BaseFile)
-  
+
   if not os.path.isdir(BaseFile + '/sim/'):
     os.mkdir(BaseFile + '/sim/')
-  
+
   if os.path.isdir(BaseFile + '/sim/' + d):
     shutil.rmtree(BaseFile + '/sim/' + d)
 
@@ -70,6 +70,8 @@ def main(directory, kernel, part, unroll, pipe):
 
   print 'Writing config file'
   config = open(BaseFile + '/sim/' + d + '/config_' + d, 'w')
+  config.write('cycle_time,' + cycle_time + "\n")
+  print "CYCLE_TIME," + cycle_time
   config.write('pipelining,' + str(pipe) + "\n")
   #memory partition
   names = array_names[kernel]
@@ -85,10 +87,10 @@ def main(directory, kernel, part, unroll, pipe):
       config.write('partition,'+ type + ',' + name + ',' + \
       str(int(size)*int(wordsize)) + ',' + str(wordsize) + ',' + str(part) + "\n")
     else:
-      print "Unknown partition type: " + type 
+      print "Unknown partition type: " + type
       sys.exit(0)
   #loop unrolling and flattening
-  if kernel == 'bb_gemm': 
+  if kernel == 'bb_gemm':
     config.write('unrolling,bb_gemm,11,%s\n' %(unroll))
     config.write('flatten,bb_gemm,12\n' )
     config.write('flatten,bb_gemm,14\n' )
@@ -125,7 +127,7 @@ def main(directory, kernel, part, unroll, pipe):
     config.write('unrolling,step11,293,%s\n' %(unroll))
     config.write('flatten,step11,295\n')
     config.write('flatten,step11,304\n')
-    
+
   elif kernel == 'md':
     config.write('unrolling,md,17,%s\n' %(unroll))
     config.write('flatten,md,25\n')
@@ -139,7 +141,7 @@ def main(directory, kernel, part, unroll, pipe):
 
   elif kernel == 'reduction':
     config.write('unrolling,reduction,10,%s\n' %(unroll))
-  
+
   elif kernel == 'ss_sort':
     config.write('unrolling,init,52,%s\n' %(part))
     config.write('unrolling,hist,61,%s\n' %(unroll))
@@ -167,4 +169,5 @@ if __name__ == '__main__':
   part = sys.argv[3]
   unroll = sys.argv[4]
   pipe = sys.argv[5]
-  main(directory, kernel, part, unroll, pipe)
+  cycle_time = sys.argv[6]
+  main(directory, kernel, part, unroll, pipe, cycle_time)

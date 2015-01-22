@@ -71,6 +71,7 @@ bool is_memory_op(unsigned microop);
 bool is_compute_op(unsigned microop);
 bool is_store_op(unsigned microop);
 bool is_bit_op(unsigned microop);
+bool is_shifter_op(unsigned microop);
 bool is_add_op(unsigned microop);
 bool is_mul_op(unsigned microop);
 bool is_load_op(unsigned microop);

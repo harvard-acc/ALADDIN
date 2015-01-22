@@ -38,18 +38,23 @@ bool is_load_op(unsigned microop)
     return true;
   return false;
 }
+bool is_shifter_op(unsigned microop)
+{
+  if (microop == LLVM_IR_Shl || microop == LLVM_IR_LShr || microop == LLVM_IR_AShr)
+    return true;
+  return false;
+}
 bool is_bit_op(unsigned microop)
 {
   switch (microop)
   {
     case LLVM_IR_Shl: case LLVM_IR_LShr: case LLVM_IR_AShr :
-      case LLVM_IR_And : case LLVM_IR_Or: case LLVM_IR_Xor :
+    case LLVM_IR_And : case LLVM_IR_Or: case LLVM_IR_Xor :
       return true;
     default:
       return false;
   }
 }
-
 bool is_control_op (unsigned microop)
 {
   if (microop == LLVM_IR_PHI)

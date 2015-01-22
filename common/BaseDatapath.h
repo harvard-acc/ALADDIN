@@ -114,6 +114,8 @@ struct summary_data_t
   float mem_area;
   float max_mul;
   float max_add;
+  float max_bit;
+  float max_shifter;
 };
 
 class BaseDatapath
@@ -220,27 +222,30 @@ class BaseDatapath
          std::vector<std::string> &spad_partition_names,
          activity_map &ld_activity, activity_map &st_activity,
          activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity,
+         activity_map &bit_activity, activity_map &shifter_activity,
          max_activity_map &max_mul_per_function,
          max_activity_map &max_add_per_function,
          max_activity_map &max_bit_per_function,
+         max_activity_map &max_shifter_per_function,
          int num_cycles);
   void updatePerCycleActivity(
          activity_map &ld_activity, activity_map &st_activity,
          activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity,
+         activity_map &bit_activity, activity_map &shifter_activity,
          max_activity_map &max_mul_per_function,
          max_activity_map &max_add_per_function,
-         max_activity_map &max_bit_per_function);
+         max_activity_map &max_bit_per_function,
+         max_activity_map &max_shifter_per_function);
   void outputPerCycleActivity(
          std::vector<std::string> &comp_partition_names,
          std::vector<std::string> &spad_partition_names,
          activity_map &ld_activity, activity_map &st_activity,
          activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity,
+         activity_map &bit_activity, activity_map &shifter_activity,
          max_activity_map &max_mul_per_function,
          max_activity_map &max_add_per_function,
-         max_activity_map &max_bit_per_function);
+         max_activity_map &max_bit_per_function,
+         max_activity_map &max_shifter_per_function);
   void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
   // Memory structures.

@@ -21,8 +21,8 @@ AladdinTLB::AladdinTLB(
   missLatency(_miss_latency),
   pageBytes(_page_bytes),
   isPerfectTLB(_is_perfect),
-  numOccupiedMissQueueEntries(0),
   numOutStandingWalks(_num_walks),
+  numOccupiedMissQueueEntries(0),
   cacti_cfg(_cacti_config),
   requests_this_cycle(0),
   bandwidth(_bandwidth)

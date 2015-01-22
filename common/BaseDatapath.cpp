@@ -1080,12 +1080,15 @@ void BaseDatapath::writePerCycleActivity()
 {
   std::string bn(benchName);
 
-  activity_map mul_activity, add_activity, bit_activity;
+  activity_map mul_activity, add_activity;
+  activity_map bit_activity;
+  activity_map shifter_activity;
   activity_map ld_activity, st_activity;
 
   max_activity_map max_mul_per_function;
   max_activity_map max_add_per_function;
   max_activity_map max_bit_per_function;
+  max_activity_map max_shifter_per_function;
 
   std::vector<std::string> comp_partition_names;
   std::vector<std::string> mem_partition_names;
@@ -1095,21 +1098,24 @@ void BaseDatapath::writePerCycleActivity()
 
   initPerCycleActivity(comp_partition_names, mem_partition_names,
                        ld_activity, st_activity,
-                       mul_activity, add_activity, bit_activity,
+                       mul_activity, add_activity,
+                       bit_activity, shifter_activity,
                        max_mul_per_function, max_add_per_function,
-                       max_bit_per_function,
+                       max_bit_per_function, max_shifter_per_function,
                        num_cycles);
 
   updatePerCycleActivity(ld_activity, st_activity,
-                         mul_activity, add_activity, bit_activity,
+                         mul_activity, add_activity,
+                         bit_activity, shifter_activity,
                          max_mul_per_function, max_add_per_function,
-                         max_bit_per_function);
+                         max_bit_per_function, max_shifter_per_function);
 
   outputPerCycleActivity(comp_partition_names, mem_partition_names,
                          ld_activity, st_activity,
-                         mul_activity, add_activity, bit_activity,
+                         mul_activity, add_activity,
+                         bit_activity, shifter_activity,
                          max_mul_per_function, max_add_per_function,
-                         max_bit_per_function);
+                         max_bit_per_function, max_shifter_per_function);
 
 }
 
@@ -1118,10 +1124,11 @@ void BaseDatapath::initPerCycleActivity(
      std::vector<std::string> &mem_partition_names,
      activity_map &ld_activity, activity_map &st_activity,
      activity_map &mul_activity, activity_map &add_activity,
-     activity_map &bit_activity,
+     activity_map &bit_activity, activity_map &shifter_activity,
      max_activity_map &max_mul_per_function,
      max_activity_map &max_add_per_function,
      max_activity_map &max_bit_per_function,
+     max_activity_map &max_shifter_per_function,
      int num_cycles)
 {
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end() ; ++it)
@@ -1139,24 +1146,28 @@ void BaseDatapath::initPerCycleActivity(
     mul_activity.insert({*it, make_vector(num_cycles)});
     add_activity.insert({*it, make_vector(num_cycles)});
     bit_activity.insert({*it, make_vector(num_cycles)});
+    shifter_activity.insert({*it, make_vector(num_cycles)});
     max_mul_per_function.insert({*it, 0});
     max_add_per_function.insert({*it, 0});
     max_bit_per_function.insert({*it, 0});
+    max_shifter_per_function.insert({*it, 0});
   }
 }
 
 void BaseDatapath::updatePerCycleActivity(
      activity_map &ld_activity, activity_map &st_activity,
      activity_map &mul_activity, activity_map &add_activity,
-     activity_map &bit_activity,
+     activity_map &bit_activity, activity_map &shifter_activity,
      max_activity_map &max_mul_per_function,
      max_activity_map &max_add_per_function,
-     max_activity_map &max_bit_per_function)
+     max_activity_map &max_bit_per_function,
+     max_activity_map &max_shifter_per_function)
 {
   std::vector<std::string> dynamic_methodid(numTotalNodes, "");
   initDynamicMethodID(dynamic_methodid);
 
   int num_adds_so_far = 0, num_muls_so_far = 0, num_bits_so_far = 0;
+  int num_shifters_so_far = 0;
   auto bound_it = loopBound.begin();
   for(unsigned node_id = 0; node_id < numTotalNodes; ++node_id)
   {
@@ -1171,9 +1182,12 @@ void BaseDatapath::updatePerCycleActivity(
         max_add_per_function[func_id] = num_adds_so_far;
       if (max_bit_per_function[func_id] < num_bits_so_far)
         max_bit_per_function[func_id] = num_bits_so_far;
+      if (max_shifter_per_function[func_id] < num_shifters_so_far)
+        max_shifter_per_function[func_id] = num_shifters_so_far;
       num_adds_so_far = 0;
       num_muls_so_far = 0;
       num_bits_so_far = 0;
+      num_shifters_so_far = 0;
       bound_it++;
     }
     if (finalIsolated.at(node_id))
@@ -1188,6 +1202,10 @@ void BaseDatapath::updatePerCycleActivity(
     else if  (is_add_op(node_microop)) {
       add_activity[func_id].at(node_level) +=1;
       num_adds_so_far +=1;
+    }
+    else if (is_shifter_op(node_microop)) {
+      shifter_activity[func_id].at(node_level) +=1;
+      num_shifters_so_far +=1;
     }
     else if (is_bit_op(node_microop)) {
       bit_activity[func_id].at(node_level) +=1;
@@ -1211,16 +1229,19 @@ void BaseDatapath::outputPerCycleActivity(
      std::vector<std::string> &mem_partition_names,
      activity_map &ld_activity, activity_map &st_activity,
      activity_map &mul_activity, activity_map &add_activity,
-     activity_map &bit_activity,
+     activity_map &bit_activity, activity_map &shifter_activity,
      max_activity_map &max_mul_per_function,
      max_activity_map &max_add_per_function,
-     max_activity_map &max_bit_per_function)
+     max_activity_map &max_bit_per_function,
+     max_activity_map &max_shifter_per_function)
 {
   /*Set the constants*/
   float add_int_power, add_switch_power, add_leak_power, add_area;
   float mul_int_power, mul_switch_power, mul_leak_power, mul_area;
   float reg_int_power_per_bit, reg_switch_power_per_bit;
   float reg_leak_power_per_bit, reg_area_per_bit;
+  float bit_int_power, bit_switch_power, bit_leak_power, bit_area;
+  float shifter_int_power, shifter_switch_power, shifter_leak_power, shifter_area;
 
   getAdderPowerArea(cycleTime, &add_int_power, &add_switch_power,
                     &add_leak_power, &add_area);
@@ -1229,6 +1250,11 @@ void BaseDatapath::outputPerCycleActivity(
   getRegisterPowerArea(cycleTime, &reg_int_power_per_bit,
                        &reg_switch_power_per_bit, &reg_leak_power_per_bit,
                        &reg_area_per_bit);
+  getBitPowerArea(cycleTime, &bit_int_power, &bit_switch_power,
+                    &bit_leak_power, &bit_area);
+  getShifterPowerArea(cycleTime, &shifter_int_power, &shifter_switch_power,
+                    &shifter_leak_power, &shifter_area);
+
   ofstream stats, power_stats;
   std::string bn(benchName);
   std::string file_name = bn + "_stats";
@@ -1244,8 +1270,8 @@ void BaseDatapath::outputPerCycleActivity(
   /*Start writing the second line*/
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
-    stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
-    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit,";
+    stats << *it << "-mul," << *it << "-add," << *it << "-bit," << *it << "-shifter,";
+    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit," << *it << "-shifter,";
   }
   stats << "reg,";
   power_stats << "reg,";
@@ -1267,21 +1293,26 @@ void BaseDatapath::outputPerCycleActivity(
       max_reg_write = regStats.at(level_id).writes ;
   }
   int max_reg = max_reg_read + max_reg_write;
-  int max_add = 0, max_bit = 0, max_mul = 0;
+  int max_add = 0,  max_mul = 0, max_bit = 0, max_shifter = 0;
   for (auto it = functionNames.begin(); it != functionNames.end() ; ++it)
   {
     max_bit += max_bit_per_function[*it];
     max_add += max_add_per_function[*it];
     max_mul += max_mul_per_function[*it];
+    max_shifter += max_shifter_per_function[*it];
   }
 
   float add_leakage_power = add_leak_power * max_add;
   float mul_leakage_power = mul_leak_power * max_mul;
+  float bit_leakage_power = bit_leak_power * max_bit;
+  float shifter_leakage_power = shifter_leak_power * max_shifter;
   float reg_leakage_power = registers.getTotalLeakagePower()
                             + reg_leak_power_per_bit * 32 * max_reg;
   float fu_leakage_power = mul_leakage_power
                            + add_leakage_power
-                           + reg_leakage_power;
+                           + reg_leakage_power
+                           + bit_leakage_power
+                           + shifter_leakage_power;
   /*Finish caculating the number of FUs and leakage power*/
 
   float fu_dynamic_energy = 0;
@@ -1298,7 +1329,12 @@ void BaseDatapath::outputPerCycleActivity(
                                        * mul_activity[*it].at(curr_level);
       float curr_add_dynamic_power = (add_switch_power + add_int_power)
                                        * add_activity[*it].at(curr_level);
-      fu_dynamic_energy += ( curr_mul_dynamic_power + curr_add_dynamic_power )
+      float curr_bit_dynamic_power = (bit_switch_power + bit_int_power)
+                                       * bit_activity[*it].at(curr_level);
+      float curr_shifter_dynamic_power = (shifter_switch_power + shifter_int_power)
+                                       * shifter_activity[*it].at(curr_level);
+      fu_dynamic_energy += ( curr_mul_dynamic_power + curr_add_dynamic_power
+                             + curr_bit_dynamic_power + curr_shifter_dynamic_power)
                             * cycleTime;
 
       stats       << mul_activity[*it].at(curr_level) << ","
@@ -1306,7 +1342,8 @@ void BaseDatapath::outputPerCycleActivity(
                   << bit_activity[*it].at(curr_level) << ",";
       power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
                   << curr_add_dynamic_power + add_leakage_power << ","
-                  << "0," ;
+                  << curr_bit_dynamic_power + bit_leakage_power << ","
+                  << curr_shifter_dynamic_power + shifter_leakage_power << ",";
     }
     //For regs
     int curr_reg_reads = regStats.at(curr_level).reads;
@@ -1352,7 +1389,9 @@ void BaseDatapath::outputPerCycleActivity(
   float fu_area = registers.getTotalArea()
                   + add_area * max_add
                   + mul_area * max_mul
-                  + reg_area_per_bit * 32 * max_reg;
+                  + reg_area_per_bit * 32 * max_reg
+                  + bit_area * max_bit
+                  + shifter_area * max_shifter;
   float total_area = mem_area + fu_area;
 
   // Summary output.
@@ -1371,6 +1410,8 @@ void BaseDatapath::outputPerCycleActivity(
   summary.mem_area = mem_area;
   summary.max_mul = max_mul;
   summary.max_add = max_add;
+  summary.max_bit = max_bit;
+  summary.max_shifter = max_shifter;
 
   writeSummary(std::cerr, summary);
   ofstream summary_file;
@@ -1408,6 +1449,8 @@ void BaseDatapath::writeSummary(std::ostream& outfile, summary_data_t& summary)
   outfile << "MEM Area: " << summary.mem_area << " uM^2" << std::endl;
   outfile << "Num of Multipliers (32-bit): " << summary.max_mul  << std::endl;
   outfile << "Num of Adders (32-bit): " << summary.max_add << std::endl;
+  outfile << "Num of Bit-wise Operators (32-bit): " << summary.max_bit << std::endl;
+  outfile << "Num of Shifters (32-bit): " << summary.max_shifter << std::endl;
   outfile << "===============================" << std::endl;
   outfile << "        Aladdin Results        " << std::endl;
   outfile << "===============================" << std::endl;
