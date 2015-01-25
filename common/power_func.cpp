@@ -12,11 +12,23 @@ void getRegisterPowerArea(float cycle_time, float *internal_power_per_bit,
       *leakage_power_per_bit     = REG_6ns_leakage_power;
       *area_per_bit              = REG_6ns_area;
       break;
+    case 5:
+      *internal_power_per_bit    = REG_5ns_int_power;
+      *switch_power_per_bit      = REG_5ns_switch_power;
+      *leakage_power_per_bit     = REG_5ns_leakage_power;
+      *area_per_bit              = REG_5ns_area;
+      break;
     case 4:
       *internal_power_per_bit    = REG_4ns_int_power;
       *switch_power_per_bit      = REG_4ns_switch_power;
       *leakage_power_per_bit     = REG_4ns_leakage_power;
       *area_per_bit              = REG_4ns_area;
+      break;
+    case 3:
+      *internal_power_per_bit    = REG_3ns_int_power;
+      *switch_power_per_bit      = REG_3ns_switch_power;
+      *leakage_power_per_bit     = REG_3ns_leakage_power;
+      *area_per_bit              = REG_3ns_area;
       break;
     case 2:
       *internal_power_per_bit    = REG_2ns_int_power;
@@ -32,7 +44,7 @@ void getRegisterPowerArea(float cycle_time, float *internal_power_per_bit,
       break;
     default:
       std::cerr << " Current power model supports acclerators running"
-                << " at 1, 2, 4 and 6 ns. " << std::endl;
+                << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
       exit(1);
@@ -49,11 +61,23 @@ void getAdderPowerArea(float cycle_time, float *internal_power,
       *leakage_power     = ADD_6ns_leakage_power;
       *area              = ADD_6ns_area;
       break;
+    case 5:
+      *internal_power    = ADD_5ns_int_power;
+      *switch_power      = ADD_5ns_switch_power;
+      *leakage_power     = ADD_5ns_leakage_power;
+      *area              = ADD_5ns_area;
+      break;
     case 4:
       *internal_power    = ADD_4ns_int_power;
       *switch_power      = ADD_4ns_switch_power;
       *leakage_power     = ADD_4ns_leakage_power;
       *area              = ADD_4ns_area;
+      break;
+    case 3:
+      *internal_power    = ADD_3ns_int_power;
+      *switch_power      = ADD_3ns_switch_power;
+      *leakage_power     = ADD_3ns_leakage_power;
+      *area              = ADD_3ns_area;
       break;
     case 2:
       *internal_power    = ADD_2ns_int_power;
@@ -69,7 +93,7 @@ void getAdderPowerArea(float cycle_time, float *internal_power,
       break;
     default:
       std::cerr << " Current power model supports acclerators running"
-                << " at 1, 2, 4 and 6 ns. " << std::endl;
+                << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
       exit(1);
@@ -86,11 +110,23 @@ void getMultiplierPowerArea(float cycle_time, float *internal_power,
       *leakage_power     = MUL_6ns_leakage_power;
       *area              = MUL_6ns_area;
       break;
+    case 5:
+      *internal_power    = MUL_5ns_int_power;
+      *switch_power      = MUL_5ns_switch_power;
+      *leakage_power     = MUL_5ns_leakage_power;
+      *area              = MUL_5ns_area;
+      break;
     case 4:
       *internal_power    = MUL_4ns_int_power;
       *switch_power      = MUL_4ns_switch_power;
       *leakage_power     = MUL_4ns_leakage_power;
       *area              = MUL_4ns_area;
+      break;
+    case 3:
+      *internal_power    = MUL_3ns_int_power;
+      *switch_power      = MUL_3ns_switch_power;
+      *leakage_power     = MUL_3ns_leakage_power;
+      *area              = MUL_3ns_area;
       break;
     case 2:
       *internal_power    = MUL_2ns_int_power;
@@ -106,7 +142,7 @@ void getMultiplierPowerArea(float cycle_time, float *internal_power,
       break;
     default:
       std::cerr << " Current power model supports acclerators running"
-                << " at 1, 2, 4 and 6 ns. " << std::endl;
+                << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
       exit(1);
@@ -123,11 +159,23 @@ void getBitPowerArea(float cycle_time, float *internal_power,
       *leakage_power     = BIT_6ns_leakage_power;
       *area              = BIT_6ns_area;
       break;
+    case 5:
+      *internal_power    = BIT_5ns_int_power;
+      *switch_power      = BIT_5ns_switch_power;
+      *leakage_power     = BIT_5ns_leakage_power;
+      *area              = BIT_5ns_area;
+      break;
     case 4:
       *internal_power    = BIT_4ns_int_power;
       *switch_power      = BIT_4ns_switch_power;
       *leakage_power     = BIT_4ns_leakage_power;
       *area              = BIT_4ns_area;
+      break;
+    case 3:
+      *internal_power    = BIT_3ns_int_power;
+      *switch_power      = BIT_3ns_switch_power;
+      *leakage_power     = BIT_3ns_leakage_power;
+      *area              = BIT_3ns_area;
       break;
     case 2:
       *internal_power    = BIT_2ns_int_power;
@@ -143,7 +191,7 @@ void getBitPowerArea(float cycle_time, float *internal_power,
       break;
     default:
       std::cerr << " Current power model supports acclerators running"
-                << " at 1, 2, 4 and 6 ns. " << std::endl;
+                << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
       exit(1);
@@ -160,11 +208,23 @@ void getShifterPowerArea(float cycle_time, float *internal_power,
       *leakage_power     = SHIFTER_6ns_leakage_power;
       *area              = SHIFTER_6ns_area;
       break;
+    case 5:
+      *internal_power    = SHIFTER_5ns_int_power;
+      *switch_power      = SHIFTER_5ns_switch_power;
+      *leakage_power     = SHIFTER_5ns_leakage_power;
+      *area              = SHIFTER_5ns_area;
+      break;
     case 4:
       *internal_power    = SHIFTER_4ns_int_power;
       *switch_power      = SHIFTER_4ns_switch_power;
       *leakage_power     = SHIFTER_4ns_leakage_power;
       *area              = SHIFTER_4ns_area;
+      break;
+    case 3:
+      *internal_power    = SHIFTER_3ns_int_power;
+      *switch_power      = SHIFTER_3ns_switch_power;
+      *leakage_power     = SHIFTER_3ns_leakage_power;
+      *area              = SHIFTER_3ns_area;
       break;
     case 2:
       *internal_power    = SHIFTER_2ns_int_power;
@@ -180,7 +240,7 @@ void getShifterPowerArea(float cycle_time, float *internal_power,
       break;
     default:
       std::cerr << " Current power model supports acclerators running"
-                << " at 1, 2, 4 and 6 ns. " << std::endl;
+                << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
       exit(1);
