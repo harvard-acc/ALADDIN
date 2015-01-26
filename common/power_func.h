@@ -10,6 +10,12 @@
 #define   RW_PORTS          1
 /* All the power numbers are in mW, energy numbers are in nJ */
 
+/* Function units power model normalized to a comercial 40g */
+/* MUL     : integer MUL,DIV model*/
+/* ADD     : integer ADD,SUB model*/
+/* BIT     : AND,OR,XOR model*/
+/* SHIFTER : Shl,LShr,AShr model*/
+
 #define	REG_1ns_int_power	7.936518e-03
 #define	REG_1ns_switch_power	1.062977e-03
 #define	REG_1ns_dynamic_power	8.999495e-03
