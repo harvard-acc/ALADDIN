@@ -11,6 +11,10 @@
 /* All the power numbers are in mW, energy numbers are in nJ */
 
 /* Function units power model with TSMC 40g */
+/* MUL     : integer MUL,DIV model*/
+/* ADD     : integer ADD,SUB model*/
+/* BIT     : AND,OR,XOR model*/
+/* SHIFTER : Shl,LShr,AShr model*/
 #define	REG_1ns_int_power         5.7177e-03
 #define	REG_1ns_switch_power      7.6580e-04
 #define	REG_1ns_dynamic_power     6.4835e-03
