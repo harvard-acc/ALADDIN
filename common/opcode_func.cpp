@@ -42,8 +42,7 @@ bool is_bit_op(unsigned microop)
 {
   switch (microop)
   {
-    case LLVM_IR_Shl: case LLVM_IR_LShr: case LLVM_IR_AShr :
-      case LLVM_IR_And : case LLVM_IR_Or: case LLVM_IR_Xor :
+    case LLVM_IR_And : case LLVM_IR_Or: case LLVM_IR_Xor :
       return true;
     default:
       return false;
@@ -104,9 +103,13 @@ bool is_mul_op(unsigned microop)
 }
 bool is_add_op(unsigned microop)
 {
-  if (microop == LLVM_IR_Add || microop == LLVM_IR_Sub)
-    return true;
-  return false;
+  switch(microop)
+  {
+    case LLVM_IR_Add : case LLVM_IR_FAdd : case LLVM_IR_Sub : case LLVM_IR_FSub :
+      return true;
+    default:
+      return false;
+  }
 }
 float node_latency (unsigned  microop)
 {
