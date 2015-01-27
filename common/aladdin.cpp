@@ -23,6 +23,9 @@ int main( int argc, const char *argv[])
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "Aladdin takes:                 " << std::endl;
     std::cerr << "./aladdin <bench> <dynamic trace> <config file>" << endl;
+    std::cerr << "   Aladdin supports gzipped dynamic trace files - append \n"
+              << "   the \".gz\" extension to the end of the trace file." <<
+              std::endl;
     std::cerr << "-------------------------------" << std::endl;
     exit(0);
   }

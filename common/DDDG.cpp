@@ -330,9 +330,6 @@ bool DDDG::build_initial_dddg()
     std::cerr << "-------------------------------" << std::endl;
   }
 
-  FILE *tracefile;
-  tracefile = fopen(trace_name.c_str(), "r");
-
   std::string bench = datapath->getBenchName();
   std::string func_file_name, instid_file_name;
   std::string memory_trace_name, getElementPtr_trace_name;
@@ -353,11 +350,12 @@ bool DDDG::build_initial_dddg()
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
   prevBasicBlock_trace = gzopen(prevBasicBlock_trace_name.c_str(), "w");
 
+  gzFile tracefile_gz = gzopen(trace_name.c_str(), "r");
 
   char buffer[256];
-  while(!feof(tracefile))
+  while (tracefile_gz && !gzeof(tracefile_gz))
   {
-    if (fgets(buffer, sizeof(buffer), tracefile) == NULL)
+    if (gzgets(tracefile_gz, buffer, sizeof(buffer)) == NULL)
       continue;
     std::string wholeline(buffer);
     size_t pos_end_tag = wholeline.find(",");
@@ -375,7 +373,7 @@ bool DDDG::build_initial_dddg()
       parse_parameter(line_left, atoi(tag.c_str()));
   }
 
-  fclose(tracefile);
+  gzclose(tracefile_gz);
 
   gzclose(dynamic_func_file);
   gzclose(instid_file);

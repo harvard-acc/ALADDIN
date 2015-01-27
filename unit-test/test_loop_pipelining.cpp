@@ -11,7 +11,7 @@ SCENARIO("Test loopPipelining w/ Triad", "[triad]")
         "loop unrolling with a factor of 2, enable loop pipelining")
   {
     std::string bench("outputs/triad-128");
-    std::string trace_file("inputs/triad-128-trace");
+    std::string trace_file("inputs/triad-128-trace.gz");
     std::string config_file("inputs/config-triad-p2-u2-P1");
 
     ScratchpadDatapath *acc;
@@ -62,7 +62,7 @@ SCENARIO("Test loopPipelining w/ Reduction", "[reduction]")
         "loop unrolling with a factor of 4, enable loop pipelining")
   {
     std::string bench("outputs/reduction-128");
-    std::string trace_file("inputs/reduction-128-trace");
+    std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
 
     ScratchpadDatapath *acc;
