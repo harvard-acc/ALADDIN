@@ -26,6 +26,9 @@ int main( int argc, const char *argv[])
               << endl;
     std::cerr << "   experiment_name is an optional parameter, only used to \n"
               << "   identify results stored in a local database." << std::endl;
+    std::cerr << "   Aladdin supports gzipped dynamic trace files - append \n"
+              << "   the \".gz\" extension to the end of the trace file." <<
+              std::endl;
     std::cerr << "-------------------------------" << std::endl;
     exit(0);
   }

@@ -11,7 +11,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]")
         "loop unrolling with a factor of 4, enable loop pipelining")
   {
     std::string bench("outputs/pp_scan-128");
-    std::string trace_file("inputs/pp_scan-128-trace");
+    std::string trace_file("inputs/pp_scan-128-trace.gz");
     std::string config_file("inputs/config-pp_scan-p4-u4-P1");
 
     ScratchpadDatapath *acc;
