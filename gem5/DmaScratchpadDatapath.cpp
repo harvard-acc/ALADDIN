@@ -38,17 +38,18 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
 {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
+  BaseDatapath::cycleTime = params->cycleTime;
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
-  tokenizeString(params->acceleratorDeps, accelerator_deps);
   scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
   initActualAddress();
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
-  system->registerAcceleratorStart(accelerator_id, accelerator_deps);
+  tokenizeString(params->acceleratorDeps, accelerator_deps);
+  system->registerAccelerator(accelerator_id, this, accelerator_deps);
   if (execute_standalone)
     scheduleOnEventQueue(1);
 }
@@ -189,11 +190,12 @@ DmaScratchpadDatapath::step() {
   else
   {
     dumpStats();
-    system->registerAcceleratorExit(accelerator_id);
-    if (system->totalNumInsts == 0 &&  // no cpu
-        system->numRunningAccelerators() == 0)
-    {
-      exitSimLoop("Aladdin called exit()");
+    DPRINTF(DmaScratchpadDatapath, "Accelerator completed.\n");
+    if (execute_standalone) {
+      system->deregisterAccelerator(accelerator_id);
+      if (system->numRunningAccelerators() == 0) {
+        exitSimLoop("Aladdin called exit()");
+      }
     }
   }
   return false;

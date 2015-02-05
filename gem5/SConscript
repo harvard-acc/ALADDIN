@@ -38,8 +38,11 @@ Source('../common/cacti-p/wire.cc')
 Source('../common/cacti-p/powergating.cc')
 
 Source('aladdin_tlb.cc')
+Source('aladdin_ioctl_req.cpp')
+Source('aladdin_ioctl.cpp')
 Source('CacheDatapath.cpp')
 Source('DmaScratchpadDatapath.cpp')
 
 DebugFlag('CacheDatapath')
 DebugFlag('DmaScratchpadDatapath')
+DebugFlag('Aladdin')

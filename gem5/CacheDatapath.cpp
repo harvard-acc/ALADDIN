@@ -51,14 +51,15 @@ CacheDatapath::CacheDatapath(const Params *p) :
 {
   BaseDatapath::use_db = p->useDb;
   BaseDatapath::experiment_name = p->experimentName;
-  tokenizeString(p->acceleratorDeps, accelerator_deps);
+  BaseDatapath::cycleTime = p->cycleTime;
   initActualAddress();
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
   registerStats();
-  system->registerAcceleratorStart(accelerator_id, accelerator_deps);
   num_cycles = 0;
+  tokenizeString(p->acceleratorDeps, accelerator_deps);
+  system->registerAccelerator(accelerator_id, this, accelerator_deps);
   if (execute_standalone)
     scheduleOnEventQueue(1);
 }
@@ -66,8 +67,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
 CacheDatapath::~CacheDatapath() {}
 
 BaseMasterPort &
-CacheDatapath::getMasterPort(const string &if_name,
-                                          PortID idx)
+CacheDatapath::getMasterPort(const string &if_name, PortID idx)
 {
     // Get the right port based on name. This applies to all the
     // subclasses of the base CPU and relies on their implementation
@@ -83,10 +83,23 @@ CacheDatapath::getMasterPort(const string &if_name,
 bool
 CacheDatapath::DcachePort::recvTimingResp(PacketPtr pkt)
 {
-  DPRINTF(CacheDatapath, "recvTimingResp for address: %#x %s\n", pkt->getAddr(), pkt->cmdString());
+  DPRINTF(CacheDatapath, "recvTimingResp for address: %#x %s\n",
+          pkt->getAddr(), pkt->cmdString());
   if (pkt->isError())
     DPRINTF(CacheDatapath, "Got error packet back for address: %#x\n", pkt->getAddr());
-  datapath->completeDataAccess(pkt);
+  DatapathSenderState *state = dynamic_cast<DatapathSenderState*>(pkt->senderState);
+  if (!state->is_ctrl_signal)
+  {
+    datapath->completeDataAccess(pkt);
+  }
+  else
+  {
+    DPRINTF(CacheDatapath, "recvTimingResp for control signal access: %#x\n",
+            pkt->getAddr());
+    delete state;
+    delete pkt->req;
+    delete pkt;
+  }
   return true;
 }
 
@@ -104,14 +117,21 @@ void
 CacheDatapath::DcachePort::recvRetry()
 {
   DPRINTF(CacheDatapath, "recvRetry for addr:");
-  assert(datapath->isCacheBlocked && datapath->retryPkt != NULL );
+  assert(datapath->isCacheBlocked && datapath->retryPkt != NULL);
 
-  /* A retry constitutes a read of the load/store queues. This code must be
-   * executed first, before the retryPkt is nullified. */
-  if (datapath->retryPkt->cmd == MemCmd::ReadReq)
-    datapath->load_queue.readStats ++;
-  else if (datapath->retryPkt->cmd == MemCmd::WriteReq)
-    datapath->store_queue.readStats ++;
+  DatapathSenderState *state = dynamic_cast<DatapathSenderState*>(
+      datapath->retryPkt->senderState);
+  if (!state->is_ctrl_signal)
+  {
+    /* A retry constitutes a read of the load/store queues. This code must be
+     * executed first, before the retryPkt is nullified. However, this only
+     * applies if the access was not a control signal access.
+     */
+    if (datapath->retryPkt->cmd == MemCmd::ReadReq)
+      datapath->load_queue.readStats ++;
+    else if (datapath->retryPkt->cmd == MemCmd::WriteReq)
+      datapath->store_queue.readStats ++;
+  }
 
   DPRINTF(CacheDatapath, "%#x \n", datapath->retryPkt->getAddr());
   if (datapath->dcachePort.sendTimingReq(datapath->retryPkt))
@@ -282,6 +302,34 @@ CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
   return true;
 }
 
+void CacheDatapath::sendFinishedSignal()
+{
+  Flags<FlagsType> flags = 0;
+  MemCmd command = MemCmd::WriteReq;
+  Addr finish_flag = system->getFinishedFlag(accelerator_id);
+  size_t size = 4;
+  Request *req = new Request(finish_flag, size, flags, dataMasterId());
+  PacketPtr data_pkt = new Packet(req, command);
+  DatapathSenderState *state = new DatapathSenderState(-1, true);
+  data_pkt->senderState = state;
+  uint8_t *data = new uint8_t[size];
+  // Write a sentinel value 4 bytes long.
+  for (int i = 0; i < size; i++)
+    data[i] = 0x01;
+  data_pkt->dataStatic<uint8_t>(data);
+
+  if(!dcachePort.sendTimingReq(data_pkt))
+  {
+    assert(retryPkt == NULL);
+    retryPkt = data_pkt;
+    DPRINTF(CacheDatapath, "Failed to send control signal, retrying...\n");
+  }
+  else
+  {
+    DPRINTF(CacheDatapath, "Sent control signal to %#x.\n", finish_flag);
+  }
+}
+
 void CacheDatapath::globalOptimizationPass()
 {
   // Node removals must come first.
@@ -375,11 +423,14 @@ bool CacheDatapath::step() {
   else
   {
     dumpStats();
-    system->registerAcceleratorExit(accelerator_id);
-    if (system->totalNumInsts == 0 &&  // no cpu
-        system->numRunningAccelerators() == 0)
-    {
-      exitSimLoop("Aladdin called exit()");
+    DPRINTF(CacheDatapath, "Accelerator completed.\n");
+    if (execute_standalone) {
+      system->deregisterAccelerator(accelerator_id);
+      if (system->numRunningAccelerators() == 0) {
+        exitSimLoop("Aladdin called exit()");
+      }
+    } else {
+      sendFinishedSignal();
     }
   }
   return false;

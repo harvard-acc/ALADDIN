@@ -43,8 +43,8 @@ class CacheDatapath :
     CacheDatapath(const Params *p);
     virtual ~CacheDatapath();
 
-    virtual MasterPort &getDataPort(){return dcachePort;};
-    MasterID dataMasterId() {return _dataMasterId;};
+    virtual MasterPort& getDataPort() { return dcachePort; };
+    virtual MasterID dataMasterId() { return _dataMasterId; };
 
     /**
      * Get a master port on this CPU. All CPUs have a data and
@@ -243,9 +243,20 @@ class CacheDatapath :
     class DatapathSenderState : public Packet::SenderState
     {
       public:
-        DatapathSenderState(unsigned _node_id) : node_id(_node_id) {}
+        DatapathSenderState(unsigned _node_id, bool _is_ctrl_signal = false) :
+            node_id(_node_id),
+            is_ctrl_signal(_is_ctrl_signal) {}
+
+        /* Aladdin node that triggered the memory access. */
         unsigned node_id;
+
+        /* Flag that determines whether a packet received on a data port is a
+         * control signal accessed through memory (which needs to be handled
+         * differently) or an ordinary memory access.
+         */
+        bool is_ctrl_signal;
     };
+
     PacketPtr retryPkt;
 
     /* True if the cache's MSHRs are full. */
@@ -275,6 +286,9 @@ class CacheDatapath :
 
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
+    // Notify the program that invoked this accelerator that the accelerator has
+    // completed execution.
+    void sendFinishedSignal();
 
     AladdinTLB dtb;
 

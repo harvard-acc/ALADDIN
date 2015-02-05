@@ -17,6 +17,12 @@ class Gem5Datapath : public MemObject
 {
 
   public:
+    /* These extra parameters are needed because making a Gem5DatapathParams
+     * object that serves as a base class to CacheDatapathParams and
+     * DmaScratchpadDatapathParams is more work than it is worth, and
+     * Gem5Datapath has to pass the base class of MemObjectParams to its parent
+     * constructor, which doesn't contain any of our custom parameters.
+     */
     Gem5Datapath(const MemObjectParams* params,
                  int _accelerator_id,
                  bool _execute_standalone,
@@ -30,9 +36,9 @@ class Gem5Datapath : public MemObject
     virtual Event& getTickEvent() = 0;
 
     // Add the tick event to the gem5 event queue.
-    void scheduleOnEventQueue(unsigned delay = 1)
+    void scheduleOnEventQueue(unsigned delay_cycles = 1)
     {
-      schedule(getTickEvent(), clockEdge(Cycles(delay)));
+      schedule(getTickEvent(), clockEdge(Cycles(delay_cycles)));
     }
 
   protected:
