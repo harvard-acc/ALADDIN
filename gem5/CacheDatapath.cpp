@@ -16,7 +16,7 @@
 
 CacheDatapath::CacheDatapath(const Params *p) :
     BaseDatapath(p->benchName, p->traceFileName, p->configFileName),
-    MemObject(p),
+    Gem5Datapath(p, p->acceleratorId, p->executeStandalone, p->system),
     load_queue(p->loadQueueSize,
                p->loadBandwidth,
                p->acceleratorName + ".load_queue",
@@ -35,7 +35,6 @@ CacheDatapath::CacheDatapath(const Params *p) :
     cacheHitLatency(p->cacheHitLatency),
     cacheAssoc(p->cacheAssoc),
     cacti_cfg(p->cactiCacheConfig),
-    accelerator_id(p->acceleratorId),
     accelerator_name(p->acceleratorName),
     dtb(this,
         p->tlbEntries,
@@ -48,8 +47,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
         p->tlbBandwidth,
         p->tlbCactiConfig,
         p->acceleratorName),
-    inFlightNodes(0),
-    system(p->system)
+    inFlightNodes(0)
 {
   BaseDatapath::use_db = p->useDb;
   BaseDatapath::experiment_name = p->experimentName;
@@ -61,7 +59,8 @@ CacheDatapath::CacheDatapath(const Params *p) :
   registerStats();
   system->registerAcceleratorStart(accelerator_id, accelerator_deps);
   num_cycles = 0;
-  schedule(tickEvent, clockEdge(Cycles(1)));
+  if (execute_standalone)
+    scheduleOnEventQueue(1);
 }
 
 CacheDatapath::~CacheDatapath() {}
@@ -354,22 +353,19 @@ void CacheDatapath::event_step()
 }
 
 bool CacheDatapath::step() {
-  // TODO: Pull as much GEM5 common code as I can between CacheDatapath and
-  // DmaScratchpadDatapath.
-  // If all the dependencies have not yet been fulfilled, do not proceed with
+  // If the dependencies have not yet been fulfilled, do not proceed with
   // execution.
   if (system->numAcceleratorDepsRemaining(accelerator_id) > 0)
   {
-    // Maybe add a counter for number of cycles spent waiting here.
     schedule(tickEvent, clockEdge(Cycles(1)));
+    // Maybe add a counter for number of cycles spent waiting here.
     return true;
   }
   resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();
-  DPRINTF(CacheDatapath,
-          "Aladdin stepping @ Cycle:%d, executed:%d, total:%d\n",
-          num_cycles, executedNodes, totalConnectedNodes);
+  DPRINTF(CacheDatapath, "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
+     num_cycles, executedNodes, totalConnectedNodes);
   num_cycles++;
   if (executedNodes < totalConnectedNodes)
   {
@@ -380,7 +376,7 @@ bool CacheDatapath::step() {
   {
     dumpStats();
     system->registerAcceleratorExit(accelerator_id);
-    if (system->totalNumInsts == 0 && //no cpu
+    if (system->totalNumInsts == 0 &&  // no cpu
         system->numRunningAccelerators() == 0)
     {
       exitSimLoop("Aladdin called exit()");

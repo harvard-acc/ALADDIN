@@ -26,14 +26,15 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     ScratchpadDatapath(params->benchName,
                        params->traceFileName,
                        params->configFileName),
-    MemObject(params),
+    Gem5Datapath(params,
+                 params->acceleratorId,
+                 params->executeStandalone,
+                 params->system),
     inFlightNodes(0),
-    accelerator_id(params->acceleratorId),
     _dataMasterId(params->system->getMasterId(name() + ".dmadata")),
     spadPort(this, params->system, params->maxDmaRequests),
     tickEvent(this),
-    dmaSetupLatency(params->dmaSetupLatency),
-    system(params->system)
+    dmaSetupLatency(params->dmaSetupLatency)
 {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
@@ -48,7 +49,8 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
   setGraphForStepping();
   num_cycles = 0;
   system->registerAcceleratorStart(accelerator_id, accelerator_deps);
-  schedule(tickEvent, clockEdge(Cycles(1)));
+  if (execute_standalone)
+    scheduleOnEventQueue(1);
 }
 
 DmaScratchpadDatapath::~DmaScratchpadDatapath()

@@ -18,12 +18,13 @@
 #include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "params/DmaScratchpadDatapath.hh"
+#include "Gem5Datapath.h"
 
 // TODO: Refactor.
 #define MASK 0x7fffffff
 #define MAX_INFLIGHT_NODES 100
 
-class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
+class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   public:
     DmaScratchpadDatapath(const DmaScratchpadDatapathParams* params);
@@ -52,6 +53,7 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     bool step();
     void stepExecutingQueue();
     void initActualAddress();
+    Event& getTickEvent() { return tickEvent; }
 
     virtual double getTotalMemArea();
     virtual void getAverageMemPower(unsigned int cycles, float *avg_power,
@@ -108,9 +110,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
     /** To store outstanding DMA requests. */
     std::deque<Addr> dmaQueue;
 
-    // TODO: Refactor these as part of the GEM5 common components.
-    int accelerator_id;
-    std::vector<int> accelerator_deps;
     std::string datapath_name;
 
     MasterID _dataMasterId;
@@ -123,7 +122,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public MemObject {
                  &DmaScratchpadDatapath::event_step> tickEvent;
     // Number of cycles required for the CPU to reinitiate a DMA transfer.
     unsigned dmaSetupLatency;
-    System *system;
 };
 
 #endif

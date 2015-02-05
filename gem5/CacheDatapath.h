@@ -18,6 +18,7 @@
 #include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/BaseDatapath.h"
 #include "aladdin_tlb.hh"
+#include "Gem5Datapath.h"
 
 #include "params/CacheDatapath.hh"
 
@@ -30,14 +31,11 @@
  * meant to generalize for integration with any simulator, and in this
  * particular case, GEM5 requires us to interface with its APIs. I don't see any
  * way to avoid this without changing Aladdin to be more GEM5 specific, which
- * isn't a great option either.
- *
- * Fortunately for us, BaseDatapath and MemObject are entirely separate and do
- * not have any name collisions, so as long as we keep it that way and we use
- * the right interfaces in the right places, we'll be fine.
+ * isn't a great option either. However, the two base classes are entirely
+ * separate in terms of their ancestry, which makes this less evil.
  */
 class CacheDatapath :
-    public BaseDatapath, public MemObject {
+    public BaseDatapath, public Gem5Datapath {
 
   public:
     typedef CacheDatapathParams Params;
@@ -206,6 +204,7 @@ class CacheDatapath :
     void globalOptimizationPass();
     void initActualAddress();
     void resetCacheCounters();
+    Event& getTickEvent() { return tickEvent; }
 
     class Node
     {
@@ -271,13 +270,8 @@ class CacheDatapath :
     std::string cacti_cfg;
 
     // Accelerator ID assigned by the system.
-    int accelerator_id;
     // Unique datapath name based on the accelerator_id.
     std::string accelerator_name;
-    // Dependencies of this accelerator. Dependencies are expressed as
-    // accelerator ids. All the dependencies must complete execution before this
-    // accelerator can begin execution.
-    std::vector<int> accelerator_deps;
 
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
@@ -291,9 +285,6 @@ class CacheDatapath :
     float area;
 
     unsigned inFlightNodes;
-
-    System *system;
-
 };
 
 #endif

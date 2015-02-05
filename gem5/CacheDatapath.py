@@ -40,6 +40,8 @@ class CacheDatapath(MemObject):
   useDb = Param.Bool(False, "Store results in database.")
   experimentName = Param.String("NULL", "Experiment name. String identifier "
       "for a set of related simulations.")
+  executeStandalone = Param.Bool(True, "Execute Aladdin standalone, without a "
+      "CPU/user program.")
 
   system = Param.System(Parent.any, "system object")
 

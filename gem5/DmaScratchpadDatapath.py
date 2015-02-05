@@ -19,6 +19,8 @@ class DmaScratchpadDatapath(MemObject):
   experimentName = Param.String("NULL", "Experiment name. String identifier "
       "for a set of related simulations.")
   system = Param.System(Parent.any, "system object")
+  executeStandalone = Param.Bool(True, "Execute Aladdin standalone, without a "
+      "CPU/user program.")
 
   spad_port = MasterPort("DmaScratchpadDatapath data port")
   _cached_ports = ['spad_port']
