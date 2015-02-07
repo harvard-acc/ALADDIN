@@ -12,7 +12,7 @@ TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
          -I$(ALADDIN_HOME)/common
 LFLAGS = $(DEBUG) -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin -lz
+         -L$(ALADDIN_HOME) -laladdin -lpthread -lz
 
 all : $(TESTS)
 
