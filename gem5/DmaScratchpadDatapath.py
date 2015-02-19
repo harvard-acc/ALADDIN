@@ -22,8 +22,10 @@ class DmaScratchpadDatapath(MemObject):
   executeStandalone = Param.Bool(True, "Execute Aladdin standalone, without a "
       "CPU/user program.")
 
-  spad_port = MasterPort("DmaScratchpadDatapath data port")
-  _cached_ports = ['spad_port']
+  spad_port = MasterPort("DmaScratchpadDatapath DMA port")
+  cache_port = MasterPort("DmaScratchpadDatapath coherent IO cache port")
+  # This is the set of ports that should be connected to the memory bus.
+  _cached_ports = ['spad_port', "cache_port"]
   _uncached_slave_ports = []
   _uncached_master_ports = []
 
@@ -46,4 +48,14 @@ class DmaScratchpadDatapath(MemObject):
   def addPrivateScratchpad(self, spad, dwc = None) :
     self.spad = spad
     self.spad_port = spad.cpu_side
-    self._cached_ports = ['spad.mem_side']
+    # The spad port is now connected to the scratchpad itself, so it should not
+    # be reconnected to the memory bus later.
+    self._cached_ports.remove("spad_port")
+    self._cached_ports.append('spad.mem_side')
+
+  def addIOCache(self, cache, dwc = None) :
+    """ The datapath needs a coheren IO cache for synchronization messages."""
+    self.cache = cache
+    self.cache_port = cache.cpu_side
+    self._cached_ports.remove("cache_port")
+    self._cached_ports.append('cache.mem_side')

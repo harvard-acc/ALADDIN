@@ -31,7 +31,9 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
     ~DmaScratchpadDatapath();
 
     virtual MasterPort &getDataPort(){ return spadPort; };
+    virtual MasterPort &getIOCachePort() { return cachePort; };
     MasterID dataMasterId() { return _dataMasterId; };
+    MasterID ioCacheMasterId() { return _ioCacheMasterId; };
 
     /**
      * Get a master port on this CPU. All CPUs have a data and
@@ -62,6 +64,8 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
     /* DMA access functions. */
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, int node_id);
     void completeDmaAccess(Addr addr);
+
+    virtual void sendFinishedSignal();
 
   protected:
 #ifdef USE_DB
@@ -95,6 +99,27 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
         virtual bool isSnooping() const { return true; }
         DmaScratchpadDatapath* _datapath;
     };
+
+    /* Used for coherent communication of small messages to the rest of the
+     * memory system. For now, this is going to be a one-way port, so it will
+     * not need to react to any packets received except for handling retries and
+     * cleaning up after receiving a timing response.
+     */
+    class IOCachePort : public MasterPort
+    {
+      public:
+        IOCachePort(DmaScratchpadDatapath *dev) :
+          MasterPort(dev->name() + ".cache_port", dev), datapath(dev) {}
+      protected:
+        virtual bool recvTimingResp(PacketPtr pkt);
+        virtual void recvTimingSnoopReq(PacketPtr pkt) {}
+        virtual void recvFunctionalSnoop(PacketPtr pkt) {}
+        virtual Tick recvAtomicSnoop(PacketPtr pkt) {return 0;}
+        virtual void recvRetry();
+        virtual bool isSnooping() const {return true;}
+        DmaScratchpadDatapath *datapath;
+    };
+
     class DmaEvent : public Event
     {
       private:
@@ -113,9 +138,16 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
     std::string datapath_name;
 
     MasterID _dataMasterId;
+    MasterID _ioCacheMasterId;
 
     //const unsigned int _cacheLineSize;
+    // DMA port to the scratchpad.
     SpadPort spadPort;
+    // Coherent port to the IO cache.
+    IOCachePort cachePort;
+
+    // Retry packet for coherent synchronization messages.
+    PacketPtr retryPkt;
 
     //gem5 tick
     EventWrapper<DmaScratchpadDatapath,

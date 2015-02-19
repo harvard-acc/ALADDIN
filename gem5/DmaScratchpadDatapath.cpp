@@ -32,7 +32,9 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
                  params->system),
     inFlightNodes(0),
     _dataMasterId(params->system->getMasterId(name() + ".dmadata")),
+    _ioCacheMasterId(params->system->getMasterId(name() + ".iocache")),
     spadPort(this, params->system, params->maxDmaRequests),
+    cachePort(this),
     tickEvent(this),
     dmaSetupLatency(params->dmaSetupLatency)
 {
@@ -60,7 +62,8 @@ DmaScratchpadDatapath::~DmaScratchpadDatapath()
 }
 
 // TODO: Copied from CacheDatapath.cpp. Some refactoring is in order.
-void DmaScratchpadDatapath::initActualAddress()
+void
+DmaScratchpadDatapath::initActualAddress()
 {
   ostringstream file_name;
   file_name << benchName << "_memaddr.gz";
@@ -80,7 +83,8 @@ void DmaScratchpadDatapath::initActualAddress()
   gzclose(gzip_file);
 }
 
-void DmaScratchpadDatapath::event_step()
+void
+DmaScratchpadDatapath::event_step()
 {
   step();
   scratchpad->step();
@@ -196,6 +200,8 @@ DmaScratchpadDatapath::step() {
       if (system->numRunningAccelerators() == 0) {
         exitSimLoop("Aladdin called exit()");
       }
+    } else {
+      sendFinishedSignal();
     }
   }
   return false;
@@ -210,6 +216,8 @@ DmaScratchpadDatapath::getMasterPort(const string &if_name, PortID idx)
   // return a MasterPort pointer.
   if (if_name == "spad_port")
     return getDataPort();
+  else if (if_name == "cache_port")
+    return getIOCachePort();
   else
     return MemObject::getMasterPort(if_name);
 }
@@ -224,7 +232,8 @@ DmaScratchpadDatapath::completeDmaAccess(Addr addr)
 }
 
 /* Issue a DMA request for memory. */
-void DmaScratchpadDatapath::issueDmaRequest(
+void
+DmaScratchpadDatapath::issueDmaRequest(
     Addr addr, unsigned size, bool isLoad, int node_id)
 {
   DPRINTF(DmaScratchpadDatapath, "issueDmaRequest for addr:%#x, size:%u\n", addr, size);
@@ -237,6 +246,62 @@ void DmaScratchpadDatapath::issueDmaRequest(
                      Cycles(dmaSetupLatency), flag);
 }
 
+void
+DmaScratchpadDatapath::sendFinishedSignal()
+{
+  Flags<Packet::FlagsType> flags = 0;
+  size_t size = 4;  // 32 bit integer.
+  uint8_t *data = new uint8_t[size];
+  // Set some sentinel value.
+  for (int i = 0; i < size; i++)
+    data[i] = 0x01;
+  Addr finish_flag = system->getFinishedFlag(accelerator_id);
+  Request *req = new Request(finish_flag, size, flags, ioCacheMasterId());
+  MemCmd::Command cmd = MemCmd::WriteReq;
+  PacketPtr pkt = new Packet(req, cmd);
+  pkt->dataStatic<uint8_t>(data);
+
+  if (!cachePort.sendTimingReq(pkt))
+  {
+    assert(retryPkt == NULL);
+    retryPkt = pkt;
+    DPRINTF(DmaScratchpadDatapath,
+            "Sending finished signal failed, retrying.\n");
+  }
+  else
+  {
+    DPRINTF(DmaScratchpadDatapath, "Sent finished signal.\n");
+  }
+}
+
+void
+DmaScratchpadDatapath::IOCachePort::recvRetry()
+{
+  assert(datapath->retryPkt != NULL);
+  DPRINTF(DmaScratchpadDatapath, "recvRetry for address: %#x\n",
+          datapath->retryPkt->getAddr());
+  if (datapath->cachePort.sendTimingReq(datapath->retryPkt))
+  {
+    datapath->retryPkt = NULL;
+    DPRINTF(DmaScratchpadDatapath, "Retry for control signal succeeded.\n");
+  }
+  else
+  {
+    DPRINTF(DmaScratchpadDatapath,
+            "Retry for control signal failed, trying again.\n");
+  }
+}
+
+bool
+DmaScratchpadDatapath::IOCachePort::recvTimingResp(PacketPtr pkt)
+{
+  DPRINTF(DmaScratchpadDatapath, "Received timing response on IO cache.\n");
+  delete pkt->senderState;
+  delete pkt->req;
+  delete pkt;
+  return true;
+}
+
 bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
 {
   return DmaPort::recvTimingResp(pkt);
@@ -245,19 +310,23 @@ bool DmaScratchpadDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
 DmaScratchpadDatapath::DmaEvent::DmaEvent(DmaScratchpadDatapath *_dpath)
   : Event(Default_Pri, AutoDelete), datapath(_dpath) {}
 
-void DmaScratchpadDatapath::DmaEvent::process()
+void
+DmaScratchpadDatapath::DmaEvent::process()
 {
   assert(!datapath->dmaQueue.empty());
   datapath->completeDmaAccess(datapath->dmaQueue.front());
   datapath->dmaQueue.pop_front();
 }
-const char * DmaScratchpadDatapath::DmaEvent::description() const
+
+const char*
+DmaScratchpadDatapath::DmaEvent::description() const
 {
   return "DmaScratchpad DMA receving request event";
 }
 
 #ifdef USE_DB
-int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
+int
+DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
 {
   int unrolling_factor, partition_factor;
   bool pipelining;
@@ -279,12 +348,14 @@ int DmaScratchpadDatapath::writeConfiguration(sql::Connection *con)
 }
 #endif
 
-double DmaScratchpadDatapath::getTotalMemArea()
+double
+DmaScratchpadDatapath::getTotalMemArea()
 {
   return scratchpad->getTotalArea();
 }
 
-void DmaScratchpadDatapath::getAverageMemPower(
+void
+DmaScratchpadDatapath::getAverageMemPower(
     unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
 {
   scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
@@ -296,7 +367,8 @@ void DmaScratchpadDatapath::getAverageMemPower(
 //
 ////////////////////////////////////////////////////////////////////////////
 
-DmaScratchpadDatapath* DmaScratchpadDatapathParams::create()
+DmaScratchpadDatapath*
+DmaScratchpadDatapathParams::create()
 {
   return new DmaScratchpadDatapath(this);
 }

@@ -286,9 +286,8 @@ class CacheDatapath :
 
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
-    // Notify the program that invoked this accelerator that the accelerator has
-    // completed execution.
-    void sendFinishedSignal();
+
+    virtual void sendFinishedSignal();
 
     AladdinTLB dtb;
 

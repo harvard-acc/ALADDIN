@@ -41,6 +41,15 @@ class Gem5Datapath : public MemObject
       schedule(getTickEvent(), clockEdge(Cycles(delay_cycles)));
     }
 
+    /* Send a signal to the rest of the system that the accelerator has
+     * finished. This signal takes the form of a shared memory block. This is
+     * used by user level programs that invoke Aladdin during program execution
+     * and spin while waiting for the accelerator to complete.  Different
+     * datapath implementations will need different mechanisms to accomplish
+     * this.
+     */
+    virtual void sendFinishedSignal() = 0;
+
   protected:
     // True if gem5 is being simulated with just Aladdin, false if there are
     // CPUs in the system that are executing code and manually invoking the
