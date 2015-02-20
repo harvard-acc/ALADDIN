@@ -55,10 +55,10 @@ def main (directory, bench, source):
 
   print directory
   print '===================================================================================='
-  command = 'clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file
+  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file
   print command
   os.system(command)
-  command = 'clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + test_obj + ' '  + test
+  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + test_obj + ' '  + test
   print command
   os.system(command)
   command = 'opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj

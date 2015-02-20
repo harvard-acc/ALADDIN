@@ -29,7 +29,7 @@ main_kernel_c = {
   'viterbi-viterbi' : 'viterbi'
 }
 
-def main(benches, part, unroll, pipe):
+def main(benches, part, unroll, pipe, clock_period):
   print 'Running on %s' % socket.gethostname()
 
   part = int(part)
@@ -64,7 +64,7 @@ def main(benches, part, unroll, pipe):
 
     print BENCH_HOME
     os.chdir(BENCH_HOME)
-    d = 'p%i_u%i_P%s' % (part, unroll, pipe)
+    d = 'p%s_u%s_P%s_%sns' % (part, unroll, pipe, clock_period)
 
     #Run LLVM-Tracer to generate the dynamic trace
     print bench
@@ -72,7 +72,7 @@ def main(benches, part, unroll, pipe):
     llvm_compile.main(BENCH_HOME, bench, source)
   
     #Generate accelerator design config file
-    config.main(BENCH_HOME, kernel, algorithm, part, unroll, pipe)
+    config.main(BENCH_HOME, kernel, algorithm, part, unroll, pipe, clock_period)
 
     print 'Start Aladdin'
     trace_file = BENCH_HOME+ '/' + 'dynamic_trace'
@@ -89,4 +89,5 @@ if __name__ == '__main__':
   part = sys.argv[2]
   unroll = sys.argv[3]
   pipe = sys.argv[4]
-  main(kernel, part, unroll, pipe)
+  clock_period = sys.argv[5]
+  main(kernel, part, unroll, pipe, clock_period)
