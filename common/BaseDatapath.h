@@ -110,15 +110,25 @@ class BaseDatapath
   void dumpGraph();
 
   //Accessing graph stats.
-  int getNumOfNodes() {return boost::num_vertices(graph_);}
-  int getNumOfEdges() {return boost::num_edges(graph_);}
-  int getMicroop(unsigned int node_id) {return microop.at(node_id);}
-  int getNumOfConnectedNodes(unsigned int node_id) {return boost::degree(nameToVertex[node_id], graph_);}
-  int getUnrolledLoopBoundary(unsigned int region_id) {return loopBound.at(region_id);}
-  std::string getBenchName() {return benchName;}
-  std::string getBaseAddressLabel(unsigned int node_id) {return baseAddress[node_id].first;}
-
-  bool doesEdgeExist(unsigned int from, unsigned int to) {return edge(nameToVertex[from], nameToVertex[to], graph_).second;}
+  std::string getBenchName() { return benchName; }
+  int getNumOfNodes() { return boost::num_vertices(graph_); }
+  int getNumOfEdges() { return boost::num_edges(graph_); }
+  int getMicroop(unsigned int node_id) { return microop.at(node_id); }
+  int getNumOfConnectedNodes(unsigned int node_id) {
+     return boost::degree(nameToVertex[node_id], graph_);
+  }
+  int getUnrolledLoopBoundary(unsigned int region_id) {
+    return loopBound.at(region_id);
+  }
+  std::string getBaseAddressLabel(unsigned int node_id) {
+    return nodeToLabel[node_id];
+  }
+  long long int getBaseAddress(std::string label) {
+    return arrayBaseAddress[label]
+  }
+  bool doesEdgeExist(unsigned int from, unsigned int to) {
+    return edge(nameToVertex[from], nameToVertex[to], graph_).second;
+  }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
 
   // Graph optimizations.
@@ -153,6 +163,7 @@ class BaseDatapath
   bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
 
   // State initialization.
+  virtual void initBaseAddress();
   void initMethodID(std::vector<int> &methodid);
   void initDynamicMethodID(std::vector<std::string> &methodid);
   void initPrevBasicBlock(std::vector<std::string> &prevBasicBlock);
@@ -249,7 +260,8 @@ class BaseDatapath
   std::vector<int> newLevel;
   std::vector<regEntry> regStats;
   std::vector<int> microop;
-  std::unordered_map<unsigned, pair<std::string, long long int> > baseAddress;
+  std::unordered_map<unsigned, std::string> nodeToLabel;
+  std::unordered_map<std::string, long long int> arrayBaseAddress;
   std::unordered_set<std::string> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;
   std::vector<int> numParents;

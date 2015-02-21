@@ -1194,12 +1194,12 @@ void BaseDatapath::updatePerCycleActivity(
       num_bits_so_far +=1;
     }
     else if (is_load_op(node_microop)) {
-      std::string base_addr = baseAddress[node_id].first;
+      std::string base_addr = nodeToLabel[node_id];
       if (ld_activity.find(base_addr) != ld_activity.end())
         ld_activity[base_addr].at(node_level) += 1;
     }
     else if (is_store_op(node_microop)) {
-      std::string base_addr = baseAddress[node_id].first;
+      std::string base_addr = nodeToLabel[node_id];
       if (st_activity.find(base_addr) != st_activity.end())
         st_activity[base_addr].at(node_level) += 1;
     }
@@ -1408,8 +1408,10 @@ void BaseDatapath::writeBaseAddress()
   file_name << benchName << "_baseAddr.gz";
   gzFile gzip_file;
   gzip_file = gzopen(file_name.str().c_str(), "w");
-  for (auto it = baseAddress.begin(), E = baseAddress.end(); it != E; ++it)
-    gzprintf(gzip_file, "node:%u,part:%s,base:%lld\n", it->first, it->second.first.c_str(), it->second.second);
+  for (auto it = nodeToLabel.begin(), E = nodeToLabel.end();
+       it != E; ++it)
+    gzprintf(gzip_file, "node:%u,part:%s,base:%lld\n",
+             it->first, it->second.c_str(), arrayBaseAddress[it->second]);
   gzclose(gzip_file);
 }
 void BaseDatapath::writeFinalLevel()
@@ -1674,6 +1676,83 @@ void BaseDatapath::updateChildren(unsigned node_id)
       }
     }
   }
+}
+
+/*
+ * Read: graph, getElementPtr.gz, completePartitionConfig, PartitionConfig
+ * Modify: baseAddress
+ */
+void BaseDatapath::initBaseAddress()
+{
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "       Init Base Address       " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
+
+  std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
+  initGetElementPtr(getElementPtr);
+
+  edgeToParid = get(boost::edge_name, graph_);
+
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
+  {
+    if (boost::degree(*vi, graph_) == 0)
+      continue;
+    Vertex curr_node = *vi;
+    unsigned node_id = vertexToName[curr_node];
+    int node_microop = microop.at(node_id);
+    if (!is_memory_op(node_microop))
+      continue;
+    bool modified = 0;
+    //iterate its parents, until it finds the root parent
+    while (true) {
+      bool found_parent = 0;
+      in_edge_iter in_edge_it, in_edge_end;
+
+      for (tie(in_edge_it, in_edge_end) = in_edges(curr_node , graph_);
+                             in_edge_it != in_edge_end; ++in_edge_it) {
+        int edge_parid = edgeToParid[*in_edge_it];
+        if ( ( node_microop == LLVM_IR_Load && edge_parid != 1 )
+             || ( node_microop == LLVM_IR_GetElementPtr && edge_parid != 1 )
+             || ( node_microop == LLVM_IR_Store && edge_parid != 2) )
+          continue;
+
+        unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
+        int parent_microop = microop.at(parent_id);
+        if (parent_microop == LLVM_IR_GetElementPtr
+            || parent_microop == LLVM_IR_Load) {
+          //remove address calculation directly
+          std::string label = getElementPtr[parent_id].first;
+          long long int addr = getElementPtr[parent_id].second;
+          nodeToLabel[node_id] = label;
+          arrayBaseAddress[label] = addr;
+          curr_node = source(*in_edge_it, graph_);
+          node_microop = parent_microop;
+          found_parent = 1;
+          modified = 1;
+          break;
+        }
+        else if (parent_microop == LLVM_IR_Alloca) {
+          std::string label = getElementPtr[parent_id].first;
+          long long int addr = getElementPtr[parent_id].second;
+          nodeToLabel[node_id] = label;
+          arrayBaseAddress[label] = addr;
+          modified = 1;
+          break;
+        }
+      }
+      if (!found_parent)
+        break;
+    }
+    if (!modified) {
+      std::string label = getElementPtr[node_id].first;
+      long long int addr = getElementPtr[node_id].second;
+      nodeToLabel[node_id] = label;
+      arrayBaseAddress[label] = addr;
+
+    }
+  }
+  writeBaseAddress();
 }
 
 void BaseDatapath::initExecutingQueue()
