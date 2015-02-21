@@ -42,76 +42,21 @@ void ScratchpadDatapath::globalOptimizationPass()
   // Must do loop pipelining last; after all the data/control dependences are fixed
   loopPipelining();
 }
-/*
- * Read: graph, getElementPtr.gz, completePartitionConfig, PartitionConfig
- * Modify: baseAddress
+
+/* First, compute all base addresses, then check each node to make sure that
+ * each entry is valid.
  */
 void ScratchpadDatapath::initBaseAddress()
 {
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "       Init Base Address       " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
-
+  BaseDatapath::initBaseAddress();
   std::unordered_map<std::string, unsigned> comp_part_config;
   readCompletePartitionConfig(comp_part_config);
   std::unordered_map<std::string, partitionEntry> part_config;
   readPartitionConfig(part_config);
 
-  std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
-  initGetElementPtr(getElementPtr);
-
-  edgeToParid = get(boost::edge_name, graph_);
-
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
-  {
-    if (boost::degree(*vi, graph_) == 0)
-      continue;
-    Vertex curr_node = *vi;
-    unsigned node_id = vertexToName[curr_node];
-    int node_microop = microop.at(node_id);
-    if (!is_memory_op(node_microop))
-      continue;
-    bool modified = 0;
-    //iterate its parents, until it finds the root parent
-    while (true) {
-      bool found_parent = 0;
-      in_edge_iter in_edge_it, in_edge_end;
-
-      for (tie(in_edge_it, in_edge_end) = in_edges(curr_node , graph_);
-                             in_edge_it != in_edge_end; ++in_edge_it) {
-        int edge_parid = edgeToParid[*in_edge_it];
-        if ( ( node_microop == LLVM_IR_Load && edge_parid != 1 )
-             || ( node_microop == LLVM_IR_GetElementPtr && edge_parid != 1 )
-             || ( node_microop == LLVM_IR_Store && edge_parid != 2) )
-          continue;
-
-        unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
-        int parent_microop = microop.at(parent_id);
-        if (parent_microop == LLVM_IR_GetElementPtr
-            || parent_microop == LLVM_IR_Load) {
-          //remove address calculation directly
-          baseAddress[node_id] = getElementPtr[parent_id];
-          curr_node = source(*in_edge_it, graph_);
-          node_microop = parent_microop;
-          found_parent = 1;
-          modified = 1;
-          break;
-        }
-        else if (parent_microop == LLVM_IR_Alloca) {
-          std::string part_name = getElementPtr[parent_id].first;
-          baseAddress[node_id] = getElementPtr[parent_id];
-          modified = 1;
-          break;
-        }
-      }
-      if (!found_parent)
-        break;
-    }
-    if (!modified)
-      baseAddress[node_id] = getElementPtr[node_id];
-
-    std::string part_name = baseAddress[node_id].first;
+  for (auto it = nodeToLabel.begin(); it != nodeToLabel.end(); ++it) {
+    unsigned node_id = it->first;
+    std::string part_name = nodeToLabel[node_id];
     if (part_config.find(part_name) == part_config.end() &&
           comp_part_config.find(part_name) == comp_part_config.end() ) {
       std::cerr << "Unknown partition : " << part_name << "@inst: "
@@ -119,7 +64,6 @@ void ScratchpadDatapath::initBaseAddress()
       exit(-1);
     }
   }
-  writeBaseAddress();
 }
 
 /*
@@ -184,10 +128,10 @@ void ScratchpadDatapath::scratchpadPartition()
     if (!is_memory_op(microop.at(node_id)))
       continue;
 
-    if (baseAddress.find(node_id) == baseAddress.end())
+    if (nodeToLabel.find(node_id) == nodeToLabel.end())
       continue;
-    std::string base_label  = baseAddress[node_id].first;
-    long long int base_addr = baseAddress[node_id].second;
+    std::string base_label  = nodeToLabel[node_id];
+    long long int base_addr = arrayBaseAddress[base_label];
 
     auto part_it = part_config.find(base_label);
     if (part_it != part_config.end())
@@ -206,13 +150,13 @@ void ScratchpadDatapath::scratchpadPartition()
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << base_label << "-"
             << (int) (rel_addr / ceil (num_of_elements_in_2  / p_factor));
-        baseAddress[node_id].first = oss.str();
+        nodeToLabel[node_id] = oss.str();
       }
       else // cyclic partition
       {
         ostringstream oss;
         oss << base_label << "-" << (rel_addr) % p_factor;
-        baseAddress[node_id].first = oss.str();
+        nodeToLabel[node_id] = oss.str();
       }
     }
   }
@@ -240,7 +184,7 @@ void ScratchpadDatapath::stepExecutingQueue()
     unsigned node_id = *it;
     if (is_memory_op(microop.at(node_id)))
     {
-      std::string node_part = baseAddress[node_id].first;
+      std::string node_part = nodeToLabel[node_id];
       if (registers.has(node_part) ||
           scratchpad->canServicePartition(node_part))
       {

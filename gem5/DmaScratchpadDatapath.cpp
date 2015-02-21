@@ -100,7 +100,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
     unsigned node_id = *it;
     if (is_memory_op(microop.at(node_id)))
     {
-      std::string node_part = baseAddress[node_id].first;
+      std::string node_part = nodeToLabel[node_id];
       if (registers.has(node_part) ||
           scratchpad->canServicePartition(node_part))
       {
