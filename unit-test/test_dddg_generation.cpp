@@ -17,7 +17,7 @@ SCENARIO("Test DDDG Generation w/ Triad", "[triad]")
     Scratchpad *spad;
     WHEN("DDDG is generated.")
     {
-      acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
+      acc = new ScratchpadDatapath(bench, trace_file, config_file);
       THEN("The Graph Size should match expectations.")
       {
         REQUIRE(acc->getNumOfNodes() == 1537);
@@ -38,7 +38,7 @@ SCENARIO("Test DDDG Generation w/ Reduction", "[reduction]")
     Scratchpad *spad;
     WHEN("DDDG is generated.")
     {
-      acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
+      acc = new ScratchpadDatapath(bench, trace_file, config_file);
       THEN("The Graph Size should match expectations.")
       {
         REQUIRE(acc->getNumOfNodes() == 1026);
@@ -59,7 +59,7 @@ SCENARIO("Test DDDG Generation w/ Pp_scan", "[pp_scan]")
     Scratchpad *spad;
     WHEN("DDDG is generated.")
     {
-      acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
+      acc = new ScratchpadDatapath(bench, trace_file, config_file);
       THEN("The Graph Size should match expectations.")
       {
         REQUIRE(acc->getNumOfNodes() == 3176);
