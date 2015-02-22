@@ -15,9 +15,7 @@ SCENARIO("Test removeInductionVariable w/ Triad", "[triad]")
 
     ScratchpadDatapath *acc;
     Scratchpad *spad;
-    acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1, CYCLE_TIME);
-    acc->setScratchpad(spad);
+    acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     WHEN("Test removeInductionDependence()")
     {
@@ -41,9 +39,7 @@ SCENARIO("Test removeInductionVariable w/ Reduction", "[reduction]")
 
     ScratchpadDatapath *acc;
     Scratchpad *spad;
-    acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1, CYCLE_TIME);
-    acc->setScratchpad(spad);
+    acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     WHEN("Test removeInductionDependence()")
     {
@@ -67,9 +63,7 @@ SCENARIO("Test removeInductionVariable w/ Pp_scan", "[pp_scan]")
 
     ScratchpadDatapath *acc;
     Scratchpad *spad;
-    acc = new ScratchpadDatapath(bench, trace_file, config_file, CYCLE_TIME);
-    spad = new Scratchpad(1, CYCLE_TIME);
-    acc->setScratchpad(spad);
+    acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     WHEN("Test removeInductionDependence()")
     {

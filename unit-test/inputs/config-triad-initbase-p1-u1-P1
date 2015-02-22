@@ -1,3 +1,4 @@
+cycle_time,1
 pipelining,1
 partition,cyclic,a,8192,4,1
 partition,cyclic,b,8192,4,1

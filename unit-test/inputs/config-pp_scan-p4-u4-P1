@@ -1,3 +1,4 @@
+cycle_time,1
 pipelining,1
 partition,cyclic,bucket,512,4,4
 partition,cyclic,sum,64,4,4
