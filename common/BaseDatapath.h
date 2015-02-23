@@ -147,7 +147,7 @@ class BaseDatapath
     return nodeToLabel[node_id];
   }
   long long int getBaseAddress(std::string label) {
-    return arrayBaseAddress[label]
+    return arrayBaseAddress[label];
   }
   bool doesEdgeExist(unsigned int from, unsigned int to) {
     return edge(nameToVertex[from], nameToVertex[to], graph_).second;
