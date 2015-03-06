@@ -1,9 +1,9 @@
 /*
  * Aladdin ioctl request codes.
  *
- * Each code currently represents an entire benchmark. The only requirement is
- * that consecutive numbers must be separated by at least 16, because each
- * benchmark may have multiple kernels. Dependencies between kernels are
+ * Each code represents a benchmark. When assigning request codes is that
+ * consecutive numbers must be be separated by at least 16, because each
+ * benchmark may have multiple kernels.  Dependencies between kernels are
  * expressed via decreasing request codes starting from the main benchmark's
  * code.
  *
@@ -47,5 +47,10 @@ unsigned SHOC_TRIAD                  = 0x000001B0;
 
 // A special file descriptor number in gem5 used for Aladdin.
 int ALADDIN_FD = 0x000DECAF;
+
+// fcntl command that maps an array from the Aladdin trace to the simulator's
+// address space, enabling memory writes from the accelerator to be visible to
+// the simulated user program.
+int MAP_ARRAY = 0x001DECAF;
 
 }  // namespace ALADDIN

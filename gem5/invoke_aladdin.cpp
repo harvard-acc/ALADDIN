@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include "aladdin_ioctl.h"
 #include "aladdin_ioctl_req.h"
@@ -21,11 +22,14 @@ int main() {
    */
   int finish_flag = NOT_COMPLETED;
   printf("Finish flag has address %p.\n", (void*) &finish_flag);
-  printf("About to invoke the accelerator.\n");
 
   /* Invoke the accelerator with the special file descriptor, the benchmark
    * request code, and a pointer to the sentinel.
    */
+  uint8_t k[32];
+  printf("Mapping an array k at address 0x%x.\n", &(k[0]));
+  mapArrayToAccelerator(MACHSUITE_AES_AES, "k", (void*) &(k[0]), 32);
+  printf("About to invoke the accelerator.\n");
   invokeAccelerator(MACHSUITE_AES_AES, &finish_flag);
   printf("Accelerator invoked!\n");
 

@@ -36,6 +36,8 @@ extern unsigned SHOC_TRIAD;
 
 extern int ALADDIN_FD;
 
+extern int MAP_ARRAY;
+
 }  // namespace ALADDIN
 
 #endif

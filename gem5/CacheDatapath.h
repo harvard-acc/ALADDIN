@@ -233,6 +233,10 @@ class CacheDatapath :
 
     void completeDataAccess(PacketPtr pkt);
 
+    /* Insert a new virtual to physical address mapping into the Aladdin TLB.
+     */
+    virtual void insertTLBEntry(Addr vaddr, Addr paddr);
+
     MasterID _dataMasterId;
 
     DcachePort dcachePort;
@@ -288,6 +292,7 @@ class CacheDatapath :
     bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
 
     virtual void sendFinishedSignal();
+    virtual Addr getBaseAddress(std::string label);
 
     AladdinTLB dtb;
 

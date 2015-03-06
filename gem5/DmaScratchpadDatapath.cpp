@@ -2,18 +2,19 @@
  * to main memory via DMA.
  */
 
-#include <string>
 #include <sstream>
+#include <string>
 
-#include "base/types.hh"
-#include "base/trace.hh"
 #include "base/flags.hh"
-#include "mem/request.hh"
-#include "mem/packet.hh"
+#include "base/trace.hh"
+#include "base/types.hh"
+#include "base/misc.hh"
 #include "mem/mem_object.hh"
-#include "sim/system.hh"
-#include "sim/sim_exit.hh"
+#include "mem/packet.hh"
+#include "mem/request.hh"
 #include "sim/clocked_object.hh"
+#include "sim/sim_exit.hh"
+#include "sim/system.hh"
 
 #include "aladdin/common/DatabaseDeps.h"
 
@@ -361,6 +362,17 @@ DmaScratchpadDatapath::getAverageMemPower(
   scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
 }
 
+Addr
+DmaScratchpadDatapath::getBaseAddress(std::string label)
+{
+  return (Addr) BaseDatapath::getBaseAddress(label);
+}
+
+void
+DmaScratchpadDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
+{
+  fatal("DmaScratchpadDatapath does not use a TLB. Cannot insert TLB entry.\n");
+}
 ////////////////////////////////////////////////////////////////////////////
 //
 //  The SimObjects we use to get the Datapath information into the simulator

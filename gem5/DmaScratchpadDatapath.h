@@ -66,6 +66,8 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
     void completeDmaAccess(Addr addr);
 
     virtual void sendFinishedSignal();
+    virtual Addr getBaseAddress(std::string label);
+    virtual void insertTLBEntry(Addr vaddr, Addr paddr);
 
   protected:
 #ifdef USE_DB

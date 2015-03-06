@@ -336,6 +336,7 @@ void CacheDatapath::globalOptimizationPass()
   removeInductionDependence();
   removePhiNodes();
   // Base address must be initialized next.
+  initBaseAddress();
   loopFlatten();
   loopUnrolling();
   removeSharedLoads();
@@ -393,6 +394,14 @@ void CacheDatapath::registerStats()
   stores.name(accelerator_name + "_total_stores")
         .desc("Total number of dcache stores.")
         .flags(total | nonan);
+}
+
+void
+CacheDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
+{
+  DPRINTF(CacheDatapath, "Inserting TLB entry vaddr 0x%x -> paddr 0x%x.\n",
+          vaddr, paddr);
+  dtb.insert(vaddr, paddr);
 }
 
 void CacheDatapath::event_step()
@@ -665,6 +674,10 @@ float CacheDatapath::getArea(std::string block_name)
   return area;
 }
 
+Addr CacheDatapath::getBaseAddress(std::string label)
+{
+  return (Addr) BaseDatapath::getBaseAddress(label);
+}
 ////////////////////////////////////////////////////////////////////////////
 //
 //  The SimObjects we use to get the Datapath information into the simulator

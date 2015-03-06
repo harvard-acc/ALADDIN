@@ -35,7 +35,7 @@ class Gem5Datapath : public MemObject
     /* Return the tick event object for the event queue for this datapath. */
     virtual Event& getTickEvent() = 0;
 
-    // Add the tick event to the gem5 event queue.
+    /* Add the tick event to the gem5 event queue. */
     void scheduleOnEventQueue(unsigned delay_cycles = 1)
     {
       schedule(getTickEvent(), clockEdge(Cycles(delay_cycles)));
@@ -50,22 +50,44 @@ class Gem5Datapath : public MemObject
      */
     virtual void sendFinishedSignal() = 0;
 
+    /* Return the base address of the array specified by label. The base address
+     * corresponds to the zeroth element of the array.
+     */
+    virtual Addr getBaseAddress(std::string label) = 0;
+
+    /* Insert an entry into the datapath's TLB.
+     *
+     * This is currently used to create a mapping between the base address of an
+     * array in the dynamic trace with the actual physical address in the
+     * simulator.
+     *
+     * Datapath models that do not support TLB structures should abort
+     * simulation if this is called.
+     *
+     * TODO(samxi): Maybe this should not be part of Gem5Datapath? But I'm not
+     * sure if a dynamic_cast to CacheDatapath would work here.
+     */
+    virtual void insertTLBEntry(Addr vaddr, Addr paddr) = 0;
+
   protected:
-    // True if gem5 is being simulated with just Aladdin, false if there are
-    // CPUs in the system that are executing code and manually invoking the
-    // accelerators.
+    /* True if gem5 is being simulated with just Aladdin, false if there are
+     * CPUs in the system that are executing code and manually invoking the
+     * accelerators.
+     */
     bool execute_standalone;
 
-    // Accelerator id, assigned by the system. It can also be the ioctl request
-    // code for the particular kernel.
+    /* Accelerator id, assigned by the system. It can also be the ioctl request
+     * code for the particular kernel.
+     */
     int accelerator_id;
 
-    // Dependencies of this accelerator, expressed as a list of other
-    // accelerator ids. All other accelerators must complete execution before
-    // this one can be scheduled.
+    /* Dependencies of this accelerator, expressed as a list of other
+     * accelerator ids. All other accelerators must complete execution before
+     * this one can be scheduled.
+     */
     std::vector<int> accelerator_deps;
 
-    // Pointer to the rest of the system.
+    /* Pointer to the rest of the system. */
     System* system;
 
 };
