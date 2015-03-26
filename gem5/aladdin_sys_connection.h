@@ -1,7 +1,7 @@
-#ifndef __ALADDIN_IOCTL_H__
-#define __ALADDIN_IOCTL_H__
+#ifndef __ALADDIN_SYS_CONNECTION_H__
+#define __ALADDIN_SYS_CONNECTION_H__
 
-#include <string>
+#include <stdbool.h>
 
 /* Support for invoking accelerators via ioctl() system call. A user level
  * program invokes an accelerator in the system like so:
@@ -17,8 +17,6 @@
  * finished.
  */
 
-namespace ALADDIN {
-
 // Parameters for constructing the address translation in gem5.
 typedef struct _aladdin_map_t {
   // Name of the array as it appears in the trace.
@@ -31,10 +29,14 @@ typedef struct _aladdin_map_t {
   size_t size;
 } aladdin_map_t;
 
-/* Checks of the request code is valid. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Checks of the request code is valid.
 bool isValidRequestCode(unsigned req);
 
-/* Schedules the accelerator for execution in gem5. */
+// Schedules the accelerator for execution in gem5.
 void invokeAccelerator(unsigned req_code, int* finish_flag);
 
 /* Create a virtual to physical address mapping for the specified array for
@@ -47,7 +49,7 @@ void invokeAccelerator(unsigned req_code, int* finish_flag);
  *
  * Args:
  *   req: Request code for the accelerator.
- *   array_name: Name of the array or variable as a string.
+ *   array_name: Name of the array or variable.
  *   addr: Pointer to the array in the simulated address space.
  *   size: Size of the array.
  *
@@ -57,6 +59,8 @@ void invokeAccelerator(unsigned req_code, int* finish_flag);
 void mapArrayToAccelerator(
     unsigned req_code, const char* array_name, void* addr, size_t size);
 
-};  // namespace ALADDIN
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif

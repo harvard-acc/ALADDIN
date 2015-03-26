@@ -1,10 +1,7 @@
-#ifndef __ALADDIN_IOCTL_REQ_H__
-#define __ALADDIN_IOCTL_REQ_H__
+#ifndef __ALADDIN_SYS_CONSTANTS_H__
+#define __ALADDIN_SYS_CONSTANTS_H__
 
 // ioctl() request codes for Aladdin.
-
-namespace ALADDIN {
-
 extern unsigned MACHSUITE_AES_AES;
 extern unsigned MACHSUITE_BACKPROP_BACKPROP;
 extern unsigned MACHSUITE_BFS_BULK;
@@ -34,10 +31,12 @@ extern unsigned SHOC_SSSORT;
 extern unsigned SHOC_STENCIL;
 extern unsigned SHOC_TRIAD;
 
+// A special file descriptor number in gem5 used for Aladdin.
 extern int ALADDIN_FD;
 
-extern int MAP_ARRAY;
-
-}  // namespace ALADDIN
+// fcntl command that maps an array from the Aladdin trace to the simulator's
+// address space, enabling memory writes from the accelerator to be visible to
+// the simulated user program.
+extern int ALADDIN_MAP_ARRAY;
 
 #endif

@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
@@ -6,14 +7,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include "aladdin_ioctl.h"
-#include "aladdin_ioctl_req.h"
+#include "aladdin_sys_connection.h"
+#include "aladdin_sys_constants.h"
 
-namespace ALADDIN {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 bool isValidRequestCode(unsigned req) {
   // Checks if the last four bits are zero (to enforce the 16-value separation
   // rule) and if it is within the range of request codes specified.
+
   unsigned shifted = req >> 4;
   return ((req & 0xFFFFFFFF0) == req &&
           shifted >= 0x01 &&
@@ -37,7 +41,9 @@ void mapArrayToAccelerator(
   // function fcntl() because it gets handled in libc in such a way that doesn't
   // actually invoke the fcntl syscall. fcntl doesn't seem to be in the vDSO, so
   // I'm not sure what's happening.
-  syscall(SYS_fcntl, ALADDIN_FD, MAP_ARRAY, &mapping);
+  syscall(SYS_fcntl, ALADDIN_FD, ALADDIN_MAP_ARRAY, &mapping);
 }
 
-}  // namespace ALADDIN
+#ifdef __cplusplus
+}  // extern "C"
+#endif

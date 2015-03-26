@@ -9,26 +9,30 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "aladdin_ioctl.h"
-#include "aladdin_ioctl_req.h"
+#include "aladdin_sys_connection.h"
+#include "aladdin_sys_constants.h"
 
 #define NOT_COMPLETED 0x000decaf
 
 int main() {
-  using namespace ALADDIN;
-
   /* Create a integer to store a sentinel value. You can initialize this to
    * anything you want.
    */
   int finish_flag = NOT_COMPLETED;
   printf("Finish flag has address %p.\n", (void*) &finish_flag);
 
-  /* Invoke the accelerator with the special file descriptor, the benchmark
-   * request code, and a pointer to the sentinel.
+  /* Example of how to map an array named "k" that exists in the dynamic trace
+   * to the simulator's address space, so that both the virtual addresses in the
+   * trace and those used by the CPU will translate to the same physical
+   * address.
    */
   uint8_t k[32];
   printf("Mapping an array k at address 0x%x.\n", &(k[0]));
   mapArrayToAccelerator(MACHSUITE_AES_AES, "k", (void*) &(k[0]), 32);
+
+  /* Invoke the accelerator with the special file descriptor, the benchmark
+   * request code, and a pointer to the sentinel.
+   */
   printf("About to invoke the accelerator.\n");
   invokeAccelerator(MACHSUITE_AES_AES, &finish_flag);
   printf("Accelerator invoked!\n");
