@@ -1,3 +1,12 @@
+Aladdin Public Release, v1.0.1
+03-30-2015
+
+*Fixed an issue in removeRepeatedStore() on counting real children nodes;
+*Reorganized baseAddress map.
+
+--Sam Xi and Sophia Shao
+
+
 Aladdin Public Release, v1.0.0
 02-08-2015
 
