@@ -812,6 +812,8 @@ void BaseDatapath::removeRepeatedStores()
   std::cerr << "     Remove Repeated Store     " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+
   std::unordered_map<unsigned, long long int> address;
   initAddress(address);
 
@@ -823,7 +825,6 @@ void BaseDatapath::removeRepeatedStores()
   initDynamicMethodID(dynamic_methodid);
   initPrevBasicBlock(prev_basic_block);
 
-  int shared_stores = 0;
   int node_id = numTotalNodes - 1;
   auto bound_it = loopBound.end();
   bound_it--;
@@ -847,17 +848,29 @@ void BaseDatapath::removeRepeatedStores()
         //remove this store
         std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
         //dynamic stores, cannot disambiguated in the run time, cannot remove
-        if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end()
-            && boost::out_degree(nameToVertex[node_id], graph_)== 0) {
+        if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end() ) {
+          if (boost::out_degree(nameToVertex[node_id], graph_)== 0) {
             microop.at(node_id) = LLVM_IR_SilentStore;
-            shared_stores++;
+          }
+          else {
+            int num_of_real_children = 0;
+            out_edge_iter out_edge_it, out_edge_end;
+            for (tie(out_edge_it, out_edge_end) = out_edges(nameToVertex[node_id], graph_); out_edge_it != out_edge_end; ++out_edge_it) {
+              if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
+                num_of_real_children++;
+            }
+            if (num_of_real_children == 0) {
+              microop.at(node_id) = LLVM_IR_SilentStore;
+            }
+          }
         }
       }
       --node_id;
     }
 
-    if (--bound_it == loopBound.begin())
+    if (bound_it == loopBound.begin())
       break;
+    --bound_it;
   }
   cleanLeafNodes();
 }
@@ -1531,7 +1544,7 @@ void BaseDatapath::setGraphForStepping()
   latestParents.assign(numTotalNodes, 0);
   executedNodes = 0;
   totalConnectedNodes = 0;
-  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++)
+  for (unsigned node_id = 0; node_id < nameToVertex.size(); node_id++)
   {
     Vertex node = nameToVertex[node_id];
     if (boost::degree(node, graph_) != 0 || is_dma_op(microop.at(node_id)))
@@ -1625,7 +1638,10 @@ void BaseDatapath::copyToExecutingQueue()
   auto it = readyToExecuteQueue.begin();
   while (it != readyToExecuteQueue.end())
   {
-    executingQueue.push_back(*it);
+    if (is_store_op(microop.at(*it)))
+      executingQueue.push_front(*it);
+    else
+      executingQueue.push_back(*it);
     it = readyToExecuteQueue.erase(it);
   }
 }
@@ -1641,7 +1657,7 @@ bool BaseDatapath::step()
 
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
-    std::vector<unsigned>::iterator& executingQueuePos,
+    std::list<unsigned>::iterator& executingQueuePos,
     int& advance_to)
 {
   unsigned node_id = *executingQueuePos;
@@ -1655,6 +1671,8 @@ void BaseDatapath::markNodeCompleted(
 
 void BaseDatapath::updateChildren(unsigned node_id)
 {
+  if (nameToVertex.find(node_id) == nameToVertex.end())
+    return;
   Vertex node = nameToVertex[node_id];
   out_edge_iter out_edge_it, out_edge_end;
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
@@ -1670,8 +1688,13 @@ void BaseDatapath::updateChildren(unsigned node_id)
         if ( (node_latency(child_microop) == 0 || node_latency(microop.at(node_id))== 0)
              && edge_parid != CONTROL_EDGE )
           executingQueue.push_back(child_id);
-        else
-          readyToExecuteQueue.push_back(child_id);
+        else {
+          if (is_store_op(child_microop))
+            readyToExecuteQueue.push_front(child_id);
+          else
+            readyToExecuteQueue.push_back(child_id);
+        }
+
         numParents[child_id] = -1;
       }
     }

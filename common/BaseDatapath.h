@@ -190,7 +190,7 @@ class BaseDatapath
   void copyToExecutingQueue();
   void initExecutingQueue();
   void markNodeCompleted(
-      std::vector<unsigned>::iterator& executingQueuePos, int& advance_to);
+      std::list<unsigned>::iterator& executingQueuePos, int& advance_to);
 
   // Stats output.
   void writeFinalLevel();
@@ -273,8 +273,8 @@ class BaseDatapath
   //Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
-  std::vector<unsigned> executingQueue;
-  std::vector<unsigned> readyToExecuteQueue;
+  std::list<unsigned> executingQueue;
+  std::list<unsigned> readyToExecuteQueue;
 };
 
 

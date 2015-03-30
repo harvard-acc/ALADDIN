@@ -39,8 +39,8 @@ def main (directory, source):
   print 'llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm'
   os.system('llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm')
 
-  print 'gcc -O0 -fno-inline -o ' + executable + ' full.s -lm'
-  os.system('gcc -O0 -fno-inline -o ' + executable + ' full.s -lm')
+  print 'gcc -O0 -fno-inline -o ' + executable + ' full.s -lm -lz'
+  os.system('gcc -O0 -fno-inline -o ' + executable + ' full.s -lm -lz')
 
   print './' + executable
   os.system('./' + executable)
