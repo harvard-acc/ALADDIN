@@ -57,6 +57,13 @@ AladdinTLB::deHitQueueEvent::description() const
   return "TLB Hit";
 }
 
+
+const std::string
+AladdinTLB::deHitQueueEvent::name() const
+{
+  return tlb->name() + ".dehitqueue_event";
+}
+
 AladdinTLB::outStandingWalkReturnEvent::outStandingWalkReturnEvent(
     AladdinTLB *_tlb) : Event(Default_Pri, AutoDelete), tlb(_tlb) {}
 
@@ -67,8 +74,23 @@ AladdinTLB::outStandingWalkReturnEvent::process()
   // can write to the TLB; programs can only read the TLB.
   assert(!tlb->missQueue.empty());
   Addr vpn = tlb->outStandingWalks.front();
-  //insert TLB entry; for now, vpn == ppn
-  tlb->insert(vpn, vpn);
+  // Retrieve translation from the infinite backup storage if it exists;
+  // otherwise, just use ppn=vpn.
+  Addr ppn;
+  if (tlb->infiniteBackupTLB.find(vpn) != tlb->infiniteBackupTLB.end()) {
+    DPRINTF(CacheDatapath, "TLB miss was resolved in the backup TLB.\n");
+    ppn = tlb->infiniteBackupTLB[vpn];
+  } else {
+    DPRINTF(CacheDatapath, "TLB miss was not resolved in the backup TLB.\n");
+    ppn = vpn;
+  }
+  DPRINTF(CacheDatapath, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
+  AladdinTLBEntry* evicted = tlb->insert(vpn, ppn);
+  if (evicted) {
+    DPRINTF(CacheDatapath, "TLB fill after page table walk evicted the entry "
+            "vpn %#x -> ppn %#x.\n", evicted->vpn, evicted->ppn);
+    tlb->infiniteBackupTLB[evicted->vpn] = evicted->ppn;
+  }
 
   auto range = tlb->missQueue.equal_range(vpn);
   for(auto it = range.first; it!= range.second; ++it)
@@ -86,6 +108,11 @@ AladdinTLB::outStandingWalkReturnEvent::description() const
   return "TLB Miss";
 }
 
+const std::string
+AladdinTLB::outStandingWalkReturnEvent::name() const
+{
+  return tlb->name() + ".page_walk_event";
+}
 
 bool
 AladdinTLB::translateTiming(PacketPtr pkt)
@@ -104,6 +131,7 @@ AladdinTLB::translateTiming(PacketPtr pkt)
       hitQueue.push_back(pkt);
       deHitQueueEvent *hq = new deHitQueueEvent(this);
       datapath->schedule(hq, datapath->clockEdge(hitLatency));
+      *(pkt->getPtr<Addr>()) = ppn;
       return true;
   }
   else
@@ -113,7 +141,8 @@ AladdinTLB::translateTiming(PacketPtr pkt)
 
       if (missQueue.find(vpn) == missQueue.end())
       {
-        if (numOutStandingWalks != 0 && outStandingWalks.size() >= numOutStandingWalks)
+        if (numOutStandingWalks != 0 &&
+            outStandingWalks.size() >= numOutStandingWalks)
           return false;
         outStandingWalks.push_back(vpn);
         outStandingWalkReturnEvent *mq = new outStandingWalkReturnEvent(this);
@@ -132,10 +161,12 @@ AladdinTLB::translateTiming(PacketPtr pkt)
   }
 }
 
-void
+AladdinTLBEntry*
 AladdinTLB::insert(Addr vpn, Addr ppn)
 {
-    tlbMemory->insert(vpn, ppn);
+    AladdinTLBEntry* evicted = tlbMemory->insert(vpn, ppn);
+    infiniteBackupTLB[vpn] = ppn;
+    return evicted;
 }
 
 bool
@@ -221,19 +252,19 @@ TLBMemory::lookup(Addr vpn, Addr& ppn, bool set_mru)
             return true;
         }
     }
-    ppn = Addr(0);
     return false;
 }
 
-void
+AladdinTLBEntry*
 TLBMemory::insert(Addr vpn, Addr ppn)
 {
     Addr a;
     if (lookup(vpn, a)) {
-        return;
+        return nullptr;
     }
     int way = (vpn / pageBytes) % ways;
-    AladdinTLBEntry* entry = NULL;
+    AladdinTLBEntry* entry = nullptr;
+    AladdinTLBEntry* evicted_entry = nullptr;
     Tick minTick = curTick();
     for (int i=0; i < sets; i++) {
         if (entries[way][i].free) {
@@ -247,10 +278,13 @@ TLBMemory::insert(Addr vpn, Addr ppn)
     assert(entry);
     if (!entry->free) {
         DPRINTF(CacheDatapath, "Evicting entry for vpn %#x\n", entry->vpn);
+        evicted_entry = new AladdinTLBEntry(*entry);
     }
 
     entry->vpn = vpn;
     entry->ppn = ppn;
     entry->free = false;
     entry->setMRU();
+
+    return evicted_entry;
 }

@@ -22,6 +22,10 @@ class AladdinTLBEntry
     uint32_t hits;
 
     AladdinTLBEntry() : vpn(0), ppn(0), free(true), mruTick(0), hits(0){}
+    AladdinTLBEntry(AladdinTLBEntry& entry) :
+        vpn(entry.vpn), ppn(entry.ppn), free(entry.free),
+        mruTick(entry.mruTick), hits(entry.hits) {}
+
     void setMRU() {mruTick = curTick();}
 };
 
@@ -30,7 +34,12 @@ class BaseTLBMemory {
 public:
     virtual ~BaseTLBMemory(){}
     virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru=true) = 0;
-    virtual void insert(Addr vpn, Addr ppn) = 0;
+    /* Inserts a translation into the TLB and returns a newly allocated pointer
+     * to the translation entry that was evicted, or NULL if there was no
+     * eviction. The caller is responsible for destroying the pointer.
+     */
+    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn) = 0;
+    // Name of the TLB structure for printing traces.
 };
 
 class TLBMemory : public BaseTLBMemory {
@@ -67,7 +76,7 @@ public:
     }
 
     virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru=true);
-    virtual void insert(Addr vpn, Addr ppn);
+    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn);
 };
 
 class InfiniteTLBMemory : public BaseTLBMemory {
@@ -87,9 +96,11 @@ public:
             return false;
         }
     }
-    void insert(Addr vpn, Addr ppn)
+
+    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn)
     {
         entries[vpn] = ppn;
+        return nullptr;  // Infinite TLB never has to evict.
     }
 };
 
@@ -126,6 +137,8 @@ class AladdinTLB
         void process();
         /*Returns the description of this event*/
         const char *description() const;
+        /* Returns name of this event. */
+        virtual const std::string name() const;
       private:
         /* The pointer the to AladdinTLB unit*/
         AladdinTLB *tlb;
@@ -140,14 +153,22 @@ class AladdinTLB
         void process();
         /*Returns the description of this event*/
         const char *description() const;
+        /* Returns name of this event. */
+        virtual const std::string name() const;
       private:
-        /* The pointer the to AladdinTLB unit*/
+        /* The pointer to the AladdinTLB unit*/
         AladdinTLB *tlb;
     };
 
     std::deque<PacketPtr> hitQueue;
     std::deque<Addr> outStandingWalks;
     std::unordered_multimap<Addr, PacketPtr> missQueue;
+
+    /* Stores all explicitly mapped TLB translations. Later, we should move this
+     * functionality into gem5's page table model. For now, we'll keep them
+     * separate and just model the timing.
+     */
+    std::map<Addr, Addr> infiniteBackupTLB;
 
   public:
     AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
@@ -164,11 +185,16 @@ class AladdinTLB
     Cycles getHitLatency() { return hitLatency; }
     Cycles getMissLatency() { return missLatency; }
     Addr getPageBytes() { return pageBytes; }
+    Addr pageMask() { return pageBytes - 1; };
     bool getIsPerfectTLB() { return isPerfectTLB; }
     unsigned getNumOutStandingWalks() { return numOutStandingWalks; }
 
+    /* Inserts a translation. Note that the entries are actually page-aligned
+     * addresses instead of just page numbers (e.g. 0xf000 instead of 0xf). If
+     * the insert results in an eviction, the evicted entry is returned.
+     */
+    AladdinTLBEntry* insert(Addr vpn, Addr ppn);
     bool translateTiming(PacketPtr pkt);
-    void insert(Addr vpn, Addr ppn);
     bool canRequestTranslation();
     void incrementRequestCounter() { requests_this_cycle ++; }
     void resetRequestCounter() { requests_this_cycle = 0; }

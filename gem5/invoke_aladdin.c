@@ -12,8 +12,6 @@
 #include "aladdin_sys_connection.h"
 #include "aladdin_sys_constants.h"
 
-#define NOT_COMPLETED 0x000decaf
-
 int main() {
   /* Create a integer to store a sentinel value. You can initialize this to
    * anything you want.

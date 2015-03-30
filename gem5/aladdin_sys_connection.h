@@ -2,6 +2,7 @@
 #define __ALADDIN_SYS_CONNECTION_H__
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 /* Support for invoking accelerators via ioctl() system call. A user level
  * program invokes an accelerator in the system like so:

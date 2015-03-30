@@ -39,4 +39,7 @@ extern int ALADDIN_FD;
 // the simulated user program.
 extern int ALADDIN_MAP_ARRAY;
 
+// A preprovided sentinel value to detect changes in finish flags.
+extern int NOT_COMPLETED;
+
 #endif

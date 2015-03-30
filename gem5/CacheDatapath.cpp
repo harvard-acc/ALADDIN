@@ -147,25 +147,28 @@ CacheDatapath::DcachePort::recvRetry()
 void
 CacheDatapath::completeDataAccess(PacketPtr pkt)
 {
-  DPRINTF(CacheDatapath, "completeDataAccess for addr:%#x %s\n", pkt->getAddr(), pkt->cmdString());
   DatapathSenderState *state = dynamic_cast<DatapathSenderState *> (pkt->senderState);
   unsigned node_id = state->node_id;
+  DPRINTF(CacheDatapath, "completeDataAccess for node_id %d, addr:%#x %s\n",
+          node_id, pkt->getAddr(), pkt->cmdString());
   /* Loop through the executingQueue to update the status of memory
-   * operations, mark nodes accessing data on the same cache line ready to fire*/
+   * operations, mark nodes accessing data on the same cache line ready to fire.
+   * Remember that these are physical addresses.
+   */
   Addr blockAddr = pkt->getAddr() / cacheLineSize;
   if (mem_accesses.find(node_id) != mem_accesses.end())
   {
     for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
     {
       unsigned n_id = *it;
-      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id] == WaitingFromCache)
+      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id].status == WaitingFromCache)
       {
-        Addr addr = actualAddress[n_id].first;
+        Addr addr = mem_accesses[n_id].paddr;
         if (addr / cacheLineSize == blockAddr)
-          mem_accesses[n_id] = Returned;
+          mem_accesses[n_id].status = Returned;
       }
     }
-    assert(mem_accesses[node_id] == Returned);
+    assert(mem_accesses[node_id].status == Returned);
   }
   DPRINTF(CacheDatapath, "node:%d mem access is returned\n", node_id);
   /* Data that is returned gets written back into the load store queues. */
@@ -182,18 +185,24 @@ void
 CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
 {
   DPRINTF(CacheDatapath, "finishTranslation for addr:%#x %s\n", pkt->getAddr(), pkt->cmdString());
-  DatapathSenderState *state = dynamic_cast<DatapathSenderState *> (pkt->senderState);
+  DatapathSenderState *state = dynamic_cast<DatapathSenderState *>(pkt->senderState);
   unsigned node_id = state->node_id;
   assert(mem_accesses.find(node_id) != mem_accesses.end());
-  assert(mem_accesses[node_id] == Translating);
+  assert(mem_accesses[node_id].status == Translating);
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
    * state may have changed during the waiting time, so we go back to Ready
    * instead of Translated. The next translation request should hit.
    */
-  if (was_miss)
-    mem_accesses[node_id] = Ready;
-  else
-    mem_accesses[node_id] = Translated;
+  if (was_miss) {
+    mem_accesses[node_id].status = Ready;
+  } else {
+    // Remember that the translations are actually page aligned memory
+    // addresses, mostly for the ease of computing the real address.
+    Addr *ppn = pkt->getPtr<Addr>();
+    Addr paddr = *ppn + (pkt->getAddr() & dtb.pageMask());
+    mem_accesses[node_id].status = Translated;
+    mem_accesses[node_id].paddr = paddr;
+  }
   DPRINTF(CacheDatapath, "node:%d mem access is translated\n", node_id);
   delete state;
   delete pkt->req;
@@ -201,7 +210,7 @@ CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
 }
 
 bool
-CacheDatapath::accessTLB (Addr addr, unsigned size, bool isLoad, int node_id)
+CacheDatapath::accessTLB(Addr addr, unsigned size, bool isLoad, int node_id)
 {
   DPRINTF(CacheDatapath, "accessTLB for addr:%#x\n", addr);
   //form request
@@ -218,8 +227,9 @@ CacheDatapath::accessTLB (Addr addr, unsigned size, bool isLoad, int node_id)
     command = MemCmd::WriteReq;
   PacketPtr data_pkt = new Packet(req, command);
 
-  uint8_t *data = new uint8_t[64];
-  data_pkt->dataStatic<uint8_t>(data);
+  Addr* translation = new Addr;
+  *translation = 0x0;  // Signifies no translation.
+  data_pkt->dataStatic<Addr>(translation);
 
   DatapathSenderState *state = new DatapathSenderState(node_id);
   data_pkt->senderState = state;
@@ -229,6 +239,7 @@ CacheDatapath::accessTLB (Addr addr, unsigned size, bool isLoad, int node_id)
     return true;
   else
   {
+    data_pkt->deleteData();
     delete state;
     delete data_pkt->req;
     delete data_pkt;
@@ -399,9 +410,11 @@ void CacheDatapath::registerStats()
 void
 CacheDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
 {
-  DPRINTF(CacheDatapath, "Inserting TLB entry vaddr 0x%x -> paddr 0x%x.\n",
-          vaddr, paddr);
-  dtb.insert(vaddr, paddr);
+  Addr vpn = vaddr & ~(dtb.pageMask());
+  Addr ppn = paddr & ~(dtb.pageMask());
+  DPRINTF(CacheDatapath, "Inserting TLB entry vpn 0x%x -> ppn 0x%x.\n",
+          vpn, ppn);
+  dtb.insert(vpn, ppn);
 }
 
 void CacheDatapath::event_step()
@@ -454,20 +467,22 @@ void CacheDatapath::stepExecutingQueue()
     unsigned node_id = *it;
     if (is_memory_op(microop.at(node_id)))
     {
-      MemAccessStatus status = Ready;
+      MemAccess access;
+      access.status = Ready;
+      access.paddr = 0x0;
       if (mem_accesses.find(node_id) == mem_accesses.end())
-        mem_accesses[node_id] = status;
+        mem_accesses[node_id] = access;
       else
-        status = mem_accesses[node_id];
+        access = mem_accesses[node_id];
       bool isLoad = is_load_op(microop.at(node_id));
-      if (status == Ready)
+      if (access.status == Ready)
       {
         // First time seeing this node. Start the memory access procedure.
         Addr addr = actualAddress[node_id].first;
         int size = actualAddress[node_id].second;
         if (dtb.canRequestTranslation() && accessTLB(addr, size, isLoad, node_id))
         {
-          mem_accesses[node_id] = Translating;
+          mem_accesses[node_id].status = Translating;
           dtb.incrementRequestCounter();
           DPRINTF(CacheDatapath, "node:%d mem access is translating\n", node_id);
         }
@@ -478,13 +493,13 @@ void CacheDatapath::stepExecutingQueue()
         ++it;
         ++index;
       }
-      else if (status == Translated)
+      else if (access.status == Translated)
       {
-        Addr addr = actualAddress[node_id].first;
+        Addr addr = access.paddr;
         int size = actualAddress[node_id].second;
         if (accessCache(addr, size, isLoad, node_id))
         {
-          mem_accesses[node_id] = WaitingFromCache;
+          mem_accesses[node_id].status = WaitingFromCache;
           if (isLoad) {
             load_queue.in_flight ++;
             loads ++;
@@ -505,7 +520,7 @@ void CacheDatapath::stepExecutingQueue()
         ++it;
         ++index;
       }
-      else if (status == Returned)
+      else if (access.status == Returned)
       {
         if (isLoad)
           load_queue.in_flight --;

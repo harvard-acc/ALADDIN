@@ -181,8 +181,6 @@ class CacheDatapath :
 #endif
 
   private:
-    // TODO: The XIOSim integration has something very similar to this. We
-    // should be able to combine them into a common data type.
     typedef enum {
         Ready,
         Translating,
@@ -190,6 +188,14 @@ class CacheDatapath :
         WaitingFromCache,
         Returned
     } MemAccessStatus;
+
+    struct MemAccess {
+      // Current status of the memory request.
+      MemAccessStatus status;
+      // Translated physical address.
+      Addr paddr;
+    };
+
     typedef uint32_t FlagsType;
 
     // Register accelerator statistics.
@@ -279,7 +285,7 @@ class CacheDatapath :
      * class or set of methods, a la what I am doing with XIOSim, but right now
      * that can't be a priority.
      */
-    std::map<unsigned, MemAccessStatus> mem_accesses;
+    std::map<unsigned, MemAccess> mem_accesses;
 
     /* CACTI configuration file for the main cache. */
     std::string cacti_cfg;
