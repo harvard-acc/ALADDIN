@@ -259,8 +259,11 @@ void DDDG::parse_parameter(std::string line, int param_tag)
     else if (param_tag == 1 && curr_microop == LLVM_IR_Store)
     {
       long long int mem_address = parameter_value_per_inst[0];
+      // TODO(samxi): We need to support floating point values as well.
+      long long int store_value = parameter_value_per_inst[1];
       unsigned mem_size = parameter_size_per_inst.back();
-      gzprintf(memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, mem_size);
+      gzprintf(memory_trace, "%d,%lld,%u,%lld\n", num_of_instructions,
+               mem_address, mem_size, store_value);
     }
     else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr)
     {
