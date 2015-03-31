@@ -53,6 +53,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
   BaseDatapath::experiment_name = p->experimentName;
   BaseDatapath::cycleTime = p->cycleTime;
   initActualAddress();
+  initAddress(all_mem_ops);
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
@@ -248,7 +249,8 @@ CacheDatapath::accessTLB(Addr addr, unsigned size, bool isLoad, int node_id)
 }
 
 bool
-CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
+CacheDatapath::accessCache(
+    Addr addr, unsigned size, bool isLoad, int node_id, long long int value)
 {
   DPRINTF(CacheDatapath, "accessCache for addr:%#x\n", addr);
   bool queues_available = (isLoad && load_queue.can_issue()) ||
@@ -282,14 +284,16 @@ CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
   req = new Request (addr, size, flags, dataMasterId());
 
   MemCmd command;
-  if (isLoad)
+  // uint8_t *data = new uint8_t[sizeof(long long int)];
+  long long int *data = new long long int;
+  *data = value;
+  if (isLoad) {
     command = MemCmd::ReadReq;
-  else
+  } else {
     command = MemCmd::WriteReq;
+  }
   PacketPtr data_pkt = new Packet(req, command);
-
-  uint8_t *data = new uint8_t[64];
-  data_pkt->dataStatic<uint8_t>(data);
+  data_pkt->dataStatic<long long int>(data);
 
   DatapathSenderState *state = new DatapathSenderState(node_id);
   data_pkt->senderState = state;
@@ -305,9 +309,11 @@ CacheDatapath::accessCache(Addr addr, unsigned size, bool isLoad, int node_id)
   else
   {
     if (isLoad)
-      DPRINTF(CacheDatapath, "load issued to dcache!\n");
+      DPRINTF(CacheDatapath, "Node id %d load from address %#x issued to "
+              "dcache!\n", node_id, addr);
     else
-      DPRINTF(CacheDatapath, "store issued to dcache!\n");
+      DPRINTF(CacheDatapath, "Node id %d store of value %d to address %#x "
+              "issued to dcache!\n", node_id, value, addr);
   }
 
   return true;
@@ -326,7 +332,7 @@ void CacheDatapath::sendFinishedSignal()
   uint8_t *data = new uint8_t[size];
   // Write a sentinel value 4 bytes long.
   for (int i = 0; i < size; i++)
-    data[i] = 0x01;
+    data[i] = i;
   data_pkt->dataStatic<uint8_t>(data);
 
   if(!dcachePort.sendTimingReq(data_pkt))
@@ -370,10 +376,9 @@ void CacheDatapath::initActualAddress()
     if (gzgets(gzip_file, buffer, 256) == NULL)
       break;
     unsigned node_id;
-    long long int address;
+    long long int address, value;
     int size;
-    sscanf(buffer, "%d,%lld,%d\n", &node_id, &address, &size);
-
+    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &address, &size, &value);
     actualAddress[node_id] = make_pair(address & MASK, size/8);
   }
   gzclose(gzip_file);
@@ -467,7 +472,7 @@ void CacheDatapath::stepExecutingQueue()
     unsigned node_id = *it;
     if (is_memory_op(microop.at(node_id)))
     {
-      MemAccess access;
+      InFlightMemAccess access;
       access.status = Ready;
       access.paddr = 0x0;
       if (mem_accesses.find(node_id) == mem_accesses.end())
@@ -497,7 +502,9 @@ void CacheDatapath::stepExecutingQueue()
       {
         Addr addr = access.paddr;
         int size = actualAddress[node_id].second;
-        if (accessCache(addr, size, isLoad, node_id))
+        long long int value = all_mem_ops[node_id].value;
+
+        if (accessCache(addr, size, isLoad, node_id, value))
         {
           mem_accesses[node_id].status = WaitingFromCache;
           if (isLoad) {

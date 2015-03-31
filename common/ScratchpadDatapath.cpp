@@ -104,8 +104,8 @@ void ScratchpadDatapath::scratchpadPartition()
   std::cerr << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
-  std::unordered_map<unsigned, pair<long long int, unsigned> > address;
-  initAddressAndSize(address);
+  std::unordered_map<unsigned, MemAccess> address;
+  initAddress(address);
   //set scratchpad
   for(auto it = part_config.begin(); it!= part_config.end(); ++it)
   {
@@ -141,8 +141,8 @@ void ScratchpadDatapath::scratchpadPartition()
 
       unsigned num_of_elements = part_it->second.array_size;
       unsigned p_factor        = part_it->second.part_factor;
-      long long int abs_addr   = address[node_id].first;
-      unsigned data_size       = address[node_id].second / 8; //in bytes
+      long long int abs_addr   = address[node_id].vaddr;
+      unsigned data_size       = address[node_id].size / 8; //in bytes
       unsigned rel_addr        = (abs_addr - base_addr ) / data_size;
       if (!p_type.compare("block"))  //block partition
       {

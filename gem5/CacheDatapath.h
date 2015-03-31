@@ -189,7 +189,7 @@ class CacheDatapath :
         Returned
     } MemAccessStatus;
 
-    struct MemAccess {
+    struct InFlightMemAccess {
       // Current status of the memory request.
       MemAccessStatus status;
       // Translated physical address.
@@ -278,14 +278,16 @@ class CacheDatapath :
     unsigned cacheHitLatency;
     unsigned cacheAssoc;
 
-    /* Actual memory request addresses, obtained from the trace. */
+    /* Actual memory request addresses, obtained from the trace.
+     * TODO: Merge this with all_mem_ops.
+     */
     std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;
 
-    /* TODO(samxi): I'd like to separate the cache interactions into its own
-     * class or set of methods, a la what I am doing with XIOSim, but right now
-     * that can't be a priority.
-     */
-    std::map<unsigned, MemAccess> mem_accesses;
+    /* Stores status information about memory accesses currently in flight. */
+    std::map<unsigned, InFlightMemAccess> mem_accesses;
+
+    /* Stores information about all memory operations in the trace. */
+    std::unordered_map<unsigned, MemAccess> all_mem_ops;
 
     /* CACTI configuration file for the main cache. */
     std::string cacti_cfg;
@@ -295,7 +297,8 @@ class CacheDatapath :
     std::string accelerator_name;
 
     bool accessTLB(Addr addr, unsigned size, bool isLoad, int node_id);
-    bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id);
+    bool accessCache(Addr addr, unsigned size, bool isLoad, int node_id,
+                     long long int value);
 
     virtual void sendFinishedSignal();
     virtual Addr getBaseAddress(std::string label);

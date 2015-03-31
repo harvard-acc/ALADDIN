@@ -76,9 +76,9 @@ DmaScratchpadDatapath::initActualAddress()
     if (gzgets(gzip_file, buffer, 256) == NULL)
       break;
     unsigned node_id;
-    long long int address;
+    long long int address, value;
     unsigned size;
-    sscanf(buffer, "%d,%lld,%u\n", &node_id, &address, &size);
+    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &address, &size, &value);
     actualAddress[node_id] = make_pair(address & MASK, size/8);
   }
   gzclose(gzip_file);

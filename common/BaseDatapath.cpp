@@ -634,15 +634,7 @@ void BaseDatapath::removeSharedLoads() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::vector<std::string> instid(numTotalNodes, "");
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  std::vector<std::string> prev_basic_block(numTotalNodes, "");
-
-  initInstID(instid);
-  initDynamicMethodID(dynamic_methodid);
-  initPrevBasicBlock(prev_basic_block);
-
-  std::unordered_map<unsigned, long long int> address;
+  std::unordered_map<unsigned, MemAccess> address;
   initAddress(address);
 
   vertex_iter vi, vi_end;
@@ -663,7 +655,7 @@ void BaseDatapath::removeSharedLoads() {
         continue;
       }
       int node_microop = microop.at(node_id);
-      long long int node_address = address[node_id];
+      long long int node_address = address[node_id].vaddr;
       auto addr_it = address_loaded.find(node_address);
       if (is_store_op(node_microop) && addr_it != address_loaded.end())
         address_loaded.erase(addr_it);
@@ -822,7 +814,7 @@ void BaseDatapath::removeRepeatedStores() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::unordered_map<unsigned, long long int> address;
+  std::unordered_map<unsigned, MemAccess> address;
   initAddress(address);
 
   int node_id = numTotalNodes - 1;
@@ -839,7 +831,7 @@ void BaseDatapath::removeRepeatedStores() {
         --node_id;
         continue;
       }
-      long long int node_address = address[node_id];
+      long long int node_address = address[node_id].vaddr;
       auto addr_it = address_store_map.find(node_address);
 
       if (addr_it == address_store_map.end())
@@ -1482,28 +1474,11 @@ void BaseDatapath::initInstID(std::vector<std::string> &instid) {
   file_name += "_instid.gz";
   read_gzip_string_file(file_name, instid.size(), instid);
 }
-void BaseDatapath::initAddress(
-    std::unordered_map<unsigned, long long int> &address) {
-  std::string file_name(benchName);
-  file_name += "_memaddr.gz";
-  gzFile gzip_file;
-  gzip_file = gzopen(file_name.c_str(), "r");
-  while (!gzeof(gzip_file)) {
-    char buffer[256];
-    if (gzgets(gzip_file, buffer, 256) == NULL)
-      break;
-    unsigned node_id, size;
-    long long int addr;
-    sscanf(buffer, "%d,%lld,%d\n", &node_id, &addr, &size);
-    address[node_id] = addr;
-  }
-  gzclose(gzip_file);
-}
-void BaseDatapath::initAddressAndSize(
-    std::unordered_map<unsigned, pair<long long int, unsigned> > &address) {
-  std::string file_name(benchName);
-  file_name += "_memaddr.gz";
 
+void BaseDatapath::initAddress(std::unordered_map<unsigned, MemAccess> &address)
+{
+  std::string file_name(benchName);
+  file_name += "_memaddr.gz";
   gzFile gzip_file;
   gzip_file = gzopen(file_name.c_str(), "r");
   while (!gzeof(gzip_file)) {
@@ -1511,9 +1486,16 @@ void BaseDatapath::initAddressAndSize(
     if (gzgets(gzip_file, buffer, 256) == NULL)
       break;
     unsigned node_id, size;
-    long long int addr;
-    sscanf(buffer, "%d,%lld,%d\n", &node_id, &addr, &size);
-    address[node_id] = make_pair(addr, size);
+    long long int addr, value;
+    int num_filled = sscanf(buffer, "%d,%lld,%d,%lld\n",
+                            &node_id, &addr, &size, &value);
+    MemAccess access;
+    access.vaddr = addr;
+    access.size = size;
+    access.isLoad = (num_filled == 3);
+    if (!access.isLoad)
+      access.value = value;
+    address[node_id] = access;
   }
   gzclose(gzip_file);
 }
