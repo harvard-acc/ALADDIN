@@ -30,7 +30,7 @@ def main(kernel, part, unroll, pipe, clock_period):
   config.main(BENCH_HOME, kernel, part, unroll, pipe, clock_period)
 
   print 'Start Aladdin'
-  trace_file = BENCH_HOME+ '/' + 'dynamic_trace'
+  trace_file = BENCH_HOME+ '/' + 'dynamic_trace.gz'
   config_file = 'config_' + d
 
   newdir = os.path.join(BENCH_HOME, 'sim', d)
