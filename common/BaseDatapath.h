@@ -130,7 +130,7 @@ class BaseDatapath
   void setGlobalGraph();
   void setGraphForStepping();
   int clearGraph();
-  void dumpGraph();
+  void dumpGraph(std::string graph_name);
 
   //Accessing graph stats.
   std::string getBenchName() { return benchName; }

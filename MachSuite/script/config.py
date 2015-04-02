@@ -248,12 +248,18 @@ def main(directory, kernel, algorithm, part, unroll, pipe, cycle_time):
     config.write('unrolling,md_kernel,51,%s\n' %(unroll))       # trip_cnt = 256
     config.write('flatten,md_kernel,58\n')
   elif bench == 'md-grid':
-    if unroll >= 4:
-        config.write('flatten,md,46\n')
-    else:
-        config.write('unrolling,md,46,%s\n' %(unroll))          # trip_cnt = 4
-    config.write('flatten,md,47\n')
-    config.write('flatten,md,48\n')
+    if unroll <= 4:
+      config.write("unrolling,md,46,1\n")
+      config.write("unrolling,md,47,1\n")
+      config.write("unrolling,md,48,%d\n" %(unroll))
+    elif unroll <= 16:
+      config.write("unrolling,md,46,1\n")
+      config.write("unrolling,md,47,%d\n" %(unroll/4))
+      config.write("flatten,md,48\n")
+    elif unroll <= 64:
+      config.write("unrolling,md,46,%d\n" %(unroll/16))
+      config.write("flatten,md,47\n")
+      config.write("flatten,md,48\n")
     config.write('flatten,md,50\n')
     config.write('flatten,md,51\n')
     config.write('flatten,md,52\n')

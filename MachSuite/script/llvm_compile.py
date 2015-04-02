@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 import os
 import sys
 
@@ -31,14 +31,14 @@ kernels = {
 }
 
 def main (directory, bench, source):
-  
+
   if not 'TRACER_HOME' in os.environ:
     raise Exception('Set TRACER_HOME directory as an environment variable')
   if not 'MACH_HOME' in os.environ:
     raise Exception('Set MACH_HOME directory as an environment variable')
 
   #id = id_generator()
- 
+
   os.chdir(directory)
   obj = source + '.llvm'
   opt_obj = source + '-opt.llvm'
@@ -70,7 +70,7 @@ def main (directory, bench, source):
   command = 'llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm'
   print command
   os.system(command)
-  command = 'gcc -O0 -fno-inline -o ' + executable + ' full.s -lm'
+  command = 'gcc -O0 -fno-inline -o ' + executable + ' full.s -lm -lz'
   print command
   os.system(command)
   command = './' + executable + ' input.data check.data'

@@ -16,6 +16,7 @@ DDDG::DDDG(BaseDatapath *_datapath, std::string _trace_name)
   num_of_instructions = -1;
   last_parameter = 0;
   prev_bblock = "-1";
+  curr_bblock = "-1";
 }
 int DDDG::num_edges()
 {
@@ -146,7 +147,7 @@ void DDDG::parse_instruction_line(std::string line)
     }
     active_method.push(curr_dynamic_function);
   }
-  if (microop == LLVM_IR_PHI)
+  if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
   curr_bblock = bblockid;
   gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
@@ -163,8 +164,15 @@ void DDDG::parse_parameter(std::string line, int param_tag)
 {
   int size, is_reg;
   double value;
-  char label[256];
-  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
+  char label[256], prev_bbid[256];
+  if (curr_microop == LLVM_IR_PHI) {
+    sscanf(line.c_str(), "%d,%lf,%d,%[^,],%[^,],\n", &size, &value, &is_reg, label, prev_bbid);
+    if (prev_bblock.compare(prev_bbid) != 0) {
+      return;
+    }
+  }
+  else
+    sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
   if (!last_parameter)
   {
     num_of_parameters = param_tag;
@@ -197,7 +205,7 @@ void DDDG::parse_parameter(std::string line, int param_tag)
         last_call_source = reg_it->second;
     }
   }
-  if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store 
+  if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store
     || curr_microop == LLVM_IR_GetElementPtr || is_dma_op(curr_microop))
   {
     parameter_value_per_inst.push_back((long long int) value);
@@ -269,7 +277,7 @@ void DDDG::parse_result(std::string line)
   double value;
   char label[256];
 
-  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
+  sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
   assert(is_reg);
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
@@ -298,7 +306,7 @@ void DDDG::parse_forward(std::string line)
   double value;
   char label[256];
 
-  sscanf(line.c_str(), "%d,%lf,%d,%[^\n]\n", &size, &value, &is_reg, label);
+  sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
   assert(is_reg);
 
   char unique_reg_id[256];

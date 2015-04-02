@@ -80,7 +80,7 @@ void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockS
     } // loop_q
     d_force[b0.x][b0.y][b0.z][p_idx].x = sum_x ;
     d_force[b0.x][b0.y][b0.z][p_idx].y = sum_y ;
-    d_force[b0.x][b0.y][b0.z][p_idx].z = sum_z ;   
+    d_force[b0.x][b0.y][b0.z][p_idx].z = sum_z ;
   } // loop_p
   }}} // loop_grid1_*
   }}} // loop_grid0_*

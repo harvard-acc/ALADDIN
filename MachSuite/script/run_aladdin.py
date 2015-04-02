@@ -8,7 +8,7 @@ import llvm_compile
 import config
 
 main_kernel_c = {
-  'aes-aes' : 'aes',            
+  'aes-aes' : 'aes',
   'backprop-backprop' : 'net',
   'bfs-bulk' : 'bulk',
   'bfs-queue' : 'queue',
@@ -18,12 +18,12 @@ main_kernel_c = {
   'gemm-blocked': 'bbgemm',
   'gemm-ncubed' : 'gemm',
   'md-knn': 'md',
-  'md-grid': 'md', 
+  'md-grid': 'md',
   'nw-nw' : 'needwun',
   'sort-merge' : 'merge',
   'sort-radix' : 'radix',
   'spmv-crs' : 'crs',
-  'spmv-ellpack' : 'ellpack', 
+  'spmv-ellpack' : 'ellpack',
   'stencil-stencil2d' : 'stencil',
   'stencil-stencil3d' : 'stencil3d',
   'viterbi-viterbi' : 'viterbi'
@@ -37,10 +37,10 @@ def main(benches, part, unroll, pipe, clock_period):
 
   if not 'ALADDIN_HOME' in os.environ:
     raise Exception('Set ALADDIN_HOME directory as an environment variable')
-  
+
   if not 'TRACER_HOME' in os.environ:
     raise Exception('Set TRACER_HOME directory as an environment variable')
-  
+
   if not 'MACH_HOME' in os.environ:
     raise Exception('Set MACH_HOME directory as an environment variable')
 
@@ -70,19 +70,19 @@ def main(benches, part, unroll, pipe, clock_period):
     print bench
     source = main_kernel_c[bench]
     llvm_compile.main(BENCH_HOME, bench, source)
-  
+
     #Generate accelerator design config file
     config.main(BENCH_HOME, kernel, algorithm, part, unroll, pipe, clock_period)
 
     print 'Start Aladdin'
-    trace_file = BENCH_HOME+ '/' + 'dynamic_trace'
+    trace_file = BENCH_HOME+ '/' + 'dynamic_trace.gz'
     config_file = 'config_' + d
-  
+
     newdir = os.path.join(BENCH_HOME, 'sim', d)
     print 'Changing directory to %s' % newdir
-  
+
     os.chdir(newdir)
-    os.system('%s/common/aladdin %s %s %s ' % (os.getenv('ALADDIN_HOME'), bench, trace_file, config_file)) 
+    os.system('%s/common/aladdin %s %s %s ' % (os.getenv('ALADDIN_HOME'), bench, trace_file, config_file))
 
 if __name__ == '__main__':
   kernel = sys.argv[1]

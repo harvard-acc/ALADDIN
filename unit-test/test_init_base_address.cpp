@@ -7,7 +7,7 @@
 
 SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]")
 {
-  GIVEN("Test c[i]=a[i] casew/ Input Size 32")
+  GIVEN("Test c[i]=a[i] case w/ Input Size 32")
   {
     std::string bench("outputs/triad-initbase");
     std::string trace_file("inputs/triad-initbase-trace.gz");
