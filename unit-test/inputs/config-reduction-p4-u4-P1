@@ -1,4 +1,4 @@
 cycle_time,1
 pipelining,1
 partition,cyclic,in,512,4,4
-unrolling,reduction,8,4
+unrolling,reduction,10,4
