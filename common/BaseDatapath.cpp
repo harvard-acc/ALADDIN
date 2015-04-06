@@ -92,42 +92,67 @@ void BaseDatapath::memoryAmbiguation()
     unsigned node_id = vertexToName[*vi];
 
     int node_microop = microop.at(node_id);
-    if (!is_store_op(node_microop))
-      continue;
-    //iterate its children to find a load op
-    out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); out_edge_it != out_edge_end; ++out_edge_it)
-    {
-      int child_id = vertexToName[target(*out_edge_it, graph_)];
-      int child_microop = microop.at(child_id);
-      if (!is_load_op(child_microop))
-        continue;
-      std::string node_dynamic_methodid = dynamic_methodid.at(node_id);
-      std::string load_dynamic_methodid = dynamic_methodid.at(child_id);
-      if (node_dynamic_methodid.compare(load_dynamic_methodid) != 0)
-        continue;
-
-      std::string store_unique_id (node_dynamic_methodid + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
-      std::string load_unique_id (load_dynamic_methodid+ "-" + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
-
-      if (store_load_pair.find(store_unique_id + "-" + load_unique_id ) != store_load_pair.end())
-        continue;
-      //add to the pair
-      store_load_pair[store_unique_id + "-" + load_unique_id] = 1;
-      paired_store.insert(store_unique_id);
-      auto load_range = pair_per_load.equal_range(load_unique_id);
-      bool found_store = 0;
-      for (auto store_it = load_range.first; store_it != load_range.second; store_it++)
+    if (is_load_op(node_microop)) {
+      //iterate its children to find gep, if the current load generates the
+      //address for its grandchildren, the dependences cannot be eliminated in later
+      //optimization.
+      out_edge_iter out_edge_it, out_edge_end;
+      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
+          out_edge_it != out_edge_end; ++out_edge_it)
       {
-        if (store_unique_id.compare(store_it->second) == 0)
+        Vertex child_node = target(*out_edge_it, graph_);
+        int child_id = vertexToName[child_node];
+        int child_microop = microop.at(child_id);
+        if (child_microop != LLVM_IR_GetElementPtr)
+          continue;
+        out_edge_iter gep_out_edge_it, gep_out_edge_end;
+        for (tie(gep_out_edge_it, gep_out_edge_end) = out_edges(child_node, graph_);
+            gep_out_edge_it != gep_out_edge_end; ++gep_out_edge_it)
         {
-          found_store = 1;
-          break;
+          Vertex grandchild_node = target(*gep_out_edge_it, graph_);
+          int grandchild_id = vertexToName[grandchild_node];
+          int grandchild_microop = microop.at(grandchild_id);
+          if (!is_memory_op(grandchild_microop))
+            continue;
+          dynamicMemoryOps.insert(grandchild_id);
         }
       }
-      if (!found_store)
+    }
+    else if (is_store_op(node_microop)) {
+      //iterate its children to find a load op
+      out_edge_iter out_edge_it, out_edge_end;
+      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_); out_edge_it != out_edge_end; ++out_edge_it)
       {
-        pair_per_load.insert(make_pair(load_unique_id,store_unique_id));
+        int child_id = vertexToName[target(*out_edge_it, graph_)];
+        int child_microop = microop.at(child_id);
+        if (!is_load_op(child_microop))
+          continue;
+        std::string node_dynamic_methodid = dynamic_methodid.at(node_id);
+        std::string load_dynamic_methodid = dynamic_methodid.at(child_id);
+        if (node_dynamic_methodid.compare(load_dynamic_methodid) != 0)
+          continue;
+
+        std::string store_unique_id (node_dynamic_methodid + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
+        std::string load_unique_id (load_dynamic_methodid+ "-" + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
+
+        if (store_load_pair.find(store_unique_id + "-" + load_unique_id ) != store_load_pair.end())
+          continue;
+        //add to the pair
+        store_load_pair[store_unique_id + "-" + load_unique_id] = 1;
+        paired_store.insert(store_unique_id);
+        auto load_range = pair_per_load.equal_range(load_unique_id);
+        bool found_store = 0;
+        for (auto store_it = load_range.first;
+                  store_it != load_range.second; store_it++)
+        {
+          if (store_unique_id.compare(store_it->second) == 0)
+          {
+            found_store = 1;
+            break;
+          }
+        }
+        if (!found_store)
+          pair_per_load.insert(make_pair(load_unique_id,store_unique_id));
       }
     }
   }
@@ -166,8 +191,8 @@ void BaseDatapath::memoryAmbiguation()
         if (!doesEdgeExist(prev_store_id, node_id))
         {
           to_add_edges.push_back({prev_store_id, node_id, -1});
-          dynamicMemoryOps.insert(load_store_it->second + "-" + prev_basic_block.at(prev_store_id));
-          dynamicMemoryOps.insert(load_store_it->first + "-" + prev_basic_block.at(node_id));
+          dynamicMemoryOps.insert(prev_store_id);
+          dynamicMemoryOps.insert(node_id);
         }
       }
     }
@@ -181,7 +206,7 @@ void BaseDatapath::memoryAmbiguation()
 void BaseDatapath::removePhiNodes()
 {
   std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "  Remove PHI and BitCast Nodes " << std::endl;
+  std::cerr << "  Remove PHI and Convert Nodes " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
@@ -195,7 +220,7 @@ void BaseDatapath::removePhiNodes()
   {
     unsigned node_id = vertexToName[*vi];
     int node_microop = microop.at(node_id);
-    if (node_microop != LLVM_IR_PHI && node_microop != LLVM_IR_BitCast)
+    if (node_microop != LLVM_IR_PHI && !is_convert_op(node_microop) )
       continue;
     //find its children
 
@@ -618,6 +643,14 @@ void BaseDatapath::removeSharedLoads()
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
+  std::vector<std::string> instid(numTotalNodes, "");
+  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
+  std::vector<std::string> prev_basic_block(numTotalNodes, "");
+
+  initInstID(instid);
+  initDynamicMethodID(dynamic_methodid);
+  initPrevBasicBlock(prev_basic_block);
+
   std::unordered_map<unsigned, long long int> address;
   initAddress(address);
 
@@ -635,13 +668,8 @@ void BaseDatapath::removeSharedLoads()
     std::unordered_map<unsigned, unsigned> address_loaded;
     while (node_id < *bound_it &&  (unsigned) node_id < numTotalNodes)
     {
-      if (nameToVertex.find(node_id) == nameToVertex.end())
-      {
-        node_id++;
-        continue;
-      }
-      if (boost::degree(nameToVertex[node_id], graph_) == 0)
-      {
+      if (nameToVertex.find(node_id) == nameToVertex.end()
+         || boost::degree(nameToVertex[node_id], graph_) == 0) {
         node_id++;
         continue;
       }
@@ -650,20 +678,23 @@ void BaseDatapath::removeSharedLoads()
       auto addr_it = address_loaded.find(node_address);
       if (is_store_op(node_microop) && addr_it != address_loaded.end())
         address_loaded.erase(addr_it);
-      else if (is_load_op(node_microop))
-      {
+      else if (is_load_op(node_microop)) {
         if (addr_it == address_loaded.end())
           address_loaded[node_address] = node_id;
-        else
-        {
+        else {
+          //check whether the current load is dynamic or not.
+          if (dynamicMemoryOps.find(node_id) != dynamicMemoryOps.end()) {
+            ++node_id;
+            continue;
+          }
           shared_loads++;
           microop.at(node_id) = LLVM_IR_Move;
           unsigned prev_load = addr_it->second;
           //iterate through its children
           Vertex load_node = nameToVertex[node_id];
           out_edge_iter out_edge_it, out_edge_end;
-          for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_); out_edge_it != out_edge_end; ++out_edge_it)
-          {
+          for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_);
+               out_edge_it != out_edge_end; ++out_edge_it) {
             Edge curr_edge = *out_edge_it;
             Vertex child_vertex = target(curr_edge, graph_);
             unsigned child_id = vertexToName[child_vertex];
@@ -703,14 +734,6 @@ void BaseDatapath::storeBuffer()
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::vector<std::string> instid(numTotalNodes, "");
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  std::vector<std::string> prev_basic_block(numTotalNodes, "");
-
-  initInstID(instid);
-  initDynamicMethodID(dynamic_methodid);
-  initPrevBasicBlock(prev_basic_block);
-
   std::vector<newEdge> to_add_edges;
   std::vector<unsigned> to_remove_nodes;
 
@@ -730,9 +753,8 @@ void BaseDatapath::storeBuffer()
       if (is_store_op(microop.at(node_id)))
       {
         //remove this store
-        std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
         //dynamic stores, cannot disambiguated in the static time, cannot remove
-        if (dynamicMemoryOps.find(store_unique_id) != dynamicMemoryOps.end()) {
+        if (dynamicMemoryOps.find(node_id) != dynamicMemoryOps.end()) {
           ++node_id;
           continue;
         }
@@ -747,9 +769,7 @@ void BaseDatapath::storeBuffer()
           int child_id = vertexToName[child_vertex];
           if (is_load_op(microop.at(child_id)))
           {
-            std::string load_unique_id (dynamic_methodid.at(child_id) + "-"
-                  + instid.at(child_id) + "-" + prev_basic_block.at(child_id));
-            if (dynamicMemoryOps.find(load_unique_id) != dynamicMemoryOps.end()
+            if (dynamicMemoryOps.find(child_id) != dynamicMemoryOps.end()
                || child_id >= (unsigned)*bound_it )
               continue;
             else
@@ -785,9 +805,11 @@ void BaseDatapath::storeBuffer()
               out_edge_iter out_edge_it, out_edge_end;
               for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_);
                 out_edge_it != out_edge_end; ++out_edge_it)
+              {
                 to_add_edges.push_back({(unsigned)vertexToName[store_parent],
                   (unsigned)vertexToName[target(*out_edge_it, graph_)],
                   edge_to_parid[*out_edge_it]});
+              }
             }
           }
         }
@@ -822,14 +844,6 @@ void BaseDatapath::removeRepeatedStores()
   std::unordered_map<unsigned, long long int> address;
   initAddress(address);
 
-  std::vector<std::string> instid(numTotalNodes, "");
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  std::vector<std::string> prev_basic_block(numTotalNodes, "");
-
-  initInstID(instid);
-  initDynamicMethodID(dynamic_methodid);
-  initPrevBasicBlock(prev_basic_block);
-
   int node_id = numTotalNodes - 1;
   auto bound_it = loopBound.end();
   bound_it--;
@@ -851,9 +865,8 @@ void BaseDatapath::removeRepeatedStores()
         address_store_map[node_address] = node_id;
       else {
         //remove this store
-        std::string store_unique_id (dynamic_methodid.at(node_id) + "-" + instid.at(node_id) + "-" + prev_basic_block.at(node_id));
         //dynamic stores, cannot disambiguated in the run time, cannot remove
-        if (dynamicMemoryOps.find(store_unique_id) == dynamicMemoryOps.end() ) {
+        if (dynamicMemoryOps.find(node_id) == dynamicMemoryOps.end() ) {
           if (boost::out_degree(nameToVertex[node_id], graph_)== 0) {
             microop.at(node_id) = LLVM_IR_SilentStore;
           }
@@ -1786,8 +1799,7 @@ void BaseDatapath::initBaseAddress()
 
   std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
   initGetElementPtr(getElementPtr);
-
-  edgeToParid = get(boost::edge_name, graph_);
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
   vertex_iter vi, vi_end;
   for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi)
@@ -1807,7 +1819,7 @@ void BaseDatapath::initBaseAddress()
 
       for (tie(in_edge_it, in_edge_end) = in_edges(curr_node , graph_);
                              in_edge_it != in_edge_end; ++in_edge_it) {
-        int edge_parid = edgeToParid[*in_edge_it];
+        int edge_parid = edge_to_parid[*in_edge_it];
         if ( ( node_microop == LLVM_IR_Load && edge_parid != 1 )
              || ( node_microop == LLVM_IR_GetElementPtr && edge_parid != 1 )
              || ( node_microop == LLVM_IR_Store && edge_parid != 2) )

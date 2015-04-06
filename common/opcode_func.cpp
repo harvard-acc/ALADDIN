@@ -81,7 +81,19 @@ bool is_index_op (unsigned microop)
     return true;
   return false;
 }
-
+bool is_convert_op (unsigned microop)
+{
+  switch(microop)
+  {
+    case LLVM_IR_Trunc : case LLVM_IR_ZExt : case LLVM_IR_SExt : case LLVM_IR_FPToUI :
+    case LLVM_IR_FPToSI : case LLVM_IR_UIToFP : case LLVM_IR_SIToFP :
+    case LLVM_IR_FPTrunc : case LLVM_IR_FPExt : case LLVM_IR_PtrToInt :
+    case LLVM_IR_IntToPtr : case LLVM_IR_BitCast : case LLVM_IR_AddrSpaceCast:
+      return true;
+    default:
+      return false;
+  }
+}
 bool is_dma_load(unsigned microop)
 {
   return microop == LLVM_IR_DMALoad ;
