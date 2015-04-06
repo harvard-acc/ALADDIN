@@ -78,6 +78,7 @@ bool is_call_op(unsigned microop);
 bool is_branch_op (unsigned microop);
 bool is_control_op (unsigned microop);
 bool is_index_op (unsigned microop);
+bool is_convert_op (unsigned microop);
 bool is_dma_load(unsigned microop);
 bool is_dma_store(unsigned microop);
 bool is_dma_op(unsigned microop);

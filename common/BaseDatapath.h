@@ -262,7 +262,7 @@ class BaseDatapath
   std::vector<int> microop;
   std::unordered_map<unsigned, std::string> nodeToLabel;
   std::unordered_map<std::string, long long int> arrayBaseAddress;
-  std::unordered_set<std::string> dynamicMemoryOps;
+  std::unordered_set<unsigned> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;
   std::vector<int> numParents;
   std::vector<float> latestParents;
