@@ -64,6 +64,7 @@ class CacheDatapath :
      * instead of directly receiving the translation.
      */
     void finishTranslation(PacketPtr pkt, bool was_miss);
+    virtual Addr getBaseAddress(std::string label);
 
     void parse_config();
     bool fileExists (const string file_name)
@@ -241,7 +242,7 @@ class CacheDatapath :
 
     /* Insert a new virtual to physical address mapping into the Aladdin TLB.
      */
-    virtual void insertTLBEntry(Addr vaddr, Addr paddr);
+    virtual void insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr);
 
     MasterID _dataMasterId;
 
@@ -301,7 +302,6 @@ class CacheDatapath :
                      long long int value);
 
     virtual void sendFinishedSignal();
-    virtual Addr getBaseAddress(std::string label);
 
     AladdinTLB dtb;
 

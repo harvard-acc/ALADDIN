@@ -369,7 +369,8 @@ DmaScratchpadDatapath::getBaseAddress(std::string label)
 }
 
 void
-DmaScratchpadDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
+DmaScratchpadDatapath::insertTLBEntry(
+    Addr trace_addr, Addr vaddr, Addr paddr)
 {
   fatal("DmaScratchpadDatapath does not use a TLB. Cannot insert TLB entry.\n");
 }

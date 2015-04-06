@@ -170,6 +170,13 @@ class AladdinTLB
      */
     std::map<Addr, Addr> infiniteBackupTLB;
 
+    /* Translations from trace base addresses to simulated virtual addresses.
+     *
+     * This is purely an artifact of how Aladdin is implemented so it doesn't
+     * need to be modeled for timing.
+     */
+    std::map<Addr, Addr> traceToVirtualAddrMap;
+
   public:
     AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
                Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
@@ -189,20 +196,54 @@ class AladdinTLB
     bool getIsPerfectTLB() { return isPerfectTLB; }
     unsigned getNumOutStandingWalks() { return numOutStandingWalks; }
 
-    /* Inserts a translation. Note that the entries are actually page-aligned
-     * addresses instead of just page numbers (e.g. 0xf000 instead of 0xf). If
-     * the insert results in an eviction, the evicted entry is returned.
+    /* Inserts a translation between simulated virtual and physical pages.
+     *
+     * The simulated virtual pages are NOT obtained from the trace - this is the
+     * simulated virtual address space of the simulator.
+     *
+     * Note that the entries are actually page-aligned addresses instead of just
+     * page numbers (e.g. 0xf000 instead of 0xf). If the insert results in an
+     * eviction, the evicted entry is returned.
      */
     AladdinTLBEntry* insert(Addr vpn, Addr ppn);
+
+    /* Translates trace addresses to simulated virtual addresses.
+     *
+     * Because trace addresses and the simulated addresses live in entirely
+     * disjunct address spaces, we need more than just bit manipulations to
+     * properly translate trace address to physical addresses. Use this
+     * translation to get the simulated virtual address, and then consult the
+     * TLB to get the simulated physical address.
+     */
+    void insertTraceToVirtual(Addr trace_addr, Addr sim_vaddr)
+    {
+      traceToVirtualAddrMap[trace_addr] = sim_vaddr;
+    }
+
+    Addr lookupVirtualAddr(Addr trace_addr)
+    {
+      return traceToVirtualAddrMap[trace_addr];
+    }
+
     bool translateTiming(PacketPtr pkt);
     bool canRequestTranslation();
     void incrementRequestCounter() { requests_this_cycle ++; }
     void resetRequestCounter() { requests_this_cycle = 0; }
+
+    /* Power and area calculations. */
     void computeCactiResults();
     void getAveragePower(
         unsigned int cycles, unsigned int cycleTime,
         float *avg_power, float *avg_dynamic, float *avg_leak);
-    float getArea() {return area;}
+    float getArea() { return area; }
+
+    class TLBSenderState : public Packet::SenderState
+    {
+      public:
+        TLBSenderState(unsigned _node_id) : node_id(_node_id) {}
+        unsigned node_id;
+    };
+
     /* Number of TLB translation requests in the current cycle. */
     unsigned requests_this_cycle;
     /* Maximum translation requests per cycle. */

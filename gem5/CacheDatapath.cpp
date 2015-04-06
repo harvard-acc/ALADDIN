@@ -185,8 +185,10 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
 void
 CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
 {
-  DPRINTF(CacheDatapath, "finishTranslation for addr:%#x %s\n", pkt->getAddr(), pkt->cmdString());
-  DatapathSenderState *state = dynamic_cast<DatapathSenderState *>(pkt->senderState);
+  DPRINTF(CacheDatapath, "finishTranslation for addr:%#x %s\n",
+          pkt->getAddr(), pkt->cmdString());
+  AladdinTLB::TLBSenderState *state =
+      dynamic_cast<AladdinTLB::TLBSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
   assert(mem_accesses.find(node_id) != mem_accesses.end());
   assert(mem_accesses[node_id].status == Translating);
@@ -197,10 +199,9 @@ CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
   if (was_miss) {
     mem_accesses[node_id].status = Ready;
   } else {
-    // Remember that the translations are actually page aligned memory
-    // addresses, mostly for the ease of computing the real address.
-    Addr *ppn = pkt->getPtr<Addr>();
-    Addr paddr = *ppn + (pkt->getAddr() & dtb.pageMask());
+    // Translations are actually the complete memory address, not just the page
+    // number, because of the trace to virtual address translation.
+    Addr paddr = *pkt->getPtr<Addr>();
     mem_accesses[node_id].status = Translated;
     mem_accesses[node_id].paddr = paddr;
   }
@@ -232,7 +233,7 @@ CacheDatapath::accessTLB(Addr addr, unsigned size, bool isLoad, int node_id)
   *translation = 0x0;  // Signifies no translation.
   data_pkt->dataStatic<Addr>(translation);
 
-  DatapathSenderState *state = new DatapathSenderState(node_id);
+  AladdinTLB::TLBSenderState *state = new AladdinTLB::TLBSenderState(node_id);
   data_pkt->senderState = state;
 
   //TLB access
@@ -413,13 +414,16 @@ void CacheDatapath::registerStats()
 }
 
 void
-CacheDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
+CacheDatapath::insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr)
 {
+  DPRINTF(CacheDatapath, "Mapping trace_addr 0x%x, vaddr 0x%x -> paddr 0x%x.\n",
+          trace_addr, vaddr, paddr);
   Addr vpn = vaddr & ~(dtb.pageMask());
   Addr ppn = paddr & ~(dtb.pageMask());
   DPRINTF(CacheDatapath, "Inserting TLB entry vpn 0x%x -> ppn 0x%x.\n",
           vpn, ppn);
   dtb.insert(vpn, ppn);
+  dtb.insertTraceToVirtual(trace_addr, vaddr);
 }
 
 void CacheDatapath::event_step()

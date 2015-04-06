@@ -117,21 +117,43 @@ AladdinTLB::outStandingWalkReturnEvent::name() const
 bool
 AladdinTLB::translateTiming(PacketPtr pkt)
 {
-  Addr vaddr = pkt->req->getPaddr();
+  /* A somewhat complex translation process.
+   *
+   * First, we use the node id to get the base address of the array being
+   * accessed. We then look up the translation from this trace address to the
+   * simulated virtual address (which represents the head of the array). Next,
+   * we compute the offset between the accessed trace address and the base trace
+   * address and add this offset to the base simulated virtual address.
+   * Finally, we consult the TLB to translate the simulated virtual address to
+   * the simulated physical address.
+   */
+  TLBSenderState *state =
+      dynamic_cast<TLBSenderState*>(pkt->senderState);
+  unsigned node_id = state->node_id;
+  std::string array_name = datapath->getBaseAddressLabel(node_id);
+  Addr base_trace_addr =
+      static_cast<Addr>(datapath->getBaseAddress(array_name));
+  Addr base_sim_vaddr = lookupVirtualAddr(base_trace_addr);
+  Addr trace_req_vaddr = pkt->req->getPaddr();
+  Addr array_offset = trace_req_vaddr - base_trace_addr;
+  Addr vaddr = base_sim_vaddr + array_offset;
+
   DPRINTF(CacheDatapath, "Translating vaddr %#x.\n", vaddr);
-  Addr offset = vaddr % pageBytes;
-  Addr vpn = vaddr - offset;
+  Addr page_offset = vaddr % pageBytes;
+  Addr vpn = vaddr - page_offset;
   Addr ppn;
 
   reads++;  // Both TLB hits and misses perform a read.
   if (isPerfectTLB || tlbMemory->lookup(vpn, ppn))
   {
-      DPRINTF(CacheDatapath, "TLB hit. Phys addr %#x.\n", ppn + offset);
+      DPRINTF(CacheDatapath, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
       hits++;
       hitQueue.push_back(pkt);
       deHitQueueEvent *hq = new deHitQueueEvent(this);
       datapath->schedule(hq, datapath->clockEdge(hitLatency));
-      *(pkt->getPtr<Addr>()) = ppn;
+      // Due to the complexity of translating trace to virtual address, return
+      // the complete address, not just the page number.
+      *(pkt->getPtr<Addr>()) = ppn + page_offset;
       return true;
   }
   else

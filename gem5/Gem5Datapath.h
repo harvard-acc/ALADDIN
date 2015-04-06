@@ -67,7 +67,7 @@ class Gem5Datapath : public MemObject
      * TODO(samxi): Maybe this should not be part of Gem5Datapath? But I'm not
      * sure if a dynamic_cast to CacheDatapath would work here.
      */
-    virtual void insertTLBEntry(Addr vaddr, Addr paddr) = 0;
+    virtual void insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr) = 0;
 
   protected:
     /* True if gem5 is being simulated with just Aladdin, false if there are
