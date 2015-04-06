@@ -45,6 +45,8 @@ unsigned SHOC_SSSORT                 = 0x00000190;
 unsigned SHOC_STENCIL                = 0x000001A0;
 unsigned SHOC_TRIAD                  = 0x000001B0;
 
+unsigned INTEGRATION_TEST            = 0x01000000;
+
 int ALADDIN_FD = 0x000DECAF;
 int ALADDIN_MAP_ARRAY = 0x001DECAF;
 int NOT_COMPLETED = 0x000DECAF;

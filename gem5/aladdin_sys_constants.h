@@ -31,6 +31,9 @@ extern unsigned SHOC_SSSORT;
 extern unsigned SHOC_STENCIL;
 extern unsigned SHOC_TRIAD;
 
+// A special code used by integration tests.
+extern unsigned INTEGRATION_TEST;
+
 // A special file descriptor number in gem5 used for Aladdin.
 extern int ALADDIN_FD;
 

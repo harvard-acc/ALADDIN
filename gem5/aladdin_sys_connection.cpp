@@ -21,7 +21,8 @@ bool isValidRequestCode(unsigned req) {
   unsigned shifted = req >> 4;
   return ((req & 0xFFFFFFFF0) == req &&
           shifted >= 0x01 &&
-          shifted <= 0x1B);
+          shifted <= 0x1B) ||
+          (req == INTEGRATION_TEST);
 }
 
 void invokeAccelerator(unsigned req_code, int* finish_flag) {
