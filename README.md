@@ -1,4 +1,4 @@
-ALADDIN v1.0.0 Public Release
+ALADDIN v1.1.0 Public Release
 ============================================
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators.
@@ -121,10 +121,10 @@ Example program: triad
 
   ```
   cd $ALADDIN_HOME/SHOC/scripts
-  python run_aladdin.py triad 2 2 1
+  python run_aladdin.py triad 2 2 1 6
   ```
 
-  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2_P1`
+  It will start Aladdin run at `$ALADDIN_HOME/SHOC/triad/sim/p2_u2_P1_6ns`
 
   The last three parameters are unrolling and partition factors and enabling
   loop pipelining in the config
@@ -162,7 +162,7 @@ Step-by-step:
 
      ```
      llc -filetype=asm -o full.s full.llvm
-     gcc -fno-inline -o triad-instrumented full.s
+     gcc -fno-inline -o triad-instrumented full.s -lm -lz
      ```
 
    5. Run binary:
@@ -192,6 +192,7 @@ Step-by-step:
   partition,cyclic,c,8192,4,2  //cyclic partition array c, size 8192B, wordsize is 4B, with partition factor 2
   unrolling,triad,5,2        //unroll loop in triad, define at line 5 in triad.c, with unrolling factor 2
   pipelining,1               //enable loop pipelining, applied to all loops
+  cycle_time,6               //clock period, currently we support 1, 2, 3, 4, 5, and 6ns.
   ```
 
   The format of config file is:

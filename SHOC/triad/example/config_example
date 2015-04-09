@@ -3,3 +3,4 @@ partition,cyclic,b,2048,2
 partition,cyclic,c,2048,2
 unrolling,triad,5,2
 pipelining,1
+cycle_time,6

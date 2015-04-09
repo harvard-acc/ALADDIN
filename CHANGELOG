@@ -1,3 +1,18 @@
+Aladdin Public Release, v1.1.0
+04-08-2015
+
+*Changed the trace format (Please update LLVM-Tracer to 1.1):
+**Compressed trace: LLVM-Tracer generates gzipped trace for Aladdin to reduce
+                    the input trace size;
+**Parameter format for phi nodes: For phi node parameters, we add one more
+                   column in the end to profile its corresponding previous basic
+                   block id.
+*Fixed an issue in removePhiNodes() for chained phi nodes.
+*Updated power/area models for 1, 2, 3, 4, 5, and 6ns functional units.
+*Added cycle_time as one of the parameters in the config file.
+--Hyunkwang Lee, Sam Xi and Sophia Shao
+
+
 Aladdin Public Release, v1.0.1
 03-30-2015
 
