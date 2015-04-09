@@ -72,11 +72,9 @@ void BaseDatapath::memoryAmbiguation() {
 
   std::vector<std::string> instid(numTotalNodes, "");
   std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  std::vector<std::string> prev_basic_block(numTotalNodes, "");
 
   initInstID(instid);
   initDynamicMethodID(dynamic_methodid);
-  initPrevBasicBlock(prev_basic_block);
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // nodes with no incoming edges to first
@@ -124,11 +122,9 @@ void BaseDatapath::memoryAmbiguation() {
           continue;
 
         std::string store_unique_id(node_dynamic_methodid + "-" +
-                                    instid.at(node_id) + "-" +
-                                    prev_basic_block.at(node_id));
+                                    instid.at(node_id));
         std::string load_unique_id(load_dynamic_methodid + "-" +
-                                   instid.at(child_id) + "-" +
-                                   prev_basic_block.at(child_id));
+                                   instid.at(child_id));
 
         if (store_load_pair.find(store_unique_id + "-" + load_unique_id) !=
             store_load_pair.end())
@@ -161,8 +157,7 @@ void BaseDatapath::memoryAmbiguation() {
     if (!is_memory_op(node_microop))
       continue;
     std::string unique_id(dynamic_methodid.at(node_id) + "-" +
-                          instid.at(node_id) + "-" +
-                          prev_basic_block.at(node_id));
+                          instid.at(node_id));
     if (is_store_op(node_microop)) {
       auto store_it = paired_store.find(unique_id);
       if (store_it == paired_store.end())
@@ -706,7 +701,6 @@ void BaseDatapath::removeSharedLoads() {
 void BaseDatapath::storeBuffer() {
   if (loopBound.size() <= 2)
     return;
-
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Store Buffer         " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
