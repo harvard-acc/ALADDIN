@@ -1,0 +1,12 @@
+# Common Make targets for simulating MachSuite in gem5.
+#
+# ALADDIN_HOME needs to be defined as an environment variable.
+# The gem5 dependencies are listed as .cpp files for compatibility with gem5.
+# To compile them with C code, we need to explicitly use gcc.
+
+GEM5_CFLAGS = -DGEM5_HARNESS -I$(ALADDIN_HOME)
+GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
+GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
+
+gem5:
+	$(MAKE) CFLAGS="-static -m32 -DGEM5_HARNESS -I$(ALADDIN_HOME)" OTHER_SRCS="$(GEM5_FULL_SRCS)" CC=gcc

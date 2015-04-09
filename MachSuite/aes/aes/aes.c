@@ -1,6 +1,6 @@
-/*  
+/*
 *   Byte-oriented AES-256 implementation.
-*   All lookup tables replaced with 'on the fly' calculations. 
+*   All lookup tables replaced with 'on the fly' calculations.
 *
 *   Copyright (c) 2007-2009 Ilya O. Levin, http://www.literatecode.com
 *   Other contributors: Hal Finney
@@ -60,7 +60,7 @@ const uint8_t sbox[256] = {
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68,
     0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 };
-
+uint8_t rcon = 1;  // Squeezing it here so we don't change line numbers.
 #define rj_sbox(x)     sbox[(x)]
 
 #else /* tableless subroutines */
@@ -101,7 +101,7 @@ uint8_t rj_sbox(uint8_t x)
     uint8_t y, sb;
 
     sb = y = gf_mulinv(x);
-    y = (y<<1)|(y>>7); sb ^= y;  y = (y<<1)|(y>>7); sb ^= y; 
+    y = (y<<1)|(y>>7); sb ^= y;  y = (y<<1)|(y>>7); sb ^= y;
     y = (y<<1)|(y>>7); sb ^= y;  y = (y<<1)|(y>>7); sb ^= y;
 
     return (sb ^ 0x63);
@@ -109,7 +109,7 @@ uint8_t rj_sbox(uint8_t x)
 #endif
 
 /* -------------------------------------------------------------------------- */
-uint8_t rj_xtime(uint8_t x) 
+uint8_t rj_xtime(uint8_t x)
 {
     return (x & 0x80) ? ((x << 1) ^ 0x1b) : (x << 1);
 } /* rj_xtime */
@@ -166,7 +166,7 @@ void aes_mixColumns(uint8_t *buf)
 } /* aes_mixColumns */
 
 /* -------------------------------------------------------------------------- */
-void aes_expandEncKey(uint8_t *k, uint8_t *rc) 
+void aes_expandEncKey(uint8_t *k, uint8_t *rc)
 {
     register uint8_t i;
 
@@ -197,8 +197,8 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
   dmaLoad(&buf[0],16*1*8);
 #endif
     //INIT
-    uint8_t rcon = 1;
     uint8_t i;
+
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
         ctx->enckey[i] = ctx->deckey[i] = k[i];
@@ -219,10 +219,9 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     }
     aes_subBytes(buf);
     aes_shiftRows(buf);
-    aes_expandEncKey(ctx->key, &rcon); 
+    aes_expandEncKey(ctx->key, &rcon);
     aes_addRoundKey(buf, ctx->key);
 #ifdef DMA_MODE
   dmaStore(ctx,96*1*8);
 #endif
 } /* aes256_encrypt */
-
