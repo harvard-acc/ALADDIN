@@ -6,7 +6,6 @@ gzFile instid_file;
 gzFile line_num_file;
 gzFile memory_trace;
 gzFile getElementPtr_trace;
-gzFile prevBasicBlock_trace;
 
 DDDG::DDDG(BaseDatapath *_datapath, std::string _trace_name)
   : datapath(_datapath), trace_name(_trace_name)
@@ -150,7 +149,6 @@ void DDDG::parse_instruction_line(std::string line)
   if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
   curr_bblock = bblockid;
-  gzprintf(prevBasicBlock_trace, "%s\n", prev_bblock.c_str());
   gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
   gzprintf(instid_file, "%s\n", curr_instid.c_str());
   gzprintf(line_num_file, "%d\n", line_num);
@@ -359,7 +357,6 @@ bool DDDG::build_initial_dddg()
 	line_num_file = gzopen(line_num_file_name.c_str(), "w");
   memory_trace = gzopen(memory_trace_name.c_str(), "w");
   getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
-  prevBasicBlock_trace = gzopen(prevBasicBlock_trace_name.c_str(), "w");
 
   gzFile tracefile_gz = gzopen(trace_name.c_str(), "r");
 
@@ -391,7 +388,6 @@ bool DDDG::build_initial_dddg()
   gzclose(line_num_file);
   gzclose(memory_trace);
   gzclose(getElementPtr_trace);
-  gzclose(prevBasicBlock_trace);
 
   output_dddg();
 
