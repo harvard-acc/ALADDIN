@@ -63,7 +63,7 @@ SCENARIO("Test DDDG Generation w/ Pp_scan", "[pp_scan]")
       THEN("The Graph Size should match expectations.")
       {
         REQUIRE(acc->getNumOfNodes() == 3176);
-        REQUIRE(acc->getNumOfEdges() == 4660);
+        REQUIRE(acc->getNumOfEdges() == 4630);
       }
     }
   }
