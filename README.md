@@ -1,4 +1,4 @@
-ALADDIN v1.1.0 Public Release
+ALADDIN v1.1.1 Public Release
 ============================================
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators.
