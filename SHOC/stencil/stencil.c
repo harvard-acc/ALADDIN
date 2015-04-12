@@ -96,7 +96,6 @@ int main()
 			Solution[i * (N ) + j] = 0;
 			//printf("Orig: %d ", OrigImg[i*(34+2) +j]);
 		}
-		printf("\n");
 	}
 
 	for(i=0;i<3;i++)

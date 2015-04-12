@@ -48,13 +48,14 @@ private:
   unsigned numOfPortsPerPartition;
   float cycleTime; //in ns
   std::unordered_map<std::string, unsigned> baseToPartitionID;
+  /* Occupied BW  per partition. */
+  std::unordered_map<std::string, unsigned> occupiedBWPerPartition;
   /* Number of loads per partition. */
   std::map<std::string, unsigned> partition_loads;
   /* Number of stores per partition. */
   std::map<std::string, unsigned> partition_stores;
 
   std::vector<bool> compPartition;
-  std::vector<unsigned> occupiedBWPerPartition;
   std::vector<unsigned> sizePerPartition;
   std::vector<float> readEnergyPerPartition;
   std::vector<float> writeEnergyPerPartition;

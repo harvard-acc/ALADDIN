@@ -18,7 +18,7 @@ void Scratchpad::setScratchpad(std::string baseName, unsigned num_of_bytes, unsi
   baseToPartitionID[baseName] = new_id;
 
   compPartition.push_back(false);
-  occupiedBWPerPartition.push_back(0);
+  occupiedBWPerPartition[baseName] = 0;
   sizePerPartition.push_back(num_of_bytes);
   //set read/write/leak/area per partition
   uca_org_t cacti_result = cactiWrapper(num_of_bytes, wordsize);
@@ -32,25 +32,25 @@ void Scratchpad::setScratchpad(std::string baseName, unsigned num_of_bytes, unsi
 
 void Scratchpad::step()
 {
-  for (auto it = occupiedBWPerPartition.begin(); it != occupiedBWPerPartition.end(); ++it){
-    *it = 0;
+  for (auto it = occupiedBWPerPartition.begin();
+            it != occupiedBWPerPartition.end(); ++it){
+    it->second = 0;
 }
 }
 bool Scratchpad::partitionExist(std::string baseName)
 {
   auto partition_it = baseToPartitionID.find(baseName);
   if (partition_it != baseToPartitionID.end())
-    return 1;
+    return true;
   else
-    return 0;
+    return false;
 }
 bool Scratchpad::addressRequest(std::string baseName)
 {
   if (canServicePartition(baseName))
   {
-    unsigned partition_id = findPartitionID(baseName);
-    assert(occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition);
-    occupiedBWPerPartition.at(partition_id)++;
+    assert(occupiedBWPerPartition[baseName] < numOfPortsPerPartition);
+    occupiedBWPerPartition[baseName]++;
     return true;
   }
   else
@@ -58,23 +58,19 @@ bool Scratchpad::addressRequest(std::string baseName)
 }
 bool Scratchpad::canService()
 {
-  for(auto base_it = baseToPartitionID.begin(); base_it != baseToPartitionID.end(); ++base_it)
-  {
-    std::string base_name = base_it->first;
-    //unsigned base_id = base_it->second;
-    //if (!compPartition.at(base_id))
-      if (canServicePartition(base_name))
-        return 1;
+  for (auto base_it = occupiedBWPerPartition.begin();
+            base_it != occupiedBWPerPartition.end(); ++base_it){
+    if (canServicePartition(base_it->first))
+      return true;
   }
-  return 0;
+  return false;
 }
 bool Scratchpad::canServicePartition(std::string baseName)
 {
-  unsigned partition_id = findPartitionID(baseName);
-  if (occupiedBWPerPartition.at(partition_id) < numOfPortsPerPartition)
-    return 1;
+  if (occupiedBWPerPartition[baseName] < numOfPortsPerPartition)
+    return true;
   else
-    return 0;
+    return false;
 }
 
 unsigned Scratchpad::findPartitionID(std::string baseName)
@@ -136,11 +132,13 @@ void Scratchpad::getMemoryBlocks(std::vector<std::string> &names)
 
 void Scratchpad::increment_loads(std::string partition)
 {
+  occupiedBWPerPartition[partition]++;
   partition_loads[partition]++;
 }
 
 void Scratchpad::increment_stores(std::string partition)
 {
+  occupiedBWPerPartition[partition]++;
   partition_stores[partition]++;
 }
 
