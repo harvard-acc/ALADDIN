@@ -1,34 +1,29 @@
 #include "file_func.h"
 
-void read_file(string file_name, vector<int> &output)
-{
+void read_file(string file_name, vector<int>& output) {
   ifstream file;
 #ifdef DDEBUG
   cerr << file_name << endl;
 #endif
   file.open(file_name.c_str());
   string wholeline;
-  if (file.is_open())
-  {
-    while (!file.eof())
-    {
+  if (file.is_open()) {
+    while (!file.eof()) {
       getline(file, wholeline);
       if (wholeline.size() == 0)
         break;
       output.push_back(atoi(wholeline.c_str()));
     }
     file.close();
-  }
-  else
-  {
+  } else {
     cerr << "file not open " << file_name << endl;
     exit(0);
   }
 }
 
-void read_gzip_string_file ( string gzip_file_name, unsigned size,
-  vector<string> &output)
-{
+void read_gzip_string_file(string gzip_file_name,
+                           unsigned size,
+                           vector<string>& output) {
   gzFile gzip_file;
   gzip_file = gzopen(gzip_file_name.c_str(), "r");
 
@@ -36,17 +31,15 @@ void read_gzip_string_file ( string gzip_file_name, unsigned size,
   cerr << gzip_file_name << endl;
 #endif
   unsigned i = 0;
-  while(!gzeof(gzip_file) && i< size)
-  {
+  while (!gzeof(gzip_file) && i < size) {
     char buffer[256];
     gzgets(gzip_file, buffer, 256);
     string s(buffer);
-    output.at(i) = s.substr(0,s.size()-1);
+    output.at(i) = s.substr(0, s.size() - 1);
     i++;
   }
   gzclose(gzip_file);
-  if (i == 0)
-  {
+  if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
     exit(0);
   }
@@ -55,18 +48,16 @@ void read_gzip_string_file ( string gzip_file_name, unsigned size,
 /*Read gz file into vector
 Input: gzip-file-name, size of elements, vector to write to
 */
-void read_gzip_file(string gzip_file_name, unsigned size, std::vector<int> &output)
-{
+void
+read_gzip_file(string gzip_file_name, unsigned size, std::vector<int>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   std::cerr << gzip_file_name << std::endl;
 #endif
-  if (fileExists(gzip_file_name))
-  {
+  if (fileExists(gzip_file_name)) {
     gzip_file = gzopen(gzip_file_name.c_str(), "r");
     unsigned i = 0;
-    while(!gzeof(gzip_file) && i< size)
-    {
+    while (!gzeof(gzip_file) && i < size) {
       char buffer[256];
       gzgets(gzip_file, buffer, 256);
       output.at(i) = strtol(buffer, NULL, 10);
@@ -76,23 +67,20 @@ void read_gzip_file(string gzip_file_name, unsigned size, std::vector<int> &outp
 #ifdef DDEBUG
     std::cerr << "end of reading file" << gzip_file_name << std::endl;
 #endif
-  }
-  else
-  {
-    cerr << "no such file " <<  gzip_file_name << endl;
+  } else {
+    cerr << "no such file " << gzip_file_name << endl;
   }
 }
-void read_gzip_unsigned_file(string gzip_file_name, unsigned size,
-  vector<unsigned> &output)
-{
+void read_gzip_unsigned_file(string gzip_file_name,
+                             unsigned size,
+                             vector<unsigned>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
 #endif
   gzip_file = gzopen(gzip_file_name.c_str(), "r");
   unsigned i = 0;
-  while(!gzeof(gzip_file) && i< size)
-  {
+  while (!gzeof(gzip_file) && i < size) {
     char buffer[256];
     gzgets(gzip_file, buffer, 256);
     output.at(i) = (unsigned)strtol(buffer, NULL, 10);
@@ -104,16 +92,14 @@ void read_gzip_unsigned_file(string gzip_file_name, unsigned size,
 /*Read gz file into vector
 Input: gzip-file-name, size of elements, vector to write to
 */
-void read_gzip_file_no_size(string gzip_file_name, vector<int> &output)
-{
+void read_gzip_file_no_size(string gzip_file_name, vector<int>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
 #endif
   gzip_file = gzopen(gzip_file_name.c_str(), "r");
   unsigned i = 0;
-  while(!gzeof(gzip_file) )
-  {
+  while (!gzeof(gzip_file)) {
     char buffer[256];
     gzgets(gzip_file, buffer, 256);
     int value;
@@ -123,8 +109,7 @@ void read_gzip_file_no_size(string gzip_file_name, vector<int> &output)
   }
   gzclose(gzip_file);
 
-  if (i == 0)
-  {
+  if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
     exit(0);
   }
@@ -133,17 +118,16 @@ void read_gzip_file_no_size(string gzip_file_name, vector<int> &output)
 /*Read gz with two element file into vector
 Input: gzip-file-name, size of elements, vector to write to
 */
-void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size,
-  vector< pair<unsigned, unsigned> > &output)
-{
+void read_gzip_2_unsigned_file(string gzip_file_name,
+                               unsigned size,
+                               vector<pair<unsigned, unsigned>>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
 #endif
   gzip_file = gzopen(gzip_file_name.c_str(), "r");
   unsigned i = 0;
-  while(!gzeof(gzip_file) && i< size)
-  {
+  while (!gzeof(gzip_file) && i < size) {
     char buffer[256];
     gzgets(gzip_file, buffer, 256);
     unsigned element1, element2;
@@ -154,24 +138,22 @@ void read_gzip_2_unsigned_file(string gzip_file_name, unsigned size,
   }
   gzclose(gzip_file);
 
-  if (i == 0)
-  {
+  if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
     exit(0);
   }
 }
 
-void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size,
-  vector<unsigned> &output)
-{
+void read_gzip_1in2_unsigned_file(string gzip_file_name,
+                                  unsigned size,
+                                  vector<unsigned>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << "," << size << endl;
 #endif
   gzip_file = gzopen(gzip_file_name.c_str(), "r");
   unsigned i = 0;
-  while(!gzeof(gzip_file) && i< size)
-  {
+  while (!gzeof(gzip_file) && i < size) {
     char buffer[256];
     gzgets(gzip_file, buffer, 256);
     unsigned element1, element2;
@@ -180,15 +162,14 @@ void read_gzip_1in2_unsigned_file(string gzip_file_name, unsigned size,
     i++;
   }
   gzclose(gzip_file);
-  if (i == 0)
-  {
+  if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
     exit(0);
   }
 }
 
-void write_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
-{
+void
+write_gzip_file(string gzip_file_name, unsigned size, vector<int>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
@@ -199,8 +180,9 @@ void write_gzip_file(string gzip_file_name, unsigned size, vector<int> &output)
   gzclose(gzip_file);
 }
 
-void write_gzip_bool_file(std::string gzip_file_name, unsigned size, std::vector<bool> &output)
-{
+void write_gzip_bool_file(std::string gzip_file_name,
+                          unsigned size,
+                          std::vector<bool>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
@@ -211,9 +193,9 @@ void write_gzip_bool_file(std::string gzip_file_name, unsigned size, std::vector
   gzclose(gzip_file);
 }
 
-void write_gzip_unsigned_file(string gzip_file_name, unsigned size,
-vector<unsigned> &output)
-{
+void write_gzip_unsigned_file(string gzip_file_name,
+                              unsigned size,
+                              vector<unsigned>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
@@ -224,8 +206,8 @@ vector<unsigned> &output)
   gzclose(gzip_file);
 }
 
-void write_string_file(string file_name, unsigned size, vector<string> &output)
-{
+void
+write_string_file(string file_name, unsigned size, vector<string>& output) {
   ofstream file;
   file.open(file_name.c_str());
   for (unsigned i = 0; i < size; ++i)
@@ -233,8 +215,9 @@ void write_string_file(string file_name, unsigned size, vector<string> &output)
   file.close();
 }
 
-void write_gzip_string_file(string gzip_file_name, unsigned size, vector<string> &output)
-{
+void write_gzip_string_file(string gzip_file_name,
+                            unsigned size,
+                            vector<string>& output) {
   gzFile gzip_file;
   gzip_file = gzopen(gzip_file_name.c_str(), "w");
 #ifdef DDEBUG
@@ -245,8 +228,7 @@ void write_gzip_string_file(string gzip_file_name, unsigned size, vector<string>
   gzclose(gzip_file);
 }
 
-bool fileExists (const string file_name)
-{
+bool fileExists(const string file_name) {
   struct stat buf;
   if (stat(file_name.c_str(), &buf) != -1)
     return true;

@@ -42,9 +42,13 @@
 #define PIPE_EDGE 12
 
 using namespace std;
-typedef boost::property < boost::vertex_index_t, unsigned> VertexProperty;
-typedef boost::property < boost::edge_name_t, uint8_t> EdgeProperty;
-typedef boost::adjacency_list < boost::listS, boost::vecS, boost::bidirectionalS, VertexProperty, EdgeProperty> Graph;
+typedef boost::property<boost::vertex_index_t, unsigned> VertexProperty;
+typedef boost::property<boost::edge_name_t, uint8_t> EdgeProperty;
+typedef boost::adjacency_list<boost::listS,
+                              boost::vecS,
+                              boost::bidirectionalS,
+                              VertexProperty,
+                              EdgeProperty> Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef boost::graph_traits<Graph>::edge_descriptor Edge;
 typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
@@ -54,52 +58,46 @@ typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
 typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 // Used heavily in reporting cycle-level statistics.
-typedef std::unordered_map< std::string, std::vector<int> > activity_map;
-typedef std::unordered_map< std::string, int> max_activity_map;
+typedef std::unordered_map<std::string, std::vector<int>> activity_map;
+typedef std::unordered_map<std::string, int> max_activity_map;
 
 class Scratchpad;
 
-struct partitionEntry
-{
+struct partitionEntry {
   std::string type;
-  unsigned array_size; //num of bytes
-  unsigned wordsize; //in bytes
+  unsigned array_size;  // num of bytes
+  unsigned wordsize;    // in bytes
   unsigned part_factor;
 };
-struct regEntry
-{
+struct regEntry {
   int size;
   int reads;
   int writes;
 };
-struct callDep
-{
+struct callDep {
   std::string caller;
   std::string callee;
   int callInstID;
 };
-struct newEdge
-{
+struct newEdge {
   unsigned from;
   unsigned to;
   int parid;
 };
-struct RQEntry
-{
+struct RQEntry {
   unsigned node_id;
   mutable float latency_so_far;
   mutable bool valid;
 };
 
-struct RQEntryComp
-{
-  bool operator() (const RQEntry& left, const RQEntry &right) const
-  { return left.node_id < right.node_id; }
+struct RQEntryComp {
+  bool operator()(const RQEntry& left, const RQEntry& right) const {
+    return left.node_id < right.node_id;
+  }
 };
 
 // Stores all information about a memory access.
-struct MemAccess
-{
+struct MemAccess {
   // Address read from the trace.
   long long int vaddr;
   size_t size;
@@ -110,8 +108,7 @@ struct MemAccess
 };
 
 // Data to print out to file, stdout, or database.
-struct summary_data_t
-{
+struct summary_data_t {
   std::string benchName;
   int num_cycles;
   float avg_power;
@@ -130,27 +127,26 @@ struct summary_data_t
   float max_shifter;
 };
 
-class BaseDatapath
-{
+class BaseDatapath {
  public:
   BaseDatapath(std::string bench, string trace_file, string config_file);
   virtual ~BaseDatapath();
 
-  //Change graph.
+  // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
-  void insertMicroop(int node_microop) { microop.push_back(node_microop);}
+  void insertMicroop(int node_microop) { microop.push_back(node_microop); }
   void setGlobalGraph();
   void setGraphForStepping();
   int clearGraph();
   void dumpGraph(std::string graph_name);
 
-  //Accessing graph stats.
+  // Accessing graph stats.
   std::string getBenchName() { return benchName; }
   int getNumOfNodes() { return boost::num_vertices(graph_); }
   int getNumOfEdges() { return boost::num_edges(graph_); }
   int getMicroop(unsigned int node_id) { return microop.at(node_id); }
   int getNumOfConnectedNodes(unsigned int node_id) {
-     return boost::degree(nameToVertex[node_id], graph_);
+    return boost::degree(nameToVertex[node_id], graph_);
   }
   int getUnrolledLoopBoundary(unsigned int region_id) {
     return loopBound.at(region_id);
@@ -192,111 +188,124 @@ class BaseDatapath
 #endif
 
  protected:
-  //Graph transformation helpers.
-  void findMinRankNodes(
-      unsigned &node1, unsigned &node2, std::map<unsigned, unsigned> &rank_map);
+  // Graph transformation helpers.
+  void findMinRankNodes(unsigned& node1,
+                        unsigned& node2,
+                        std::map<unsigned, unsigned>& rank_map);
   void cleanLeafNodes();
-  bool doesEdgeExistVertex(Vertex from, Vertex to) {return edge(from, to, graph_).second;}
+  bool doesEdgeExistVertex(Vertex from, Vertex to) {
+    return edge(from, to, graph_).second;
+  }
 
   // Configuration parsing and handling.
   void parse_config(std::string bench, std::string config_file);
   bool readPipeliningConfig();
-  bool readUnrollingConfig(std::unordered_map<int, int > &unrolling_config);
-  bool readFlattenConfig(std::unordered_set<int> &flatten_config);
-  bool readPartitionConfig(std::unordered_map<std::string,
-         partitionEntry> & partition_config);
-  bool readCompletePartitionConfig(std::unordered_map<std::string, unsigned> &config);
+  bool readUnrollingConfig(std::unordered_map<int, int>& unrolling_config);
+  bool readFlattenConfig(std::unordered_set<int>& flatten_config);
+  bool readPartitionConfig(
+      std::unordered_map<std::string, partitionEntry>& partition_config);
+  bool readCompletePartitionConfig(
+      std::unordered_map<std::string, unsigned>& config);
 
   // State initialization.
   virtual void initBaseAddress();
-  void initMethodID(std::vector<int> &methodid);
-  void initDynamicMethodID(std::vector<std::string> &methodid);
-  void initPrevBasicBlock(std::vector<std::string> &prevBasicBlock);
-  void initInstID(std::vector<std::string> &instid);
-  void initAddress(std::unordered_map<unsigned, MemAccess> &address);
-  void initLineNum(std::vector<int> &lineNum);
+  void initMethodID(std::vector<int>& methodid);
+  void initDynamicMethodID(std::vector<std::string>& methodid);
+  void initPrevBasicBlock(std::vector<std::string>& prevBasicBlock);
+  void initInstID(std::vector<std::string>& instid);
+  void initAddress(std::unordered_map<unsigned, MemAccess>& address);
+  void initLineNum(std::vector<int>& lineNum);
   void initGetElementPtr(
-      std::unordered_map<unsigned, pair<std::string, long long int> > &get_element_ptr);
+      std::unordered_map<unsigned, pair<std::string, long long int>>&
+          get_element_ptr);
 
-  //Graph updates.
-  void updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges);
-  void updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges);
-  void updateGraphWithIsolatedNodes(std::vector<unsigned> &to_remove_nodes);
+  // Graph updates.
+  void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
+  void updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges);
+  void updateGraphWithIsolatedNodes(std::vector<unsigned>& to_remove_nodes);
   void updateChildren(unsigned node_id);
   void updateRegStats();
 
   // Scheduling
-  void addMemReadyNode( unsigned node_id, float latency_so_far);
-  void addNonMemReadyNode( unsigned node_id, float latency_so_far);
+  void addMemReadyNode(unsigned node_id, float latency_so_far);
+  void addNonMemReadyNode(unsigned node_id, float latency_so_far);
   int fireMemNodes();
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
-  void markNodeCompleted(
-      std::list<unsigned>::iterator& executingQueuePos, int& advance_to);
+  void markNodeCompleted(std::list<unsigned>::iterator& executingQueuePos,
+                         int& advance_to);
 
   // Stats output.
   void writeFinalLevel();
   void writeGlobalIsolated();
   void writePerCycleActivity();
   void writeBaseAddress();
-  void writeMicroop(std::vector<int> &microop);
-  void initPerCycleActivity(
-         std::vector<std::string> &comp_partition_names,
-         std::vector<std::string> &spad_partition_names,
-         activity_map &ld_activity, activity_map &st_activity,
-         activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity, activity_map &shifter_activity,
-         max_activity_map &max_mul_per_function,
-         max_activity_map &max_add_per_function,
-         max_activity_map &max_bit_per_function,
-         max_activity_map &max_shifter_per_function,
-         int num_cycles);
-  void updatePerCycleActivity(
-         activity_map &ld_activity, activity_map &st_activity,
-         activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity, activity_map &shifter_activity,
-         max_activity_map &max_mul_per_function,
-         max_activity_map &max_add_per_function,
-         max_activity_map &max_bit_per_function,
-         max_activity_map &max_shifter_per_function);
-  void outputPerCycleActivity(
-         std::vector<std::string> &comp_partition_names,
-         std::vector<std::string> &spad_partition_names,
-         activity_map &ld_activity, activity_map &st_activity,
-         activity_map &mul_activity, activity_map &add_activity,
-         activity_map &bit_activity, activity_map &shifter_activity,
-         max_activity_map &max_mul_per_function,
-         max_activity_map &max_add_per_function,
-         max_activity_map &max_bit_per_function,
-         max_activity_map &max_shifter_per_function);
+  void writeMicroop(std::vector<int>& microop);
+  void initPerCycleActivity(std::vector<std::string>& comp_partition_names,
+                            std::vector<std::string>& spad_partition_names,
+                            activity_map& ld_activity,
+                            activity_map& st_activity,
+                            activity_map& mul_activity,
+                            activity_map& add_activity,
+                            activity_map& bit_activity,
+                            activity_map& shifter_activity,
+                            max_activity_map& max_mul_per_function,
+                            max_activity_map& max_add_per_function,
+                            max_activity_map& max_bit_per_function,
+                            max_activity_map& max_shifter_per_function,
+                            int num_cycles);
+  void updatePerCycleActivity(activity_map& ld_activity,
+                              activity_map& st_activity,
+                              activity_map& mul_activity,
+                              activity_map& add_activity,
+                              activity_map& bit_activity,
+                              activity_map& shifter_activity,
+                              max_activity_map& max_mul_per_function,
+                              max_activity_map& max_add_per_function,
+                              max_activity_map& max_bit_per_function,
+                              max_activity_map& max_shifter_per_function);
+  void outputPerCycleActivity(std::vector<std::string>& comp_partition_names,
+                              std::vector<std::string>& spad_partition_names,
+                              activity_map& ld_activity,
+                              activity_map& st_activity,
+                              activity_map& mul_activity,
+                              activity_map& add_activity,
+                              activity_map& bit_activity,
+                              activity_map& shifter_activity,
+                              max_activity_map& max_mul_per_function,
+                              max_activity_map& max_add_per_function,
+                              max_activity_map& max_bit_per_function,
+                              max_activity_map& max_shifter_per_function);
   void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
-  virtual void getAverageMemPower(
-      unsigned int cycles, float *avg_power,
-      float *avg_dynamic, float *avg_leak) = 0;
-  virtual void getMemoryBlocks(std::vector<std::string> &names) = 0;
+  virtual void getAverageMemPower(unsigned int cycles,
+                                  float* avg_power,
+                                  float* avg_dynamic,
+                                  float* avg_leak) = 0;
+  virtual void getMemoryBlocks(std::vector<std::string>& names) = 0;
 
 #ifdef USE_DB
   /* Gets the experiment id for experiment_name. If this is a new
    * experiment_name that doesn't exist in the database, it creates a new unique
    * experiment id and inserts it and the name into the database. */
-  int getExperimentId(sql::Connection *con);
+  int getExperimentId(sql::Connection* con);
 
   /* Writes the current simulation configuration parameters into the appropriate
    * database table. Since different accelerators have different configuration
    * parameters, this is left pure virtual. */
-  virtual int writeConfiguration(sql::Connection *con) = 0;
+  virtual int writeConfiguration(sql::Connection* con) = 0;
 
   /* Returns the last auto_incremented column value. This is used to get the
    * newly inserted config.id field. */
-  int getLastInsertId(sql::Connection *con);
+  int getLastInsertId(sql::Connection* con);
 
   /* Extracts the base Aladdin configuration parameters from the config file. */
-  void getCommonConfigParameters(
-      int &unrolling_factor, bool &pipelining, int &partition_factor);
+  void getCommonConfigParameters(int& unrolling_factor,
+                                 bool& pipelining,
+                                 int& partition_factor);
 
   void writeSummaryToDatabase(summary_data_t& summary);
 #endif
@@ -320,13 +329,13 @@ class BaseDatapath
   /* A string identifier for a set of related simulations. For storing results
    * into databases, this is required. */
   std::string experiment_name;
-  //boost graph.
+  // boost graph.
   Graph graph_;
   std::unordered_map<unsigned, Vertex> nameToVertex;
   VertexNameMap vertexToName;
   EdgeNameMap edgeToParid;
 
-  //Graph node and edge attributes.
+  // Graph node and edge attributes.
   unsigned numTotalNodes;
   unsigned numTotalEdges;
 
@@ -348,12 +357,11 @@ class BaseDatapath
   std::vector<std::string> dynamic_method_id;
   std::vector<std::string> instruction_id;
 
-  //Scheduling.
+  // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
   std::list<unsigned> executingQueue;
   std::list<unsigned> readyToExecuteQueue;
 };
-
 
 #endif

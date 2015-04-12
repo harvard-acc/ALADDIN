@@ -6,13 +6,14 @@
 
 #include "DatabaseDeps.h"
 
-BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
+BaseDatapath::BaseDatapath(std::string bench,
+                           std::string trace_file,
                            std::string config_file) {
-  benchName = (char *)bench.c_str();
+  benchName = (char*)bench.c_str();
   this->trace_file = trace_file;
   this->config_file = config_file;
   use_db = false;
-  DDDG *dddg;
+  DDDG* dddg;
   dddg = new DDDG(this, trace_file);
   /*Build Initial DDDG*/
   if (dddg->build_initial_dddg()) {
@@ -37,8 +38,9 @@ BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
   initInstID(instruction_id);
 
   for (auto dynamic_func_it = dynamic_method_id.begin(),
-           E = dynamic_method_id.end();
-       dynamic_func_it != E; dynamic_func_it++) {
+            E = dynamic_method_id.end();
+       dynamic_func_it != E;
+       dynamic_func_it++) {
     char func_id[256];
     int count;
     sscanf((*dynamic_func_it).c_str(), "%[^-]-%d\n", func_id, &count);
@@ -52,8 +54,8 @@ BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
 
 BaseDatapath::~BaseDatapath() {}
 
-void BaseDatapath::addDddgEdge(unsigned int from, unsigned int to,
-                               uint8_t parid) {
+void
+BaseDatapath::addDddgEdge(unsigned int from, unsigned int to, uint8_t parid) {
   if (from != to)
     add_edge(from, to, EdgeProperty(parid), graph_);
 }
@@ -89,7 +91,8 @@ void BaseDatapath::memoryAmbiguation() {
       // optimization.
       out_edge_iter out_edge_it, out_edge_end;
       for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
-           out_edge_it != out_edge_end; ++out_edge_it) {
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
         Vertex child_node = target(*out_edge_it, graph_);
         int child_id = vertexToName[child_node];
         int child_microop = microop.at(child_id);
@@ -98,7 +101,8 @@ void BaseDatapath::memoryAmbiguation() {
         out_edge_iter gep_out_edge_it, gep_out_edge_end;
         for (tie(gep_out_edge_it, gep_out_edge_end) =
                  out_edges(child_node, graph_);
-             gep_out_edge_it != gep_out_edge_end; ++gep_out_edge_it) {
+             gep_out_edge_it != gep_out_edge_end;
+             ++gep_out_edge_it) {
           Vertex grandchild_node = target(*gep_out_edge_it, graph_);
           int grandchild_id = vertexToName[grandchild_node];
           int grandchild_microop = microop.at(grandchild_id);
@@ -111,7 +115,8 @@ void BaseDatapath::memoryAmbiguation() {
       // iterate its children to find a load op
       out_edge_iter out_edge_it, out_edge_end;
       for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
-           out_edge_it != out_edge_end; ++out_edge_it) {
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
         int child_id = vertexToName[target(*out_edge_it, graph_)];
         int child_microop = microop.at(child_id);
         if (!is_load_op(child_microop))
@@ -166,15 +171,15 @@ void BaseDatapath::memoryAmbiguation() {
       if (std::distance(load_range.first, load_range.second) == 1)
         continue;
       for (auto load_store_it = load_range.first;
-           load_store_it != load_range.second; ++load_store_it) {
+           load_store_it != load_range.second;
+           ++load_store_it) {
         assert(paired_store.find(load_store_it->second) != paired_store.end());
         auto prev_store_it = last_store.find(load_store_it->second);
         if (prev_store_it == last_store.end())
           continue;
         unsigned prev_store_id = prev_store_it->second;
-        if (!doesEdgeExist(prev_store_id, node_id))
-        {
-          to_add_edges.push_back({prev_store_id, node_id, -1});
+        if (!doesEdgeExist(prev_store_id, node_id)) {
+          to_add_edges.push_back({ prev_store_id, node_id, -1 });
           dynamicMemoryOps.insert(prev_store_id);
           dynamicMemoryOps.insert(node_id);
         }
@@ -207,11 +212,12 @@ void BaseDatapath::removePhiNodes() {
     if (checked_phi_nodes.find(node_id) != checked_phi_nodes.end())
       continue;
     // find its children
-    std::vector<pair<unsigned, int> > phi_child;
+    std::vector<pair<unsigned, int>> phi_child;
 
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
-         out_edge_it != out_edge_end; ++out_edge_it) {
+         out_edge_it != out_edge_end;
+         ++out_edge_it) {
       checked_phi_nodes.insert(node_id);
       to_remove_edges.insert(*out_edge_it);
       phi_child.push_back(make_pair(vertexToName[target(*out_edge_it, graph_)],
@@ -234,7 +240,8 @@ void BaseDatapath::removePhiNodes() {
       }
       to_remove_edges.insert(*in_edge_it);
       for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
-           child_it != chil_E; ++child_it) {
+           child_it != chil_E;
+           ++child_it) {
         unsigned child_id = child_it->first;
         to_add_edges.push_back({ parent_id, child_id, child_it->second });
       }
@@ -242,17 +249,19 @@ void BaseDatapath::removePhiNodes() {
       // convert nodes
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
-           in_edge_it != in_edge_end; ++in_edge_it) {
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         to_remove_edges.insert(*in_edge_it);
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
-             child_it != chil_E; ++child_it) {
+             child_it != chil_E;
+             ++child_it) {
           unsigned child_id = child_it->first;
           to_add_edges.push_back({ parent_id, child_id, child_it->second });
         }
       }
     }
-    std::vector<pair<unsigned, int> >().swap(phi_child);
+    std::vector<pair<unsigned, int>>().swap(phi_child);
   }
 
   updateGraphWithNewEdges(to_add_edges);
@@ -312,7 +321,8 @@ void BaseDatapath::cleanLeafNodes() {
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
-           in_edge_it != in_edge_end; ++in_edge_it) {
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
         int parent_id = vertexToName[source(*in_edge_it, graph_)];
         num_of_children.at(parent_id)++;
       }
@@ -320,7 +330,8 @@ void BaseDatapath::cleanLeafNodes() {
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
-           in_edge_it != in_edge_end; ++in_edge_it) {
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
         if (edge_to_parid[*in_edge_it] == CONTROL_EDGE) {
           int parent_id = vertexToName[source(*in_edge_it, graph_)];
           num_of_children.at(parent_id)++;
@@ -432,7 +443,8 @@ void BaseDatapath::loopPipelining() {
   int prev_first = -1;
   for (auto first_it = first_non_isolated_node.begin(),
             E = first_non_isolated_node.end();
-       first_it != E; ++first_it) {
+       first_it != E;
+       ++first_it) {
     unsigned br_node = first_it->first;
     unsigned first_id = first_it->second;
     if (is_call_op(microop.at(br_node))) {
@@ -447,7 +459,8 @@ void BaseDatapath::loopPipelining() {
       out_edge_iter out_edge_it, out_edge_end;
       for (tie(out_edge_it, out_edge_end) =
                out_edges(nameToVertex[prev_branch], graph_);
-           out_edge_it != out_edge_end; ++out_edge_it) {
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
         Vertex child_vertex = target(*out_edge_it, graph_);
         unsigned child_id = vertexToName[child_vertex];
         if (child_id <= first_id || edge_to_parid[*out_edge_it] != CONTROL_EDGE)
@@ -460,7 +473,8 @@ void BaseDatapath::loopPipelining() {
     in_edge_iter in_edge_it, in_edge_end;
     for (tie(in_edge_it, in_edge_end) =
              in_edges(nameToVertex[first_id], graph_);
-         in_edge_it != in_edge_end; ++in_edge_it) {
+         in_edge_it != in_edge_end;
+         ++in_edge_it) {
       Vertex parent_vertex = source(*in_edge_it, graph_);
       unsigned parent_id = vertexToName[parent_vertex];
       if (is_branch_op(microop.at(parent_id)))
@@ -472,7 +486,8 @@ void BaseDatapath::loopPipelining() {
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) =
              out_edges(nameToVertex[br_node], graph_);
-         out_edge_it != out_edge_end; ++out_edge_it) {
+         out_edge_it != out_edge_end;
+         ++out_edge_it) {
       if (is_call_op(microop.at(vertexToName[target(*out_edge_it, graph_)])))
         continue;
       if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
@@ -554,7 +569,8 @@ void BaseDatapath::loopUnrolling() {
           to_add_edges.push_back(
               {(unsigned)prev_branch, node_id, CONTROL_EDGE });
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
-             prev_node_it != E; prev_node_it++) {
+             prev_node_it != E;
+             prev_node_it++) {
           if (!doesEdgeExist(*prev_node_it, node_id) &&
               !(is_dma_op(microop.at(*prev_node_it)) &&
                 is_dma_op(microop.at(node_id)))) {
@@ -580,7 +596,8 @@ void BaseDatapath::loopUnrolling() {
           iter_counts++;
           for (auto prev_node_it = nodes_between.begin(),
                     E = nodes_between.end();
-               prev_node_it != E; prev_node_it++) {
+               prev_node_it != E;
+               prev_node_it++) {
             if (!doesEdgeExist(*prev_node_it, node_id)) {
               to_add_edges.push_back({ *prev_node_it, node_id, CONTROL_EDGE });
             }
@@ -651,7 +668,7 @@ void BaseDatapath::removeSharedLoads() {
         if (addr_it == address_loaded.end())
           address_loaded[node_address] = node_id;
         else {
-          //check whether the current load is dynamic or not.
+          // check whether the current load is dynamic or not.
           if (dynamicMemoryOps.find(node_id) != dynamicMemoryOps.end()) {
             ++node_id;
             continue;
@@ -663,7 +680,8 @@ void BaseDatapath::removeSharedLoads() {
           Vertex load_node = nameToVertex[node_id];
           out_edge_iter out_edge_it, out_edge_end;
           for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_);
-               out_edge_it != out_edge_end; ++out_edge_it) {
+               out_edge_it != out_edge_end;
+               ++out_edge_it) {
             Edge curr_edge = *out_edge_it;
             Vertex child_vertex = target(curr_edge, graph_);
             unsigned child_id = vertexToName[child_vertex];
@@ -675,7 +693,8 @@ void BaseDatapath::removeSharedLoads() {
           }
           in_edge_iter in_edge_it, in_edge_end;
           for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_);
-               in_edge_it != in_edge_end; ++in_edge_it)
+               in_edge_it != in_edge_end;
+               ++in_edge_it)
             to_remove_edges.insert(*in_edge_it);
         }
       }
@@ -716,10 +735,10 @@ void BaseDatapath::storeBuffer() {
         ++node_id;
         continue;
       }
-      if (is_store_op(microop.at(node_id)))
-      {
-        //remove this store
-        //dynamic stores, cannot disambiguated in the static time, cannot remove
+      if (is_store_op(microop.at(node_id))) {
+        // remove this store
+        // dynamic stores, cannot disambiguated in the static time, cannot
+        // remove
         if (dynamicMemoryOps.find(node_id) != dynamicMemoryOps.end()) {
           ++node_id;
           continue;
@@ -729,13 +748,13 @@ void BaseDatapath::storeBuffer() {
 
         std::vector<Vertex> store_child;
         for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
-             out_edge_it != out_edge_end; ++out_edge_it) {
+             out_edge_it != out_edge_end;
+             ++out_edge_it) {
           Vertex child_vertex = target(*out_edge_it, graph_);
           int child_id = vertexToName[child_vertex];
-          if (is_load_op(microop.at(child_id)))
-          {
-            if (dynamicMemoryOps.find(child_id) != dynamicMemoryOps.end()
-               || child_id >= (unsigned)*bound_it )
+          if (is_load_op(microop.at(child_id))) {
+            if (dynamicMemoryOps.find(child_id) != dynamicMemoryOps.end() ||
+                child_id >= (unsigned)*bound_it)
               continue;
             else
               store_child.push_back(child_vertex);
@@ -747,7 +766,8 @@ void BaseDatapath::storeBuffer() {
           Vertex store_parent;
           in_edge_iter in_edge_it, in_edge_end;
           for (tie(in_edge_it, in_edge_end) = in_edges(node, graph_);
-               in_edge_it != in_edge_end; ++in_edge_it) {
+               in_edge_it != in_edge_end;
+               ++in_edge_it) {
             // parent node that generates value
             if (edge_to_parid[*in_edge_it] == 1) {
               parent_found = true;
@@ -758,14 +778,16 @@ void BaseDatapath::storeBuffer() {
 
           if (parent_found) {
             for (auto load_it = store_child.begin(), E = store_child.end();
-                 load_it != E; ++load_it) {
+                 load_it != E;
+                 ++load_it) {
               Vertex load_node = *load_it;
               to_remove_nodes.push_back(vertexToName[load_node]);
 
               out_edge_iter out_edge_it, out_edge_end;
               for (tie(out_edge_it, out_edge_end) =
                        out_edges(load_node, graph_);
-                   out_edge_it != out_edge_end; ++out_edge_it) {
+                   out_edge_it != out_edge_end;
+                   ++out_edge_it) {
                 to_add_edges.push_back(
                     {(unsigned)vertexToName[store_parent],
                      (unsigned)vertexToName[target(*out_edge_it, graph_)],
@@ -824,17 +846,18 @@ void BaseDatapath::removeRepeatedStores() {
       if (addr_it == address_store_map.end())
         address_store_map[node_address] = node_id;
       else {
-        //remove this store
-        //dynamic stores, cannot disambiguated in the run time, cannot remove
-        if (dynamicMemoryOps.find(node_id) == dynamicMemoryOps.end() ) {
-          if (boost::out_degree(nameToVertex[node_id], graph_)== 0) {
+        // remove this store
+        // dynamic stores, cannot disambiguated in the run time, cannot remove
+        if (dynamicMemoryOps.find(node_id) == dynamicMemoryOps.end()) {
+          if (boost::out_degree(nameToVertex[node_id], graph_) == 0) {
             microop.at(node_id) = LLVM_IR_SilentStore;
           } else {
             int num_of_real_children = 0;
             out_edge_iter out_edge_it, out_edge_end;
             for (tie(out_edge_it, out_edge_end) =
                      out_edges(nameToVertex[node_id], graph_);
-                 out_edge_it != out_edge_end; ++out_edge_it) {
+                 out_edge_it != out_edge_end;
+                 ++out_edge_it) {
               if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
                 num_of_real_children++;
             }
@@ -897,7 +920,7 @@ void BaseDatapath::treeHeightReduction() {
 
     std::list<unsigned> nodes;
     std::vector<Edge> tmp_remove_edges;
-    std::vector<pair<int, bool> > leaves;
+    std::vector<pair<int, bool>> leaves;
     std::vector<int> associative_chain;
     associative_chain.push_back(node_id);
     int chain_id = 0;
@@ -910,7 +933,8 @@ void BaseDatapath::treeHeightReduction() {
         in_edge_iter in_edge_it, in_edge_end;
         for (tie(in_edge_it, in_edge_end) =
                  in_edges(nameToVertex[chain_node_id], graph_);
-             in_edge_it != in_edge_end; ++in_edge_it) {
+             in_edge_it != in_edge_end;
+             ++in_edge_it) {
           int parent_id = vertexToName[source(*in_edge_it, graph_)];
           if (is_branch_op(microop.at(parent_id)))
             continue;
@@ -920,7 +944,8 @@ void BaseDatapath::treeHeightReduction() {
           nodes.push_front(chain_node_id);
           for (tie(in_edge_it, in_edge_end) =
                    in_edges(nameToVertex[chain_node_id], graph_);
-               in_edge_it != in_edge_end; ++in_edge_it) {
+               in_edge_it != in_edge_end;
+               ++in_edge_it) {
             Vertex parent_node = source(*in_edge_it, graph_);
             int parent_id = vertexToName[parent_node];
             assert(parent_id < chain_node_id);
@@ -940,7 +965,8 @@ void BaseDatapath::treeHeightReduction() {
                 int num_of_children = 0;
                 for (tie(out_edge_it, out_edge_end) =
                          out_edges(parent_node, graph_);
-                     out_edge_it != out_edge_end; ++out_edge_it) {
+                     out_edge_it != out_edge_end;
+                     ++out_edge_it) {
                   if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
                     num_of_children++;
                 }
@@ -964,7 +990,8 @@ void BaseDatapath::treeHeightReduction() {
       continue;
 
     for (auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end();
-         it != E; it++)
+         it != E;
+         it++)
       to_remove_edges.insert(*it);
 
     std::map<unsigned, unsigned> rank_map;
@@ -1006,8 +1033,9 @@ void BaseDatapath::treeHeightReduction() {
   updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
-void BaseDatapath::findMinRankNodes(unsigned &node1, unsigned &node2,
-                                    std::map<unsigned, unsigned> &rank_map) {
+void BaseDatapath::findMinRankNodes(unsigned& node1,
+                                    unsigned& node2,
+                                    std::map<unsigned, unsigned>& rank_map) {
   unsigned min_rank = numTotalNodes;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
     int node_rank = it->second;
@@ -1026,7 +1054,7 @@ void BaseDatapath::findMinRankNodes(unsigned &node1, unsigned &node2,
   }
 }
 
-void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges) {
+void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {
     if (it->from != it->to && !doesEdgeExist(it->from, it->to))
       get(boost::edge_name, graph_)[add_edge(it->from, it->to, graph_).first] =
@@ -1034,12 +1062,12 @@ void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge> &to_add_edges) {
   }
 }
 void BaseDatapath::updateGraphWithIsolatedNodes(
-    std::vector<unsigned> &to_remove_nodes) {
+    std::vector<unsigned>& to_remove_nodes) {
   for (auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it)
     clear_vertex(nameToVertex[*it], graph_);
 }
 void
-BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge> &to_remove_edges) {
+BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges) {
   for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it != E;
        ++it)
     remove_edge(*it, graph_);
@@ -1069,33 +1097,59 @@ void BaseDatapath::writePerCycleActivity() {
   registers.getRegisterNames(comp_partition_names);
   getMemoryBlocks(mem_partition_names);
 
-  initPerCycleActivity(comp_partition_names, mem_partition_names, ld_activity,
-                       st_activity, mul_activity, add_activity, bit_activity,
-                       shifter_activity, max_mul_per_function,
-                       max_add_per_function, max_bit_per_function,
-                       max_shifter_per_function, num_cycles);
+  initPerCycleActivity(comp_partition_names,
+                       mem_partition_names,
+                       ld_activity,
+                       st_activity,
+                       mul_activity,
+                       add_activity,
+                       bit_activity,
+                       shifter_activity,
+                       max_mul_per_function,
+                       max_add_per_function,
+                       max_bit_per_function,
+                       max_shifter_per_function,
+                       num_cycles);
 
-  updatePerCycleActivity(ld_activity, st_activity, mul_activity, add_activity,
-                         bit_activity, shifter_activity, max_mul_per_function,
-                         max_add_per_function, max_bit_per_function,
+  updatePerCycleActivity(ld_activity,
+                         st_activity,
+                         mul_activity,
+                         add_activity,
+                         bit_activity,
+                         shifter_activity,
+                         max_mul_per_function,
+                         max_add_per_function,
+                         max_bit_per_function,
                          max_shifter_per_function);
 
-  outputPerCycleActivity(comp_partition_names, mem_partition_names, ld_activity,
-                         st_activity, mul_activity, add_activity, bit_activity,
-                         shifter_activity, max_mul_per_function,
-                         max_add_per_function, max_bit_per_function,
+  outputPerCycleActivity(comp_partition_names,
+                         mem_partition_names,
+                         ld_activity,
+                         st_activity,
+                         mul_activity,
+                         add_activity,
+                         bit_activity,
+                         shifter_activity,
+                         max_mul_per_function,
+                         max_add_per_function,
+                         max_bit_per_function,
                          max_shifter_per_function);
 }
 
 void BaseDatapath::initPerCycleActivity(
-    std::vector<std::string> &comp_partition_names,
-    std::vector<std::string> &mem_partition_names, activity_map &ld_activity,
-    activity_map &st_activity, activity_map &mul_activity,
-    activity_map &add_activity, activity_map &bit_activity,
-    activity_map &shifter_activity, max_activity_map &max_mul_per_function,
-    max_activity_map &max_add_per_function,
-    max_activity_map &max_bit_per_function,
-    max_activity_map &max_shifter_per_function, int num_cycles) {
+    std::vector<std::string>& comp_partition_names,
+    std::vector<std::string>& mem_partition_names,
+    activity_map& ld_activity,
+    activity_map& st_activity,
+    activity_map& mul_activity,
+    activity_map& add_activity,
+    activity_map& bit_activity,
+    activity_map& shifter_activity,
+    max_activity_map& max_mul_per_function,
+    max_activity_map& max_add_per_function,
+    max_activity_map& max_bit_per_function,
+    max_activity_map& max_shifter_per_function,
+    int num_cycles) {
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end();
        ++it) {
     ld_activity.insert({ *it, make_vector(num_cycles) });
@@ -1119,23 +1173,27 @@ void BaseDatapath::initPerCycleActivity(
 }
 
 void BaseDatapath::updatePerCycleActivity(
-    activity_map &ld_activity, activity_map &st_activity,
-    activity_map &mul_activity, activity_map &add_activity,
-    activity_map &bit_activity, activity_map &shifter_activity,
-    max_activity_map &max_mul_per_function,
-    max_activity_map &max_add_per_function,
-    max_activity_map &max_bit_per_function,
-    max_activity_map &max_shifter_per_function) {
-   /* We use two ways to count the number of functional units in accelerators: one
-    * assumes that functional units can be reused in the same region; the other
-    * assumes no reuse of functional units. The advantage of reusing is that it
-    * eliminates the cost of duplicating functional units which can lead to high
-    * leakage power and area. However, additional wires and muxes may need to be
-    * added for reusing.
-    * In the current model, we assume that multipliers can be reused, since the
-    * leakage power and area of multipliers are relatively significant, and no
-    * reuse for adders. This way of modeling is consistent with our observation
-    * of accelerators generated with Vivado. */
+    activity_map& ld_activity,
+    activity_map& st_activity,
+    activity_map& mul_activity,
+    activity_map& add_activity,
+    activity_map& bit_activity,
+    activity_map& shifter_activity,
+    max_activity_map& max_mul_per_function,
+    max_activity_map& max_add_per_function,
+    max_activity_map& max_bit_per_function,
+    max_activity_map& max_shifter_per_function) {
+  /* We use two ways to count the number of functional units in accelerators:
+   * one
+   * assumes that functional units can be reused in the same region; the other
+   * assumes no reuse of functional units. The advantage of reusing is that it
+   * eliminates the cost of duplicating functional units which can lead to high
+   * leakage power and area. However, additional wires and muxes may need to be
+   * added for reusing.
+   * In the current model, we assume that multipliers can be reused, since the
+   * leakage power and area of multipliers are relatively significant, and no
+   * reuse for adders. This way of modeling is consistent with our observation
+   * of accelerators generated with Vivado. */
   int num_adds_so_far = 0, num_bits_so_far = 0;
   int num_shifters_so_far = 0;
   auto bound_it = loopBound.begin();
@@ -1143,7 +1201,8 @@ void BaseDatapath::updatePerCycleActivity(
     char func_id[256];
     int count;
 
-    sscanf(dynamic_method_id.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+    sscanf(
+        dynamic_method_id.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
     if (node_id == *bound_it) {
       if (max_add_per_function[func_id] < num_adds_so_far)
         max_add_per_function[func_id] = num_adds_so_far;
@@ -1188,14 +1247,18 @@ void BaseDatapath::updatePerCycleActivity(
 }
 
 void BaseDatapath::outputPerCycleActivity(
-    std::vector<std::string> &comp_partition_names,
-    std::vector<std::string> &mem_partition_names, activity_map &ld_activity,
-    activity_map &st_activity, activity_map &mul_activity,
-    activity_map &add_activity, activity_map &bit_activity,
-    activity_map &shifter_activity, max_activity_map &max_mul_per_function,
-    max_activity_map &max_add_per_function,
-    max_activity_map &max_bit_per_function,
-    max_activity_map &max_shifter_per_function) {
+    std::vector<std::string>& comp_partition_names,
+    std::vector<std::string>& mem_partition_names,
+    activity_map& ld_activity,
+    activity_map& st_activity,
+    activity_map& mul_activity,
+    activity_map& add_activity,
+    activity_map& bit_activity,
+    activity_map& shifter_activity,
+    max_activity_map& max_mul_per_function,
+    max_activity_map& max_add_per_function,
+    max_activity_map& max_bit_per_function,
+    max_activity_map& max_shifter_per_function) {
   /*Set the constants*/
   float add_int_power, add_switch_power, add_leak_power, add_area;
   float mul_int_power, mul_switch_power, mul_leak_power, mul_area;
@@ -1205,17 +1268,22 @@ void BaseDatapath::outputPerCycleActivity(
   float shifter_int_power, shifter_switch_power, shifter_leak_power,
       shifter_area;
 
-  getAdderPowerArea(cycleTime, &add_int_power, &add_switch_power,
-                    &add_leak_power, &add_area);
-  getMultiplierPowerArea(cycleTime, &mul_int_power, &mul_switch_power,
-                         &mul_leak_power, &mul_area);
-  getRegisterPowerArea(cycleTime, &reg_int_power_per_bit,
-                       &reg_switch_power_per_bit, &reg_leak_power_per_bit,
+  getAdderPowerArea(
+      cycleTime, &add_int_power, &add_switch_power, &add_leak_power, &add_area);
+  getMultiplierPowerArea(
+      cycleTime, &mul_int_power, &mul_switch_power, &mul_leak_power, &mul_area);
+  getRegisterPowerArea(cycleTime,
+                       &reg_int_power_per_bit,
+                       &reg_switch_power_per_bit,
+                       &reg_leak_power_per_bit,
                        &reg_area_per_bit);
-  getBitPowerArea(cycleTime, &bit_int_power, &bit_switch_power, &bit_leak_power,
-                  &bit_area);
-  getShifterPowerArea(cycleTime, &shifter_int_power, &shifter_switch_power,
-                      &shifter_leak_power, &shifter_area);
+  getBitPowerArea(
+      cycleTime, &bit_int_power, &bit_switch_power, &bit_leak_power, &bit_area);
+  getShifterPowerArea(cycleTime,
+                      &shifter_int_power,
+                      &shifter_switch_power,
+                      &shifter_leak_power,
+                      &shifter_area);
 
   ofstream stats, power_stats;
   std::string bn(benchName);
@@ -1311,7 +1379,8 @@ void BaseDatapath::outputPerCycleActivity(
         (reg_int_power_per_bit + reg_switch_power_per_bit) *
         (curr_reg_reads + curr_reg_writes) * 32 * cycleTime;
     for (auto it = comp_partition_names.begin();
-         it != comp_partition_names.end(); ++it) {
+         it != comp_partition_names.end();
+         ++it) {
       curr_reg_reads += ld_activity.at(*it).at(curr_level);
       curr_reg_writes += st_activity.at(*it).at(curr_level);
       curr_reg_dynamic_energy +=
@@ -1335,8 +1404,8 @@ void BaseDatapath::outputPerCycleActivity(
 
   float avg_mem_power = 0, avg_mem_dynamic_power = 0, mem_leakage_power = 0;
 
-  getAverageMemPower(num_cycles, &avg_mem_power, &avg_mem_dynamic_power,
-                     &mem_leakage_power);
+  getAverageMemPower(
+      num_cycles, &avg_mem_power, &avg_mem_dynamic_power, &mem_leakage_power);
 
   float avg_fu_dynamic_power = fu_dynamic_energy / (cycleTime * num_cycles);
   float avg_fu_power = avg_fu_dynamic_power + fu_leakage_power;
@@ -1380,8 +1449,8 @@ void BaseDatapath::outputPerCycleActivity(
 #endif
 }
 
-void BaseDatapath::writeSummary(std::ostream &outfile,
-                                summary_data_t &summary) {
+void BaseDatapath::writeSummary(std::ostream& outfile,
+                                summary_data_t& summary) {
   outfile << "===============================" << std::endl;
   outfile << "        Aladdin Results        " << std::endl;
   outfile << "===============================" << std::endl;
@@ -1426,9 +1495,13 @@ void BaseDatapath::writeBaseAddress() {
     char original_label[256];
     int partition_id;
     std::string partitioned_label = it->second;
-    sscanf(partitioned_label.c_str(), "%[^-]-%d", original_label, &partition_id);
-    gzprintf(gzip_file, "node:%u,part:%s,base:%lld\n", it->first,
-             partitioned_label.c_str(), arrayBaseAddress[original_label]);
+    sscanf(
+        partitioned_label.c_str(), "%[^-]-%d", original_label, &partition_id);
+    gzprintf(gzip_file,
+             "node:%u,part:%s,base:%lld\n",
+             it->first,
+             partitioned_label.c_str(),
+             arrayBaseAddress[original_label]);
   }
   gzclose(gzip_file);
 }
@@ -1437,35 +1510,35 @@ void BaseDatapath::writeFinalLevel() {
   file_name += "_level.gz";
   write_gzip_file(file_name, newLevel.size(), newLevel);
 }
-void BaseDatapath::writeMicroop(std::vector<int> &microop) {
+void BaseDatapath::writeMicroop(std::vector<int>& microop) {
   std::string file_name(benchName);
   file_name += "_microop.gz";
   write_gzip_file(file_name, microop.size(), microop);
 }
 void
-BaseDatapath::initPrevBasicBlock(std::vector<std::string> &prevBasicBlock) {
+BaseDatapath::initPrevBasicBlock(std::vector<std::string>& prevBasicBlock) {
   std::string file_name(benchName);
   file_name += "_prevBasicBlock.gz";
   read_gzip_string_file(file_name, prevBasicBlock.size(), prevBasicBlock);
 }
-void BaseDatapath::initDynamicMethodID(std::vector<std::string> &methodid) {
+void BaseDatapath::initDynamicMethodID(std::vector<std::string>& methodid) {
   std::string file_name(benchName);
   file_name += "_dynamic_funcid.gz";
   read_gzip_string_file(file_name, methodid.size(), methodid);
 }
-void BaseDatapath::initMethodID(std::vector<int> &methodid) {
+void BaseDatapath::initMethodID(std::vector<int>& methodid) {
   std::string file_name(benchName);
   file_name += "_methodid.gz";
   read_gzip_file(file_name, methodid.size(), methodid);
 }
-void BaseDatapath::initInstID(std::vector<std::string> &instid) {
+void BaseDatapath::initInstID(std::vector<std::string>& instid) {
   std::string file_name(benchName);
   file_name += "_instid.gz";
   read_gzip_string_file(file_name, instid.size(), instid);
 }
 
-void BaseDatapath::initAddress(std::unordered_map<unsigned, MemAccess> &address)
-{
+void
+BaseDatapath::initAddress(std::unordered_map<unsigned, MemAccess>& address) {
   std::string file_name(benchName);
   file_name += "_memaddr.gz";
   gzFile gzip_file;
@@ -1476,8 +1549,8 @@ void BaseDatapath::initAddress(std::unordered_map<unsigned, MemAccess> &address)
       break;
     unsigned node_id, size;
     long long int addr, value;
-    int num_filled = sscanf(buffer, "%d,%lld,%d,%lld\n",
-                            &node_id, &addr, &size, &value);
+    int num_filled =
+        sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &addr, &size, &value);
     MemAccess access;
     access.vaddr = addr;
     access.size = size;
@@ -1489,13 +1562,14 @@ void BaseDatapath::initAddress(std::unordered_map<unsigned, MemAccess> &address)
   gzclose(gzip_file);
 }
 
-void BaseDatapath::initLineNum(std::vector<int> &line_num) {
+void BaseDatapath::initLineNum(std::vector<int>& line_num) {
   ostringstream file_name;
   file_name << benchName << "_linenum.gz";
   read_gzip_file(file_name.str(), line_num.size(), line_num);
 }
-void BaseDatapath::initGetElementPtr(std::unordered_map<
-    unsigned, pair<std::string, long long int> > &get_element_ptr) {
+void BaseDatapath::initGetElementPtr(
+    std::unordered_map<unsigned, pair<std::string, long long int>>&
+        get_element_ptr) {
   ostringstream file_name;
   file_name << benchName << "_getElementPtr.gz";
   gzFile gzip_file;
@@ -1587,7 +1661,8 @@ void BaseDatapath::updateRegStats() {
     out_edge_iter out_edge_it, out_edge_end;
     std::set<int> children_levels;
     for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
-         out_edge_it != out_edge_end; ++out_edge_it) {
+         out_edge_it != out_edge_end;
+         ++out_edge_it) {
       int child_id = vertexToName[target(*out_edge_it, graph_)];
       int child_microop = microop.at(child_id);
       if (is_control_op(child_microop))
@@ -1630,7 +1705,7 @@ bool BaseDatapath::step() {
 
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
-    std::list<unsigned>::iterator &executingQueuePos, int &advance_to) {
+    std::list<unsigned>::iterator& executingQueuePos, int& advance_to) {
   unsigned node_id = *executingQueuePos;
   executedNodes++;
   newLevel.at(node_id) = num_cycles;
@@ -1646,7 +1721,8 @@ void BaseDatapath::updateChildren(unsigned node_id) {
   Vertex node = nameToVertex[node_id];
   out_edge_iter out_edge_it, out_edge_end;
   for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
-       out_edge_it != out_edge_end; ++out_edge_it) {
+       out_edge_it != out_edge_end;
+       ++out_edge_it) {
     unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
     int edge_parid = edgeToParid[*out_edge_it];
     if (numParents[child_id] > 0) {
@@ -1679,7 +1755,7 @@ void BaseDatapath::initBaseAddress() {
   std::cerr << "       Init Base Address       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::unordered_map<unsigned, pair<std::string, long long int> > getElementPtr;
+  std::unordered_map<unsigned, pair<std::string, long long int>> getElementPtr;
   initGetElementPtr(getElementPtr);
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -1699,7 +1775,8 @@ void BaseDatapath::initBaseAddress() {
       in_edge_iter in_edge_it, in_edge_end;
 
       for (tie(in_edge_it, in_edge_end) = in_edges(curr_node, graph_);
-           in_edge_it != in_edge_end; ++in_edge_it) {
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
         int edge_parid = edge_to_parid[*in_edge_it];
         if ((node_microop == LLVM_IR_Load && edge_parid != 1) ||
             (node_microop == LLVM_IR_GetElementPtr && edge_parid != 1) ||
@@ -1752,7 +1829,7 @@ void BaseDatapath::initExecutingQueue() {
 }
 int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
                                                unsigned int to) {
-  std::list<pair<unsigned int, unsigned int> > queue;
+  std::list<pair<unsigned int, unsigned int>> queue;
   queue.push_back({ from, 0 });
   while (queue.size() != 0) {
     unsigned int curr_node = queue.front().first;
@@ -1760,7 +1837,8 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) =
              out_edges(nameToVertex[curr_node], graph_);
-         out_edge_it != out_edge_end; ++out_edge_it) {
+         out_edge_it != out_edge_end;
+         ++out_edge_it) {
       if (get(boost::edge_name, graph_, *out_edge_it) != CONTROL_EDGE) {
         int child_id = vertexToName[target(*out_edge_it, graph_)];
         if (child_id == to)
@@ -1789,7 +1867,7 @@ bool BaseDatapath::readPipeliningConfig() {
 }
 
 bool BaseDatapath::readUnrollingConfig(
-    std::unordered_map<int, int> &unrolling_config) {
+    std::unordered_map<int, int>& unrolling_config) {
   ifstream config_file;
   std::string file_name(benchName);
   file_name += "_unrolling_config";
@@ -1810,7 +1888,7 @@ bool BaseDatapath::readUnrollingConfig(
   return 1;
 }
 
-bool BaseDatapath::readFlattenConfig(std::unordered_set<int> &flatten_config) {
+bool BaseDatapath::readFlattenConfig(std::unordered_set<int>& flatten_config) {
   ifstream config_file;
   std::string file_name(benchName);
   file_name += "_flatten_config";
@@ -1832,7 +1910,7 @@ bool BaseDatapath::readFlattenConfig(std::unordered_set<int> &flatten_config) {
 }
 
 bool BaseDatapath::readCompletePartitionConfig(
-    std::unordered_map<std::string, unsigned> &config) {
+    std::unordered_map<std::string, unsigned>& config) {
   std::string comp_partition_file(benchName);
   comp_partition_file += "_complete_partition_config";
 
@@ -1857,7 +1935,7 @@ bool BaseDatapath::readCompletePartitionConfig(
 }
 
 bool BaseDatapath::readPartitionConfig(
-    std::unordered_map<std::string, partitionEntry> &partition_config) {
+    std::unordered_map<std::string, partitionEntry>& partition_config) {
   ifstream config_file;
   std::string file_name(benchName);
   file_name += "_partition_config";
@@ -1873,8 +1951,13 @@ bool BaseDatapath::readPartitionConfig(
     unsigned size, p_factor, wordsize;
     char type[256];
     char base_addr[256];
-    sscanf(wholeline.c_str(), "%[^,],%[^,],%d,%d,%d\n", type, base_addr, &size,
-           &wordsize, &p_factor);
+    sscanf(wholeline.c_str(),
+           "%[^,],%[^,],%d,%d,%d\n",
+           type,
+           base_addr,
+           &size,
+           &wordsize,
+           &p_factor);
     std::string p_type(type);
     partition_config[base_addr] = { p_type, size, wordsize, p_factor };
   }
@@ -1976,7 +2059,7 @@ void BaseDatapath::parse_config(std::string bench,
 
 /* Tokenizes an input string and returns a vector. */
 void BaseDatapath::tokenizeString(std::string input,
-                                  std::vector<int> &tokenized_list) {
+                                  std::vector<int>& tokenized_list) {
   using namespace boost;
   tokenizer<> tok(input);
   for (tokenizer<>::iterator beg = tok.begin(); beg != tok.end(); ++beg) {
@@ -1992,9 +2075,9 @@ void BaseDatapath::setExperimentParameters(std::string experiment_name) {
   this->experiment_name = experiment_name;
 }
 
-void BaseDatapath::getCommonConfigParameters(int &unrolling_factor,
-                                             bool &pipelining,
-                                             int &partition_factor) {
+void BaseDatapath::getCommonConfigParameters(int& unrolling_factor,
+                                             bool& pipelining,
+                                             int& partition_factor) {
   // First, collect pipelining, unrolling, and partitioning parameters. We'll
   // assume that all parameters are uniform for all loops, and we'll insert a
   // path to the actual config file if we need to look up the actual
@@ -2014,9 +2097,9 @@ void BaseDatapath::getCommonConfigParameters(int &unrolling_factor,
 /* Returns the experiment_id for the experiment_name. If the experiment_name
  * does not exist in the database, then a new experiment_id is created and
  * inserted into the database. */
-int BaseDatapath::getExperimentId(sql::Connection *con) {
-  sql::ResultSet *res;
-  sql::Statement *stmt = con->createStatement();
+int BaseDatapath::getExperimentId(sql::Connection* con) {
+  sql::ResultSet* res;
+  sql::Statement* stmt = con->createStatement();
   stringstream query;
   query << "select id from experiments where strcmp(name, \"" << experiment_name
         << "\") = 0";
@@ -2028,7 +2111,7 @@ int BaseDatapath::getExperimentId(sql::Connection *con) {
     delete res;
   } else {
     // Get the next highest experiment id and insert it into the database.
-    query.str(""); // Clear stringstream.
+    query.str("");  // Clear stringstream.
     stmt = con->createStatement();
     res = stmt->executeQuery("select max(id) from experiments");
     if (res && res->next())
@@ -2047,9 +2130,9 @@ int BaseDatapath::getExperimentId(sql::Connection *con) {
   return experiment_id;
 }
 
-int BaseDatapath::getLastInsertId(sql::Connection *con) {
-  sql::Statement *stmt = con->createStatement();
-  sql::ResultSet *res = stmt->executeQuery("select last_insert_id()");
+int BaseDatapath::getLastInsertId(sql::Connection* con) {
+  sql::Statement* stmt = con->createStatement();
+  sql::ResultSet* res = stmt->executeQuery("select last_insert_id()");
   int new_config_id = -1;
   if (res && res->next()) {
     new_config_id = res->getInt(1);
@@ -2062,14 +2145,14 @@ int BaseDatapath::getLastInsertId(sql::Connection *con) {
   return new_config_id;
 }
 
-void BaseDatapath::writeSummaryToDatabase(summary_data_t &summary) {
-  sql::Driver *driver;
-  sql::Connection *con;
-  sql::Statement *stmt;
+void BaseDatapath::writeSummaryToDatabase(summary_data_t& summary) {
+  sql::Driver* driver;
+  sql::Connection* con;
+  sql::Statement* stmt;
   driver = sql::mysql::get_mysql_driver_instance();
   con = driver->connect(DB_URL, DB_USER, DB_PASS);
   con->setSchema("aladdin");
-  con->setAutoCommit(0); // Begin transaction.
+  con->setAutoCommit(0);  // Begin transaction.
   int config_id = writeConfiguration(con);
   int experiment_id = getExperimentId(con);
   stmt = con->createStatement();
@@ -2089,7 +2172,7 @@ void BaseDatapath::writeSummaryToDatabase(summary_data_t &summary) {
         << "\"" << benchmark << "\"," << experiment_id << "," << config_id
         << ")";
   stmt->execute(query.str());
-  con->commit(); // End transaction.
+  con->commit();  // End transaction.
   delete stmt;
   delete con;
 }

@@ -12,13 +12,14 @@
 #include "cacti-p/io.h"
 #include "cacti-p/cacti_interface.h"
 
-class Scratchpad
-{
+class Scratchpad {
  public:
   Scratchpad(unsigned p_ports_per_part, float cycle_time);
   virtual ~Scratchpad();
   void step();
-  void setScratchpad(std::string baseName, unsigned num_of_bytes, unsigned wordsize);
+  void setScratchpad(std::string baseName,
+                     unsigned num_of_bytes,
+                     unsigned wordsize);
   bool canService();
   bool canServicePartition(std::string baseName);
   bool partitionExist(std::string baseName);
@@ -30,10 +31,12 @@ class Scratchpad
   /* Increment the stores counter for the specified partition. */
   void increment_stores(std::string partition);
 
-  void getMemoryBlocks(std::vector<std::string> &names);
+  void getMemoryBlocks(std::vector<std::string>& names);
 
-  void getAveragePower(unsigned int cycles, float *avg_power,
-                       float *avg_dynamic, float *avg_leakage);
+  void getAveragePower(unsigned int cycles,
+                       float* avg_power,
+                       float* avg_dynamic,
+                       float* avg_leakage);
   float getTotalArea();
   float getReadEnergy(std::string baseName);
   float getWriteEnergy(std::string baseName);
@@ -43,10 +46,10 @@ class Scratchpad
   /* Access cacti_interface() to calculate power/area. */
   uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 
-private:
+ private:
   unsigned numOfPartitions;
   unsigned numOfPortsPerPartition;
-  float cycleTime; //in ns
+  float cycleTime;  // in ns
   std::unordered_map<std::string, unsigned> baseToPartitionID;
   /* Occupied BW  per partition. */
   std::unordered_map<std::string, unsigned> occupiedBWPerPartition;

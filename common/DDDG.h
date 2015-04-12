@@ -11,26 +11,26 @@
 /*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
 using namespace std;
 
-struct edge_node_info{
+struct edge_node_info {
   unsigned sink_node;
   int par_id;
 };
 
-//data structure used to track dependency
+// data structure used to track dependency
 typedef unordered_map<std::string, unsigned int> string_to_uint;
 typedef unordered_map<long long int, unsigned int> uint_to_uint;
-typedef unordered_multimap<unsigned int, edge_node_info> multi_uint_to_node_info;
+typedef unordered_multimap<unsigned int, edge_node_info>
+    multi_uint_to_node_info;
 
 class BaseDatapath;
 
-class DDDG
-{
+class DDDG {
 
-private:
-  BaseDatapath *datapath;
+ private:
+  BaseDatapath* datapath;
 
-public:
-  DDDG(BaseDatapath *_datapath, std::string _trace_name);
+ public:
+  DDDG(BaseDatapath* _datapath, std::string _trace_name);
   int num_edges();
   int num_nodes();
   int num_of_register_dependency();
@@ -39,7 +39,7 @@ public:
   void output_dddg();
   bool build_initial_dddg();
 
-private:
+ private:
   void parse_instruction_line(std::string line);
   void parse_parameter(std::string line, int param_tag);
   void parse_result(std::string line);
@@ -59,7 +59,7 @@ private:
 
   bool last_parameter;
   int num_of_parameters;
-  //Used to track the instruction that initialize call function parameters
+  // Used to track the instruction that initialize call function parameters
   int last_call_source;
 
   std::string curr_instid;
@@ -72,17 +72,17 @@ private:
   int num_of_reg_dep;
   int num_of_mem_dep;
 
-	//register dependency tracking table using hash_map(hash_map)
-	//memory dependency tracking table
-	//edge multimap
-	multi_uint_to_node_info register_edge_table;
-	multi_uint_to_node_info memory_edge_table;
-	//keep track of currently executed methods
-	stack<std::string> active_method;
-	//manage methods
-	string_to_uint function_counter;
+  // register dependency tracking table using hash_map(hash_map)
+  // memory dependency tracking table
+  // edge multimap
+  multi_uint_to_node_info register_edge_table;
+  multi_uint_to_node_info memory_edge_table;
+  // keep track of currently executed methods
+  stack<std::string> active_method;
+  // manage methods
+  string_to_uint function_counter;
   string_to_uint register_last_written;
-	uint_to_uint address_last_written;
+  uint_to_uint address_last_written;
 };
 
 #endif
