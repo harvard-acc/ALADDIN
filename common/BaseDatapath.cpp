@@ -1427,9 +1427,14 @@ void BaseDatapath::writeBaseAddress() {
   file_name << benchName << "_baseAddr.gz";
   gzFile gzip_file;
   gzip_file = gzopen(file_name.str().c_str(), "w");
-  for (auto it = nodeToLabel.begin(), E = nodeToLabel.end(); it != E; ++it)
+  for (auto it = nodeToLabel.begin(), E = nodeToLabel.end(); it != E; ++it) {
+    char original_label[256];
+    int partition_id;
+    std::string partitioned_label = it->second;
+    sscanf(partitioned_label.c_str(), "%[^-]-%d", original_label, &partition_id);
     gzprintf(gzip_file, "node:%u,part:%s,base:%lld\n", it->first,
-             it->second.c_str(), arrayBaseAddress[it->second]);
+             partitioned_label.c_str(), arrayBaseAddress[original_label]);
+  }
   gzclose(gzip_file);
 }
 void BaseDatapath::writeFinalLevel() {
@@ -1736,7 +1741,9 @@ void BaseDatapath::initBaseAddress() {
       arrayBaseAddress[label] = addr;
     }
   }
+#ifdef DEBUG
   writeBaseAddress();
+#endif
 }
 
 void BaseDatapath::initExecutingQueue() {
