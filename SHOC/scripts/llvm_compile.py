@@ -27,8 +27,12 @@ def main (directory, source):
   source_file = source + '.c'
   print directory
 
-  print 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file
-  os.system('clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file)
+  print 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + \
+        ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops ' + \
+        ' -fno-inline -fno-builtin -emit-llvm -o ' + obj + ' '  + source_file
+  os.system('clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + \
+            ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops ' + \
+            ' -fno-inline -fno-builtin -emit-llvm -o ' + obj + ' ' + source_file)
 
   print 'opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj
   os.system('opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj)
