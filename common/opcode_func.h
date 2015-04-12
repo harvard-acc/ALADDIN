@@ -3,6 +3,7 @@
 #ifndef OPCODE_FUNC_H
 #define OPCODE_FUNC_H
 
+// clang-format off
 #define LLVM_IR_Move               0
 #define LLVM_IR_Ret                1
 #define LLVM_IR_Br                 2
@@ -65,6 +66,7 @@
 #define LLVM_IR_DMALoad             99
 #define LLVM_IR_IndexAdd            100
 #define LLVM_IR_SilentStore         101
+// clang-format on
 
 bool is_associative(unsigned microop);
 bool is_memory_op(unsigned microop);
@@ -76,13 +78,13 @@ bool is_add_op(unsigned microop);
 bool is_mul_op(unsigned microop);
 bool is_load_op(unsigned microop);
 bool is_call_op(unsigned microop);
-bool is_branch_op (unsigned microop);
-bool is_control_op (unsigned microop);
-bool is_index_op (unsigned microop);
-bool is_convert_op (unsigned microop);
+bool is_branch_op(unsigned microop);
+bool is_control_op(unsigned microop);
+bool is_index_op(unsigned microop);
+bool is_convert_op(unsigned microop);
 bool is_dma_load(unsigned microop);
 bool is_dma_store(unsigned microop);
 bool is_dma_op(unsigned microop);
-float node_latency (unsigned  microop);
+float node_latency(unsigned microop);
 
 #endif

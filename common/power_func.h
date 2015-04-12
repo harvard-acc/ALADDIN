@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <iostream>
 
-#define   ADD_LATENCY       1
-#define   MEMOP_LATENCY     1
-#define   MUL_LATENCY       1
-#define   RW_PORTS          1
+#define ADD_LATENCY 1
+#define MEMOP_LATENCY 1
+#define MUL_LATENCY 1
+#define RW_PORTS 1
 /* All the power numbers are in mW, energy numbers are in nJ */
 
 /* Function units power model normalized to a comercial 40g */
@@ -226,15 +226,29 @@
 #define	SHIFTER_6ns_leakage_power	4.069379e-03
 #define	SHIFTER_6ns_area	5.197551e+02
 
-void getRegisterPowerArea(float cycle_time, float *internal_power_per_bit,
-                          float *switch_power_per_bit, float *leakage_power_per_bit,
-                          float *area);
-void getAdderPowerArea(float cycle_time, float *internal_power,
-                         float *swich_power, float *leakage_power, float *area);
-void getMultiplierPowerArea(float cycle_time, float *internal_power,
-                         float *switch_power, float *leakage_power, float *area);
-void getBitPowerArea(float cycle_time, float *internal_power,
-                         float *swich_power, float *leakage_power, float *area);
-void getShifterPowerArea(float cycle_time, float *internal_power,
-                         float *swich_power, float *leakage_power, float *area);
+void getRegisterPowerArea(float cycle_time,
+                          float* internal_power_per_bit,
+                          float* switch_power_per_bit,
+                          float* leakage_power_per_bit,
+                          float* area);
+void getAdderPowerArea(float cycle_time,
+                       float* internal_power,
+                       float* swich_power,
+                       float* leakage_power,
+                       float* area);
+void getMultiplierPowerArea(float cycle_time,
+                            float* internal_power,
+                            float* switch_power,
+                            float* leakage_power,
+                            float* area);
+void getBitPowerArea(float cycle_time,
+                     float* internal_power,
+                     float* swich_power,
+                     float* leakage_power,
+                     float* area);
+void getShifterPowerArea(float cycle_time,
+                         float* internal_power,
+                         float* swich_power,
+                         float* leakage_power,
+                         float* area);
 #endif
