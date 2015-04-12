@@ -1541,11 +1541,8 @@ void BaseDatapath::setGraphForStepping() {
 }
 
 void BaseDatapath::dumpGraph(std::string graph_name) {
-  std::unordered_map<Vertex, unsigned> vertexToMicroop;
-  BGL_FORALL_VERTICES(v, graph_, Graph)
-  vertexToMicroop[v] = microop.at(get(boost::vertex_index, graph_, v));
   std::ofstream out(graph_name + "_graph.dot");
-  write_graphviz(out, graph_, boost::make_label_writer(vertexToMicroop));
+  write_graphviz(out, graph_);
 }
 int BaseDatapath::clearGraph() {
   std::vector<Vertex> topo_nodes;
