@@ -29,6 +29,9 @@ class ScratchpadDatapath : public BaseDatapath {
 
   protected:
     Scratchpad *scratchpad;
+    /*True if any of the scratchpads can still service memory requests.
+      False if non of the scratchpads can service any memory requests.*/
+    bool scratchpadCanService;
 };
 
 #endif

@@ -363,10 +363,12 @@ void BaseDatapath::removeInductionDependence() {
 // called in the end of the whole flow
 void BaseDatapath::dumpStats() {
   clearGraph();
+#ifdef DEBUG
   dumpGraph(benchName);
   writeMicroop(microop);
   writeFinalLevel();
   writeGlobalIsolated();
+#endif
 }
 
 void BaseDatapath::loopPipelining() {

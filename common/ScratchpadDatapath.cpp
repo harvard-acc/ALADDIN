@@ -15,6 +15,7 @@ ScratchpadDatapath::ScratchpadDatapath(
   std::cerr << "      Setting ScratchPad       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
   scratchpad = new Scratchpad(1, cycleTime);
+  scratchpadCanService = true;
 }
 
 ScratchpadDatapath::~ScratchpadDatapath()
@@ -163,13 +164,12 @@ void ScratchpadDatapath::scratchpadPartition()
 }
 
 bool ScratchpadDatapath::step() {
-  if (!BaseDatapath::step())
-  {
+  if (!BaseDatapath::step()) {
     scratchpad->step();
+    scratchpadCanService = true;
     return false;
   }
-  else
-  {
+  else {
     return true;
   }
 }
@@ -178,40 +178,33 @@ void ScratchpadDatapath::stepExecutingQueue()
 {
   auto it = executingQueue.begin();
   int index = 0;
-  while (it != executingQueue.end())
-  {
+  while (it != executingQueue.end()) {
     unsigned node_id = *it;
-    if (is_memory_op(microop.at(node_id)))
-    {
+    if (is_memory_op(microop.at(node_id))) {
       std::string node_part = nodeToLabel[node_id];
-      if (registers.has(node_part) ||
-          scratchpad->canServicePartition(node_part))
-      {
-        if (registers.has(node_part))
-        {
-          if (is_load_op(microop.at(node_id)))
-            registers.getRegister(node_part)->increment_loads();
-          else
-            registers.getRegister(node_part)->increment_stores();
-        }
+      if (registers.has(node_part)) {
+        if (is_load_op(microop.at(node_id)))
+          registers.getRegister(node_part)->increment_loads();
         else
-        {
-          assert(scratchpad->addressRequest(node_part));
+          registers.getRegister(node_part)->increment_stores();
+        markNodeCompleted(it, index);
+      } else if (scratchpadCanService) {
+        if (scratchpad->canServicePartition(node_part)) {
           if (is_load_op(microop.at(node_id)))
             scratchpad->increment_loads(node_part);
           else
             scratchpad->increment_stores(node_part);
+          markNodeCompleted(it, index);
+        } else {
+          scratchpadCanService = scratchpad->canService();
+          ++it;
+          ++index;
         }
-        markNodeCompleted(it, index);
-      }
-      else
-      {
+      } else {
         ++it;
         ++index;
       }
-    }
-    else
-    {
+    } else {
       markNodeCompleted(it, index);
     }
   }
