@@ -159,6 +159,9 @@ class BaseDatapath
   long long int getBaseAddress(std::string label) {
     return arrayBaseAddress[label];
   }
+  std::string getStaticNodeId(unsigned node_id) {
+    return dynamic_method_id[node_id] + "-" + instruction_id[node_id];
+  }
   bool doesEdgeExist(unsigned int from, unsigned int to) {
     return edge(nameToVertex[from], nameToVertex[to], graph_).second;
   }
@@ -306,6 +309,8 @@ class BaseDatapath
   std::vector<bool> finalIsolated;
   std::vector<int> edgeLatency;
   std::vector<int> loopBound;
+  std::vector<std::string> dynamic_method_id;
+  std::vector<std::string> instruction_id;
 
   //Scheduling.
   unsigned totalConnectedNodes;
