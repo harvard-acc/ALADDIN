@@ -256,8 +256,8 @@ DmaScratchpadDatapath::sendFinishedSignal()
   // Set some sentinel value.
   for (int i = 0; i < size; i++)
     data[i] = 0x01;
-  Addr finish_flag = system->getFinishedFlag(accelerator_id);
   Request *req = new Request(finish_flag, size, flags, ioCacheMasterId());
+  req->setThreadContext(context_id, thread_id);  // Only needed for prefetching.
   MemCmd::Command cmd = MemCmd::WriteReq;
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);

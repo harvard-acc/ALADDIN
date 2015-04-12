@@ -1,6 +1,6 @@
 # Common components to all tests.
 
-.PHONY: test run-test
+.PHONY: test run
 
 GEM5_DEPS = $(ALADDIN_HOME)/gem5/aladdin_sys_connection.cpp \
             $(ALADDIN_HOME)/gem5/aladdin_sys_constants.cpp
@@ -12,5 +12,5 @@ test: $(TEST_BIN)
 $(TEST_BIN): $(SRCS)
 	$(CXX) $(GEM5_CFLAGS) $(SRCS) $(GEM5_DEPS) -DACCEL_SIMULATE_MODE -o $(TEST_BIN)
 
-run-test: $(TEST_BIN)
+run: $(TEST_BIN)
 	sh run.sh

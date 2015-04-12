@@ -26,11 +26,10 @@ class Gem5Datapath : public MemObject
     Gem5Datapath(const MemObjectParams* params,
                  int _accelerator_id,
                  bool _execute_standalone,
-                 System* _system) :
-        MemObject(params),
-        execute_standalone(_execute_standalone),
-        accelerator_id(_accelerator_id),
-        system(_system) {}
+                 System* _system)
+        : MemObject(params), execute_standalone(_execute_standalone),
+          accelerator_id(_accelerator_id), finish_flag(0), context_id(-1),
+          thread_id(-1), system(_system) {}
 
     /* Return the tick event object for the event queue for this datapath. */
     virtual Event& getTickEvent() = 0;
@@ -39,6 +38,17 @@ class Gem5Datapath : public MemObject
     void scheduleOnEventQueue(unsigned delay_cycles = 1)
     {
       schedule(getTickEvent(), clockEdge(Cycles(delay_cycles)));
+    }
+
+    /* Set the accelerator's context ids to be that of the invoking thread. */
+    void setContextThreadIds(int _context_id, int _thread_id)
+    {
+      context_id = _context_id;
+      thread_id = _thread_id;
+    }
+
+    void setFinishFlag(Addr _finish_flag) {
+      finish_flag = _finish_flag;
     }
 
     /* Send a signal to the rest of the system that the accelerator has
@@ -80,6 +90,15 @@ class Gem5Datapath : public MemObject
      * code for the particular kernel.
      */
     int accelerator_id;
+
+    /* The accelerator will call sendFinishedSignal on this address to signal
+     * its completion to the CPU.
+     */
+    Addr finish_flag;
+
+    /* Thread and context ids of the thread that activated this accelerator. */
+    int context_id;
+    int thread_id;
 
     /* Dependencies of this accelerator, expressed as a list of other
      * accelerator ids. All other accelerators must complete execution before

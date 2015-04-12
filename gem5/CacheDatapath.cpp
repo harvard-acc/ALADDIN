@@ -2,6 +2,7 @@
  * local memory.
  */
 
+#include <functional>  // For std::hash
 #include <string>
 #include <sstream>
 #include <vector>
@@ -277,15 +278,22 @@ CacheDatapath::accessCache(
     store_queue.writeStats ++;
   }
 
-  //form request
   Request *req = NULL;
-  //physical request
   Flags<FlagsType> flags = 0;
-  //constructor for physical request only
-  req = new Request (addr, size, flags, dataMasterId());
+  /* To use strided prefetching, we need to include a "PC" so the prefetcher
+   * can predict memory behavior similar to how branch predictors work. We
+   * don't have real PCs in aladdin so we'll just hash the unique id of the
+   * node.  */
+  std::string unique_id = getStaticNodeId(node_id);
+  Addr pc = static_cast<Addr>(std::hash<std::string>()(unique_id));
+  req = new Request( addr, size, flags, dataMasterId(), curTick(), pc);
+  /* The context id and thread ids are needed to pass a few assert checks in
+   * gem5, but they aren't actually required for the mechanics of the memory
+   * checking itsef. This has to be set outside of the constructor or the
+   * address will be interpreted as a virtual, not physical. */
+  req->setThreadContext(context_id, thread_id);
 
   MemCmd command;
-  // uint8_t *data = new uint8_t[sizeof(long long int)];
   long long int *data = new long long int;
   *data = value;
   if (isLoad) {
@@ -324,9 +332,9 @@ void CacheDatapath::sendFinishedSignal()
 {
   Flags<FlagsType> flags = 0;
   MemCmd command = MemCmd::WriteReq;
-  Addr finish_flag = system->getFinishedFlag(accelerator_id);
   size_t size = 4;
   Request *req = new Request(finish_flag, size, flags, dataMasterId());
+  req->setThreadContext(context_id, thread_id);
   PacketPtr data_pkt = new Packet(req, command);
   DatapathSenderState *state = new DatapathSenderState(-1, true);
   data_pkt->senderState = state;

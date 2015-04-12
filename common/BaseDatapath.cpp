@@ -31,11 +31,13 @@ BaseDatapath::BaseDatapath(std::string bench, std::string trace_file,
   nameToVertex[get(boost::vertex_index, graph_, v)] = v;
   vertexToName = get(boost::vertex_index, graph_);
 
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  initDynamicMethodID(dynamic_methodid);
+  dynamic_method_id.assign(numTotalNodes, "");
+  instruction_id.assign(numTotalNodes, "");
+  initDynamicMethodID(dynamic_method_id);
+  initInstID(instruction_id);
 
-  for (auto dynamic_func_it = dynamic_methodid.begin(),
-            E = dynamic_methodid.end();
+  for (auto dynamic_func_it = dynamic_method_id.begin(),
+           E = dynamic_method_id.end();
        dynamic_func_it != E; dynamic_func_it++) {
     char func_id[256];
     int count;
@@ -73,11 +75,6 @@ void BaseDatapath::memoryAmbiguation() {
   std::unordered_set<std::string> paired_store;
   std::unordered_map<std::string, bool> store_load_pair;
 
-  std::vector<std::string> instid(numTotalNodes, "");
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-
-  initInstID(instid);
-  initDynamicMethodID(dynamic_methodid);
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // nodes with no incoming edges to first
@@ -119,15 +116,13 @@ void BaseDatapath::memoryAmbiguation() {
         int child_microop = microop.at(child_id);
         if (!is_load_op(child_microop))
           continue;
-        std::string node_dynamic_methodid = dynamic_methodid.at(node_id);
-        std::string load_dynamic_methodid = dynamic_methodid.at(child_id);
+        std::string node_dynamic_methodid = dynamic_method_id.at(node_id);
+        std::string load_dynamic_methodid = dynamic_method_id.at(child_id);
         if (node_dynamic_methodid.compare(load_dynamic_methodid) != 0)
           continue;
 
-        std::string store_unique_id(node_dynamic_methodid + "-" +
-                                    instid.at(node_id));
-        std::string load_unique_id(load_dynamic_methodid + "-" +
-                                   instid.at(child_id));
+        std::string store_unique_id = getStaticNodeId(node_id);
+        std::string load_unique_id = getStaticNodeId(child_id);
 
         if (store_load_pair.find(store_unique_id + "-" + load_unique_id) !=
             store_load_pair.end())
@@ -159,8 +154,7 @@ void BaseDatapath::memoryAmbiguation() {
     int node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
-    std::string unique_id(dynamic_methodid.at(node_id) + "-" +
-                          instid.at(node_id));
+    std::string unique_id = getStaticNodeId(node_id);
     if (is_store_op(node_microop)) {
       auto store_it = paired_store.find(unique_id);
       if (store_it == paired_store.end())
@@ -346,15 +340,12 @@ void BaseDatapath::removeInductionDependence() {
   std::cerr << "  Remove Induction Dependence  " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::vector<std::string> instid(numTotalNodes, "");
-  initInstID(instid);
-
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // nodes with no incoming edges to first
   for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi) {
     unsigned node_id = vertexToName[*vi];
-    std::string node_instid = instid.at(node_id);
+    std::string node_instid = instruction_id.at(node_id);
 
     if (node_instid.find("indvars") == std::string::npos)
       continue;
@@ -1135,27 +1126,24 @@ void BaseDatapath::updatePerCycleActivity(
     max_activity_map &max_add_per_function,
     max_activity_map &max_bit_per_function,
     max_activity_map &max_shifter_per_function) {
-  /*We use two ways to count the number of functional units in accelerators: one
-   * assumes that functional units can be reused in the same region; the other
-   * assumes no reuse of functional units. The advantage of reusing is that it
-   * elimates the cost of duplicating functional units which can lead to high
-   * leakage power and area. However, additional wires and muxes may need to be
-   * added for reusing.
-   * In the current model, we assume that multipliers can be reused, since the
-   * leakage power and area of multipliers are relatively significant, and no
-   * reuse for adders. This way of modeling is consistent with our observation
-   * of accelerators generated with Vivado.*/
-  std::vector<std::string> dynamic_methodid(numTotalNodes, "");
-  initDynamicMethodID(dynamic_methodid);
-
-  int num_adds_so_far = 0, num_muls_so_far = 0, num_bits_so_far = 0;
+   /* We use two ways to count the number of functional units in accelerators: one
+    * assumes that functional units can be reused in the same region; the other
+    * assumes no reuse of functional units. The advantage of reusing is that it
+    * eliminates the cost of duplicating functional units which can lead to high
+    * leakage power and area. However, additional wires and muxes may need to be
+    * added for reusing.
+    * In the current model, we assume that multipliers can be reused, since the
+    * leakage power and area of multipliers are relatively significant, and no
+    * reuse for adders. This way of modeling is consistent with our observation
+    * of accelerators generated with Vivado. */
+  int num_adds_so_far = 0, num_bits_so_far = 0;
   int num_shifters_so_far = 0;
   auto bound_it = loopBound.begin();
   for (unsigned node_id = 0; node_id < numTotalNodes; ++node_id) {
     char func_id[256];
     int count;
 
-    sscanf(dynamic_methodid.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
+    sscanf(dynamic_method_id.at(node_id).c_str(), "%[^-]-%d\n", func_id, &count);
     if (node_id == *bound_it) {
       if (max_add_per_function[func_id] < num_adds_so_far)
         max_add_per_function[func_id] = num_adds_so_far;

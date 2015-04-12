@@ -16,7 +16,7 @@ struct edge_node_info{
   int par_id;
 };
 
-//data structure used to tract dependency
+//data structure used to track dependency
 typedef unordered_map<std::string, unsigned int> string_to_uint;
 typedef unordered_map<long long int, unsigned int> uint_to_uint;
 typedef unordered_multimap<unsigned int, edge_node_info> multi_uint_to_node_info;
