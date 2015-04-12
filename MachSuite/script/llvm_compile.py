@@ -54,17 +54,23 @@ def main (directory, bench, source):
   #  print "%30s %s" % (key,os.environ[key])
 
   print directory
-  print '===================================================================================='
-  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + obj + ' '  + source_file
+  print '======================================================================'
+  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + \
+            ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops ' + \
+            ' -fno-inline -fno-builtin -emit-llvm -o ' + obj + ' ' + source_file
   print command
   os.system(command)
-  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -emit-llvm -o ' + test_obj + ' '  + test
+  command = 'clang -g -O1 -S -I' + os.environ['ALADDIN_HOME'] + \
+            ' -fno-slp-vectorize -fno-vectorize -fno-unroll-loops ' + \
+            ' -fno-inline -fno-builtin -emit-llvm -o ' + test_obj + ' '  + test
   print command
   os.system(command)
-  command = 'opt -S -load=' + os.getenv('TRACER_HOME') + '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj
+  command = 'opt -S -load=' + os.getenv('TRACER_HOME') + \
+            '/full-trace/full_trace.so -fulltrace ' + obj + ' -o ' + opt_obj
   print command
   os.system(command)
-  command = 'llvm-link -o full.llvm ' + opt_obj + ' ' + test_obj + ' ' + os.getenv('TRACER_HOME') + '/profile-func/trace_logger.llvm'
+  command = 'llvm-link -o full.llvm ' + opt_obj + ' ' + test_obj + ' ' + \
+            os.getenv('TRACER_HOME') + '/profile-func/trace_logger.llvm'
   print command
   os.system(command)
   command = 'llc -O0 -disable-fp-elim -filetype=asm -o full.s full.llvm'
@@ -76,7 +82,7 @@ def main (directory, bench, source):
   command = './' + executable + ' input.data check.data'
   print command
   os.system(command)
-  print '===================================================================================='
+  print '======================================================================'
 
 if __name__ == '__main__':
   directory = sys.argv[1]
