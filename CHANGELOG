@@ -1,3 +1,10 @@
+Aladdin Public Release, v1.1.2
+04-12-2015
+*Fixed arrayBaseAddress index.
+*Fixed memory bandwidth control and added a flag to indicate none of the
+scratchpads can service.
+
+
 Aladdin Public Release, v1.1.1
 04-09-2015
 
