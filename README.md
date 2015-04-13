@@ -1,4 +1,4 @@
-ALADDIN v1.1.1 Public Release
+ALADDIN v1.1.3 Public Release
 ============================================
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators.
@@ -48,7 +48,7 @@ Requirements:
 2. Recent version of GCC including some C++11 features (GCC 4.5+ should be ok).
    We use GCC 4.8.1.
 
-3. LLVM 3.4 and Clang 3.4 64-bit
+3. LLVM 3.4.0 and Clang 3.4.0 64-bit
 
 4. LLVM IR Trace Profiler (LLVM-Tracer)
    LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM

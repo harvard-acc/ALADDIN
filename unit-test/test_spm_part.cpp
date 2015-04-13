@@ -5,27 +5,23 @@
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
 
-SCENARIO("Test scratchpadPartition w/ Triad", "[triad]")
-{
+SCENARIO("Test scratchpadPartition w/ Triad", "[triad]") {
   GIVEN("Test Triad w/ Input Size 128, cyclic partition with a factor of 2, "
-        "loop unrolling with a factor of 2, enable loop pipelining")
-  {
+        "loop unrolling with a factor of 2, enable loop pipelining") {
     std::string bench("outputs/triad-128");
     std::string trace_file("inputs/triad-128-trace.gz");
     std::string config_file("inputs/config-triad-p2-u2-P1");
 
-    ScratchpadDatapath *acc;
-    Scratchpad *spad;
+    ScratchpadDatapath* acc;
+    Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()")
-    {
+    WHEN("Test initBaseAddress()") {
       acc->scratchpadPartition();
-      THEN("The baseAddress of memory operations should be '*-0' or '*-1'.")
-      {
+      THEN("The baseAddress of memory operations should be '*-0' or '*-1'.") {
         REQUIRE(acc->getBaseAddressLabel(3).compare("a-0") == 0);
         REQUIRE(acc->getBaseAddressLabel(5).compare("b-0") == 0);
         REQUIRE(acc->getBaseAddressLabel(9).compare("c-0") == 0);
@@ -42,26 +38,22 @@ SCENARIO("Test scratchpadPartition w/ Triad", "[triad]")
     }
   }
 }
-SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]")
-{
-  GIVEN("Test Reduction w/ Input Size 128")
-  {
+SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]") {
+  GIVEN("Test Reduction w/ Input Size 128") {
     std::string bench("outputs/reduction-128");
     std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
 
-    ScratchpadDatapath *acc;
-    Scratchpad *spad;
+    ScratchpadDatapath* acc;
+    Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()")
-    {
+    WHEN("Test initBaseAddress()") {
       acc->scratchpadPartition();
-      THEN("The baseAddress of memory operations should be '*-0/1/2/3'.")
-      {
+      THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
         REQUIRE(acc->getBaseAddressLabel(4).compare("in-0") == 0);
         REQUIRE(acc->getBaseAddressLabel(12).compare("in-1") == 0);
         REQUIRE(acc->getBaseAddressLabel(20).compare("in-2") == 0);
@@ -71,26 +63,22 @@ SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]")
     }
   }
 }
-SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]")
-{
-  GIVEN("Test pp_scan w/ Input Size 128")
-  {
+SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]") {
+  GIVEN("Test pp_scan w/ Input Size 128") {
     std::string bench("outputs/pp_scan-128");
     std::string trace_file("inputs/pp_scan-128-trace.gz");
     std::string config_file("inputs/config-pp_scan-p4-u4-P1");
 
-    ScratchpadDatapath *acc;
-    Scratchpad *spad;
+    ScratchpadDatapath* acc;
+    Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
     acc->setGlobalGraph();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()")
-    {
+    WHEN("Test initBaseAddress()") {
       acc->scratchpadPartition();
-      THEN("The baseAddress of memory operations should be '*-0/1/2/3'.")
-      {
+      THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
         REQUIRE(acc->getBaseAddressLabel(11).compare("bucket-0") == 0);
         REQUIRE(acc->getBaseAddressLabel(13).compare("bucket-1") == 0);
         REQUIRE(acc->getBaseAddressLabel(15).compare("bucket-1") == 0);
@@ -105,4 +93,3 @@ SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]")
     }
   }
 }
-
