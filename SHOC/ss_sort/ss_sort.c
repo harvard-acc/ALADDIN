@@ -62,11 +62,11 @@ void hist(int bucket[BUCKETSIZE], int a[N], int exp)
   {
     loop1: for (int maskID = 0; maskID < 4; maskID++)
       bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;
-           /*bucket[((a[blockID * ELEMENTSPERBLOCK + 1] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;*/
-           /*bucket[((a[blockID * ELEMENTSPERBLOCK + 2] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;*/
-           /*bucket[((a[blockID * ELEMENTSPERBLOCK + 3] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;*/
   }
 }
+
+
+
 
 void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
 {
@@ -74,19 +74,11 @@ void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
   //unroll == h
   loop3:for (blockID = 0; blockID < NUMOFBLOCKS; blockID++)
   {
-    loop1: for (int maskID = 0; maskID < 4; maskID++)
-    {
-      b[bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + maskID];
-      bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;
-
-    /*b[bucket[((a[blockID * ELEMENTSPERBLOCK + 1] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + 1];*/
-    /*bucket[((a[blockID * ELEMENTSPERBLOCK + 1] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;*/
-
-    /*b[bucket[((a[blockID * ELEMENTSPERBLOCK + 2] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + 2];*/
-    /*bucket[((a[blockID * ELEMENTSPERBLOCK + 2] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;*/
-
-    /*b[bucket[((a[blockID * ELEMENTSPERBLOCK + 3] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]] = a[blockID * ELEMENTSPERBLOCK + 3];*/
-    /*bucket[((a[blockID * ELEMENTSPERBLOCK + 3] >> exp)  & 0x3) * NUMOFBLOCKS + blockID]++;*/
+    loop1: for (int maskID = 0; maskID < 4; maskID++) {
+      int a_value =  a[blockID * ELEMENTSPERBLOCK + maskID];
+      int bucket_value = bucket[((a_value >> exp)  & 0x3) * NUMOFBLOCKS + blockID];
+      b[bucket_value] = a_value;
+      bucket[((a_value >> exp)  & 0x3) * NUMOFBLOCKS + blockID] = bucket_value +1;
     }
   }
 }

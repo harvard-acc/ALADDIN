@@ -4,10 +4,11 @@
 #include <stdlib.h>
 #include <iostream>
 
-#define ADD_LATENCY 1
-#define MEMOP_LATENCY 1
-#define MUL_LATENCY 1
-#define RW_PORTS 1
+/*Characterized FU latencies from FPGA virtex7 xc7v585tffg1761-2, in ns*/
+#define   ADD_LATENCY       1.87
+#define   MEMOP_LATENCY     2.39
+#define   MUL_LATENCY       9.74
+#define   RW_PORTS 1
 /* All the power numbers are in mW, energy numbers are in nJ */
 
 /* Function units power model with TSMC 40g */

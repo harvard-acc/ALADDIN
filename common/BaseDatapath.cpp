@@ -73,119 +73,33 @@ void BaseDatapath::memoryAmbiguation() {
   std::cerr << "      Memory Ambiguation       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::unordered_multimap<std::string, std::string> pair_per_load;
-  std::unordered_set<std::string> paired_store;
-  std::unordered_map<std::string, bool> store_load_pair;
-
-  std::vector<Vertex> topo_nodes;
-  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
-  // nodes with no incoming edges to first
-  for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi) {
-    unsigned node_id = vertexToName[*vi];
-
-    int node_microop = microop.at(node_id);
-    if (is_load_op(node_microop)) {
-      // iterate its children to find gep, if the current load generates the
-      // address for its grandchildren, the dependences cannot be eliminated in
-      // later
-      // optimization.
-      out_edge_iter out_edge_it, out_edge_end;
-      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
-           out_edge_it != out_edge_end;
-           ++out_edge_it) {
-        Vertex child_node = target(*out_edge_it, graph_);
-        int child_id = vertexToName[child_node];
-        int child_microop = microop.at(child_id);
-        if (child_microop != LLVM_IR_GetElementPtr)
-          continue;
-        out_edge_iter gep_out_edge_it, gep_out_edge_end;
-        for (tie(gep_out_edge_it, gep_out_edge_end) =
-                 out_edges(child_node, graph_);
-             gep_out_edge_it != gep_out_edge_end;
-             ++gep_out_edge_it) {
-          Vertex grandchild_node = target(*gep_out_edge_it, graph_);
-          int grandchild_id = vertexToName[grandchild_node];
-          int grandchild_microop = microop.at(grandchild_id);
-          if (!is_memory_op(grandchild_microop))
-            continue;
-          dynamicMemoryOps.insert(grandchild_id);
-        }
-      }
-    } else if (is_store_op(node_microop)) {
-      // iterate its children to find a load op
-      out_edge_iter out_edge_it, out_edge_end;
-      for (tie(out_edge_it, out_edge_end) = out_edges(*vi, graph_);
-           out_edge_it != out_edge_end;
-           ++out_edge_it) {
-        int child_id = vertexToName[target(*out_edge_it, graph_)];
-        int child_microop = microop.at(child_id);
-        if (!is_load_op(child_microop))
-          continue;
-        std::string node_dynamic_methodid = dynamic_method_id.at(node_id);
-        std::string load_dynamic_methodid = dynamic_method_id.at(child_id);
-        if (node_dynamic_methodid.compare(load_dynamic_methodid) != 0)
-          continue;
-
-        std::string store_unique_id = getStaticNodeId(node_id);
-        std::string load_unique_id = getStaticNodeId(child_id);
-
-        if (store_load_pair.find(store_unique_id + "-" + load_unique_id) !=
-            store_load_pair.end())
-          continue;
-        // add to the pair
-        store_load_pair[store_unique_id + "-" + load_unique_id] = 1;
-        paired_store.insert(store_unique_id);
-        auto load_range = pair_per_load.equal_range(load_unique_id);
-        bool found_store = 0;
-        for (auto store_it = load_range.first; store_it != load_range.second;
-             store_it++) {
-          if (store_unique_id.compare(store_it->second) == 0) {
-            found_store = 1;
-            break;
-          }
-        }
-        if (!found_store)
-          pair_per_load.insert(make_pair(load_unique_id, store_unique_id));
-      }
-    }
-  }
-  if (store_load_pair.size() == 0)
-    return;
-
-  std::vector<newEdge> to_add_edges;
   std::unordered_map<std::string, unsigned> last_store;
-
-  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++) {
-    int node_microop = microop.at(node_id);
+  std::vector<newEdge> to_add_edges;
+  for (unsigned node_id = 0; node_id < nameToVertex.size(); node_id++) {
+    unsigned node_microop = microop.at(node_id);
     if (!is_memory_op(node_microop))
       continue;
-    std::string unique_id = getStaticNodeId(node_id);
-    if (is_store_op(node_microop)) {
-      auto store_it = paired_store.find(unique_id);
-      if (store_it == paired_store.end())
+    in_edge_iter in_edge_it, in_edge_end;
+    for (tie(in_edge_it, in_edge_end) = in_edges(nameToVertex[node_id], graph_);
+         in_edge_it != in_edge_end;
+         ++in_edge_it) {
+      unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
+      int parent_microop = microop.at(parent_id);
+      if (parent_microop != LLVM_IR_GetElementPtr)
         continue;
-      last_store[unique_id] = node_id;
-    } else {
-      assert(is_load_op(node_microop));
-      auto load_range = pair_per_load.equal_range(unique_id);
-      if (std::distance(load_range.first, load_range.second) == 1)
-        continue;
-      for (auto load_store_it = load_range.first;
-           load_store_it != load_range.second;
-           ++load_store_it) {
-        assert(paired_store.find(load_store_it->second) != paired_store.end());
-        auto prev_store_it = last_store.find(load_store_it->second);
-        if (prev_store_it == last_store.end())
-          continue;
-        unsigned prev_store_id = prev_store_it->second;
-        if (!doesEdgeExist(prev_store_id, node_id)) {
-          to_add_edges.push_back({ prev_store_id, node_id, -1 });
-          dynamicMemoryOps.insert(prev_store_id);
-          dynamicMemoryOps.insert(node_id);
-        }
+      if (!induction_nodes.at(parent_id)) {
+        dynamicMemoryOps.insert(node_id);
+        std::string unique_id = getStaticNodeId(node_id);
+        auto prev_store_it = last_store.find(unique_id);
+        if (prev_store_it != last_store.end())
+          to_add_edges.push_back({prev_store_it->second, node_id, -1});
+        if (is_store_op(node_microop))
+          last_store[unique_id] = node_id;
+        break;
       }
     }
   }
+  std::vector<bool>().swap(induction_nodes);
   updateGraphWithNewEdges(to_add_edges);
 }
 /*
@@ -233,8 +147,10 @@ void BaseDatapath::removePhiNodes() {
       unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
       while (microop.at(parent_id) == LLVM_IR_PHI) {
         checked_phi_nodes.insert(parent_id);
-        to_remove_edges.insert(*in_edge_it);
         Vertex parent_vertex = nameToVertex[parent_id];
+        if (boost::in_degree(parent_vertex, graph_) == 0)
+          break;
+        to_remove_edges.insert(*in_edge_it);
         in_edge_it = in_edges(parent_vertex, graph_).first;
         parent_id = vertexToName[source(*in_edge_it, graph_)];
       }
@@ -264,8 +180,8 @@ void BaseDatapath::removePhiNodes() {
     std::vector<pair<unsigned, int>>().swap(phi_child);
   }
 
-  updateGraphWithNewEdges(to_add_edges);
   updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
   cleanLeafNodes();
 }
 /*
@@ -351,17 +267,39 @@ void BaseDatapath::removeInductionDependence() {
   std::cerr << "  Remove Induction Dependence  " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::vector<Vertex> topo_nodes;
-  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
-  // nodes with no incoming edges to first
-  for (auto vi = topo_nodes.rbegin(); vi != topo_nodes.rend(); ++vi) {
-    unsigned node_id = vertexToName[*vi];
-    std::string node_instid = instruction_id.at(node_id);
-
-    if (node_instid.find("indvars") == std::string::npos)
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  induction_nodes.assign(numTotalNodes, false);
+  for (unsigned node_id = 0; node_id < nameToVertex.size(); node_id++) {
+    if (is_memory_op(microop.at(node_id)))
       continue;
-    if (microop.at(node_id) == LLVM_IR_Add)
-      microop.at(node_id) = LLVM_IR_IndexAdd;
+    std::string node_instid = instruction_id.at(node_id);
+    if (node_instid.find("indvars") != std::string::npos) {
+      induction_nodes.at(node_id) = true;
+      if (is_add_op(microop.at(node_id)))
+        microop.at(node_id) = LLVM_IR_IndexAdd;
+    } else {
+      bool inductive_parents = true;
+      in_edge_iter in_edge_it, in_edge_end;
+      for (tie(in_edge_it, in_edge_end) =
+               in_edges(nameToVertex[node_id], graph_);
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
+        if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
+          continue;
+        Vertex parent_vertex = source(*in_edge_it, graph_);
+        unsigned parent_id = vertexToName[parent_vertex];
+        /*If one of the parents is inductive, the node is not inductive.*/
+        if (!induction_nodes.at(parent_id)) {
+          inductive_parents = false;
+          break;
+        }
+      }
+      if (inductive_parents) {
+        induction_nodes.at(node_id) = true;
+        if (is_add_op(microop.at(node_id)))
+          microop.at(node_id) = LLVM_IR_IndexAdd;
+      }
+    }
   }
 }
 
@@ -1435,6 +1373,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary.max_add = max_add;
   summary.max_bit = max_bit;
   summary.max_shifter = max_shifter;
+  summary.max_reg = max_reg;
 
   writeSummary(std::cerr, summary);
   ofstream summary_file;
@@ -1475,6 +1414,7 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   outfile << "Num of Bit-wise Operators (32-bit): " << summary.max_bit
           << std::endl;
   outfile << "Num of Shifters (32-bit): " << summary.max_shifter << std::endl;
+  outfile << "Num of Registers (32-bit): " << summary.max_reg << std::endl;
   outfile << "===============================" << std::endl;
   outfile << "        Aladdin Results        " << std::endl;
   outfile << "===============================" << std::endl;

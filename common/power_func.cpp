@@ -46,8 +46,12 @@ void getRegisterPowerArea(float cycle_time,
       std::cerr << " Current power model supports acclerators running"
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
-                << std::endl;
-      exit(1);
+                << " Use 6ns power model instead." << std::endl;
+      *internal_power_per_bit = REG_6ns_int_power;
+      *switch_power_per_bit = REG_6ns_switch_power;
+      *leakage_power_per_bit = REG_6ns_leakage_power;
+      *area_per_bit = REG_6ns_area;
+      break;
   }
 }
 void getAdderPowerArea(float cycle_time,
@@ -97,7 +101,7 @@ void getAdderPowerArea(float cycle_time,
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
-      exit(1);
+      break;
   }
 }
 void getMultiplierPowerArea(float cycle_time,
@@ -147,7 +151,7 @@ void getMultiplierPowerArea(float cycle_time,
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
-      exit(1);
+      break;
   }
 }
 void getBitPowerArea(float cycle_time,
@@ -197,7 +201,7 @@ void getBitPowerArea(float cycle_time,
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
-      exit(1);
+      break;
   }
 }
 void getShifterPowerArea(float cycle_time,
@@ -247,6 +251,6 @@ void getShifterPowerArea(float cycle_time,
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
                 << std::endl;
-      exit(1);
+      break;
   }
 }

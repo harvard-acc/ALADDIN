@@ -22,15 +22,17 @@ ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
 
 void ScratchpadDatapath::globalOptimizationPass() {
   // Node removals must come first.
-  removeInductionDependence();
   removePhiNodes();
+  /*memoryAmibguation() should execute after removeInductionDependence() because
+   * it needs induction_nodes.*/
+  removeInductionDependence();
+  memoryAmbiguation();
   // Base address must be initialized next.
   initBaseAddress();
   completePartition();
   scratchpadPartition();
   loopFlatten();
   loopUnrolling();
-  memoryAmbiguation();
   removeSharedLoads();
   storeBuffer();
   removeRepeatedStores();
@@ -151,6 +153,10 @@ void ScratchpadDatapath::scratchpadPartition() {
   writeBaseAddress();
 }
 
+void ScratchpadDatapath::setGraphForStepping() {
+  BaseDatapath::setGraphForStepping();
+  timeBeforeNodeExecution.assign(numTotalNodes, 0);
+}
 bool ScratchpadDatapath::step() {
   if (!BaseDatapath::step()) {
     scratchpad->step();
@@ -192,6 +198,54 @@ void ScratchpadDatapath::stepExecutingQueue() {
       }
     } else {
       markNodeCompleted(it, index);
+    }
+  }
+}
+void ScratchpadDatapath::updateChildren(unsigned node_id) {
+  if (nameToVertex.find(node_id) == nameToVertex.end())
+    return;
+  float latency_after_current_node = node_latency(microop.at(node_id));
+  if (timeBeforeNodeExecution.at(node_id) > num_cycles * cycleTime) {
+    latency_after_current_node += timeBeforeNodeExecution.at(node_id);
+  }
+  else {
+    latency_after_current_node += num_cycles * cycleTime;
+  }
+  Vertex node = nameToVertex[node_id];
+  out_edge_iter out_edge_it, out_edge_end;
+  for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
+       out_edge_it != out_edge_end;
+       ++out_edge_it) {
+    unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
+    int edge_parid = edgeToParid[*out_edge_it];
+    float child_earliest_time = timeBeforeNodeExecution.at(child_id);
+    if (edge_parid != CONTROL_EDGE && child_earliest_time < latency_after_current_node)
+      timeBeforeNodeExecution.at(child_id) = latency_after_current_node;
+    if (numParents[child_id] > 0) {
+      numParents[child_id]--;
+      if (numParents[child_id] == 0) {
+        unsigned child_microop = microop.at(child_id);
+        if ((node_latency(child_microop) == 0 ||
+             node_latency(microop.at(node_id)) == 0) &&
+            edge_parid != CONTROL_EDGE)
+          executingQueue.push_back(child_id);
+        else if (is_memory_op(child_microop)) {
+          if (is_store_op(child_microop))
+            readyToExecuteQueue.push_front(child_id);
+          else
+            readyToExecuteQueue.push_back(child_id);
+        }
+        else {
+          float after_child_time = timeBeforeNodeExecution.at(child_id)
+            + node_latency(microop.at(node_id));
+          if (after_child_time < (num_cycles + 1) * cycleTime &&
+              edge_parid != CONTROL_EDGE )
+            executingQueue.push_back(child_id);
+          else
+            readyToExecuteQueue.push_back(child_id);
+        }
+        numParents[child_id] = -1;
+      }
     }
   }
 }

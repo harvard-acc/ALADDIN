@@ -121,10 +121,11 @@ struct summary_data_t {
   float total_area;
   float fu_area;
   float mem_area;
-  float max_mul;
-  float max_add;
-  float max_bit;
-  float max_shifter;
+  int max_mul;
+  int max_add;
+  int max_bit;
+  int max_shifter;
+  int max_reg;
 };
 
 class BaseDatapath {
@@ -136,7 +137,7 @@ class BaseDatapath {
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   void insertMicroop(int node_microop) { microop.push_back(node_microop); }
   void setGlobalGraph();
-  void setGraphForStepping();
+  virtual void setGraphForStepping();
   int clearGraph();
   void dumpGraph(std::string graph_name);
 
@@ -223,7 +224,7 @@ class BaseDatapath {
   void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges);
   void updateGraphWithIsolatedNodes(std::vector<unsigned>& to_remove_nodes);
-  void updateChildren(unsigned node_id);
+  virtual void updateChildren(unsigned node_id);
   void updateRegStats();
 
   // Scheduling
@@ -356,7 +357,7 @@ class BaseDatapath {
   std::vector<int> loopBound;
   std::vector<std::string> dynamic_method_id;
   std::vector<std::string> instruction_id;
-
+  std::vector<bool> induction_nodes;
   // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
