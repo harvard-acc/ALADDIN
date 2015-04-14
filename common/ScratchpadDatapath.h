@@ -17,6 +17,8 @@ class ScratchpadDatapath : public BaseDatapath {
   void globalOptimizationPass();
   void completePartition();
   void scratchpadPartition();
+  virtual void setGraphForStepping();
+  virtual void updateChildren(unsigned node_id);
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();
@@ -34,6 +36,8 @@ class ScratchpadDatapath : public BaseDatapath {
   /*True if any of the scratchpads can still service memory requests.
     False if non of the scratchpads can service any memory requests.*/
   bool scratchpadCanService;
+  /*An array to keep track of time before each node executes*/
+  std::vector<float> timeBeforeNodeExecution;
 };
 
 #endif
