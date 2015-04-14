@@ -61,10 +61,7 @@ void run_benchmark(void* vargs) {
   mapArrayToAccelerator(
       MACHSUITE_AES_AES, "sbox", (void*)&(sbox[0]), sizeof(sbox));
   mapArrayToAccelerator(MACHSUITE_AES_AES, "rcon", (void*)&rcon, sizeof(rcon));
-  int finish_flag = NOT_COMPLETED;
-  invokeAccelerator(MACHSUITE_AES_AES, &finish_flag);
-  while (finish_flag == NOT_COMPLETED)
-    ;
+  invokeAcceleratorAndBlock(MACHSUITE_AES_AES);
 #else
   aes256_encrypt_ecb(&(args->ctx), args->k, args->buf);
 #endif

@@ -46,14 +46,9 @@ int main() {
   mapArrayToAccelerator(
       INTEGRATION_TEST, "store_loc", &(store_loc[0]), num_vals * sizeof(int));
 
-  int finish_flag = NOT_COMPLETED;
-  invokeAccelerator(INTEGRATION_TEST, &finish_flag);
-  std::cout << "Accelerator invoked!\n";
-  while (finish_flag == NOT_COMPLETED) {
-  }
+  std::cout << "Invoking accelerator!\n";
+  invokeAcceleratorAndBlock(INTEGRATION_TEST);
   std::cout << "Accelerator finished!\n";
-  std::cout << "Finish flag value is " << std::hex << finish_flag << std::dec
-            << "\n";
 #endif
 
   int num_failures = test_stores(store_vals, store_loc, num_vals);

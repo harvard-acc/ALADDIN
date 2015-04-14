@@ -8,7 +8,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --outdir=${bmk_home}/outputs \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --num-cpus=1 \
-  --enable-prefetchers \
+  --enable_prefetchers \
   --mem-size=2GB \
   --mem-type=ddr3_1600_x64  \
   --sys-clock=1GHz \

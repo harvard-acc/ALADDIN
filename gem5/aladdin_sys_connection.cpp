@@ -25,8 +25,18 @@ bool isValidRequestCode(unsigned req) {
           (req == INTEGRATION_TEST);
 }
 
-void invokeAccelerator(unsigned req_code, int* finish_flag) {
+void invokeAcceleratorAndBlock(unsigned req_code) {
+  int finish_flag = NOT_COMPLETED;
+  ioctl(ALADDIN_FD, req_code, &finish_flag);
+  while (finish_flag == NOT_COMPLETED)
+    ;
+}
+
+int* invokeAcceleratorAndReturn(unsigned req_code) {
+  int* finish_flag = (int*) malloc(sizeof(int));
+  *finish_flag = NOT_COMPLETED;
   ioctl(ALADDIN_FD, req_code, finish_flag);
+  return finish_flag;
 }
 
 void mapArrayToAccelerator(

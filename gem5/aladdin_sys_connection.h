@@ -37,8 +37,28 @@ extern "C" {
 // Checks of the request code is valid.
 bool isValidRequestCode(unsigned req);
 
-// Schedules the accelerator for execution in gem5.
-void invokeAccelerator(unsigned req_code, int* finish_flag);
+/* Schedules the accelerator for execution in gem5 and spin waits until the accelerator returns.
+ *
+ * Args:
+ *   req_code: Accelerator request code.
+ *
+ * Returns:
+ *   Nothing.
+ */
+void invokeAcceleratorAndBlock(unsigned req_code);
+
+/* Schedules the accelerator for execution in gem5 and returns immediately. The
+ * client code is respionsible for checking for accelerator completion and
+ * deleting the finish_flag pointer.
+ *
+ * Args:
+ *   req_code: Accelerator request code.
+ *
+ * Returns:
+ *   A new pointer to a finish flag integer. The client code should delete this
+ *     when it is finished with it.
+ */
+int* invokeAcceleratorAndReturn(unsigned req_code);
 
 /* Create a virtual to physical address mapping for the specified array for
  * the dynamic trace used in Aladdin.
