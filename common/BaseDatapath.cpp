@@ -285,7 +285,7 @@ void BaseDatapath::removeInductionDependence() {
           continue;
         Vertex parent_vertex = source(*in_edge_it, graph_);
         unsigned parent_id = vertexToName[parent_vertex];
-        /*If one of the parents is inductive, the node is not inductive.*/
+        /*If one of the parents is not inductive, the node is not inductive.*/
         if (!induction_nodes.at(parent_id)) {
           inductive_parents = false;
           break;
