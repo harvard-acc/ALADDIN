@@ -100,7 +100,11 @@ void getAdderPowerArea(float cycle_time,
       std::cerr << " Current power model supports acclerators running"
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
-                << std::endl;
+                << " Use 6ns power model instead." << std::endl;
+      *internal_power = ADD_6ns_int_power;
+      *switch_power = ADD_6ns_switch_power;
+      *leakage_power = ADD_6ns_leakage_power;
+      *area = ADD_6ns_area;
       break;
   }
 }
@@ -150,7 +154,11 @@ void getMultiplierPowerArea(float cycle_time,
       std::cerr << " Current power model supports acclerators running"
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
-                << std::endl;
+                << " Use 6ns power model instead." << std::endl;
+      *internal_power = MUL_6ns_int_power;
+      *switch_power = MUL_6ns_switch_power;
+      *leakage_power = MUL_6ns_leakage_power;
+      *area = MUL_6ns_area;
       break;
   }
 }
@@ -200,7 +208,11 @@ void getBitPowerArea(float cycle_time,
       std::cerr << " Current power model supports acclerators running"
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
-                << std::endl;
+                << " Use 6ns power model instead." << std::endl;
+      *internal_power = BIT_6ns_int_power;
+      *switch_power = BIT_6ns_switch_power;
+      *leakage_power = BIT_6ns_leakage_power;
+      *area = BIT_6ns_area;
       break;
   }
 }
@@ -250,7 +262,11 @@ void getShifterPowerArea(float cycle_time,
       std::cerr << " Current power model supports acclerators running"
                 << " at 1, 2, 3, 4, 5 and 6 ns. " << std::endl;
       std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
-                << std::endl;
+                << " Use 6ns power model instead." << std::endl;
+      *internal_power = SHIFTER_6ns_int_power;
+      *switch_power = SHIFTER_6ns_switch_power;
+      *leakage_power = SHIFTER_6ns_leakage_power;
+      *area = SHIFTER_6ns_area;
       break;
   }
 }
