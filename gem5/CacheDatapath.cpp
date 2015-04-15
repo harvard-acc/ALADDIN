@@ -215,7 +215,7 @@ CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
 bool
 CacheDatapath::accessTLB(Addr addr, unsigned size, bool isLoad, int node_id)
 {
-  DPRINTF(CacheDatapath, "accessTLB for addr:%#x\n", addr);
+  DPRINTF(CacheDatapath, "accessTLB for trace addr:%#x\n", addr);
   //form request
   Request *req = NULL;
   //physical request

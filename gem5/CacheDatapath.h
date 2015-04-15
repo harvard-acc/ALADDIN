@@ -22,7 +22,7 @@
 
 #include "params/CacheDatapath.hh"
 
-#define MASK 0x7fffffff
+#define MASK 0x7fffffffffff
 #define MAX_INFLIGHT_NODES 100
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64

@@ -31,6 +31,8 @@ extern unsigned SHOC_SSSORT;
 extern unsigned SHOC_STENCIL;
 extern unsigned SHOC_TRIAD;
 
+extern unsigned CORTEXSUITE_STITCH;
+
 // A special code used by integration tests.
 extern unsigned INTEGRATION_TEST;
 
