@@ -8,11 +8,10 @@ Scratchpad::Scratchpad(unsigned p_ports_per_part, float cycle_time) {
 
 Scratchpad::~Scratchpad() {}
 
+// wordsize in bytes
 void Scratchpad::setScratchpad(std::string baseName,
                                unsigned num_of_bytes,
-                               unsigned wordsize)
-    // wordsize in bytes
-{
+                               unsigned wordsize) {
   assert(!partitionExist(baseName));
   // size: number of words
   unsigned new_id = baseToPartitionID.size();

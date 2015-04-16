@@ -9,15 +9,16 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
-CFLAGS = $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
-         -I$(ALADDIN_HOME)/common
-LFLAGS = $(DEBUG) -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin -lpthread -lz
+CFLAGS = -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
+         -I$(ALADDIN_HOME)/common -I$(MYSQL_HOME)
+LFLAGS = -g -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
+         -L$(ALADDIN_HOME) -laladdin -lmysqlcppconn
 
 all : $(TESTS)
 
 test : $(TESTS)
-	for unit_test in $(TESTS) ; do \
+	@for unit_test in $(TESTS) ; do \
+    echo $$unit_test ; \
 		./$$unit_test ; \
 	done
 
@@ -33,4 +34,3 @@ $(TESTS) : % : %.o $(TEST_DEPS)
 clean:
 	rm -f *.o
 	rm -f $(TESTS)
-	rm $(ALADDIN_HOME)/libaladdin.a
