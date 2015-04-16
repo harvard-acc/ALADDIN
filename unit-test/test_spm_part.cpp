@@ -19,7 +19,7 @@ SCENARIO("Test scratchpadPartition w/ Triad", "[triad]") {
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()") {
+    WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0' or '*-1'.") {
         REQUIRE(acc->getBaseAddressLabel(3).compare("a-0") == 0);
@@ -51,7 +51,7 @@ SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]") {
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()") {
+    WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
         REQUIRE(acc->getBaseAddressLabel(4).compare("in-0") == 0);
@@ -76,7 +76,7 @@ SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]") {
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();
-    WHEN("Test initBaseAddress()") {
+    WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
         REQUIRE(acc->getBaseAddressLabel(11).compare("bucket-0") == 0);

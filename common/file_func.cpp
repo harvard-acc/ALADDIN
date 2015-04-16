@@ -48,8 +48,9 @@ void read_gzip_string_file(string gzip_file_name,
 /*Read gz file into vector
 Input: gzip-file-name, size of elements, vector to write to
 */
-void
-read_gzip_file(string gzip_file_name, unsigned size, std::vector<int>& output) {
+void read_gzip_file(string gzip_file_name,
+                    unsigned size,
+                    std::vector<int>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   std::cerr << gzip_file_name << std::endl;
@@ -168,8 +169,9 @@ void read_gzip_1in2_unsigned_file(string gzip_file_name,
   }
 }
 
-void
-write_gzip_file(string gzip_file_name, unsigned size, vector<int>& output) {
+void write_gzip_file(string gzip_file_name,
+                     unsigned size,
+                     vector<int>& output) {
   gzFile gzip_file;
 #ifdef DDEBUG
   cerr << gzip_file_name << endl;
@@ -206,8 +208,9 @@ void write_gzip_unsigned_file(string gzip_file_name,
   gzclose(gzip_file);
 }
 
-void
-write_string_file(string file_name, unsigned size, vector<string>& output) {
+void write_string_file(string file_name,
+                       unsigned size,
+                       vector<string>& output) {
   ofstream file;
   file.open(file_name.c_str());
   for (unsigned i = 0; i < size; ++i)

@@ -3,8 +3,9 @@
 
 #include <string>
 
-#include "DatabaseDeps.h"
 #include "BaseDatapath.h"
+#include "DatabaseDeps.h"
+#include "Node.h"
 #include "Scratchpad.h"
 
 class ScratchpadDatapath : public BaseDatapath {
@@ -19,7 +20,7 @@ class ScratchpadDatapath : public BaseDatapath {
   void completePartition();
   void scratchpadPartition();
   virtual void setGraphForStepping();
-  virtual void updateChildren(unsigned node_id);
+  virtual void updateChildren(BaseNode* node);
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();
@@ -36,8 +37,6 @@ class ScratchpadDatapath : public BaseDatapath {
   /*True if any of the scratchpads can still service memory requests.
     False if non of the scratchpads can service any memory requests.*/
   bool scratchpadCanService;
-  /*An array to keep track of time before each node executes*/
-  std::vector<float> timeBeforeNodeExecution;
 #ifdef USE_DB
   int writeConfiguration(sql::Connection* con);
 #endif

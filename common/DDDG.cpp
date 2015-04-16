@@ -8,8 +8,7 @@ gzFile memory_trace;
 gzFile getElementPtr_trace;
 
 DDDG::DDDG(BaseDatapath* _datapath, std::string _trace_name)
-    : datapath(_datapath)
-    , trace_name(_trace_name) {
+    : datapath(_datapath), trace_name(_trace_name) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
@@ -60,7 +59,7 @@ void DDDG::parse_instruction_line(std::string line) {
   prev_microop = curr_microop;
   curr_microop = (uint8_t)microop;
 
-  datapath->insertMicroop((curr_microop));
+  datapath->insertNode(count, microop);
 
   curr_instid = instid;
 
@@ -222,10 +221,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
                num_of_instructions,
                base_label.c_str(),
                base_address);
-    } else if (param_tag == 2 &&
-               curr_microop == LLVM_IR_Store)  // 2nd of Store is the pointer
-        // while 1st is the value
-    {
+    } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
+      // 1st arg of store is the value, 2nd arg is the pointer.
       long long int mem_address = parameter_value_per_inst[0];
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())

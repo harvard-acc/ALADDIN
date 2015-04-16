@@ -31,6 +31,8 @@
 
 #include "DatabaseDeps.h"
 
+#include "Node.h"
+#include "boost_typedefs.h"
 #include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
@@ -42,21 +44,6 @@
 #define PIPE_EDGE 12
 
 using namespace std;
-typedef boost::property<boost::vertex_index_t, unsigned> VertexProperty;
-typedef boost::property<boost::edge_name_t, uint8_t> EdgeProperty;
-typedef boost::adjacency_list<boost::listS,
-                              boost::vecS,
-                              boost::bidirectionalS,
-                              VertexProperty,
-                              EdgeProperty> Graph;
-typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-typedef boost::graph_traits<Graph>::edge_descriptor Edge;
-typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
-typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
-typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iter;
-typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
-typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
-typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 // Used heavily in reporting cycle-level statistics.
 typedef std::unordered_map<std::string, std::vector<int>> activity_map;
 typedef std::unordered_map<std::string, int> max_activity_map;
@@ -80,8 +67,8 @@ struct callDep {
   int callInstID;
 };
 struct newEdge {
-  unsigned from;
-  unsigned to;
+  BaseNode* from;
+  BaseNode* to;
   int parid;
 };
 struct RQEntry {
@@ -135,7 +122,7 @@ class BaseDatapath {
 
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
-  void insertMicroop(int node_microop) { microop.push_back(node_microop); }
+  void insertNode(unsigned node_id, uint8_t microop);
   void setGlobalGraph();
   virtual void setGraphForStepping();
   int clearGraph();
@@ -145,24 +132,33 @@ class BaseDatapath {
   std::string getBenchName() { return benchName; }
   int getNumOfNodes() { return boost::num_vertices(graph_); }
   int getNumOfEdges() { return boost::num_edges(graph_); }
-  int getMicroop(unsigned int node_id) { return microop.at(node_id); }
+  int getMicroop(unsigned int node_id) {
+    return exec_nodes[node_id]->get_microop();
+  }
   int getNumOfConnectedNodes(unsigned int node_id) {
-    return boost::degree(nameToVertex[node_id], graph_);
+    return boost::degree(exec_nodes[node_id]->get_vertex(), graph_);
   }
   int getUnrolledLoopBoundary(unsigned int region_id) {
     return loopBound.at(region_id);
   }
   std::string getBaseAddressLabel(unsigned int node_id) {
-    return nodeToLabel[node_id];
+    return exec_nodes[node_id]->get_array_label();
   }
   long long int getBaseAddress(std::string label) {
     return arrayBaseAddress[label];
   }
-  std::string getStaticNodeId(unsigned node_id) {
-    return dynamic_method_id[node_id] + "-" + instruction_id[node_id];
+  bool doesEdgeExist(BaseNode* from, BaseNode* to) {
+    if (from != nullptr && to != nullptr)
+      return doesEdgeExistVertex(from->get_vertex(), to->get_vertex());
+    return false;
   }
+  // This is kept for unit testing reasons only.
   bool doesEdgeExist(unsigned int from, unsigned int to) {
-    return edge(nameToVertex[from], nameToVertex[to], graph_).second;
+    return doesEdgeExist(exec_nodes[from], exec_nodes[to]);
+  }
+  BaseNode* getNodeFromVertex(Vertex& vertex) {
+    unsigned node_id = vertexToName[vertex];
+    return exec_nodes[node_id];
   }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
 
@@ -190,9 +186,9 @@ class BaseDatapath {
 
  protected:
   // Graph transformation helpers.
-  void findMinRankNodes(unsigned& node1,
-                        unsigned& node2,
-                        std::map<unsigned, unsigned>& rank_map);
+  void findMinRankNodes(BaseNode** node1,
+                        BaseNode** node2,
+                        std::map<BaseNode*, unsigned>& rank_map);
   void cleanLeafNodes();
   bool doesEdgeExistVertex(Vertex from, Vertex to) {
     return edge(from, to, graph_).second;
@@ -211,11 +207,11 @@ class BaseDatapath {
   // State initialization.
   virtual void initBaseAddress();
   void initMethodID(std::vector<int>& methodid);
-  void initDynamicMethodID(std::vector<std::string>& methodid);
+  void initDynamicMethods(std::unordered_set<std::string>& functions);
   void initPrevBasicBlock(std::vector<std::string>& prevBasicBlock);
-  void initInstID(std::vector<std::string>& instid);
+  void initInstID();
   void initAddress(std::unordered_map<unsigned, MemAccess>& address);
-  void initLineNum(std::vector<int>& lineNum);
+  void initLineNum();
   void initGetElementPtr(
       std::unordered_map<unsigned, pair<std::string, long long int>>&
           get_element_ptr);
@@ -224,7 +220,7 @@ class BaseDatapath {
   void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges);
   void updateGraphWithIsolatedNodes(std::vector<unsigned>& to_remove_nodes);
-  virtual void updateChildren(unsigned node_id);
+  virtual void updateChildren(BaseNode* node);
   void updateRegStats();
 
   // Scheduling
@@ -238,11 +234,10 @@ class BaseDatapath {
                          int& advance_to);
 
   // Stats output.
-  void writeFinalLevel();
-  void writeGlobalIsolated();
   void writePerCycleActivity();
   void writeBaseAddress();
-  void writeMicroop(std::vector<int>& microop);
+  // Writes microop, execution cycle, and isolated nodes.
+  void writeOtherStats();
   void initPerCycleActivity(std::vector<std::string>& comp_partition_names,
                             std::vector<std::string>& spad_partition_names,
                             activity_map& ld_activity,
@@ -332,7 +327,6 @@ class BaseDatapath {
   std::string experiment_name;
   // boost graph.
   Graph graph_;
-  std::unordered_map<unsigned, Vertex> nameToVertex;
   VertexNameMap vertexToName;
   EdgeNameMap edgeToParid;
 
@@ -343,21 +337,13 @@ class BaseDatapath {
   // Completely partitioned arrays.
   Registers registers;
 
-  std::vector<int> newLevel;
+  // Complete list of all execution nodes and their properties.
+  std::map<unsigned int, BaseNode*> exec_nodes;
+
   std::vector<regEntry> regStats;
-  std::vector<int> microop;
-  std::unordered_map<unsigned, std::string> nodeToLabel;
   std::unordered_map<std::string, long long int> arrayBaseAddress;
-  std::unordered_set<unsigned> dynamicMemoryOps;
   std::unordered_set<std::string> functionNames;
-  std::vector<int> numParents;
-  std::vector<float> latestParents;
-  std::vector<bool> finalIsolated;
-  std::vector<int> edgeLatency;
   std::vector<int> loopBound;
-  std::vector<std::string> dynamic_method_id;
-  std::vector<std::string> instruction_id;
-  std::vector<bool> induction_nodes;
   // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;

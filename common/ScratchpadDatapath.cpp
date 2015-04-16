@@ -23,8 +23,8 @@ ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
 void ScratchpadDatapath::globalOptimizationPass() {
   // Node removals must come first.
   removePhiNodes();
-  /*memoryAmibguation() should execute after removeInductionDependence() because
-   * it needs induction_nodes.*/
+  /* memoryAmbiguation() should execute after removeInductionDependence()
+   * because it needs induction_nodes. */
   removeInductionDependence();
   memoryAmbiguation();
   // Base address must be initialized next.
@@ -52,13 +52,15 @@ void ScratchpadDatapath::initBaseAddress() {
   std::unordered_map<std::string, partitionEntry> part_config;
   readPartitionConfig(part_config);
 
-  for (auto it = nodeToLabel.begin(); it != nodeToLabel.end(); ++it) {
-    unsigned node_id = it->first;
-    std::string part_name = nodeToLabel[node_id];
+  for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
+    BaseNode* node = it->second;
+    if (!node->is_memory_op())
+      continue;
+    std::string part_name = node->get_array_label();
     if (part_config.find(part_name) == part_config.end() &&
         comp_part_config.find(part_name) == comp_part_config.end()) {
-      std::cerr << "Unknown partition : " << part_name << "@inst: " << node_id
-                << std::endl;
+      std::cerr << "Unknown partition : " << part_name
+                << "@inst: " << node->get_node_id() << std::endl;
       exit(-1);
     }
   }
@@ -99,6 +101,7 @@ void ScratchpadDatapath::scratchpadPartition() {
   std::cerr << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
+  // TODO: Should store this along with the node.
   std::unordered_map<unsigned, MemAccess> address;
   initAddress(address);
   // set scratchpad
@@ -116,13 +119,14 @@ void ScratchpadDatapath::scratchpadPartition() {
     }
   }
 
-  for (unsigned node_id = 0; node_id < numTotalNodes; node_id++) {
-    if (!is_memory_op(microop.at(node_id)))
+  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+       ++node_it) {
+    BaseNode* node = node_it->second;
+    if (!node->is_memory_op())
       continue;
-
-    if (nodeToLabel.find(node_id) == nodeToLabel.end())
+    if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
-    std::string base_label = nodeToLabel[node_id];
+    std::string base_label = node->get_array_label();
     long long int base_addr = arrayBaseAddress[base_label];
 
     auto part_it = part_config.find(base_label);
@@ -132,8 +136,8 @@ void ScratchpadDatapath::scratchpadPartition() {
 
       unsigned num_of_elements = part_it->second.array_size;
       unsigned p_factor = part_it->second.part_factor;
-      long long int abs_addr = address[node_id].vaddr;
-      unsigned data_size = address[node_id].size / 8;  // in bytes
+      long long int abs_addr = address[node->get_node_id()].vaddr;
+      unsigned data_size = address[node->get_node_id()].size / 8;  // in bytes
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
       if (!p_type.compare("block"))  // block partition
       {
@@ -141,12 +145,12 @@ void ScratchpadDatapath::scratchpadPartition() {
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << base_label << "-"
             << (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
-        nodeToLabel[node_id] = oss.str();
+        node->set_array_label(oss.str());
       } else  // cyclic partition
       {
         ostringstream oss;
         oss << base_label << "-" << (rel_addr) % p_factor;
-        nodeToLabel[node_id] = oss.str();
+        node->set_array_label(oss.str());
       }
     }
   }
@@ -155,8 +159,8 @@ void ScratchpadDatapath::scratchpadPartition() {
 
 void ScratchpadDatapath::setGraphForStepping() {
   BaseDatapath::setGraphForStepping();
-  timeBeforeNodeExecution.assign(numTotalNodes, 0);
 }
+
 bool ScratchpadDatapath::step() {
   if (!BaseDatapath::step()) {
     scratchpad->step();
@@ -171,18 +175,18 @@ void ScratchpadDatapath::stepExecutingQueue() {
   auto it = executingQueue.begin();
   int index = 0;
   while (it != executingQueue.end()) {
-    unsigned node_id = *it;
-    if (is_memory_op(microop.at(node_id))) {
-      std::string node_part = nodeToLabel[node_id];
+    BaseNode* node = exec_nodes[*it];
+    if (node->is_memory_op()) {
+      std::string node_part = node->get_array_label();
       if (registers.has(node_part)) {
-        if (is_load_op(microop.at(node_id)))
+        if (node->is_load_op())
           registers.getRegister(node_part)->increment_loads();
         else
           registers.getRegister(node_part)->increment_stores();
         markNodeCompleted(it, index);
       } else if (scratchpadCanService) {
         if (scratchpad->canServicePartition(node_part)) {
-          if (is_load_op(microop.at(node_id)))
+          if (node->is_load_op())
             scratchpad->increment_loads(node_part);
           else
             scratchpad->increment_stores(node_part);
@@ -201,50 +205,50 @@ void ScratchpadDatapath::stepExecutingQueue() {
     }
   }
 }
-void ScratchpadDatapath::updateChildren(unsigned node_id) {
-  if (nameToVertex.find(node_id) == nameToVertex.end())
+
+void ScratchpadDatapath::updateChildren(BaseNode* node) {
+  if (!node->has_vertex())
     return;
-  float latency_after_current_node = node_latency(microop.at(node_id));
-  if (timeBeforeNodeExecution.at(node_id) > num_cycles * cycleTime) {
-    latency_after_current_node += timeBeforeNodeExecution.at(node_id);
-  }
-  else {
+  float latency_after_current_node = node->node_latency();
+  unsigned node_id = node->get_node_id();
+  if (node->get_time_before_execution() > num_cycles * cycleTime) {
+    latency_after_current_node += node->get_time_before_execution();
+  } else {
     latency_after_current_node += num_cycles * cycleTime;
   }
-  Vertex node = nameToVertex[node_id];
+  Vertex v = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (tie(out_edge_it, out_edge_end) = out_edges(node, graph_);
+  for (tie(out_edge_it, out_edge_end) = out_edges(v, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
+    BaseNode* child_node = exec_nodes[child_id];
     int edge_parid = edgeToParid[*out_edge_it];
-    float child_earliest_time = timeBeforeNodeExecution.at(child_id);
-    if (edge_parid != CONTROL_EDGE && child_earliest_time < latency_after_current_node)
-      timeBeforeNodeExecution.at(child_id) = latency_after_current_node;
-    if (numParents[child_id] > 0) {
-      numParents[child_id]--;
-      if (numParents[child_id] == 0) {
-        unsigned child_microop = microop.at(child_id);
-        if ((node_latency(child_microop) == 0 ||
-             node_latency(microop.at(node_id)) == 0) &&
+    float child_earliest_time = child_node->get_time_before_execution();
+    if (edge_parid != CONTROL_EDGE &&
+        child_earliest_time < latency_after_current_node)
+      child_node->set_time_before_execution(latency_after_current_node);
+    if (child_node->get_num_parents() > 0) {
+      child_node->decr_num_parents();
+      if (child_node->get_num_parents() == 0) {
+        if ((child_node->node_latency() == 0 || node->node_latency() == 0) &&
             edge_parid != CONTROL_EDGE)
           executingQueue.push_back(child_id);
-        else if (is_memory_op(child_microop)) {
-          if (is_store_op(child_microop))
+        else if (child_node->is_memory_op()) {
+          if (child_node->is_store_op())
             readyToExecuteQueue.push_front(child_id);
           else
             readyToExecuteQueue.push_back(child_id);
-        }
-        else {
-          float after_child_time = timeBeforeNodeExecution.at(child_id)
-            + node_latency(microop.at(node_id));
+        } else {
+          float after_child_time =
+              child_node->get_time_before_execution() + node->node_latency();
           if (after_child_time < (num_cycles + 1) * cycleTime &&
-              edge_parid != CONTROL_EDGE )
+              edge_parid != CONTROL_EDGE)
             executingQueue.push_back(child_id);
           else
             readyToExecuteQueue.push_back(child_id);
         }
-        numParents[child_id] = -1;
+        child_node->set_num_parents(-1);
       }
     }
   }
