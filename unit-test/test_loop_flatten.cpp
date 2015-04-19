@@ -23,9 +23,9 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     WHEN("Test loopFlatten()") {
       acc->loopFlatten();
       THEN("Loop increments become LLVM_IR_Move.") {
-        REQUIRE(acc->getMicroop(16) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(28) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(40) == LLVM_IR_IndexAdd);
+        REQUIRE(acc->getMicroop(16) == LLVM_IR_Move);
+        REQUIRE(acc->getMicroop(28) == LLVM_IR_Move);
+        REQUIRE(acc->getMicroop(40) == LLVM_IR_Move);
       }
       THEN("Branch nodes for flatten loops are isolated.") {
         REQUIRE(acc->getNumOfConnectedNodes(18) == 0);
