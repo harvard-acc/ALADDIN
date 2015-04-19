@@ -30,6 +30,7 @@ bool is_compute_op(unsigned microop) {
     case LLVM_IR_And:
     case LLVM_IR_Or:
     case LLVM_IR_Xor:
+    case LLVM_IR_IndexAdd:
       return true;
     default:
       return false;
