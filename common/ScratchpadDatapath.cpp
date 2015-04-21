@@ -203,6 +203,35 @@ void ScratchpadDatapath::stepExecutingQueue() {
   }
 }
 
+int ScratchpadDatapath::rescheduleNodesWhenNeeded(){
+  std::vector<Vertex> topo_nodes;
+  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
+  // bottom nodes first
+  std::vector<float> alap_finish_time(numTotalNodes, num_cycles * cycleTime);
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
+    unsigned node_id = vertexToName[*vi];
+    ExecNode* node = exec_nodes[node_id];
+    if (node->is_isolated())
+      continue;
+    float alap_executing_time = alap_finish_time.at(node_id);
+    if (!node->is_memory_op() && !node->is_branch_op()) {
+      alap_executing_time -= node->node_latency();
+      if (alap_executing_time > (node->get_execution_cycle() + 1) * cycleTime) {
+        node->set_execution_cycle(floor(alap_executing_time / cycleTime));
+      }
+    } else {
+      alap_executing_time = node->get_execution_cycle() * cycleTime;
+    }
+
+    in_edge_iter in_i, in_end;
+    for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
+      int parent_id = vertexToName[source(*in_i, graph_)];
+      if (alap_finish_time.at(parent_id) > alap_executing_time)
+        alap_finish_time.at(parent_id) = alap_executing_time;
+    }
+  }
+  return num_cycles;
+}
 void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
