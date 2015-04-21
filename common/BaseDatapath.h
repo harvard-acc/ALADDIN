@@ -230,7 +230,7 @@ class BaseDatapath {
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
-  void markNodeCompleted(std::list<unsigned>::iterator& executingQueuePos,
+  void markNodeCompleted(std::list<BaseNode*>::iterator& executingQueuePos,
                          int& advance_to);
 
   // Stats output.
@@ -347,8 +347,8 @@ class BaseDatapath {
   // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
-  std::list<unsigned> executingQueue;
-  std::list<unsigned> readyToExecuteQueue;
+  std::list<BaseNode*> executingQueue;
+  std::list<BaseNode*> readyToExecuteQueue;
 };
 
 #endif

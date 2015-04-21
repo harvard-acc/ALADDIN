@@ -67,7 +67,6 @@ class DDDG {
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
   std::vector<std::string> method_call_graph;
-  /*unordered_map<unsigned, bool> to_ignore_methodid;*/
   int num_of_instructions;
   int num_of_reg_dep;
   int num_of_mem_dep;

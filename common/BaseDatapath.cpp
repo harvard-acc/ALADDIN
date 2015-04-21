@@ -1473,7 +1473,6 @@ void BaseDatapath::writeOtherStats() {
   write_gzip_file(microop_file_name, microop.size(), microop);
 }
 
-// TODO: Not used?
 void BaseDatapath::initPrevBasicBlock(
     std::vector<std::string>& prevBasicBlock) {
   std::string file_name(benchName);
@@ -1496,13 +1495,6 @@ void BaseDatapath::initDynamicMethods(
     if (functions.find(func_id) == functions.end())
       functions.insert(func_id);
   }
-}
-
-// TODO: Not used?
-void BaseDatapath::initMethodID(std::vector<int>& methodid) {
-  std::string file_name(benchName);
-  file_name += "_methodid.gz";
-  read_gzip_file(file_name, methodid.size(), methodid);
 }
 
 void BaseDatapath::initInstID() {
@@ -1664,14 +1656,13 @@ void BaseDatapath::updateRegStats() {
 }
 
 void BaseDatapath::copyToExecutingQueue() {
-  // TODO: Any harm in making readyToExecute and executingQueue lists of
-  // pointers to nodes instead of lists of node ids?
   auto it = readyToExecuteQueue.begin();
   while (it != readyToExecuteQueue.end()) {
-    if (exec_nodes[*it]->is_store_op())
-      executingQueue.push_front(*it);
+    BaseNode* node = *it;
+    if (node->is_store_op())
+      executingQueue.push_front(node);
     else
-      executingQueue.push_back(*it);
+      executingQueue.push_back(node);
     it = readyToExecuteQueue.erase(it);
   }
 }
@@ -1687,8 +1678,8 @@ bool BaseDatapath::step() {
 
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
-    std::list<unsigned>::iterator& executingQueuePos, int& advance_to) {
-  BaseNode* node = exec_nodes[*executingQueuePos];
+    std::list<BaseNode*>::iterator& executingQueuePos, int& advance_to) {
+  BaseNode* node = *executingQueuePos;
   executedNodes++;
   node->set_execution_cycle(num_cycles);
   executingQueue.erase(executingQueuePos);
@@ -1713,12 +1704,12 @@ void BaseDatapath::updateChildren(BaseNode* node) {
       if (child_node->get_num_parents() == 0) {
         if ((child_node->node_latency() == 0 || node->node_latency() == 0) &&
             edge_parid != CONTROL_EDGE) {
-          executingQueue.push_back(child_node->get_node_id());
+          executingQueue.push_back(child_node);
         } else {
           if (child_node->is_store_op())
-            readyToExecuteQueue.push_front(child_node->get_node_id());
+            readyToExecuteQueue.push_front(child_node);
           else
-            readyToExecuteQueue.push_back(child_node->get_node_id());
+            readyToExecuteQueue.push_back(child_node);
         }
         child_node->set_num_parents(-1);
       }
@@ -1806,7 +1797,7 @@ void BaseDatapath::initExecutingQueue() {
        ++node_it) {
     BaseNode* node = node_it->second;
     if (node->get_num_parents() == 0)
-      executingQueue.push_back(node->get_node_id());
+      executingQueue.push_back(node);
   }
 }
 

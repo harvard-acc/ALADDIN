@@ -175,7 +175,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
   auto it = executingQueue.begin();
   int index = 0;
   while (it != executingQueue.end()) {
-    BaseNode* node = exec_nodes[*it];
+    BaseNode* node = *it;
     if (node->is_memory_op()) {
       std::string node_part = node->get_array_label();
       if (registers.has(node_part)) {
@@ -221,8 +221,8 @@ void ScratchpadDatapath::updateChildren(BaseNode* node) {
   for (tie(out_edge_it, out_edge_end) = out_edges(v, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
-    unsigned child_id = vertexToName[target(*out_edge_it, graph_)];
-    BaseNode* child_node = exec_nodes[child_id];
+    Vertex child_vertex = target(*out_edge_it, graph_);
+    BaseNode* child_node = getNodeFromVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     float child_earliest_time = child_node->get_time_before_execution();
     if (edge_parid != CONTROL_EDGE &&
@@ -233,20 +233,20 @@ void ScratchpadDatapath::updateChildren(BaseNode* node) {
       if (child_node->get_num_parents() == 0) {
         if ((child_node->node_latency() == 0 || node->node_latency() == 0) &&
             edge_parid != CONTROL_EDGE)
-          executingQueue.push_back(child_id);
+          executingQueue.push_back(child_node);
         else if (child_node->is_memory_op()) {
           if (child_node->is_store_op())
-            readyToExecuteQueue.push_front(child_id);
+            readyToExecuteQueue.push_front(child_node);
           else
-            readyToExecuteQueue.push_back(child_id);
+            readyToExecuteQueue.push_back(child_node);
         } else {
           float after_child_time =
               child_node->get_time_before_execution() + node->node_latency();
           if (after_child_time < (num_cycles + 1) * cycleTime &&
               edge_parid != CONTROL_EDGE)
-            executingQueue.push_back(child_id);
+            executingQueue.push_back(child_node);
           else
-            readyToExecuteQueue.push_back(child_id);
+            readyToExecuteQueue.push_back(child_node);
         }
         child_node->set_num_parents(-1);
       }
