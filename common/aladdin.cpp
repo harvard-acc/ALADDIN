@@ -65,7 +65,6 @@ int main(int argc, const char* argv[]) {
   // Scheduling
   while (!acc->step()) {
   }
-  int cycles = acc->clearGraph();
 
   acc->dumpStats();
   delete acc;

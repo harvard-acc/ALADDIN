@@ -25,7 +25,7 @@ def main(directory, kernel, part, unroll, pipe, cycle_time):
   array_partition_type = {
   'bb_gemm' : ['cyclic','cyclic','cyclic'],
   'fft' : ['cyclic','cyclic','cyclic','cyclic','complete','complete','cyclic','complete','complete','complete','complete','complete'],
-  'md' : ['cyclic','cyclic','cyclic','cyclic','cyclic','cyclic','cyclic'],
+  'md' : ['cyclic','cyclic','cyclic','complete','complete','complete','cyclic'],
   'pp_scan' : ['cyclic','cyclic','cyclic'],
   'reduction' : ['cyclic'],
   'ss_sort' : ['cyclic','cyclic','cyclic','cyclic'],
