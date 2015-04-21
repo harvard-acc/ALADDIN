@@ -302,7 +302,8 @@ void BaseDatapath::removeInductionDependence() {
 
 // called in the end of the whole flow
 void BaseDatapath::dumpStats() {
-  clearGraph();
+  rescheduleNodesWhenNeeded();
+  updateRegStats();
 #ifdef DEBUG
   dumpGraph(benchName);
   writeMicroop(microop);
@@ -1553,7 +1554,14 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
   std::ofstream out(graph_name + "_graph.dot");
   write_graphviz(out, graph_);
 }
-int BaseDatapath::clearGraph() {
+/*As Late As Possible (ALAP) rescheduling for non-memory, non-control nodes.
+  The first pass of scheduling is as earlyl as possible, whenever a node's
+  parents are ready, the node is executed. This mode of executing potentially
+  can lead to values that are produced way earlier than they are needed. For
+  such case, we add an ALAP rescheduling pass to reorganize the graph without
+  changing the critical path and memory nodes, but produce a more balanced
+  design.*/
+int BaseDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // bottom nodes first
@@ -1574,7 +1582,6 @@ int BaseDatapath::clearGraph() {
         earliest_child.at(parent_id) = newLevel.at(node_id);
     }
   }
-  updateRegStats();
   return num_cycles;
 }
 void BaseDatapath::updateRegStats() {

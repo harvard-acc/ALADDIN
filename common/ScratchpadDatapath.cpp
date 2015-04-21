@@ -200,6 +200,35 @@ void ScratchpadDatapath::stepExecutingQueue() {
     }
   }
 }
+int ScratchpadDatapath::rescheduleNodesWhenNeeded(){
+  std::vector<Vertex> topo_nodes;
+  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
+  // bottom nodes first
+  std::vector<float> alap_finish_time(numTotalNodes, num_cycles * cycleTime);
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
+    unsigned node_id = vertexToName[*vi];
+    if (finalIsolated.at(node_id))
+      continue;
+    unsigned node_microop = microop.at(node_id);
+    float alap_executing_time = alap_finish_time.at(node_id);
+    if (!is_memory_op(node_microop) && !is_branch_op(node_microop)) {
+      alap_executing_time -= node_latency(node_microop);
+      if (alap_executing_time > (newLevel.at(node_id) + 1) * cycleTime) {
+        newLevel.at(node_id) = floor(alap_executing_time / cycleTime);
+      }
+    } else {
+      alap_executing_time = newLevel.at(node_id) * cycleTime;
+    }
+
+    in_edge_iter in_i, in_end;
+    for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
+      int parent_id = vertexToName[source(*in_i, graph_)];
+      if (alap_finish_time.at(parent_id) > alap_executing_time)
+        alap_finish_time.at(parent_id) = alap_executing_time;
+    }
+  }
+  return num_cycles;
+}
 void ScratchpadDatapath::updateChildren(unsigned node_id) {
   if (nameToVertex.find(node_id) == nameToVertex.end())
     return;

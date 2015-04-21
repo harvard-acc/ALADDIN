@@ -30,6 +30,7 @@ class ScratchpadDatapath : public BaseDatapath {
                                   float* avg_dynamic,
                                   float* avg_leak);
   virtual void getMemoryBlocks(std::vector<std::string>& names);
+  virtual int rescheduleNodesWhenNeeded();
 
  protected:
   Scratchpad* scratchpad;

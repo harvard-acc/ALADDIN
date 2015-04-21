@@ -136,7 +136,7 @@ class BaseDatapath {
   void insertMicroop(int node_microop) { microop.push_back(node_microop); }
   void setGlobalGraph();
   virtual void setGraphForStepping();
-  int clearGraph();
+  virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
 
   // Accessing graph stats.
