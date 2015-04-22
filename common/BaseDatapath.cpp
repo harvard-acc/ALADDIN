@@ -1164,6 +1164,8 @@ void BaseDatapath::updatePerCycleActivity(
       num_shifters_so_far = 0;
       bound_it++;
     }
+    if (node->is_isolated())
+      continue;
     int node_level = node->get_execution_cycle();
     int node_microop = node->get_microop();
 
@@ -1462,6 +1464,7 @@ void BaseDatapath::writeOtherStats() {
     BaseNode* node = node_it->second;
     microop[node_id] = node->get_microop();
     exec_cycle[node_id] = node->get_execution_cycle();
+    isolated[node_id] = node->is_isolated();
   }
 
   std::string cycle_file_name(benchName);
@@ -1471,6 +1474,10 @@ void BaseDatapath::writeOtherStats() {
   std::string microop_file_name(benchName);
   microop_file_name += "_microop.gz";
   write_gzip_file(microop_file_name, microop.size(), microop);
+
+  std::string isolated_file_name(benchName);
+  microop_file_name += "_isolated.gz";
+  write_gzip_bool_file(isolated_file_name, isolated.size(), isolated);
 }
 
 void BaseDatapath::initPrevBasicBlock(
@@ -1578,6 +1585,7 @@ void BaseDatapath::setGraphForStepping() {
     Vertex node_vertex = node->get_vertex();
     if (boost::degree(node_vertex, graph_) != 0 || node->is_dma_op()) {
       node->set_num_parents(boost::in_degree(node_vertex, graph_));
+      node->set_isolated(false);
       totalConnectedNodes++;
     }
   }
@@ -1604,6 +1612,8 @@ int BaseDatapath::clearGraph() {
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
     BaseNode* node = exec_nodes[node_id];
+    if (node->is_isolated())
+      continue;
     unsigned node_microop = exec_nodes[node_id]->get_microop();
     if (!node->is_memory_op() && !node->is_branch_op())
       if ((earliest_child.at(node_id) - 1) > node->get_execution_cycle())
@@ -1625,7 +1635,7 @@ void BaseDatapath::updateRegStats() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     BaseNode* node = node_it->second;
-    if (node->is_control_op() || node->is_index_op())
+    if (node->is_isolated() || node->is_control_op() || node->is_index_op())
       continue;
     int node_level = node->get_execution_cycle();
     int max_children_level = node_level;
@@ -1796,7 +1806,7 @@ void BaseDatapath::initExecutingQueue() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     BaseNode* node = node_it->second;
-    if (node->get_num_parents() == 0)
+    if (node->get_num_parents() == 0 && !node->is_isolated())
       executingQueue.push_back(node);
   }
 }

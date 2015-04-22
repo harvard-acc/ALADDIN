@@ -15,8 +15,9 @@ class BaseNode {
   BaseNode(unsigned int _node_id, uint8_t _microop)
       : node_id(_node_id), microop(_microop), static_method(""),
         basic_block_id(""), inst_id(""), line_num(-1), execution_cycle(0),
-        num_parents(0), inductive(false), dynamic_mem_op(false),
-        array_label(""), time_before_execution(0.0), vertex_assigned(false) {}
+        num_parents(0), isolated(true), inductive(false),
+        dynamic_mem_op(false), array_label(""), time_before_execution(0.0),
+        vertex_assigned(false) {}
 
   /* Compare two nodes based only on their node ids. */
   bool operator<(const BaseNode& other) const {
@@ -38,9 +39,10 @@ class BaseNode {
   std::string get_basic_block_id() { return basic_block_id; }
   std::string get_inst_id() { return inst_id; }
   int get_line_num() { return line_num; }
-  unsigned int get_execution_cycle() { return execution_cycle; }
+  int get_execution_cycle() { return execution_cycle; }
   int get_num_parents() { return num_parents; }
   Vertex get_vertex() { return vertex; }
+  bool is_isolated() { return isolated; }
   bool is_inductive() { return inductive; }
   bool is_dynamic_mem_op() { return dynamic_mem_op; }
   bool has_vertex() { return vertex_assigned; }
@@ -57,12 +59,13 @@ class BaseNode {
   void set_basic_block_id(std::string bb_id) { basic_block_id = bb_id; }
   void set_inst_id(std::string id) { inst_id = id; }
   void set_line_num(int line) { line_num = line; }
-  void set_execution_cycle(unsigned int cycle) { execution_cycle = cycle; }
+  void set_execution_cycle(int cycle) { execution_cycle = cycle; }
   void set_num_parents(int parents) { num_parents = parents; }
   void set_vertex(Vertex vertex) {
     this->vertex = vertex;
     vertex_assigned = true;
   }
+  void set_isolated(bool isolated) { this->isolated = isolated; }
   void set_inductive(bool inductive) { this->inductive = inductive; }
   void set_dynamic_mem_op(bool dynamic) { dynamic_mem_op = dynamic; }
   void set_array_label(std::string label) { array_label = label; }
@@ -261,12 +264,14 @@ class BaseNode {
   int line_num;
   /* Which cycle this node is scheduled for execution. Previously called
    * level. */
-  unsigned int execution_cycle;
+  int execution_cycle;
   /* Number of parents of this node. */
   int num_parents;
   /* Corresponding Boost Vertex descriptor. If set_vertex() is never called,
    * then it is default constructor, and vertex_assigned will be false. */
   Vertex vertex;
+  /*True if this node is isolated (no parents or children). */
+  bool isolated;
   /* True if this node is inductive or has only inductive parents. */
   bool inductive;
   /* True if the node is a dynamic memory operation. */
