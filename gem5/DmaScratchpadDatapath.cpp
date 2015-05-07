@@ -19,6 +19,7 @@
 #include "aladdin/common/DatabaseDeps.h"
 
 #include "aladdin/common/ScratchpadDatapath.h"
+#include "aladdin/common/Node.h"
 #include "debug/DmaScratchpadDatapath.hh"
 #include "DmaScratchpadDatapath.h"
 
@@ -47,7 +48,7 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
   datapath_name = name_builder.str();
   scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
-  initActualAddress();
+  initAddress();
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
@@ -60,28 +61,6 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
 DmaScratchpadDatapath::~DmaScratchpadDatapath()
 {
   delete scratchpad;
-}
-
-// TODO: Copied from CacheDatapath.cpp. Some refactoring is in order.
-void
-DmaScratchpadDatapath::initActualAddress()
-{
-  ostringstream file_name;
-  file_name << benchName << "_memaddr.gz";
-  gzFile gzip_file;
-  gzip_file = gzopen(file_name.str().c_str(), "r");
-  while (!gzeof(gzip_file))
-  {
-    char buffer[256];
-    if (gzgets(gzip_file, buffer, 256) == NULL)
-      break;
-    unsigned node_id;
-    long long int address, value;
-    unsigned size;
-    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &address, &size, &value);
-    actualAddress[node_id] = make_pair(address & MASK, size/8);
-  }
-  gzclose(gzip_file);
 }
 
 void
@@ -98,16 +77,16 @@ DmaScratchpadDatapath::stepExecutingQueue()
   int index = 0;
   while (it != executingQueue.end())
   {
-    unsigned node_id = *it;
-    if (is_memory_op(microop.at(node_id)))
+    BaseNode* node = *it;
+    if (node->is_memory_op())
     {
-      std::string node_part = nodeToLabel[node_id];
+      std::string node_part = node->get_array_label();
       if (registers.has(node_part) ||
           scratchpad->canServicePartition(node_part))
       {
         if (registers.has(node_part))
         {
-          if (is_load_op(microop.at(node_id)))
+          if (node->is_load_op())
             registers.getRegister(node_part)->increment_loads();
           else
             registers.getRegister(node_part)->increment_stores();
@@ -115,7 +94,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
         else
         {
           assert(scratchpad->addressRequest(node_part));
-          if (is_load_op(microop.at(node_id)))
+          if (node->is_load_op())
             scratchpad->increment_loads(node_part);
           else
             scratchpad->increment_stores(node_part);
@@ -128,11 +107,12 @@ DmaScratchpadDatapath::stepExecutingQueue()
         ++index;
       }
     }
-    else if (is_dma_op(microop.at(node_id)))
+    else if (node->is_dma_op())
     {
       DmaRequestStatus status = Ready;
-      Addr addr = actualAddress[node_id].first;
-      unsigned size = actualAddress[node_id].second;
+      MemAccess* mem_access = node->get_mem_access();
+      Addr addr = mem_access->vaddr;
+      unsigned size = mem_access->size;
       if (dma_requests.find(addr) == dma_requests.end())
         dma_requests[addr] = status;
       else
@@ -140,13 +120,13 @@ DmaScratchpadDatapath::stepExecutingQueue()
       if (status == Ready && inFlightNodes < MAX_INFLIGHT_NODES)
       {
         //first time see, do access
-        bool isLoad = is_dma_load(microop.at(node_id));
+        bool isLoad = node->is_dma_load();
         /* HACK!!! dmaStore sometimes goes out-of-order...schedule it until the
          * very end, fix this after ISCA. --Sophia*/
         if (isLoad || executedNodes >= totalConnectedNodes-5) {
-          issueDmaRequest(addr, size, isLoad, node_id);
+          issueDmaRequest(addr, size, isLoad, node->get_node_id());
           dma_requests[addr] = Waiting;
-          DPRINTF(DmaScratchpadDatapath, "node:%d is a dma request\n", node_id);
+          DPRINTF(DmaScratchpadDatapath, "node:%d is a dma request\n", node->get_node_id());
         }
         ++it;
         ++index;

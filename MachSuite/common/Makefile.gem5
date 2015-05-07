@@ -9,4 +9,6 @@ GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
 GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
 gem5:
-	$(MAKE) CFLAGS="-static -m32 -DGEM5_HARNESS -I$(ALADDIN_HOME)" OTHER_SRCS="$(GEM5_FULL_SRCS)" CC=gcc
+	$(MAKE) CFLAGS="-static -m32 -DGEM5_HARNESS -I$(ALADDIN_HOME)" \
+          OTHER_SRCS="$(GEM5_FULL_SRCS)" \
+          CC=gcc

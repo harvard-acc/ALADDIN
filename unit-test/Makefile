@@ -1,7 +1,9 @@
 .PHONY: all clean
 
+ifeq ($(USE_DB), 1)
 ifeq ($(wildcard $(MYSQL_HOME)),)
     $(error Set MYSQL_HOME to a valid location)
+endif
 endif
 
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
@@ -38,3 +40,4 @@ $(TESTS) : % : %.o $(TEST_DEPS)
 clean:
 	rm -f *.o
 	rm -f $(TESTS)
+	rm -f $(ALADDIN_HOME)/libaladdin.a

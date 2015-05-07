@@ -12,6 +12,7 @@
 #include "base/statistics.hh"
 #include "aladdin/common/cacti-p/cacti_interface.h"
 #include "aladdin/common/cacti-p/io.h"
+#include "aladdin/common/Node.h"
 #include "debug/CacheDatapath.hh"
 #include "CacheDatapath.h"
 
@@ -53,8 +54,7 @@ CacheDatapath::CacheDatapath(const Params *p) :
   BaseDatapath::use_db = p->useDb;
   BaseDatapath::experiment_name = p->experimentName;
   BaseDatapath::cycleTime = p->cycleTime;
-  initActualAddress();
-  initAddress(all_mem_ops);
+  initAddress();
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
@@ -158,19 +158,20 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
    * Remember that these are physical addresses.
    */
   Addr blockAddr = pkt->getAddr() / cacheLineSize;
-  if (mem_accesses.find(node_id) != mem_accesses.end())
+  if (inflight_mem_ops.find(node_id) != inflight_mem_ops.end())
   {
     for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
     {
-      unsigned n_id = *it;
-      if (is_memory_op(microop.at(n_id)) && mem_accesses[n_id].status == WaitingFromCache)
+      BaseNode* node = *it;
+      unsigned n_id = node->get_node_id();
+      if (node->is_memory_op() && inflight_mem_ops[n_id].status == WaitingFromCache)
       {
-        Addr addr = mem_accesses[n_id].paddr;
+        Addr addr = inflight_mem_ops[n_id].paddr;
         if (addr / cacheLineSize == blockAddr)
-          mem_accesses[n_id].status = Returned;
+          inflight_mem_ops[n_id].status = Returned;
       }
     }
-    assert(mem_accesses[node_id].status == Returned);
+    assert(inflight_mem_ops[node_id].status == Returned);
   }
   DPRINTF(CacheDatapath, "node:%d mem access is returned\n", node_id);
   /* Data that is returned gets written back into the load store queues. */
@@ -191,20 +192,20 @@ CacheDatapath::finishTranslation(PacketPtr pkt, bool was_miss)
   AladdinTLB::TLBSenderState *state =
       dynamic_cast<AladdinTLB::TLBSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
-  assert(mem_accesses.find(node_id) != mem_accesses.end());
-  assert(mem_accesses[node_id].status == Translating);
+  assert(inflight_mem_ops.find(node_id) != inflight_mem_ops.end());
+  assert(inflight_mem_ops[node_id].status == Translating);
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
    * state may have changed during the waiting time, so we go back to Ready
    * instead of Translated. The next translation request should hit.
    */
   if (was_miss) {
-    mem_accesses[node_id].status = Ready;
+    inflight_mem_ops[node_id].status = Ready;
   } else {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
     Addr paddr = *pkt->getPtr<Addr>();
-    mem_accesses[node_id].status = Translated;
-    mem_accesses[node_id].paddr = paddr;
+    inflight_mem_ops[node_id].status = Translated;
+    inflight_mem_ops[node_id].paddr = paddr;
   }
   DPRINTF(CacheDatapath, "node:%d mem access is translated\n", node_id);
   delete state;
@@ -221,7 +222,7 @@ CacheDatapath::accessTLB(Addr addr, unsigned size, bool isLoad, int node_id)
   //physical request
   Flags<FlagsType> flags = 0;
   //constructor for physical request only
-  req = new Request (addr, size, flags, dataMasterId());
+  req = new Request (addr, size/8, flags, dataMasterId());
 
   MemCmd command;
   if (isLoad)
@@ -284,9 +285,9 @@ CacheDatapath::accessCache(
    * can predict memory behavior similar to how branch predictors work. We
    * don't have real PCs in aladdin so we'll just hash the unique id of the
    * node.  */
-  std::string unique_id = getStaticNodeId(node_id);
+  std::string unique_id = exec_nodes[node_id]->get_static_node_id();
   Addr pc = static_cast<Addr>(std::hash<std::string>()(unique_id));
-  req = new Request( addr, size, flags, dataMasterId(), curTick(), pc);
+  req = new Request( addr, size/8, flags, dataMasterId(), curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
    * gem5, but they aren't actually required for the mechanics of the memory
    * checking itsef. This has to be set outside of the constructor or the
@@ -373,32 +374,15 @@ void CacheDatapath::globalOptimizationPass()
   loopPipelining();
 }
 
-void CacheDatapath::initActualAddress()
-{
-  ostringstream file_name;
-  file_name << benchName << "_memaddr.gz";
-  gzFile gzip_file;
-  gzip_file = gzopen(file_name.str().c_str(), "r");
-  while (!gzeof(gzip_file))
-  {
-    char buffer[256];
-    if (gzgets(gzip_file, buffer, 256) == NULL)
-      break;
-    unsigned node_id;
-    long long int address, value;
-    int size;
-    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &address, &size, &value);
-    actualAddress[node_id] = make_pair(address & MASK, size/8);
-  }
-  gzclose(gzip_file);
-}
-
 void CacheDatapath::copyToExecutingQueue()
 {
   auto it = readyToExecuteQueue.begin();
-  while (it != readyToExecuteQueue.end())
-  {
-    executingQueue.push_back(*it);
+  while (it != readyToExecuteQueue.end()) {
+    BaseNode* node = *it;
+    if (node->is_store_op())
+      executingQueue.push_front(node);
+    else
+      executingQueue.push_back(node);
     it = readyToExecuteQueue.erase(it);
   }
 }
@@ -481,25 +465,27 @@ void CacheDatapath::stepExecutingQueue()
   int index = 0;
   while (it != executingQueue.end())
   {
-    unsigned node_id = *it;
-    if (is_memory_op(microop.at(node_id)))
+    BaseNode* node = *it;
+    unsigned node_id = node->get_node_id();
+    if (node->is_memory_op())
     {
-      InFlightMemAccess access;
-      access.status = Ready;
-      access.paddr = 0x0;
-      if (mem_accesses.find(node_id) == mem_accesses.end())
-        mem_accesses[node_id] = access;
+      MemAccess* mem_access = node->get_mem_access();
+      InFlightMemAccess inflight_mem_op;
+      inflight_mem_op.status = Ready;
+      inflight_mem_op.paddr = 0x0;
+      if (inflight_mem_ops.find(node_id) == inflight_mem_ops.end())
+        inflight_mem_ops[node_id] = inflight_mem_op;
       else
-        access = mem_accesses[node_id];
-      bool isLoad = is_load_op(microop.at(node_id));
-      if (access.status == Ready)
+        inflight_mem_op = inflight_mem_ops[node_id];
+      bool isLoad = node->is_load_op();
+      if (inflight_mem_op.status == Ready)
       {
         // First time seeing this node. Start the memory access procedure.
-        Addr addr = actualAddress[node_id].first;
-        int size = actualAddress[node_id].second;
+        Addr addr = mem_access->vaddr;
+        int size = mem_access->size;
         if (dtb.canRequestTranslation() && accessTLB(addr, size, isLoad, node_id))
         {
-          mem_accesses[node_id].status = Translating;
+          inflight_mem_ops[node_id].status = Translating;
           dtb.incrementRequestCounter();
           DPRINTF(CacheDatapath, "node:%d mem access is translating\n", node_id);
         }
@@ -510,15 +496,15 @@ void CacheDatapath::stepExecutingQueue()
         ++it;
         ++index;
       }
-      else if (access.status == Translated)
+      else if (inflight_mem_op.status == Translated)
       {
-        Addr addr = access.paddr;
-        int size = actualAddress[node_id].second;
-        long long int value = all_mem_ops[node_id].value;
+        Addr addr = inflight_mem_op.paddr;
+        int size = mem_access->size;
+        long long int value = mem_access->value;
 
         if (accessCache(addr, size, isLoad, node_id, value))
         {
-          mem_accesses[node_id].status = WaitingFromCache;
+          inflight_mem_ops[node_id].status = WaitingFromCache;
           if (isLoad) {
             load_queue.in_flight ++;
             loads ++;
@@ -539,13 +525,13 @@ void CacheDatapath::stepExecutingQueue()
         ++it;
         ++index;
       }
-      else if (access.status == Returned)
+      else if (inflight_mem_op.status == Returned)
       {
         if (isLoad)
           load_queue.in_flight --;
         else
           store_queue.in_flight --;
-        mem_accesses.erase(node_id);
+        inflight_mem_ops.erase(node_id);
         markNodeCompleted(it, index);
       }
       else

@@ -10,6 +10,7 @@ trace:
 
 run: test
 	@echo off
+	rm -f output.data
 	sh run.sh
 
 test:

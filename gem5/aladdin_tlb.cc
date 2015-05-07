@@ -28,7 +28,7 @@ AladdinTLB::AladdinTLB(
   bandwidth(_bandwidth)
 {
   if (numEntries > 0)
-    tlbMemory = new TLBMemory (_num_entries, _assoc, _page_bytes);
+    tlbMemory = new TLBMemory(_num_entries, _assoc, _page_bytes);
   else
     tlbMemory = new InfiniteTLBMemory();
   regStats(_accelerator_name);
@@ -119,29 +119,42 @@ AladdinTLB::translateTiming(PacketPtr pkt)
 {
   /* A somewhat complex translation process.
    *
-   * First, we use the node id to get the base address of the array being
-   * accessed. We then look up the translation from this trace address to the
-   * simulated virtual address (which represents the head of the array). Next,
-   * we compute the offset between the accessed trace address and the base trace
-   * address and add this offset to the base simulated virtual address.
-   * Finally, we consult the TLB to translate the simulated virtual address to
-   * the simulated physical address.
+   * First, we have to determine the simulation environment. If Aladdin is
+   * being run standalone without a CPU model, then we directly use the trace
+   * address to access memory. Otherwise, if Aladdin was invoked by a simulated
+   * program, we perform address translation as follows:
+   *
+   * We use the node id to get the base address of the array being accessed. We
+   * then look up the translation from this trace address to the simulated
+   * virtual address (which represents the head of the array). Next, we compute
+   * the offset between the accessed trace address and the base trace address
+   * and add this offset to the base simulated virtual address.  Finally, we
+   * consult the TLB to translate the simulated virtual address to the
+   * simulated physical address.
    */
-  TLBSenderState *state =
-      dynamic_cast<TLBSenderState*>(pkt->senderState);
-  unsigned node_id = state->node_id;
-  std::string array_name = datapath->getBaseAddressLabel(node_id);
-  Addr base_trace_addr =
-      static_cast<Addr>(datapath->getBaseAddress(array_name));
-  Addr base_sim_vaddr = lookupVirtualAddr(base_trace_addr);
-  Addr trace_req_vaddr = pkt->req->getPaddr();
-  Addr array_offset = trace_req_vaddr - base_trace_addr;
-  Addr vaddr = base_sim_vaddr + array_offset;
-
-  DPRINTF(CacheDatapath, "Translating vaddr %#x.\n", vaddr);
-  Addr page_offset = vaddr % pageBytes;
-  Addr vpn = vaddr - page_offset;
-  Addr ppn;
+  Addr vaddr, vpn, ppn, page_offset;
+  if (datapath->isExecuteStandalone()) {
+    vaddr = pkt->req->getPaddr();
+    page_offset = vaddr % pageBytes;
+    vpn = vaddr - page_offset;
+  } else {
+    TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
+    std::string array_name = datapath->getBaseAddressLabel(state->node_id);
+    Addr base_trace_addr =
+        static_cast<Addr>(datapath->getBaseAddress(array_name));
+    Addr base_sim_vaddr = lookupVirtualAddr(base_trace_addr);
+    Addr trace_req_vaddr = pkt->req->getPaddr();
+    Addr array_offset = trace_req_vaddr - base_trace_addr;
+    vaddr = base_sim_vaddr + array_offset;
+    DPRINTF(CacheDatapath,
+            "Accessing array %s at node id %d with base address %#x.\n",
+            array_name.c_str(),
+            state->node_id,
+            base_sim_vaddr);
+    DPRINTF(CacheDatapath, "Translating vaddr %#x.\n", vaddr);
+    page_offset = vaddr % pageBytes;
+    vpn = vaddr - page_offset;
+  }
 
   reads++;  // Both TLB hits and misses perform a read.
   if (isPerfectTLB || tlbMemory->lookup(vpn, ppn))
@@ -153,7 +166,13 @@ AladdinTLB::translateTiming(PacketPtr pkt)
       datapath->schedule(hq, datapath->clockEdge(hitLatency));
       // Due to the complexity of translating trace to virtual address, return
       // the complete address, not just the page number.
-      *(pkt->getPtr<Addr>()) = ppn + page_offset;
+      if (datapath->isExecuteStandalone()) {
+        *(pkt->getPtr<Addr>()) = ppn;
+      } else {
+        // Due to the complexity of translating trace to virtual address, return
+        // the complete address, not just the page number.
+        *(pkt->getPtr<Addr>()) = ppn + page_offset;
+      }
       return true;
   }
   else

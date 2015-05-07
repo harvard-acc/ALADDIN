@@ -22,7 +22,6 @@
 
 #include "params/CacheDatapath.hh"
 
-#define MASK 0x7fffffffffff
 #define MAX_INFLIGHT_NODES 100
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64
@@ -213,15 +212,6 @@ class CacheDatapath :
     void resetCacheCounters();
     Event& getTickEvent() { return tickEvent; }
 
-    class Node
-    {
-      public:
-        Node (unsigned _node_id) : node_id(_node_id){};
-        ~Node();
-      private:
-        unsigned node_id;
-    };
-
     class DcachePort : public MasterPort
     {
       public:
@@ -279,16 +269,8 @@ class CacheDatapath :
     unsigned cacheHitLatency;
     unsigned cacheAssoc;
 
-    /* Actual memory request addresses, obtained from the trace.
-     * TODO: Merge this with all_mem_ops.
-     */
-    std::unordered_map<unsigned, pair<Addr, uint8_t> > actualAddress;
-
     /* Stores status information about memory accesses currently in flight. */
-    std::map<unsigned, InFlightMemAccess> mem_accesses;
-
-    /* Stores information about all memory operations in the trace. */
-    std::unordered_map<unsigned, MemAccess> all_mem_ops;
+    std::map<unsigned, InFlightMemAccess> inflight_mem_ops;
 
     /* CACTI configuration file for the main cache. */
     std::string cacti_cfg;

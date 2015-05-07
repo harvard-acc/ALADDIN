@@ -8,6 +8,10 @@
 
 #include "aladdin/common/BaseDatapath.h"
 
+// Bitmask to ensure that we don't attempt to access above the 48-bit address
+// space provided in current x86_64 implementations.
+#define ADDR_MASK 0x7fffffffffff
+
 /* A collection of functions common to datapath objects used within GEM5.
  * Note: to avoid potential problems arising from the use of multiple
  * inheritance with this integration, Gem5Datapath should never extend
@@ -50,6 +54,9 @@ class Gem5Datapath : public MemObject
     void setFinishFlag(Addr _finish_flag) {
       finish_flag = _finish_flag;
     }
+
+    /* True if there are no CPUs in the simulation, false otherwise. */
+    bool isExecuteStandalone() { return execute_standalone; }
 
     /* Send a signal to the rest of the system that the accelerator has
      * finished. This signal takes the form of a shared memory block. This is

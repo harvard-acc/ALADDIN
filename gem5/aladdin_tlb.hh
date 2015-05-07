@@ -69,7 +69,7 @@ public:
     }
     ~TLBMemory()
     {
-        for (int i=0; i < sets; i++) {
+        for (int i=0; i < ways ; i++) {
             delete[] entries[i];
         }
         delete[] entries;

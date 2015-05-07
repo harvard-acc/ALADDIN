@@ -20,8 +20,6 @@
 #include "params/DmaScratchpadDatapath.hh"
 #include "Gem5Datapath.h"
 
-// TODO: Refactor.
-#define MASK 0x7fffffff
 #define MAX_INFLIGHT_NODES 100
 
 class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
@@ -81,7 +79,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
         Returned
     } DmaRequestStatus;
     std::map<unsigned, DmaRequestStatus> dma_requests;
-    std::unordered_map<unsigned, pair<Addr, unsigned> > actualAddress;
     int inFlightNodes;
 
     /* This port has to accept snoops but it doesn't need to do anything. See

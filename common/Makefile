@@ -1,6 +1,6 @@
 ####### USER OPTIONS ########
-# Comment out the following line to build without MySQL dependencies.
-USE_DB = 1
+# Uncomment the following line to build with MySQL dependencies.
+# USE_DB = 1
 #############################
 
 .PHONY: all clean
@@ -27,8 +27,9 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
+DEBUG =
 CFLAGS += $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
-LFLAGS += $(DEBUG) -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
 
 ifeq ($(USE_DB), 1)
 ifeq ($(wildcard $(MYSQL_HOME)),)

@@ -19,7 +19,10 @@
 *   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 #include "aes.h"
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
+
 #define F(x)   (((x)<<1) ^ ((((x)>>7) & 1) * 0x1b))
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
 
@@ -174,7 +177,7 @@ void aes_expandEncKey(uint8_t *k, uint8_t *rc)
     k[1] ^= rj_sbox(k[30]);
     k[2] ^= rj_sbox(k[31]);
     k[3] ^= rj_sbox(k[28]);
-    *rc = F( *rc);
+    *rc = F(*rc);
 
     exp1 : for(i = 4; i < 16; i += 4)  k[i] ^= k[i-4],   k[i+1] ^= k[i-3],
         k[i+2] ^= k[i-2], k[i+3] ^= k[i-1];
@@ -189,7 +192,7 @@ void aes_expandEncKey(uint8_t *k, uint8_t *rc)
 } /* aes_expandEncKey */
 
 /* -------------------------------------------------------------------------- */
-void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
+void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16], uint8_t rcon[1])
 {
 #ifdef DMA_MODE
   dmaLoad(ctx,96*1*8);
@@ -198,28 +201,28 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 #endif
     //INIT
     uint8_t i;
-    uint8_t rcon = 1;
+
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
         ctx->enckey[i] = ctx->deckey[i] = k[i];
     }
     ecb2 : for (i = 8;--i;){
-        aes_expandEncKey(ctx->deckey, &rcon);
+        aes_expandEncKey(ctx->deckey, rcon);
     }
 
     //DEC
     aes_addRoundKey_cpy(buf, ctx->enckey, ctx->key);
-    ecb3 : for(i = 1, rcon = 1; i < 14; ++i)
+    ecb3 : for(i = 1, rcon[0] = 1; i < 14; ++i)
     {
         aes_subBytes(buf);
         aes_shiftRows(buf);
         aes_mixColumns(buf);
         if( i & 1 ) aes_addRoundKey( buf, &ctx->key[16]);
-        else aes_expandEncKey(ctx->key, &rcon), aes_addRoundKey(buf, ctx->key);
+        else aes_expandEncKey(ctx->key, rcon), aes_addRoundKey(buf, ctx->key);
     }
     aes_subBytes(buf);
     aes_shiftRows(buf);
-    aes_expandEncKey(ctx->key, &rcon);
+    aes_expandEncKey(ctx->key, rcon);
     aes_addRoundKey(buf, ctx->key);
 #ifdef DMA_MODE
   dmaStore(ctx,96*1*8);
