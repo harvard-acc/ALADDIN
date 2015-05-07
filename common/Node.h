@@ -9,6 +9,17 @@
 #include "opcode_func.h"
 #include "boost_typedefs.h"
 
+// Stores all information about a memory access.
+struct MemAccess {
+  // Address read from the trace.
+  long long int vaddr;
+  // Size of the memory access in BITS.
+  size_t size;
+  // If this is not a store, then this value is meaningless.
+  // TODO(samxi): Support floating point stores as well.
+  long long int value;
+};
+
 class BaseNode {
 
  public:
@@ -17,8 +28,12 @@ class BaseNode {
         basic_block_id(""), inst_id(""), line_num(-1), execution_cycle(0),
         num_parents(0), isolated(true), inductive(false),
         dynamic_mem_op(false), array_label(""), time_before_execution(0.0),
-        vertex_assigned(false) {}
+        mem_access(nullptr), vertex_assigned(false) {}
 
+  ~BaseNode() {
+    if (mem_access)
+      delete mem_access;
+  }
   /* Compare two nodes based only on their node ids. */
   bool operator<(const BaseNode& other) const {
     return (node_id < other.get_node_id());
@@ -48,6 +63,7 @@ class BaseNode {
   bool has_vertex() { return vertex_assigned; }
   std::string get_array_label() { return array_label; }
   bool has_array_label() { return (array_label.compare("") != 0); }
+  MemAccess* get_mem_access() { return mem_access; }
   float get_time_before_execution() { return time_before_execution; }
 
   /* Setters. */
@@ -69,6 +85,12 @@ class BaseNode {
   void set_inductive(bool inductive) { this->inductive = inductive; }
   void set_dynamic_mem_op(bool dynamic) { dynamic_mem_op = dynamic; }
   void set_array_label(std::string label) { array_label = label; }
+  void set_mem_access(long long int vaddr, size_t size, long long int value) {
+    mem_access = new MemAccess;
+    mem_access->vaddr = vaddr;
+    mem_access->size = size;
+    mem_access->value = value;
+  }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
   /* Compound accessors. */
@@ -283,6 +305,10 @@ class BaseNode {
    * specifically. Something like a member class that can be extended.
    */
   float time_before_execution;
+  /* Stores information about a memory access. If the node is not a memory op,
+   * this is NULL.
+   */
+  MemAccess* mem_access;
 
  private:
   /* True if the node has been assigned a vertex, false otherwise. */

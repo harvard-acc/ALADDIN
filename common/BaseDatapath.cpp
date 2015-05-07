@@ -34,6 +34,7 @@ BaseDatapath::BaseDatapath(std::string bench,
   initDynamicMethods(functionNames);
   initInstID();
   initLineNum();
+  initAddress();
 
   parse_config(bench, config_file);
 
@@ -75,7 +76,6 @@ void BaseDatapath::memoryAmbiguation() {
     BaseNode* node = node_it->second;
     if (!node->is_memory_op())
       continue;
-    unsigned node_id = node->get_node_id();
     in_edge_iter in_edge_it, in_edge_end;
     for (tie(in_edge_it, in_edge_end) = in_edges(node->get_vertex(), graph_);
          in_edge_it != in_edge_end;
@@ -462,7 +462,6 @@ void BaseDatapath::loopUnrolling() {
 
   bool first = false;
   int iter_counts = 0;
-  int prev_branch_id = -1;
   BaseNode* prev_branch = nullptr;
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
@@ -577,10 +576,6 @@ void BaseDatapath::removeSharedLoads() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  // TODO: Merge this into the BaseNode structure as well.
-  std::unordered_map<unsigned, MemAccess> address;
-  initAddress(address);
-
   vertex_iter vi, vi_end;
 
   std::set<Edge> to_remove_edges;
@@ -595,11 +590,12 @@ void BaseDatapath::removeSharedLoads() {
     while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
       BaseNode* node = node_it->second;
       if (!node->has_vertex() ||
-          boost::degree(node->get_vertex(), graph_) == 0) {
+          boost::degree(node->get_vertex(), graph_) == 0 ||
+          !node->is_memory_op()) {
         node_it++;
         continue;
       }
-      long long int node_address = address[node->get_node_id()].vaddr;
+      long long int node_address = node->get_mem_access()->vaddr;
       auto addr_it = address_loaded.find(node_address);
       if (node->is_store_op() && addr_it != address_loaded.end()) {
         address_loaded.erase(addr_it);
@@ -762,9 +758,6 @@ void BaseDatapath::removeRepeatedStores() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::unordered_map<unsigned, MemAccess> address;
-  initAddress(address);
-
   int node_id = numTotalNodes - 1;
   auto bound_it = loopBound.end();
   bound_it--;
@@ -780,7 +773,7 @@ void BaseDatapath::removeRepeatedStores() {
         --node_id;
         continue;
       }
-      long long int node_address = address[node_id].vaddr;
+      long long int node_address = node->get_mem_access()->vaddr;
       auto addr_it = address_store_map.find(node_address);
 
       if (addr_it == address_store_map.end())
@@ -1148,7 +1141,6 @@ void BaseDatapath::updatePerCycleActivity(
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end(); ++node_it) {
     BaseNode* node = node_it->second;
     std::string func_id = node->get_static_method();
-    int count = node->get_dynamic_invocation();
 
     if (node->get_node_id() == *bound_it) {
       if (max_add_per_function[func_id] < num_adds_so_far)
@@ -1508,8 +1500,7 @@ void BaseDatapath::initInstID() {
     exec_nodes[i]->set_inst_id(instid[i]);
 }
 
-void BaseDatapath::initAddress(
-    std::unordered_map<unsigned, MemAccess>& address) {
+void BaseDatapath::initAddress() {
   std::string file_name(benchName);
   file_name += "_memaddr.gz";
   gzFile gzip_file;
@@ -1518,17 +1509,11 @@ void BaseDatapath::initAddress(
     char buffer[256];
     if (gzgets(gzip_file, buffer, 256) == NULL)
       break;
-    unsigned node_id, size;
-    long long int addr, value;
-    int num_filled =
-        sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &addr, &size, &value);
-    MemAccess access;
-    access.vaddr = addr;
-    access.size = size;
-    access.isLoad = (num_filled == 3);
-    if (!access.isLoad)
-      access.value = value;
-    address[node_id] = access;
+    unsigned node_id = 0, size = 0;
+    long long int addr = 0, value = 0;
+    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &addr, &size, &value);
+    BaseNode* node = exec_nodes[node_id];
+    node->set_mem_access(addr, size, value);
   }
   gzclose(gzip_file);
 }
@@ -1604,7 +1589,6 @@ int BaseDatapath::clearGraph() {
     BaseNode* node = exec_nodes[node_id];
     if (node->is_isolated())
       continue;
-    unsigned node_microop = exec_nodes[node_id]->get_microop();
     if (!node->is_memory_op() && !node->is_branch_op())
       if ((earliest_child.at(node_id) - 1) > node->get_execution_cycle())
         node->set_execution_cycle(earliest_child.at(node_id) - 1);

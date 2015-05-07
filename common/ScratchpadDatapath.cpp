@@ -100,9 +100,6 @@ void ScratchpadDatapath::scratchpadPartition() {
   std::cerr << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
-  // TODO: Should store this along with the node.
-  std::unordered_map<unsigned, MemAccess> address;
-  initAddress(address);
   // set scratchpad
   for (auto it = part_config.begin(); it != part_config.end(); ++it) {
     std::string base_addr = it->first;
@@ -135,8 +132,9 @@ void ScratchpadDatapath::scratchpadPartition() {
 
       unsigned num_of_elements = part_it->second.array_size;
       unsigned p_factor = part_it->second.part_factor;
-      long long int abs_addr = address[node->get_node_id()].vaddr;
-      unsigned data_size = address[node->get_node_id()].size / 8;  // in bytes
+      MemAccess* mem_access = node->get_mem_access();
+      long long int abs_addr = mem_access->vaddr;
+      unsigned data_size = (mem_access->size) / 8;  // in bytes
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
       if (!p_type.compare("block"))  // block partition
       {

@@ -153,8 +153,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     if (prev_bblock.compare(prev_bbid) != 0) {
       return;
     }
-  } else
+  } else {
     sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
+  }
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)

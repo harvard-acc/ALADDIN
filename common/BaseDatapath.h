@@ -81,17 +81,6 @@ struct RQEntryComp {
   }
 };
 
-// Stores all information about a memory access.
-struct MemAccess {
-  // Address read from the trace.
-  long long int vaddr;
-  size_t size;
-  bool isLoad;
-  // If this is not a store, then this value is meaningless.
-  // TODO(samxi): Support floating point stores as well.
-  long long int value;
-};
-
 // Data to print out to file, stdout, or database.
 struct summary_data_t {
   std::string benchName;
@@ -201,7 +190,7 @@ class BaseDatapath {
   void initDynamicMethods(std::unordered_set<std::string>& functions);
   void initPrevBasicBlock(std::vector<std::string>& prevBasicBlock);
   void initInstID();
-  void initAddress(std::unordered_map<unsigned, MemAccess>& address);
+  void initAddress();
   void initLineNum();
   void initGetElementPtr(
       std::unordered_map<unsigned, pair<std::string, long long int>>&
