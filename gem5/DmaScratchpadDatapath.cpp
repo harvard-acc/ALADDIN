@@ -19,7 +19,7 @@
 #include "aladdin/common/DatabaseDeps.h"
 
 #include "aladdin/common/ScratchpadDatapath.h"
-#include "aladdin/common/Node.h"
+#include "aladdin/common/ExecNode.h"
 #include "debug/DmaScratchpadDatapath.hh"
 #include "DmaScratchpadDatapath.h"
 
@@ -77,7 +77,7 @@ DmaScratchpadDatapath::stepExecutingQueue()
   int index = 0;
   while (it != executingQueue.end())
   {
-    BaseNode* node = *it;
+    ExecNode* node = *it;
     if (node->is_memory_op())
     {
       std::string node_part = node->get_array_label();

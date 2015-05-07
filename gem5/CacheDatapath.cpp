@@ -12,7 +12,7 @@
 #include "base/statistics.hh"
 #include "aladdin/common/cacti-p/cacti_interface.h"
 #include "aladdin/common/cacti-p/io.h"
-#include "aladdin/common/Node.h"
+#include "aladdin/common/ExecNode.h"
 #include "debug/CacheDatapath.hh"
 #include "CacheDatapath.h"
 
@@ -162,7 +162,7 @@ CacheDatapath::completeDataAccess(PacketPtr pkt)
   {
     for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it)
     {
-      BaseNode* node = *it;
+      ExecNode* node = *it;
       unsigned n_id = node->get_node_id();
       if (node->is_memory_op() && inflight_mem_ops[n_id].status == WaitingFromCache)
       {
@@ -378,7 +378,7 @@ void CacheDatapath::copyToExecutingQueue()
 {
   auto it = readyToExecuteQueue.begin();
   while (it != readyToExecuteQueue.end()) {
-    BaseNode* node = *it;
+    ExecNode* node = *it;
     if (node->is_store_op())
       executingQueue.push_front(node);
     else
@@ -465,7 +465,7 @@ void CacheDatapath::stepExecutingQueue()
   int index = 0;
   while (it != executingQueue.end())
   {
-    BaseNode* node = *it;
+    ExecNode* node = *it;
     unsigned node_id = node->get_node_id();
     if (node->is_memory_op())
     {

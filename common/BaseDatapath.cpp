@@ -3,7 +3,7 @@
 
 #include "opcode_func.h"
 #include "BaseDatapath.h"
-#include "Node.h"
+#include "ExecNode.h"
 
 #include "DatabaseDeps.h"
 
@@ -57,7 +57,7 @@ void BaseDatapath::addDddgEdge(unsigned int from,
 }
 
 void BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
-  exec_nodes[node_id] = new BaseNode(node_id, microop);
+  exec_nodes[node_id] = new ExecNode(node_id, microop);
 }
 
 // optimizationFunctions
@@ -72,11 +72,11 @@ void BaseDatapath::memoryAmbiguation() {
   std::cerr << "      Memory Ambiguation       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::unordered_map<std::string, BaseNode*> last_store;
+  std::unordered_map<std::string, ExecNode*> last_store;
   std::vector<newEdge> to_add_edges;
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (!node->is_memory_op())
       continue;
     in_edge_iter in_edge_it, in_edge_end;
@@ -84,7 +84,7 @@ void BaseDatapath::memoryAmbiguation() {
          in_edge_it != in_edge_end;
          ++in_edge_it) {
       Vertex parent_vertex = source(*in_edge_it, graph_);
-      BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+      ExecNode* parent_node = getNodeFromVertex(parent_vertex);
       if (parent_node->get_microop() != LLVM_IR_GetElementPtr)
         continue;
       if (!parent_node->is_inductive()) {
@@ -114,18 +114,18 @@ void BaseDatapath::removePhiNodes() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
   std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
-  std::unordered_set<BaseNode*> checked_phi_nodes;
+  std::unordered_set<ExecNode*> checked_phi_nodes;
 
   for (auto node_it = exec_nodes.rbegin(); node_it != exec_nodes.rend();
        node_it++) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (!node->has_vertex() ||
         (node->get_microop() != LLVM_IR_PHI && !node->is_convert_op()) ||
         (checked_phi_nodes.find(node) != checked_phi_nodes.end()))
       continue;
     Vertex node_vertex = node->get_vertex();
     // find its children
-    std::vector<pair<BaseNode*, int>> phi_child;
+    std::vector<pair<ExecNode*, int>> phi_child;
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
          out_edge_it != out_edge_end;
@@ -144,7 +144,7 @@ void BaseDatapath::removePhiNodes() {
       assert(boost::in_degree(node_vertex, graph_) == 1);
       in_edge_iter in_edge_it = in_edges(node_vertex, graph_).first;
       Vertex parent_vertex = source(*in_edge_it, graph_);
-      BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+      ExecNode* parent_node = getNodeFromVertex(parent_vertex);
       unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
       while (parent_node->get_microop() == LLVM_IR_PHI) {
         checked_phi_nodes.insert(parent_node);
@@ -169,7 +169,7 @@ void BaseDatapath::removePhiNodes() {
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         Vertex parent_vertex = source(*in_edge_it, graph_);
-        BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+        ExecNode* parent_node = getNodeFromVertex(parent_vertex);
         // unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         to_remove_edges.insert(*in_edge_it);
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
@@ -179,7 +179,7 @@ void BaseDatapath::removePhiNodes() {
         }
       }
     }
-    std::vector<pair<BaseNode*, int>>().swap(phi_child);
+    std::vector<pair<ExecNode*, int>>().swap(phi_child);
   }
 
   updateGraphWithIsolatedEdges(to_remove_edges);
@@ -201,7 +201,7 @@ void BaseDatapath::loopFlatten() {
   std::vector<unsigned> to_remove_nodes;
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (flatten_config.find(node->get_line_num()) == flatten_config.end())
       continue;
     if (node->is_compute_op())
@@ -228,7 +228,7 @@ void BaseDatapath::cleanLeafNodes() {
     if (boost::degree(node_vertex, graph_) == 0)
       continue;
     unsigned node_id = vertexToName[node_vertex];
-    BaseNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes[node_id];
     int node_microop = node->get_microop();
     if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) &&
         node_microop != LLVM_IR_SilentStore && node_microop != LLVM_IR_Store &&
@@ -269,7 +269,7 @@ void BaseDatapath::removeInductionDependence() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     // Revert the inductive flag to false. This guarantees that no child node
     // of this node can mistakenly think its parent is inductive.
     node->set_inductive(false);
@@ -289,7 +289,7 @@ void BaseDatapath::removeInductionDependence() {
         if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
           continue;
         Vertex parent_vertex = source(*in_edge_it, graph_);
-        BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+        ExecNode* parent_node = getNodeFromVertex(parent_vertex);
         if (!parent_node->is_inductive()) {
           inductive_parents = false;
           break;
@@ -353,7 +353,7 @@ void BaseDatapath::loopPipelining() {
   std::map<unsigned, unsigned> first_non_isolated_node;
   auto bound_it = loopBound.begin();
   auto node_it = exec_nodes.begin();
-  BaseNode* curr_node = exec_nodes[*bound_it];
+  ExecNode* curr_node = exec_nodes[*bound_it];
   bound_it++;  // skip first region
   while (node_it != exec_nodes.end()) {
     assert(exec_nodes[*bound_it]->is_branch_op());
@@ -379,14 +379,14 @@ void BaseDatapath::loopPipelining() {
       break;
   }
 
-  BaseNode* prev_branch_n = nullptr;
-  BaseNode* prev_first_n = nullptr;
+  ExecNode* prev_branch_n = nullptr;
+  ExecNode* prev_first_n = nullptr;
   for (auto first_it = first_non_isolated_node.begin(),
             E = first_non_isolated_node.end();
        first_it != E;
        ++first_it) {
-    BaseNode* br_node = exec_nodes[first_it->first];
-    BaseNode* first_node = exec_nodes[first_it->second];
+    ExecNode* br_node = exec_nodes[first_it->first];
+    ExecNode* first_node = exec_nodes[first_it->second];
     if (br_node->is_call_op()) {
       prev_branch_n = nullptr;
       continue;
@@ -402,7 +402,7 @@ void BaseDatapath::loopPipelining() {
            out_edge_it != out_edge_end;
            ++out_edge_it) {
         Vertex child_vertex = target(*out_edge_it, graph_);
-        BaseNode* child_node = getNodeFromVertex(child_vertex);
+        ExecNode* child_node = getNodeFromVertex(child_vertex);
         if (*child_node < *first_node ||
             edge_to_parid[*out_edge_it] != CONTROL_EDGE)
           continue;
@@ -417,7 +417,7 @@ void BaseDatapath::loopPipelining() {
          in_edge_it != in_edge_end;
          ++in_edge_it) {
       Vertex parent_vertex = source(*in_edge_it, graph_);
-      BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+      ExecNode* parent_node = getNodeFromVertex(parent_vertex);
       // unsigned parent_id = vertexToName[parent_vertex];
       if (parent_node->is_branch_op())
         continue;
@@ -459,16 +459,16 @@ void BaseDatapath::loopUnrolling() {
 
   std::vector<unsigned> to_remove_nodes;
   std::unordered_map<std::string, unsigned> inst_dynamic_counts;
-  std::vector<BaseNode*> nodes_between;
+  std::vector<ExecNode*> nodes_between;
   std::vector<newEdge> to_add_edges;
 
   bool first = false;
   int iter_counts = 0;
-  BaseNode* prev_branch = nullptr;
+  ExecNode* prev_branch = nullptr;
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (!node->has_vertex())
       continue;
     Vertex node_vertex = node->get_vertex();
@@ -588,9 +588,9 @@ void BaseDatapath::removeSharedLoads() {
 
   auto node_it = exec_nodes.begin();
   while (node_it != exec_nodes.end()) {
-    std::unordered_map<unsigned, BaseNode*> address_loaded;
+    std::unordered_map<unsigned, ExecNode*> address_loaded;
     while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
-      BaseNode* node = node_it->second;
+      ExecNode* node = node_it->second;
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0 ||
           !node->is_memory_op()) {
@@ -612,7 +612,7 @@ void BaseDatapath::removeSharedLoads() {
           }
           shared_loads++;
           node->set_microop(LLVM_IR_Move);
-          BaseNode* prev_load = addr_it->second;
+          ExecNode* prev_load = addr_it->second;
           // iterate through its children
           Vertex load_node = node->get_vertex();
           out_edge_iter out_edge_it, out_edge_end;
@@ -623,7 +623,7 @@ void BaseDatapath::removeSharedLoads() {
             Vertex child_vertex = target(curr_edge, graph_);
             Vertex prev_load_vertex = prev_load->get_vertex();
             if (!doesEdgeExistVertex(prev_load_vertex, child_vertex)) {
-              BaseNode* child_node = getNodeFromVertex(child_vertex);
+              ExecNode* child_node = getNodeFromVertex(child_vertex);
               to_add_edges.push_back(
                   { prev_load, child_node, edge_to_parid[curr_edge] });
             }
@@ -668,7 +668,7 @@ void BaseDatapath::storeBuffer() {
 
   while (node_it != exec_nodes.end()) {
     while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
-      BaseNode* node = node_it->second;
+      ExecNode* node = node_it->second;
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0) {
         ++node_it;
@@ -689,7 +689,7 @@ void BaseDatapath::storeBuffer() {
              out_edge_it != out_edge_end;
              ++out_edge_it) {
           Vertex child_vertex = target(*out_edge_it, graph_);
-          BaseNode* child_node = getNodeFromVertex(child_vertex);
+          ExecNode* child_node = getNodeFromVertex(child_vertex);
           if (child_node->is_load_op()) {
             if (child_node->is_dynamic_mem_op() ||
                 child_node->get_node_id() >= (unsigned)*bound_it)
@@ -768,7 +768,7 @@ void BaseDatapath::removeRepeatedStores() {
     unordered_map<unsigned, int> address_store_map;
 
     while (node_id >= *bound_it && node_id >= 0) {
-      BaseNode* node = exec_nodes[node_id];
+      ExecNode* node = exec_nodes[node_id];
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0 ||
           !node->is_store_op()) {
@@ -847,7 +847,7 @@ void BaseDatapath::treeHeightReduction() {
   // nodes with no outgoing edges to first (bottom nodes first)
   for (auto node_it = exec_nodes.rbegin(); node_it != exec_nodes.rend();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (!node->has_vertex() || boost::degree(node->get_vertex(), graph_) == 0 ||
         updated.at(node->get_node_id()) || !node->is_associative())
       continue;
@@ -855,14 +855,14 @@ void BaseDatapath::treeHeightReduction() {
     updated.at(node_id) = 1;
     int node_region = bound_region.at(node_id);
 
-    std::list<BaseNode*> nodes;
+    std::list<ExecNode*> nodes;
     std::vector<Edge> tmp_remove_edges;
-    std::vector<pair<BaseNode*, bool>> leaves;
-    std::vector<BaseNode*> associative_chain;
+    std::vector<pair<ExecNode*, bool>> leaves;
+    std::vector<ExecNode*> associative_chain;
     associative_chain.push_back(node);
     int chain_id = 0;
     while (chain_id < associative_chain.size()) {
-      BaseNode* chain_node = associative_chain[chain_id];
+      ExecNode* chain_node = associative_chain[chain_id];
       if (chain_node->is_associative()) {
         updated.at(chain_node->get_node_id()) = 1;
         int num_of_chain_parents = 0;
@@ -884,7 +884,7 @@ void BaseDatapath::treeHeightReduction() {
                ++in_edge_it) {
             Vertex parent_vertex = source(*in_edge_it, graph_);
             int parent_id = vertexToName[parent_vertex];
-            BaseNode* parent_node = getNodeFromVertex(parent_vertex);
+            ExecNode* parent_node = getNodeFromVertex(parent_vertex);
             assert(*parent_node < *chain_node);
             if (parent_node->is_branch_op())
               continue;
@@ -932,7 +932,7 @@ void BaseDatapath::treeHeightReduction() {
          it != E; it++)
       to_remove_edges.insert(*it);
 
-    std::map<BaseNode*, unsigned> rank_map;
+    std::map<ExecNode*, unsigned> rank_map;
     auto leaf_it = leaves.begin();
 
     while (leaf_it != leaves.end()) {
@@ -946,8 +946,8 @@ void BaseDatapath::treeHeightReduction() {
     // TODO: Find a better name for this.
     auto new_node_it = nodes.begin();
     while (new_node_it != nodes.end()) {
-      BaseNode* node1 = nullptr;
-      BaseNode* node2 = nullptr;
+      ExecNode* node1 = nullptr;
+      ExecNode* node2 = nullptr;
       if (rank_map.size() == 2) {
         node1 = rank_map.begin()->first;
         node2 = (++rank_map.begin())->first;
@@ -975,9 +975,9 @@ void BaseDatapath::treeHeightReduction() {
   cleanLeafNodes();
 }
 
-void BaseDatapath::findMinRankNodes(BaseNode** node1,
-                                    BaseNode** node2,
-                                    std::map<BaseNode*, unsigned>& rank_map) {
+void BaseDatapath::findMinRankNodes(ExecNode** node1,
+                                    ExecNode** node2,
+                                    std::map<ExecNode*, unsigned>& rank_map) {
   unsigned min_rank = numTotalNodes;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
     int node_rank = it->second;
@@ -1141,7 +1141,7 @@ void BaseDatapath::updatePerCycleActivity(
   int num_shifters_so_far = 0;
   auto bound_it = loopBound.begin();
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end(); ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     std::string func_id = node->get_static_method();
 
     if (node->get_node_id() == *bound_it) {
@@ -1453,7 +1453,7 @@ void BaseDatapath::writeOtherStats() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     unsigned node_id = node_it->first;
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     microop[node_id] = node->get_microop();
     exec_cycle[node_id] = node->get_execution_cycle();
     isolated[node_id] = node->is_isolated();
@@ -1517,7 +1517,7 @@ void BaseDatapath::initAddress() {
     unsigned node_id = 0, size = 0;
     long long int addr = 0, value = 0;
     sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &addr, &size, &value);
-    BaseNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes[node_id];
     node->set_mem_access(addr, size, value);
   }
   gzclose(gzip_file);
@@ -1566,7 +1566,7 @@ void BaseDatapath::setGraphForStepping() {
   totalConnectedNodes = 0;
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     Vertex node_vertex = node->get_vertex();
     if (boost::degree(node_vertex, graph_) != 0 || node->is_dma_op()) {
       node->set_num_parents(boost::in_degree(node_vertex, graph_));
@@ -1596,7 +1596,7 @@ int BaseDatapath::clearGraph() {
   std::vector<int> earliest_child(numTotalNodes, num_cycles);
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
-    BaseNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes[node_id];
     if (node->is_isolated())
       continue;
     if (!node->is_memory_op() && !node->is_branch_op())
@@ -1618,7 +1618,7 @@ void BaseDatapath::updateRegStats() {
   regStats.assign(num_cycles, { 0, 0, 0 });
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (node->is_isolated() || node->is_control_op() || node->is_index_op())
       continue;
     int node_level = node->get_execution_cycle();
@@ -1631,7 +1631,7 @@ void BaseDatapath::updateRegStats() {
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       int child_id = vertexToName[target(*out_edge_it, graph_)];
-      BaseNode* child_node = exec_nodes[child_id];
+      ExecNode* child_node = exec_nodes[child_id];
       if (child_node->is_control_op() || child_node->is_load_op())
         continue;
 
@@ -1652,7 +1652,7 @@ void BaseDatapath::updateRegStats() {
 void BaseDatapath::copyToExecutingQueue() {
   auto it = readyToExecuteQueue.begin();
   while (it != readyToExecuteQueue.end()) {
-    BaseNode* node = *it;
+    ExecNode* node = *it;
     if (node->is_store_op())
       executingQueue.push_front(node);
     else
@@ -1672,8 +1672,8 @@ bool BaseDatapath::step() {
 
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
-    std::list<BaseNode*>::iterator& executingQueuePos, int& advance_to) {
-  BaseNode* node = *executingQueuePos;
+    std::list<ExecNode*>::iterator& executingQueuePos, int& advance_to) {
+  ExecNode* node = *executingQueuePos;
   executedNodes++;
   node->set_execution_cycle(num_cycles);
   executingQueue.erase(executingQueuePos);
@@ -1682,7 +1682,7 @@ void BaseDatapath::markNodeCompleted(
   std::advance(executingQueuePos, advance_to);
 }
 
-void BaseDatapath::updateChildren(BaseNode* node) {
+void BaseDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
   Vertex node_vertex = node->get_vertex();
@@ -1691,7 +1691,7 @@ void BaseDatapath::updateChildren(BaseNode* node) {
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     Vertex child_vertex = target(*out_edge_it, graph_);
-    BaseNode* child_node = getNodeFromVertex(child_vertex);
+    ExecNode* child_node = getNodeFromVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
@@ -1729,7 +1729,7 @@ void BaseDatapath::initBaseAddress() {
     if (boost::degree(*vi, graph_) == 0)
       continue;
     Vertex curr_vertex = *vi;
-    BaseNode* node = getNodeFromVertex(curr_vertex);
+    ExecNode* node = getNodeFromVertex(curr_vertex);
     if (!node->is_memory_op())
       continue;
     int node_microop = node->get_microop();
@@ -1789,7 +1789,7 @@ void BaseDatapath::initBaseAddress() {
 void BaseDatapath::initExecutingQueue() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (node->get_num_parents() == 0 && !node->is_isolated())
       executingQueue.push_back(node);
   }

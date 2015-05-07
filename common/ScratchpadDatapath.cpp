@@ -53,7 +53,7 @@ void ScratchpadDatapath::initBaseAddress() {
   readPartitionConfig(part_config);
 
   for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
-    BaseNode* node = it->second;
+    ExecNode* node = it->second;
     if (!node->is_memory_op())
       continue;
     std::string part_name = node->get_array_label();
@@ -118,7 +118,7 @@ void ScratchpadDatapath::scratchpadPartition() {
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    BaseNode* node = node_it->second;
+    ExecNode* node = node_it->second;
     if (!node->is_memory_op())
       continue;
     if (boost::degree(node->get_vertex(), graph_) == 0)
@@ -173,7 +173,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
   auto it = executingQueue.begin();
   int index = 0;
   while (it != executingQueue.end()) {
-    BaseNode* node = *it;
+    ExecNode* node = *it;
     if (node->is_memory_op()) {
       std::string node_part = node->get_array_label();
       if (registers.has(node_part)) {
@@ -204,7 +204,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
   }
 }
 
-void ScratchpadDatapath::updateChildren(BaseNode* node) {
+void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
   float latency_after_current_node = node->node_latency();
@@ -220,7 +220,7 @@ void ScratchpadDatapath::updateChildren(BaseNode* node) {
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     Vertex child_vertex = target(*out_edge_it, graph_);
-    BaseNode* child_node = getNodeFromVertex(child_vertex);
+    ExecNode* child_node = getNodeFromVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     float child_earliest_time = child_node->get_time_before_execution();
     if (edge_parid != CONTROL_EDGE &&

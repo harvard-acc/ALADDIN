@@ -31,7 +31,7 @@
 
 #include "DatabaseDeps.h"
 
-#include "Node.h"
+#include "ExecNode.h"
 #include "boost_typedefs.h"
 #include "DDDG.h"
 #include "file_func.h"
@@ -67,8 +67,8 @@ struct callDep {
   int callInstID;
 };
 struct newEdge {
-  BaseNode* from;
-  BaseNode* to;
+  ExecNode* from;
+  ExecNode* to;
   int parid;
 };
 struct RQEntry {
@@ -136,7 +136,7 @@ class BaseDatapath {
   long long int getBaseAddress(std::string label) {
     return arrayBaseAddress[label];
   }
-  bool doesEdgeExist(BaseNode* from, BaseNode* to) {
+  bool doesEdgeExist(ExecNode* from, ExecNode* to) {
     if (from != nullptr && to != nullptr)
       return doesEdgeExistVertex(from->get_vertex(), to->get_vertex());
     return false;
@@ -145,7 +145,7 @@ class BaseDatapath {
   bool doesEdgeExist(unsigned int from, unsigned int to) {
     return doesEdgeExist(exec_nodes[from], exec_nodes[to]);
   }
-  BaseNode* getNodeFromVertex(Vertex& vertex) {
+  ExecNode* getNodeFromVertex(Vertex& vertex) {
     unsigned node_id = vertexToName[vertex];
     return exec_nodes[node_id];
   }
@@ -175,9 +175,9 @@ class BaseDatapath {
 
  protected:
   // Graph transformation helpers.
-  void findMinRankNodes(BaseNode** node1,
-                        BaseNode** node2,
-                        std::map<BaseNode*, unsigned>& rank_map);
+  void findMinRankNodes(ExecNode** node1,
+                        ExecNode** node2,
+                        std::map<ExecNode*, unsigned>& rank_map);
   void cleanLeafNodes();
   bool doesEdgeExistVertex(Vertex from, Vertex to) {
     return edge(from, to, graph_).second;
@@ -209,7 +209,7 @@ class BaseDatapath {
   void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
   void updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges);
   void updateGraphWithIsolatedNodes(std::vector<unsigned>& to_remove_nodes);
-  virtual void updateChildren(BaseNode* node);
+  virtual void updateChildren(ExecNode* node);
   void updateRegStats();
 
   // Scheduling
@@ -219,7 +219,7 @@ class BaseDatapath {
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
-  void markNodeCompleted(std::list<BaseNode*>::iterator& executingQueuePos,
+  void markNodeCompleted(std::list<ExecNode*>::iterator& executingQueuePos,
                          int& advance_to);
 
   // Stats output.
@@ -327,7 +327,7 @@ class BaseDatapath {
   Registers registers;
 
   // Complete list of all execution nodes and their properties.
-  std::map<unsigned int, BaseNode*> exec_nodes;
+  std::map<unsigned int, ExecNode*> exec_nodes;
 
   std::vector<regEntry> regStats;
   std::unordered_map<std::string, long long int> arrayBaseAddress;
@@ -336,8 +336,8 @@ class BaseDatapath {
   // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
-  std::list<BaseNode*> executingQueue;
-  std::list<BaseNode*> readyToExecuteQueue;
+  std::list<ExecNode*> executingQueue;
+  std::list<ExecNode*> readyToExecuteQueue;
 };
 
 #endif
