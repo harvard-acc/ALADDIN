@@ -5,7 +5,7 @@
 
 #include "BaseDatapath.h"
 #include "DatabaseDeps.h"
-#include "Node.h"
+#include "ExecNode.h"
 #include "Scratchpad.h"
 
 class ScratchpadDatapath : public BaseDatapath {
@@ -20,7 +20,7 @@ class ScratchpadDatapath : public BaseDatapath {
   void completePartition();
   void scratchpadPartition();
   virtual void setGraphForStepping();
-  virtual void updateChildren(BaseNode* node);
+  virtual void updateChildren(ExecNode* node);
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();

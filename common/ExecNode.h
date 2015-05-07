@@ -20,31 +20,31 @@ struct MemAccess {
   long long int value;
 };
 
-class BaseNode {
+class ExecNode {
 
  public:
-  BaseNode(unsigned int _node_id, uint8_t _microop)
+  ExecNode(unsigned int _node_id, uint8_t _microop)
       : node_id(_node_id), microop(_microop), static_method(""),
         basic_block_id(""), inst_id(""), line_num(-1), execution_cycle(0),
         num_parents(0), isolated(true), inductive(false),
         dynamic_mem_op(false), array_label(""), time_before_execution(0.0),
         mem_access(nullptr), vertex_assigned(false) {}
 
-  ~BaseNode() {
+  ~ExecNode() {
     if (mem_access)
       delete mem_access;
   }
   /* Compare two nodes based only on their node ids. */
-  bool operator<(const BaseNode& other) const {
+  bool operator<(const ExecNode& other) const {
     return (node_id < other.get_node_id());
   }
-  bool operator>(const BaseNode& other) const { return (other < *this); }
-  bool operator<=(const BaseNode& other) const { return !(other > *this); }
-  bool operator>=(const BaseNode& other) const { return !(*this < other); }
-  bool operator==(const BaseNode& other) const {
+  bool operator>(const ExecNode& other) const { return (other < *this); }
+  bool operator<=(const ExecNode& other) const { return !(other > *this); }
+  bool operator>=(const ExecNode& other) const { return !(*this < other); }
+  bool operator==(const ExecNode& other) const {
     return (node_id == other.get_node_id());
   }
-  bool operator!=(const BaseNode& other) const { return !(*this == other); }
+  bool operator!=(const ExecNode& other) const { return !(*this == other); }
 
   /* Accessors. */
   unsigned int get_node_id() const { return node_id; }
