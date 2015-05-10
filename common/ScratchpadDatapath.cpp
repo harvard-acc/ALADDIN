@@ -268,7 +268,7 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
             readyToExecuteQueue.push_back(child_node);
         } else {
           float after_child_time =
-              child_node->get_time_before_execution() + node->node_latency();
+              child_node->get_time_before_execution() + child_node->node_latency();
           if (after_child_time < (num_cycles + 1) * cycleTime &&
               edge_parid != CONTROL_EDGE)
             executingQueue.push_back(child_node);
