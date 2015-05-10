@@ -1302,7 +1302,8 @@ void BaseDatapath::outputPerCycleActivity(
 
       stats << mul_activity[*it].at(curr_level) << ","
             << add_activity[*it].at(curr_level) << ","
-            << bit_activity[*it].at(curr_level) << ",";
+            << bit_activity[*it].at(curr_level) << ","
+            << shifter_activity[*it].at(curr_level) << ",";
       power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
                   << curr_add_dynamic_power + add_leakage_power << ","
                   << curr_bit_dynamic_power + bit_leakage_power << ","
