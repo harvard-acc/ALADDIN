@@ -22,8 +22,16 @@ void Scratchpad::setScratchpad(std::string baseName,
   occupiedBWPerPartition[baseName] = 0;
   sizePerPartition.push_back(num_of_bytes);
   // set read/write/leak/area per partition
-  uca_org_t cacti_result = cactiWrapper(num_of_bytes, wordsize);
 
+  uca_org_t cacti_result;
+  auto cacti_it = cacti_value.find(num_of_bytes);
+  if(cacti_it == cacti_value.end())
+  {
+      cacti_result = cactiWrapper(num_of_bytes, wordsize); 
+      cacti_value[num_of_bytes] = cacti_result;
+  }
+  else 
+      cacti_result = cacti_it->second;
   // power in mW, energy in nJ, area in mm2
   readEnergyPerPartition.push_back(cacti_result.power.readOp.dynamic * 1e+9);
   writeEnergyPerPartition.push_back(cacti_result.power.writeOp.dynamic * 1e+9);
