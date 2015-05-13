@@ -58,6 +58,7 @@ class Scratchpad {
   std::map<std::string, unsigned> partition_loads;
   /* Number of stores per partition. */
   std::map<std::string, unsigned> partition_stores;
+  std::unordered_map<unsigned, uca_org_t> cacti_value;
 
   std::vector<bool> compPartition;
   std::vector<unsigned> sizePerPartition;
