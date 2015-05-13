@@ -142,7 +142,6 @@ void BaseDatapath::removePhiNodes() {
       in_edge_iter in_edge_it = in_edges(node_vertex, graph_).first;
       Vertex parent_vertex = source(*in_edge_it, graph_);
       ExecNode* parent_node = getNodeFromVertex(parent_vertex);
-      unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
       while (parent_node->get_microop() == LLVM_IR_PHI) {
         checked_phi_nodes.insert(parent_node);
         Vertex parent_vertex = parent_node->get_vertex();
@@ -167,7 +166,6 @@ void BaseDatapath::removePhiNodes() {
            ++in_edge_it) {
         Vertex parent_vertex = source(*in_edge_it, graph_);
         ExecNode* parent_node = getNodeFromVertex(parent_vertex);
-        // unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         to_remove_edges.insert(*in_edge_it);
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
              child_it != chil_E; ++child_it) {

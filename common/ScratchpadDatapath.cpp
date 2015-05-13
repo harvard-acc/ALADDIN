@@ -236,7 +236,6 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
   float latency_after_current_node = node->node_latency();
-  unsigned node_id = node->get_node_id();
   if (node->get_time_before_execution() > num_cycles * cycleTime) {
     latency_after_current_node += node->get_time_before_execution();
   } else {
