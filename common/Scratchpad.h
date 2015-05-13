@@ -19,7 +19,8 @@ class Scratchpad {
   void step();
   void setScratchpad(std::string baseName,
                      unsigned num_of_bytes,
-                     unsigned wordsize);
+                     unsigned wordsize,
+                     uca_org_t cacti_result);
   bool canService();
   bool canServicePartition(std::string baseName);
   bool partitionExist(std::string baseName);
@@ -44,8 +45,6 @@ class Scratchpad {
   float getLeakagePower(std::string baseName);
   float getArea(std::string baseName);
 
-  /* Access cacti_interface() to calculate power/area. */
-  uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 
  private:
   unsigned numOfPartitions;

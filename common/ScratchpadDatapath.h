@@ -31,6 +31,8 @@ class ScratchpadDatapath : public BaseDatapath {
                                   float* avg_leak);
   virtual void getMemoryBlocks(std::vector<std::string>& names);
   virtual int rescheduleNodesWhenNeeded();
+  /* Access cacti_interface() to calculate power/area. */
+  uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 
  protected:
   Scratchpad* scratchpad;
