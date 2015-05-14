@@ -1600,8 +1600,8 @@ bool BaseDatapath::step() {
   copyToExecutingQueue();
   num_cycles++;
   if (executedNodes == totalConnectedNodes)
-    return 1;
-  return 0;
+    return true;
+  return false;
 }
 
 // Marks a node as completed and advances the executing queue iterator.
@@ -1674,9 +1674,9 @@ void BaseDatapath::initBaseAddress() {
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         int edge_parid = edge_to_parid[*in_edge_it];
-        /* For Load, not mem dependence.*/
-        /* For GEP, not the dependence that is caused by index */
-        /* For store, not the dependence caused by value or mem dependence */
+        /* For Load, not mem dependence. */
+        /* For GEP, not the dependence that is caused by index. */
+        /* For store, not the dependence caused by value or mem dependence. */
         if ((node_microop == LLVM_IR_Load && edge_parid != 1) ||
             (node_microop == LLVM_IR_GetElementPtr && edge_parid != 1) ||
             (node_microop == LLVM_IR_Store && edge_parid != 2))
@@ -1749,11 +1749,11 @@ bool BaseDatapath::readPipeliningConfig() {
   file_name += "_pipelining_config";
   config_file.open(file_name.c_str());
   if (!config_file.is_open())
-    return 0;
+    return false;
   std::string wholeline;
   getline(config_file, wholeline);
   if (wholeline.size() == 0)
-    return 0;
+    return false;
   bool flag = atoi(wholeline.c_str());
   return flag;
 }
@@ -1765,7 +1765,7 @@ bool BaseDatapath::readUnrollingConfig(
   file_name += "_unrolling_config";
   config_file.open(file_name.c_str());
   if (!config_file.is_open())
-    return 0;
+    return false;
   while (!config_file.eof()) {
     std::string wholeline;
     getline(config_file, wholeline);
@@ -1777,7 +1777,7 @@ bool BaseDatapath::readUnrollingConfig(
     unrolling_config[line_num] = factor;
   }
   config_file.close();
-  return 1;
+  return true;
 }
 
 bool BaseDatapath::readFlattenConfig(std::unordered_set<int>& flatten_config) {
@@ -1786,7 +1786,7 @@ bool BaseDatapath::readFlattenConfig(std::unordered_set<int>& flatten_config) {
   file_name += "_flatten_config";
   config_file.open(file_name.c_str());
   if (!config_file.is_open())
-    return 0;
+    return false;
   while (!config_file.eof()) {
     std::string wholeline;
     getline(config_file, wholeline);
@@ -1798,7 +1798,7 @@ bool BaseDatapath::readFlattenConfig(std::unordered_set<int>& flatten_config) {
     flatten_config.insert(line_num);
   }
   config_file.close();
-  return 1;
+  return true;
 }
 
 bool BaseDatapath::readCompletePartitionConfig(
@@ -1807,7 +1807,7 @@ bool BaseDatapath::readCompletePartitionConfig(
   comp_partition_file += "_complete_partition_config";
 
   if (!fileExists(comp_partition_file))
-    return 0;
+    return false;
 
   ifstream config_file;
   config_file.open(comp_partition_file);
@@ -1823,7 +1823,7 @@ bool BaseDatapath::readCompletePartitionConfig(
     config[base_addr] = size;
   }
   config_file.close();
-  return 1;
+  return true;
 }
 
 bool BaseDatapath::readPartitionConfig(
@@ -1832,7 +1832,7 @@ bool BaseDatapath::readPartitionConfig(
   std::string file_name(benchName);
   file_name += "_partition_config";
   if (!fileExists(file_name))
-    return 0;
+    return false;
 
   config_file.open(file_name.c_str());
   std::string wholeline;
@@ -1840,7 +1840,7 @@ bool BaseDatapath::readPartitionConfig(
     getline(config_file, wholeline);
     if (wholeline.size() == 0)
       break;
-    unsigned size, p_factor, wordsize;
+    unsigned size = 0, p_factor = 0, wordsize = 0;
     char type[256];
     char base_addr[256];
     sscanf(wholeline.c_str(),
@@ -1854,8 +1854,38 @@ bool BaseDatapath::readPartitionConfig(
     partition_config[base_addr] = { p_type, size, wordsize, p_factor };
   }
   config_file.close();
-  return 1;
+  return true;
 }
+
+bool BaseDatapath::readCacheConfig(
+    std::unordered_map<std::string, cacheEntry>& cache_config) {
+  ifstream config_file;
+  std::string file_name(benchName);
+  file_name += "_cache_config";
+  if (!fileExists(file_name))
+    return false;
+
+  config_file.open(file_name.c_str());
+  std::string wholeline;
+  while (!config_file.eof()) {
+    getline(config_file, wholeline);
+    if (wholeline.size() == 0)
+      break;
+    unsigned size, wordsize;
+    char type[256];
+    char base_addr[256];
+    sscanf(wholeline.c_str(),
+           "%[^,],%d,%d\n",
+           base_addr,
+           &size,
+           &wordsize);
+    std::string p_type(type);
+    cache_config[base_addr] = { p_type, size, wordsize };
+  }
+  config_file.close();
+  return true;
+}
+
 void BaseDatapath::parse_config(std::string bench,
                                 std::string config_file_name) {
   ifstream config_file;
@@ -1865,6 +1895,7 @@ void BaseDatapath::parse_config(std::string bench,
   std::vector<std::string> flatten_config;
   std::vector<std::string> unrolling_config;
   std::vector<std::string> partition_config;
+  std::vector<std::string> cache_config;
   std::vector<std::string> comp_partition_config;
   std::vector<std::string> pipelining_config;
 
@@ -1888,6 +1919,8 @@ void BaseDatapath::parse_config(std::string bench,
         partition_config.push_back(rest_line);
       else
         comp_partition_config.push_back(rest_line);
+    } else if (!type.compare("cache")) {
+      cache_config.push_back(rest_line);
     } else if (!type.compare("pipelining")) {
       pipelining_config.push_back(rest_line);
     } else if (!type.compare("cycle_time")) {
@@ -1936,6 +1969,16 @@ void BaseDatapath::parse_config(std::string bench,
     for (unsigned i = 0; i < partition_config.size(); ++i)
       part_config << partition_config.at(i) << endl;
     part_config.close();
+  }
+  if (cache_config.size() != 0) {
+    string cache_fname(bench);
+    cache_fname += "_cache_config";
+
+    ofstream config;
+    config.open(cache_fname);
+    for (unsigned i = 0; i < cache_config.size(); ++i)
+      config << cache_config.at(i) << endl;
+    config.close();
   }
   if (comp_partition_config.size() != 0) {
     string complete_partition(bench);

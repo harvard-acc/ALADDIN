@@ -27,7 +27,8 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
     const DmaScratchpadDatapathParams* params) :
     ScratchpadDatapath(params->benchName,
                        params->traceFileName,
-                       params->configFileName),
+                       params->configFileName,
+                       params->spadPorts),
     Gem5Datapath(params,
                  params->acceleratorId,
                  params->executeStandalone,
@@ -46,7 +47,6 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
-  scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();

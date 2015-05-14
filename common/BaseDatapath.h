@@ -56,6 +56,11 @@ struct partitionEntry {
   unsigned wordsize;    // in bytes
   unsigned part_factor;
 };
+struct cacheEntry {
+  std::string type;
+  unsigned array_size;  // num of bytes
+  unsigned wordsize;    // in bytes
+};
 struct regEntry {
   int size;
   int reads;
@@ -203,6 +208,8 @@ class BaseDatapath {
   bool readFlattenConfig(std::unordered_set<int>& flatten_config);
   bool readPartitionConfig(
       std::unordered_map<std::string, partitionEntry>& partition_config);
+  bool readCacheConfig(
+      std::unordered_map<std::string, cacheEntry>& cache_config);
   bool readCompletePartitionConfig(
       std::unordered_map<std::string, unsigned>& config);
 

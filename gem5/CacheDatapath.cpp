@@ -1,5 +1,5 @@
-/* Implementation of an accelerator datapath that uses a private scratchpad for
- * local memory.
+/* Implementation of an accelerator datapath that uses a private hardware
+ * mananged cache for local memory.
  */
 
 #include <functional>  // For std::hash

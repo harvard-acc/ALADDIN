@@ -5,7 +5,7 @@ gem5_dir=${ALADDIN_HOME}/../..
 bmk_home=${CORTEXSUITE_HOME}/vision/benchmarks/stitch/src/c
 
 ${gem5_dir}/build/X86/gem5.opt \
-  --debug-flags=CacheDatapath,Aladdin \
+  --debug-flags=HybridDatapath,Aladdin \
   --outdir=${cfg_home}/outputs \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --enable_prefetchers \

@@ -10,7 +10,7 @@
 #include "mem/mem_object.hh"
 #include "mem/request.hh"
 
-class CacheDatapath;
+class HybridDatapath;
 
 class AladdinTLBEntry
 {
@@ -107,7 +107,7 @@ public:
 class AladdinTLB
 {
   private:
-    CacheDatapath *datapath;
+    HybridDatapath *datapath;
     void regStats(std::string accelerator_name);
 
     unsigned numEntries;
@@ -178,7 +178,7 @@ class AladdinTLB
     std::map<Addr, Addr> traceToVirtualAddrMap;
 
   public:
-    AladdinTLB(CacheDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
+    AladdinTLB(HybridDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
                Cycles _hit_latency, Cycles _miss_latency, Addr pageBytes,
                bool _is_perfect, unsigned _num_walks, unsigned _bandwidth,
                std::string _cacti_config, std::string _accelerator_name);

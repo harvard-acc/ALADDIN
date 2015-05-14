@@ -65,15 +65,6 @@ class CacheDatapath :
     void finishTranslation(PacketPtr pkt, bool was_miss);
     virtual Addr getBaseAddress(std::string label);
 
-    void parse_config();
-    bool fileExists (const string file_name)
-    {
-      struct stat buf;
-      if (stat(file_name.c_str(), &buf) != -1)
-        return true;
-      return false;
-    }
-
     /* Memory interface functions. */
     void getAverageMemPower(unsigned int cycles, float *avg_power,
                             float *avg_dynamic, float *avg_leak);
