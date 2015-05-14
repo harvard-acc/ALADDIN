@@ -8,16 +8,19 @@
 
 ScratchpadDatapath::ScratchpadDatapath(std::string bench,
                                        std::string trace_file,
-                                       std::string config_file)
+                                       std::string config_file,
+                                       int num_spad_ports)
     : BaseDatapath(bench, trace_file, config_file) {
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "      Setting ScratchPad       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
-  scratchpad = new Scratchpad(1, cycleTime);
+  scratchpad = new Scratchpad(num_spad_ports, cycleTime);
   scratchpadCanService = true;
 }
 
-ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
+ScratchpadDatapath::~ScratchpadDatapath() {
+  delete scratchpad;
+}
 
 void ScratchpadDatapath::globalOptimizationPass() {
   // Node removals must come first.
@@ -92,7 +95,7 @@ void ScratchpadDatapath::scratchpadPartition() {
   // read the partition config file to get the address range
   // <base addr, <type, part_factor> >
   std::unordered_map<std::string, partitionEntry> part_config;
-  if (!readPartitionConfig(part_config))
+  if (!readPartitionConfig(part_config) || part_config.empty())
     return;
 
   std::cerr << "-------------------------------" << std::endl;
@@ -132,19 +135,19 @@ void ScratchpadDatapath::scratchpadPartition() {
 
       unsigned num_of_elements = part_it->second.array_size;
       unsigned p_factor = part_it->second.part_factor;
+      assert(p_factor != 0 && "Partition factor cannot be zero.");
       MemAccess* mem_access = node->get_mem_access();
       long long int abs_addr = mem_access->vaddr;
       unsigned data_size = (mem_access->size) / 8;  // in bytes
+      assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
-      if (!p_type.compare("block"))  // block partition
-      {
+      if (!p_type.compare("block")) { // block partition
         ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << base_label << "-"
             << (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
         node->set_array_label(oss.str());
-      } else  // cyclic partition
-      {
+      } else {  // cyclic partition
         ostringstream oss;
         oss << base_label << "-" << (rel_addr) % p_factor;
         node->set_array_label(oss.str());

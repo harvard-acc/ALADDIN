@@ -1,6 +1,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include <cstdint>
 #include <sstream>
 #include <string>
 
@@ -12,12 +13,21 @@
 // Stores all information about a memory access.
 struct MemAccess {
   // Address read from the trace.
-  long long int vaddr;
+  uint64_t vaddr;
+  // Physical address (used for caches only).
+  uint64_t paddr;
   // Size of the memory access in BITS.
   size_t size;
   // If this is not a store, then this value is meaningless.
   // TODO(samxi): Support floating point stores as well.
-  long long int value;
+  uint64_t value;
+
+  MemAccess() {
+    vaddr = 0x0;
+    paddr = 0x0;
+    size = 0;
+    value = 0;
+  }
 };
 
 class ExecNode {
