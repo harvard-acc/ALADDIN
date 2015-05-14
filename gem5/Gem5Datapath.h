@@ -8,9 +8,11 @@
 
 #include "aladdin/common/BaseDatapath.h"
 
-// Bitmask to ensure that we don't attempt to access above the 48-bit address
-// space provided in current x86_64 implementations.
-#define ADDR_MASK 0x7fffffffffff
+// Bitmask to ensure that we don't attempt to access above the 32-bit address
+// space assuming a 4GB memory. In accelerator standalone simulation,
+// the mem_bus address range is the same as memory size, in stead of the 48-bit
+// address space in the X86_64 implementation.
+#define ADDR_MASK 0xffffffff
 
 /* A collection of functions common to datapath objects used within GEM5.
  * Note: to avoid potential problems arising from the use of multiple

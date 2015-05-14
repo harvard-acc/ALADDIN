@@ -482,6 +482,8 @@ void CacheDatapath::stepExecutingQueue()
       {
         // First time seeing this node. Start the memory access procedure.
         Addr addr = mem_access->vaddr;
+        if (isExecuteStandalone())
+          addr &= ADDR_MASK;
         int size = mem_access->size;
         if (dtb.canRequestTranslation() && accessTLB(addr, size, isLoad, node_id))
         {
