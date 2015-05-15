@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-CORTEXSUITE_HOME=/group/vlsiarch/samxi/active_projects/cortexsuite
-cfg_home=${ALADDIN_HOME}/integration-test/test_cortexsuite
+cfg_home=${ALADDIN_HOME}/integration-test/with-cpu/test_cortexsuite
 gem5_dir=${ALADDIN_HOME}/../..
 bmk_home=${CORTEXSUITE_HOME}/vision/benchmarks/stitch/src/c
 
@@ -11,7 +10,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --enable_prefetchers \
   --num-cpus=1 \
-  --mem-size=2GB \
+  --mem-size=4GB \
   --mem-type=ddr3_1600_x64  \
   --sys-clock=1GHz \
   --cpu-type=timing \

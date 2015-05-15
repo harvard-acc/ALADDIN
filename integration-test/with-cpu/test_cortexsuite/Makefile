@@ -6,7 +6,9 @@
 ifndef TARGET_DIR
 export TARGET_DIR=`pwd`
 endif
-CORTEXSUITE_HOME = /group/vlsiarch/samxi/active_projects/cortexsuite
+ifeq ($(CORTEXSUITE_HOME),)
+  $(error CORTEXSUITE_HOME is not set!)
+  endif
 trace:
 	$(MAKE) -C $(CORTEXSUITE_HOME)/vision/benchmarks/stitch/src/c autotrace
 	cp $(CORTEXSUITE_HOME)/vision/benchmarks/stitch/src/c/dynamic_trace.gz .
