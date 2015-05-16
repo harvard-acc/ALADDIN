@@ -23,13 +23,13 @@ void Scratchpad::setScratchpad(std::string baseName,
   sizePerPartition.push_back(num_of_bytes);
   // set read/write/leak/area per partition
 
-  key cacti_key = std::make_pair(num_of_bytes, wordsize);
+  cacti_key _cacti_key = std::make_pair(num_of_bytes, wordsize);
   uca_org_t cacti_result;
-  auto cacti_it = cacti_value.find(cacti_key);
+  auto cacti_it = cacti_value.find(_cacti_key);
   if(cacti_it == cacti_value.end())
   {
       cacti_result = cactiWrapper(num_of_bytes, wordsize); 
-      cacti_value[cacti_key] = cacti_result;
+      cacti_value[_cacti_key] = cacti_result;
   }
   else 
       cacti_result = cacti_it->second;
