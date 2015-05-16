@@ -95,7 +95,7 @@ Build:
 3. Build aladdin
 
    ```
-   cd $ALADDIN_HOME
+   cd $ALADDIN_HOME/common
    make -j4
    ```
 

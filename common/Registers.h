@@ -23,10 +23,8 @@ class Register {
     float reg_int_power, reg_sw_power, reg_leak_power, reg_area;
     getRegisterPowerArea(
         cycleTime, &reg_int_power, &reg_sw_power, &reg_leak_power, &reg_area);
-    readEnergy =
-        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
-    writeEnergy =
-        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
+    readEnergy = num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
+    writeEnergy = num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
     // REG_leak_power is mW and we want leakPower in mW so we're fine.
     leakPower = num_bytes * 8 * (reg_leak_power);
     area = num_bytes * 8 * (reg_area);
@@ -60,8 +58,9 @@ class Registers {
   Registers() {}
   ~Registers();
 
-  void
-      createRegister(std::string baseName, unsigned num_bytes, float cycleTime);
+  void createRegister(std::string baseName,
+                      unsigned num_bytes,
+                      float cycleTime);
   void getRegisterNames(std::vector<std::string>& names);
   Register* getRegister(std::string baseName) { return regs[baseName]; }
   double getArea(std::string baseName);

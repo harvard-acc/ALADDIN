@@ -12,13 +12,6 @@
  *
  */
 
-#include <boost/graph/graphviz.hpp>
-#include <boost/config.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_traits.hpp>
-#include <boost/graph/properties.hpp>
-#include <boost/graph/topological_sort.hpp>
-#include <boost/graph/iteration_macros.hpp>
 #include <iostream>
 #include <assert.h>
 #include <unordered_map>
@@ -42,9 +35,31 @@
 #define PIPE_EDGE 12
 
 using namespace std;
-// Used heavily in reporting cycle-level statistics.
-typedef std::unordered_map<std::string, std::vector<int>> activity_map;
-typedef std::unordered_map<std::string, int> max_activity_map;
+
+struct memActivity {
+  unsigned read;
+  unsigned write;
+};
+struct funcActivity {
+  unsigned mul;
+  unsigned add;
+  unsigned bit;
+  unsigned shifter;
+  unsigned fp_sp_mul;
+  unsigned fp_dp_mul;
+  unsigned fp_sp_add;
+  unsigned fp_dp_add;
+  funcActivity() {
+    mul = 0;
+    add = 0;
+    bit = 0;
+    shifter = 0;
+    fp_sp_mul = 0;
+    fp_dp_mul = 0;
+    fp_sp_add = 0;
+    fp_dp_add = 0;
+  }
+};
 
 class Scratchpad;
 
@@ -96,6 +111,10 @@ struct summary_data_t {
   float total_area;
   float fu_area;
   float mem_area;
+  int max_fp_sp_mul;
+  int max_fp_dp_mul;
+  int max_fp_sp_add;
+  int max_fp_dp_add;
   int max_mul;
   int max_add;
   int max_bit;
@@ -148,9 +167,7 @@ class BaseDatapath {
     unsigned node_id = vertexToName[vertex];
     return exec_nodes[node_id];
   }
-  ExecNode* getNodeFromNodeId(unsigned node_id) {
-    return exec_nodes[node_id];
-  }
+  ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
@@ -214,6 +231,7 @@ class BaseDatapath {
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
+  void markNodeStarted(std::list<ExecNode*>::iterator& executingQueuePos);
   void markNodeCompleted(std::list<ExecNode*>::iterator& executingQueuePos,
                          int& advance_to);
 
@@ -222,41 +240,23 @@ class BaseDatapath {
   void writeBaseAddress();
   // Writes microop, execution cycle, and isolated nodes.
   void writeOtherStats();
-  void initPerCycleActivity(std::vector<std::string>& comp_partition_names,
-                            std::vector<std::string>& spad_partition_names,
-                            activity_map& ld_activity,
-                            activity_map& st_activity,
-                            activity_map& mul_activity,
-                            activity_map& add_activity,
-                            activity_map& bit_activity,
-                            activity_map& shifter_activity,
-                            max_activity_map& max_mul_per_function,
-                            max_activity_map& max_add_per_function,
-                            max_activity_map& max_bit_per_function,
-                            max_activity_map& max_shifter_per_function,
-                            int num_cycles);
-  void updatePerCycleActivity(activity_map& ld_activity,
-                              activity_map& st_activity,
-                              activity_map& mul_activity,
-                              activity_map& add_activity,
-                              activity_map& bit_activity,
-                              activity_map& shifter_activity,
-                              max_activity_map& max_mul_per_function,
-                              max_activity_map& max_add_per_function,
-                              max_activity_map& max_bit_per_function,
-                              max_activity_map& max_shifter_per_function);
-  void outputPerCycleActivity(std::vector<std::string>& comp_partition_names,
-                              std::vector<std::string>& spad_partition_names,
-                              activity_map& ld_activity,
-                              activity_map& st_activity,
-                              activity_map& mul_activity,
-                              activity_map& add_activity,
-                              activity_map& bit_activity,
-                              activity_map& shifter_activity,
-                              max_activity_map& max_mul_per_function,
-                              max_activity_map& max_add_per_function,
-                              max_activity_map& max_bit_per_function,
-                              max_activity_map& max_shifter_per_function);
+  void initPerCycleActivity(
+      std::vector<std::string>& comp_partition_names,
+      std::vector<std::string>& mem_partition_names,
+      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+      std::unordered_map<std::string, funcActivity>& func_max_activity,
+      int num_cycles);
+  void updatePerCycleActivity(
+      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+      std::unordered_map<std::string, funcActivity>& func_max_activity);
+  void outputPerCycleActivity(
+      std::vector<std::string>& comp_partition_names,
+      std::vector<std::string>& mem_partition_names,
+      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+      std::unordered_map<std::string, funcActivity>& func_max_activity);
   void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
   // Memory structures.

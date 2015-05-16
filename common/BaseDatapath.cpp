@@ -196,8 +196,10 @@ void BaseDatapath::loopFlatten() {
        ++node_it) {
     ExecNode* node = node_it->second;
     char unrolling_id[256];
-    sprintf(unrolling_id, "%s-%d", node->get_static_method().c_str(),
-                                   node->get_line_num());
+    sprintf(unrolling_id,
+            "%s-%d",
+            node->get_static_method().c_str(),
+            node->get_line_num());
     auto config_it = unrolling_config.find(unrolling_id);
     if (config_it == unrolling_config.end() || config_it->second != 0)
       continue;
@@ -275,7 +277,7 @@ void BaseDatapath::removeInductionDependence() {
     std::string node_instid = node->get_inst_id();
     if (node_instid.find("indvars") != std::string::npos) {
       node->set_inductive(true);
-      if (node->is_add_op())
+      if (node->is_int_add_op())
         node->set_microop(LLVM_IR_IndexAdd);
     } else {
       bool inductive_parents = true;
@@ -294,7 +296,7 @@ void BaseDatapath::removeInductionDependence() {
       }
       if (inductive_parents) {
         node->set_inductive(true);
-        if (node->is_add_op())
+        if (node->is_int_add_op())
           node->set_microop(LLVM_IR_IndexAdd);
       }
     }
@@ -492,8 +494,10 @@ void BaseDatapath::loopUnrolling() {
         prev_branch = node;
       }
       char unrolling_id[256];
-      sprintf(unrolling_id, "%s-%d", node->get_static_method().c_str(),
-                                     node->get_line_num());
+      sprintf(unrolling_id,
+              "%s-%d",
+              node->get_static_method().c_str(),
+              node->get_line_num());
       auto unroll_it = unrolling_config.find(unrolling_id);
       if (unroll_it == unrolling_config.end() || unroll_it->second == 0) {
         // not unrolling branch
@@ -571,7 +575,7 @@ void BaseDatapath::loopUnrolling() {
  */
 void BaseDatapath::removeSharedLoads() {
 
-  if (!unrolling_config.size()  && loopBound.size() <= 2)
+  if (!unrolling_config.size() && loopBound.size() <= 2)
     return;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Load Buffer          " << std::endl;
@@ -1028,16 +1032,11 @@ void BaseDatapath::updateGraphWithIsolatedEdges(
  */
 void BaseDatapath::writePerCycleActivity() {
   std::string bn(benchName);
-
-  activity_map mul_activity, add_activity;
-  activity_map bit_activity;
-  activity_map shifter_activity;
-  activity_map ld_activity, st_activity;
-
-  max_activity_map max_mul_per_function;
-  max_activity_map max_add_per_function;
-  max_activity_map max_bit_per_function;
-  max_activity_map max_shifter_per_function;
+  /* Activity per function in the code. Indexed by function names.  */
+  std::unordered_map<std::string, std::vector<funcActivity>> func_activity;
+  std::unordered_map<std::string, funcActivity> func_max_activity;
+  /* Activity per array. Indexed by array names.  */
+  std::unordered_map<std::string, std::vector<memActivity>> mem_activity;
 
   std::vector<std::string> comp_partition_names;
   std::vector<std::string> mem_partition_names;
@@ -1046,90 +1045,48 @@ void BaseDatapath::writePerCycleActivity() {
 
   initPerCycleActivity(comp_partition_names,
                        mem_partition_names,
-                       ld_activity,
-                       st_activity,
-                       mul_activity,
-                       add_activity,
-                       bit_activity,
-                       shifter_activity,
-                       max_mul_per_function,
-                       max_add_per_function,
-                       max_bit_per_function,
-                       max_shifter_per_function,
+                       mem_activity,
+                       func_activity,
+                       func_max_activity,
                        num_cycles);
 
-  updatePerCycleActivity(ld_activity,
-                         st_activity,
-                         mul_activity,
-                         add_activity,
-                         bit_activity,
-                         shifter_activity,
-                         max_mul_per_function,
-                         max_add_per_function,
-                         max_bit_per_function,
-                         max_shifter_per_function);
+  updatePerCycleActivity(mem_activity, func_activity, func_max_activity);
 
   outputPerCycleActivity(comp_partition_names,
                          mem_partition_names,
-                         ld_activity,
-                         st_activity,
-                         mul_activity,
-                         add_activity,
-                         bit_activity,
-                         shifter_activity,
-                         max_mul_per_function,
-                         max_add_per_function,
-                         max_bit_per_function,
-                         max_shifter_per_function);
+                         mem_activity,
+                         func_activity,
+                         func_max_activity);
 }
 
 void BaseDatapath::initPerCycleActivity(
     std::vector<std::string>& comp_partition_names,
     std::vector<std::string>& mem_partition_names,
-    activity_map& ld_activity,
-    activity_map& st_activity,
-    activity_map& mul_activity,
-    activity_map& add_activity,
-    activity_map& bit_activity,
-    activity_map& shifter_activity,
-    max_activity_map& max_mul_per_function,
-    max_activity_map& max_add_per_function,
-    max_activity_map& max_bit_per_function,
-    max_activity_map& max_shifter_per_function,
+    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+    std::unordered_map<std::string, funcActivity>& func_max_activity,
     int num_cycles) {
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end();
        ++it) {
-    ld_activity.insert({ *it, make_vector(num_cycles) });
-    st_activity.insert({ *it, make_vector(num_cycles) });
+    mem_activity.insert(
+        { *it, std::vector<memActivity>(num_cycles, { 0, 0 }) });
   }
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
        ++it) {
-    ld_activity.insert({ *it, make_vector(num_cycles) });
-    st_activity.insert({ *it, make_vector(num_cycles) });
+    mem_activity.insert(
+        { *it, std::vector<memActivity>(num_cycles, { 0, 0 }) });
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-    mul_activity.insert({ *it, make_vector(num_cycles) });
-    add_activity.insert({ *it, make_vector(num_cycles) });
-    bit_activity.insert({ *it, make_vector(num_cycles) });
-    shifter_activity.insert({ *it, make_vector(num_cycles) });
-    max_mul_per_function.insert({ *it, 0 });
-    max_add_per_function.insert({ *it, 0 });
-    max_bit_per_function.insert({ *it, 0 });
-    max_shifter_per_function.insert({ *it, 0 });
+    funcActivity tmp;
+    func_activity.insert({ *it, std::vector<funcActivity>(num_cycles, tmp) });
+    func_max_activity.insert({ *it, tmp });
   }
 }
 
 void BaseDatapath::updatePerCycleActivity(
-    activity_map& ld_activity,
-    activity_map& st_activity,
-    activity_map& mul_activity,
-    activity_map& add_activity,
-    activity_map& bit_activity,
-    activity_map& shifter_activity,
-    max_activity_map& max_mul_per_function,
-    max_activity_map& max_add_per_function,
-    max_activity_map& max_bit_per_function,
-    max_activity_map& max_shifter_per_function) {
+    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+    std::unordered_map<std::string, funcActivity>& func_max_activity) {
   /* We use two ways to count the number of functional units in accelerators:
    * one assumes that functional units can be reused in the same region; the
    * other assumes no reuse of functional units. The advantage of reusing is
@@ -1147,14 +1104,16 @@ void BaseDatapath::updatePerCycleActivity(
        ++node_it) {
     ExecNode* node = node_it->second;
     std::string func_id = node->get_static_method();
+    auto max_it = func_max_activity.find(func_id);
+    assert(max_it != func_max_activity.end());
 
     if (node->get_node_id() == *bound_it) {
-      if (max_add_per_function[func_id] < num_adds_so_far)
-        max_add_per_function[func_id] = num_adds_so_far;
-      if (max_bit_per_function[func_id] < num_bits_so_far)
-        max_bit_per_function[func_id] = num_bits_so_far;
-      if (max_shifter_per_function[func_id] < num_shifters_so_far)
-        max_shifter_per_function[func_id] = num_shifters_so_far;
+      if (max_it->second.add < num_adds_so_far)
+        max_it->second.add = num_adds_so_far;
+      if (max_it->second.bit < num_bits_so_far)
+        max_it->second.bit = num_bits_so_far;
+      if (max_it->second.shifter < num_shifters_so_far)
+        max_it->second.shifter = num_shifters_so_far;
       num_adds_so_far = 0;
       num_bits_so_far = 0;
       num_shifters_so_far = 0;
@@ -1162,51 +1121,103 @@ void BaseDatapath::updatePerCycleActivity(
     }
     if (node->is_isolated())
       continue;
-    int node_level = node->get_execution_cycle();
+    int node_level = node->get_start_execution_cycle();
+    funcActivity& curr_fu_activity = func_activity[func_id].at(node_level);
 
-    if (node->is_mul_op())
-      mul_activity[func_id].at(node_level) += 1;
-    else if (node->is_add_op()) {
-      add_activity[func_id].at(node_level) += 1;
+    if (node->is_fp_op()) {
+      for (unsigned stage = 0;
+           node_level + stage <= node->get_complete_execution_cycle();
+           stage++) {
+        curr_fu_activity = func_activity[func_id].at(node_level + stage);
+        /* Activity for floating point functional units includes all their
+         * stages.*/
+        if (node->is_fp_add_op()) {
+          if (node->is_double_precision())
+            curr_fu_activity.fp_dp_add += 1;
+          else
+            curr_fu_activity.fp_sp_add += 1;
+        } else if (node->is_fp_mul_op()) {
+          if (node->is_double_precision())
+            curr_fu_activity.fp_dp_mul += 1;
+          else
+            curr_fu_activity.fp_sp_mul += 1;
+        }
+      }
+    } else if (node->is_int_mul_op())
+      curr_fu_activity.mul += 1;
+    else if (node->is_int_add_op()) {
+      curr_fu_activity.add += 1;
       num_adds_so_far += 1;
     } else if (node->is_shifter_op()) {
-      shifter_activity[func_id].at(node_level) += 1;
+      curr_fu_activity.shifter += 1;
       num_shifters_so_far += 1;
     } else if (node->is_bit_op()) {
-      bit_activity[func_id].at(node_level) += 1;
+      curr_fu_activity.bit += 1;
       num_bits_so_far += 1;
     } else if (node->is_load_op()) {
       std::string array_label = node->get_array_label();
-      if (ld_activity.find(array_label) != ld_activity.end())
-        ld_activity[array_label].at(node_level) += 1;
+      if (mem_activity.find(array_label) != mem_activity.end())
+        mem_activity[array_label].at(node_level).read += 1;
     } else if (node->is_store_op()) {
       std::string array_label = node->get_array_label();
-      if (st_activity.find(array_label) != st_activity.end())
-        st_activity[array_label].at(node_level) += 1;
+      if (mem_activity.find(array_label) != mem_activity.end())
+        mem_activity[array_label].at(node_level).write += 1;
     }
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-    max_mul_per_function[*it] =
-        *(std::max_element(mul_activity[*it].begin(), mul_activity[*it].end()));
+    auto max_it = func_max_activity.find(*it);
+    assert(max_it != func_max_activity.end());
+    std::vector<funcActivity>& cycle_activity = func_activity[*it];
+    max_it->second.mul =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.mul < b.mul);
+                         })->mul;
+    max_it->second.fp_sp_mul =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.fp_sp_mul < b.fp_sp_mul);
+                         })->fp_sp_mul;
+    max_it->second.fp_dp_mul =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.fp_dp_mul < b.fp_dp_mul);
+                         })->fp_dp_mul;
+    max_it->second.fp_sp_add =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.fp_sp_add < b.fp_sp_add);
+                         })->fp_sp_add;
+    max_it->second.fp_dp_add =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.fp_dp_add < b.fp_dp_add);
+                         })->fp_dp_add;
   }
 }
 
 void BaseDatapath::outputPerCycleActivity(
     std::vector<std::string>& comp_partition_names,
     std::vector<std::string>& mem_partition_names,
-    activity_map& ld_activity,
-    activity_map& st_activity,
-    activity_map& mul_activity,
-    activity_map& add_activity,
-    activity_map& bit_activity,
-    activity_map& shifter_activity,
-    max_activity_map& max_mul_per_function,
-    max_activity_map& max_add_per_function,
-    max_activity_map& max_bit_per_function,
-    max_activity_map& max_shifter_per_function) {
+    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
+    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
+    std::unordered_map<std::string, funcActivity>& func_max_activity) {
   /*Set the constants*/
   float add_int_power, add_switch_power, add_leak_power, add_area;
   float mul_int_power, mul_switch_power, mul_leak_power, mul_area;
+  float fp_sp_mul_int_power, fp_sp_mul_switch_power, fp_sp_mul_leak_power,
+      fp_sp_mul_area;
+  float fp_dp_mul_int_power, fp_dp_mul_switch_power, fp_dp_mul_leak_power,
+      fp_dp_mul_area;
+  float fp_sp_add_int_power, fp_sp_add_switch_power, fp_sp_add_leak_power,
+      fp_sp_add_area;
+  float fp_dp_add_int_power, fp_dp_add_switch_power, fp_dp_add_leak_power,
+      fp_dp_add_area;
   float reg_int_power_per_bit, reg_switch_power_per_bit;
   float reg_leak_power_per_bit, reg_area_per_bit;
   float bit_int_power, bit_switch_power, bit_leak_power, bit_area;
@@ -1229,34 +1240,63 @@ void BaseDatapath::outputPerCycleActivity(
                       &shifter_switch_power,
                       &shifter_leak_power,
                       &shifter_area);
+  getSinglePrecisionFloatingPointMultiplierPowerArea(cycleTime,
+                                                     &fp_sp_mul_int_power,
+                                                     &fp_sp_mul_switch_power,
+                                                     &fp_sp_mul_leak_power,
+                                                     &fp_sp_mul_area);
+  getDoublePrecisionFloatingPointMultiplierPowerArea(cycleTime,
+                                                     &fp_dp_mul_int_power,
+                                                     &fp_dp_mul_switch_power,
+                                                     &fp_dp_mul_leak_power,
+                                                     &fp_dp_mul_area);
+  getSinglePrecisionFloatingPointAdderPowerArea(cycleTime,
+                                                &fp_sp_add_int_power,
+                                                &fp_sp_add_switch_power,
+                                                &fp_sp_add_leak_power,
+                                                &fp_sp_add_area);
+  getDoublePrecisionFloatingPointAdderPowerArea(cycleTime,
+                                                &fp_dp_add_int_power,
+                                                &fp_dp_add_switch_power,
+                                                &fp_dp_add_leak_power,
+                                                &fp_dp_add_area);
 
-  ofstream stats, power_stats;
+  ofstream stats;
   std::string bn(benchName);
   std::string file_name = bn + "_stats";
   stats.open(file_name.c_str());
+  stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
+  stats << num_cycles << ",";
+
+#ifdef DEBUG
+  ofstream power_stats;
   file_name += "_power";
   power_stats.open(file_name.c_str());
-
-  stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
-  stats << num_cycles << ",";
   power_stats << num_cycles << ",";
+#endif
 
   /*Start writing the second line*/
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-    stats << *it << "-mul," << *it << "-add," << *it << "-bit," << *it
-          << "-shifter,";
-    power_stats << *it << "-mul," << *it << "-add," << *it << "-bit," << *it
-                << "-shifter,";
+    stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
+          << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul," << *it
+          << "-add," << *it << "-bit," << *it << "-shifter,";
+#ifdef DEBUG
+    power_stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
+                << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul,"
+                << *it << "-add," << *it << "-bit," << *it << "-shifter,";
+#endif
   }
   stats << "reg,";
-  power_stats << "reg,";
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
        ++it) {
     stats << *it << "-read," << *it << "-write,";
   }
   stats << std::endl;
+#ifdef DEBUG
+  power_stats << "reg,";
   power_stats << std::endl;
+#endif
   /*Finish writing the second line*/
 
   /*Caculating the number of FUs and leakage power*/
@@ -1269,11 +1309,19 @@ void BaseDatapath::outputPerCycleActivity(
   }
   int max_reg = max_reg_read + max_reg_write;
   int max_add = 0, max_mul = 0, max_bit = 0, max_shifter = 0;
+  int max_fp_sp_mul = 0, max_fp_dp_mul = 0;
+  int max_fp_sp_add = 0, max_fp_dp_add = 0;
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-    max_bit += max_bit_per_function[*it];
-    max_add += max_add_per_function[*it];
-    max_mul += max_mul_per_function[*it];
-    max_shifter += max_shifter_per_function[*it];
+    auto max_it = func_max_activity.find(*it);
+    assert(max_it != func_max_activity.end());
+    max_bit += max_it->second.bit;
+    max_add += max_it->second.add;
+    max_mul += max_it->second.mul;
+    max_shifter += max_it->second.shifter;
+    max_fp_sp_mul += max_it->second.fp_sp_mul;
+    max_fp_dp_mul += max_it->second.fp_dp_mul;
+    max_fp_sp_add += max_it->second.fp_sp_add;
+    max_fp_dp_add += max_it->second.fp_dp_add;
   }
 
   float add_leakage_power = add_leak_power * max_add;
@@ -1282,9 +1330,15 @@ void BaseDatapath::outputPerCycleActivity(
   float shifter_leakage_power = shifter_leak_power * max_shifter;
   float reg_leakage_power =
       registers.getTotalLeakagePower() + reg_leak_power_per_bit * 32 * max_reg;
+  float fp_sp_mul_leakage_power = fp_sp_mul_leak_power * max_fp_sp_mul;
+  float fp_dp_mul_leakage_power = fp_dp_mul_leak_power * max_fp_dp_mul;
+  float fp_sp_add_leakage_power = fp_sp_add_leak_power * max_fp_sp_add;
+  float fp_dp_add_leakage_power = fp_dp_add_leak_power * max_fp_dp_add;
   float fu_leakage_power = mul_leakage_power + add_leakage_power +
                            reg_leakage_power + bit_leakage_power +
-                           shifter_leakage_power;
+                           shifter_leakage_power + fp_sp_mul_leakage_power +
+                           fp_dp_mul_leakage_power + fp_sp_add_leakage_power +
+                           fp_dp_add_leakage_power;
   /*Finish caculating the number of FUs and leakage power*/
 
   float fu_dynamic_energy = 0;
@@ -1292,31 +1346,53 @@ void BaseDatapath::outputPerCycleActivity(
   /*Start writing per cycle activity */
   for (unsigned curr_level = 0; ((int)curr_level) < num_cycles; ++curr_level) {
     stats << curr_level << ",";
+#ifdef DEBUG
     power_stats << curr_level << ",";
+#endif
     // For FUs
     for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-      float curr_mul_dynamic_power =
-          (mul_switch_power + mul_int_power) * mul_activity[*it].at(curr_level);
-      float curr_add_dynamic_power =
-          (add_switch_power + add_int_power) * add_activity[*it].at(curr_level);
-      float curr_bit_dynamic_power =
-          (bit_switch_power + bit_int_power) * bit_activity[*it].at(curr_level);
+      stats << func_activity[*it].at(curr_level).fp_sp_mul << ","
+            << func_activity[*it].at(curr_level).fp_dp_mul << ","
+            << func_activity[*it].at(curr_level).fp_sp_add << ","
+            << func_activity[*it].at(curr_level).fp_dp_add << ","
+            << func_activity[*it].at(curr_level).mul << ","
+            << func_activity[*it].at(curr_level).add << ","
+            << func_activity[*it].at(curr_level).bit << ","
+            << func_activity[*it].at(curr_level).shifter << ",";
+
+      float curr_fp_sp_mul_dynamic_power =
+          (fp_sp_mul_switch_power + fp_sp_mul_int_power) *
+          func_activity[*it].at(curr_level).fp_sp_mul;
+      float curr_fp_dp_mul_dynamic_power =
+          (fp_dp_mul_switch_power + fp_dp_mul_int_power) *
+          func_activity[*it].at(curr_level).fp_dp_mul;
+      float curr_fp_sp_add_dynamic_power =
+          (fp_sp_add_switch_power + fp_sp_add_int_power) *
+          func_activity[*it].at(curr_level).fp_sp_add;
+      float curr_fp_dp_add_dynamic_power =
+          (fp_dp_add_switch_power + fp_dp_add_int_power) *
+          func_activity[*it].at(curr_level).fp_dp_add;
+      float curr_mul_dynamic_power = (mul_switch_power + mul_int_power) *
+                                     func_activity[*it].at(curr_level).mul;
+      float curr_add_dynamic_power = (add_switch_power + add_int_power) *
+                                     func_activity[*it].at(curr_level).add;
+      float curr_bit_dynamic_power = (bit_switch_power + bit_int_power) *
+                                     func_activity[*it].at(curr_level).bit;
       float curr_shifter_dynamic_power =
           (shifter_switch_power + shifter_int_power) *
-          shifter_activity[*it].at(curr_level);
+          func_activity[*it].at(curr_level).shifter;
       fu_dynamic_energy +=
-          (curr_mul_dynamic_power + curr_add_dynamic_power +
+          (curr_fp_sp_mul_dynamic_power + curr_fp_dp_mul_dynamic_power +
+           curr_fp_sp_add_dynamic_power + curr_fp_dp_add_dynamic_power +
+           curr_mul_dynamic_power + curr_add_dynamic_power +
            curr_bit_dynamic_power + curr_shifter_dynamic_power) *
           cycleTime;
-
-      stats << mul_activity[*it].at(curr_level) << ","
-            << add_activity[*it].at(curr_level) << ","
-            << bit_activity[*it].at(curr_level) << ","
-            << shifter_activity[*it].at(curr_level) << ",";
+#ifdef DEBUG
       power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
                   << curr_add_dynamic_power + add_leakage_power << ","
                   << curr_bit_dynamic_power + bit_leakage_power << ","
                   << curr_shifter_dynamic_power + shifter_leakage_power << ",";
+#endif
     }
     // For regs
     int curr_reg_reads = regStats.at(curr_level).reads;
@@ -1327,26 +1403,32 @@ void BaseDatapath::outputPerCycleActivity(
     for (auto it = comp_partition_names.begin();
          it != comp_partition_names.end();
          ++it) {
-      curr_reg_reads += ld_activity.at(*it).at(curr_level);
-      curr_reg_writes += st_activity.at(*it).at(curr_level);
-      curr_reg_dynamic_energy +=
-          registers.getReadEnergy(*it) * ld_activity.at(*it).at(curr_level) +
-          registers.getWriteEnergy(*it) * st_activity.at(*it).at(curr_level);
+      curr_reg_reads += mem_activity.at(*it).at(curr_level).read;
+      curr_reg_writes += mem_activity.at(*it).at(curr_level).write;
+      curr_reg_dynamic_energy += registers.getReadEnergy(*it) *
+                                     mem_activity.at(*it).at(curr_level).read +
+                                 registers.getWriteEnergy(*it) *
+                                     mem_activity.at(*it).at(curr_level).write;
     }
     fu_dynamic_energy += curr_reg_dynamic_energy;
 
     stats << curr_reg_reads << "," << curr_reg_writes << ",";
-    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
 
     for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
-         ++it)
-      stats << ld_activity.at(*it).at(curr_level) << ","
-            << st_activity.at(*it).at(curr_level) << ",";
+         ++it) {
+      stats << mem_activity.at(*it).at(curr_level).read << ","
+            << mem_activity.at(*it).at(curr_level).write << ",";
+    }
     stats << std::endl;
+#ifdef DEBUG
+    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
     power_stats << std::endl;
+#endif
   }
   stats.close();
+#ifdef DEBUG
   power_stats.close();
+#endif
 
   float avg_mem_power = 0, avg_mem_dynamic_power = 0, mem_leakage_power = 0;
 
@@ -1358,10 +1440,12 @@ void BaseDatapath::outputPerCycleActivity(
   float avg_power = avg_fu_power + avg_mem_power;
 
   float mem_area = getTotalMemArea();
-  unsigned mem_size = getTotalMemSize();
-  float fu_area = registers.getTotalArea() + add_area * max_add +
-                  mul_area * max_mul + reg_area_per_bit * 32 * max_reg +
-                  bit_area * max_bit + shifter_area * max_shifter;
+  float fu_area =
+      registers.getTotalArea() + add_area * max_add + mul_area * max_mul +
+      reg_area_per_bit * 32 * max_reg + bit_area * max_bit +
+      shifter_area * max_shifter + fp_sp_mul_area * max_fp_sp_mul +
+      fp_dp_mul_area * max_fp_dp_mul + fp_sp_add_area * max_fp_sp_add +
+      fp_dp_add_area * max_fp_dp_add;
   float total_area = mem_area + fu_area;
   // Summary output.
   summary_data_t summary;
@@ -1382,6 +1466,10 @@ void BaseDatapath::outputPerCycleActivity(
   summary.max_bit = max_bit;
   summary.max_shifter = max_shifter;
   summary.max_reg = max_reg;
+  summary.max_fp_sp_mul = max_fp_sp_mul;
+  summary.max_fp_dp_mul = max_fp_dp_mul;
+  summary.max_fp_sp_add = max_fp_sp_add;
+  summary.max_fp_dp_add = max_fp_dp_add;
 
   writeSummary(std::cerr, summary);
   ofstream summary_file;
@@ -1413,11 +1501,27 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   outfile << "Total Area: " << summary.total_area << " uM^2" << std::endl;
   outfile << "FU Area: " << summary.fu_area << " uM^2" << std::endl;
   outfile << "MEM Area: " << summary.mem_area << " uM^2" << std::endl;
-  outfile << "Num of Multipliers (32-bit): " << summary.max_mul << std::endl;
-  outfile << "Num of Adders (32-bit): " << summary.max_add << std::endl;
-  outfile << "Num of Bit-wise Operators (32-bit): " << summary.max_bit
-          << std::endl;
-  outfile << "Num of Shifters (32-bit): " << summary.max_shifter << std::endl;
+  if (summary.max_fp_sp_mul != 0)
+    outfile << "Num of Single Precision FP Multipliers: "
+            << summary.max_fp_sp_mul << std::endl;
+  if (summary.max_fp_sp_add != 0)
+    outfile << "Num of Single Precision FP Adders: " << summary.max_fp_sp_add
+            << std::endl;
+  if (summary.max_fp_dp_mul != 0)
+    outfile << "Num of Double Precision FP Multipliers: "
+            << summary.max_fp_dp_mul << std::endl;
+  if (summary.max_fp_dp_add != 0)
+    outfile << "Num of Double Precision FP Adders: " << summary.max_fp_dp_add
+            << std::endl;
+  if (summary.max_mul != 0)
+    outfile << "Num of Multipliers (32-bit): " << summary.max_mul << std::endl;
+  if (summary.max_add != 0)
+    outfile << "Num of Adders (32-bit): " << summary.max_add << std::endl;
+  if (summary.max_bit != 0)
+    outfile << "Num of Bit-wise Operators (32-bit): " << summary.max_bit
+            << std::endl;
+  if (summary.max_shifter != 0)
+    outfile << "Num of Shifters (32-bit): " << summary.max_shifter << std::endl;
   outfile << "Num of Registers (32-bit): " << summary.max_reg << std::endl;
   outfile << "===============================" << std::endl;
   outfile << "        Aladdin Results        " << std::endl;
@@ -1455,7 +1559,7 @@ void BaseDatapath::writeOtherStats() {
     unsigned node_id = node_it->first;
     ExecNode* node = node_it->second;
     microop[node_id] = node->get_microop();
-    exec_cycle[node_id] = node->get_execution_cycle();
+    exec_cycle[node_id] = node->get_start_execution_cycle();
     isolated[node_id] = node->is_isolated();
   }
 
@@ -1522,15 +1626,24 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
     ExecNode* node = exec_nodes[node_id];
     if (node->is_isolated())
       continue;
-    if (!node->is_memory_op() && !node->is_branch_op())
-      if ((earliest_child.at(node_id) - 1) > node->get_execution_cycle())
-        node->set_execution_cycle(earliest_child.at(node_id) - 1);
+    if (!node->is_memory_op() && !node->is_branch_op()) {
+      int new_cycle = earliest_child.at(node_id) - 1;
+      if (new_cycle > node->get_complete_execution_cycle()) {
+        node->set_complete_execution_cycle(new_cycle);
+        if (node->is_fp_op()) {
+          node->set_start_execution_cycle(
+              new_cycle - node->fp_node_latency_in_cycles() + 1);
+        } else {
+          node->set_start_execution_cycle(new_cycle);
+        }
+      }
+    }
 
     in_edge_iter in_i, in_end;
     for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
       int parent_id = vertexToName[source(*in_i, graph_)];
-      if (earliest_child.at(parent_id) > node->get_execution_cycle())
-        earliest_child.at(parent_id) = node->get_execution_cycle();
+      if (earliest_child.at(parent_id) > node->get_start_execution_cycle())
+        earliest_child.at(parent_id) = node->get_start_execution_cycle();
     }
   }
   return num_cycles;
@@ -1543,7 +1656,7 @@ void BaseDatapath::updateRegStats() {
     ExecNode* node = node_it->second;
     if (node->is_isolated() || node->is_control_op() || node->is_index_op())
       continue;
-    int node_level = node->get_execution_cycle();
+    int node_level = node->get_complete_execution_cycle();
     int max_children_level = node_level;
 
     Vertex node_vertex = node->get_vertex();
@@ -1557,7 +1670,7 @@ void BaseDatapath::updateRegStats() {
       if (child_node->is_control_op() || child_node->is_load_op())
         continue;
 
-      int child_level = child_node->get_execution_cycle();
+      int child_level = child_node->get_start_execution_cycle();
       if (child_level > max_children_level)
         max_children_level = child_level;
       if (child_level > node_level && child_level != num_cycles - 1)
@@ -1592,12 +1705,17 @@ bool BaseDatapath::step() {
   return false;
 }
 
+void BaseDatapath::markNodeStarted(
+    std::list<ExecNode*>::iterator& executingQueuePos) {
+  ExecNode* node = *executingQueuePos;
+  node->set_start_execution_cycle(num_cycles);
+}
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
     std::list<ExecNode*>::iterator& executingQueuePos, int& advance_to) {
   ExecNode* node = *executingQueuePos;
   executedNodes++;
-  node->set_execution_cycle(num_cycles);
+  node->set_complete_execution_cycle(num_cycles);
   executingQueue.erase(executingQueuePos);
   updateChildren(node);
   executingQueuePos = executingQueue.begin();
@@ -1618,10 +1736,13 @@ void BaseDatapath::updateChildren(ExecNode* node) {
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
       if (child_node->get_num_parents() == 0) {
-        bool child_zero_latency = (child_node->is_memory_op()) ? false :
-                                  (child_node->fu_node_latency(cycleTime) == 0);
-        bool curr_zero_latency = (node->is_memory_op()) ? false :
-                                 (node->fu_node_latency(cycleTime) == 0);
+        bool child_zero_latency =
+            (child_node->is_memory_op())
+                ? false
+                : (child_node->fu_node_latency(cycleTime) == 0);
+        bool curr_zero_latency = (node->is_memory_op())
+                                     ? false
+                                     : (node->fu_node_latency(cycleTime) == 0);
         if ((child_zero_latency || curr_zero_latency) &&
             edge_parid != CONTROL_EDGE) {
           executingQueue.push_back(child_node);
@@ -1677,8 +1798,7 @@ void BaseDatapath::initBaseAddress() {
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         int parent_microop = exec_nodes[parent_id]->get_microop();
         if (parent_microop == LLVM_IR_GetElementPtr ||
-            parent_microop == LLVM_IR_Load ||
-            parent_microop == LLVM_IR_Store) {
+            parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
           std::string label = getBaseAddressLabel(parent_id);
           node->set_array_label(label);
@@ -1766,10 +1886,10 @@ void BaseDatapath::parse_config(std::string bench,
       sprintf(unrolling_id, "%s-%d", func, line_num);
       unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
-      unsigned size=0, p_factor=0, wordsize=0;
+      unsigned size = 0, p_factor = 0, wordsize = 0;
       char part_type[256];
       char array_label[256];
-      if (wholeline.find("complete") == std::string::npos){
+      if (wholeline.find("complete") == std::string::npos) {
         sscanf(rest_line.c_str(),
                "%[^,],%[^,],%d,%d,%d\n",
                part_type,
@@ -1778,28 +1898,33 @@ void BaseDatapath::parse_config(std::string bench,
                &wordsize,
                &p_factor);
       } else {
-        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", part_type, array_label, &size);
+        sscanf(rest_line.c_str(),
+               "%[^,],%[^,],%d\n",
+               part_type,
+               array_label,
+               &size);
       }
       std::string p_type(part_type);
       long long int addr = 0;
-      partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
+      partition_config[array_label] = {
+        p_type, size, wordsize, p_factor, addr
+      };
     } else if (!type.compare("cache")) {
-      unsigned size=0, p_factor=0, wordsize=0;
+      unsigned size = 0, p_factor = 0, wordsize = 0;
       char array_label[256];
-      sscanf(rest_line.c_str(),
-             "%[^,],%d\n",
-             array_label,
-             &size);
+      sscanf(rest_line.c_str(), "%[^,],%d\n", array_label, &size);
       std::string p_type(type);
       long long int addr = 0;
-      partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
+      partition_config[array_label] = {
+        p_type, size, wordsize, p_factor, addr
+      };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("cycle_time")) {
       // Update the global cycle time parameter.
       cycleTime = stof(rest_line);
     } else {
-      cerr << "what else? " << wholeline << endl;
+      std::cerr << "Invalid config type: " << wholeline << endl;
       exit(0);
     }
   }

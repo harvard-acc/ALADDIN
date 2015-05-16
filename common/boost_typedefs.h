@@ -1,6 +1,7 @@
 #ifndef __BOOST_TYPEDEFS_H__
 #define __BOOST_TYPEDEFS_H__
 
+#include <boost/graph/graphviz.hpp>
 #include <boost/config.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
