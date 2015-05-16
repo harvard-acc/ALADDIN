@@ -1,3 +1,8 @@
+Aladdin Public Release, v1.2.0
+05-16-2015
+*Major refactoring datapath class. Thanks Sam for the hard work!
+
+-------------------------------------------------------------------------------
 Aladdin Public Release, v1.1.5
 05-06-2015
 *Renamed updateGraph() to rescheduleNodesWhenNeeded() to clarify the ALAP
