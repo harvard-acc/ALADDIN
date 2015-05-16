@@ -156,9 +156,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       num_of_reg_dep++;
       if (curr_microop == LLVM_IR_Call)
         last_call_source = reg_it->second;
-    }
-    else if ((curr_microop == LLVM_IR_Store && param_tag == 2) ||
-             (curr_microop == LLVM_IR_Load && param_tag == 1) ) {
+    } else if ((curr_microop == LLVM_IR_Store && param_tag == 2) ||
+               (curr_microop == LLVM_IR_Load && param_tag == 1)) {
       /*For the load/store op without a gep instruction before, assuming the
        *load/store op performs a gep which writes to the label register*/
       register_last_written[unique_reg_id] = num_of_instructions;
@@ -233,6 +232,8 @@ void DDDG::parse_result(std::string line) {
   char label[256];
 
   sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
+  if (curr_node->is_fp_op() && (size == 64))
+    curr_node->set_double_precision(true);
   assert(is_reg);
   char unique_reg_id[256];
   sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);

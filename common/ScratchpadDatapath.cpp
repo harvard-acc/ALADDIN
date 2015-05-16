@@ -19,9 +19,7 @@ ScratchpadDatapath::ScratchpadDatapath(std::string bench,
   scratchpadCanService = true;
 }
 
-ScratchpadDatapath::~ScratchpadDatapath() {
-  delete scratchpad;
-}
+ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
 
 void ScratchpadDatapath::globalOptimizationPass() {
   // Node removals must come first.
@@ -106,7 +104,8 @@ void ScratchpadDatapath::scratchpadPartition() {
   bool spad_partition = false;
   // set scratchpad
   for (auto part_it = partition_config.begin();
-            part_it != partition_config.end(); ++part_it) {
+       part_it != partition_config.end();
+       ++part_it) {
     std::string p_type = part_it->second.type;
     if (!p_type.compare("complete") || !p_type.compare("cache"))
       continue;
@@ -190,32 +189,53 @@ void ScratchpadDatapath::stepExecutingQueue() {
   int index = 0;
   while (it != executingQueue.end()) {
     ExecNode* node = *it;
+    bool executed = false;
     if (node->is_memory_op()) {
       std::string node_part = node->get_array_label();
       if (registers.has(node_part)) {
+        markNodeStarted(it);
         if (node->is_load_op())
           registers.getRegister(node_part)->increment_loads();
         else
           registers.getRegister(node_part)->increment_stores();
         markNodeCompleted(it, index);
+        executed = true;
       } else if (scratchpadCanService) {
         if (scratchpad->canServicePartition(node_part)) {
+          markNodeStarted(it);
           if (node->is_load_op())
             scratchpad->increment_loads(node_part);
           else
             scratchpad->increment_stores(node_part);
           markNodeCompleted(it, index);
+          executed = true;
         } else {
           scratchpadCanService = scratchpad->canService();
-          ++it;
-          ++index;
         }
+      }
+    } else if (node->is_fp_op()) {
+      unsigned node_id = node->get_node_id();
+      if (inflight_nodes.find(node_id) == inflight_nodes.end()) {
+        inflight_nodes[node_id] = node->fp_node_latency_in_cycles();
+        markNodeStarted(it);
       } else {
-        ++it;
-        ++index;
+        unsigned remaining_cycles = inflight_nodes[node_id];
+        if (remaining_cycles == 1) {
+          inflight_nodes.erase(node_id);
+          markNodeCompleted(it, index);
+          executed = true;
+        } else {
+          inflight_nodes[node_id]--;
+        }
       }
     } else {
+      markNodeStarted(it);
       markNodeCompleted(it, index);
+      executed = true;
+    }
+    if (!executed) {
+      ++it;
+      ++index;
     }
   }
 }
@@ -230,21 +250,32 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
     ExecNode* node = exec_nodes[node_id];
     if (node->is_isolated())
       continue;
-    float alap_executing_time = alap_finish_time.at(node_id);
+    float alap_start_execution_time =
+        node->get_start_execution_cycle() * cycleTime;
+    /* Do not reschedule memory ops and branch ops.*/
     if (!node->is_memory_op() && !node->is_branch_op()) {
-      alap_executing_time -= node->fu_node_latency(cycleTime);
-      if (alap_executing_time > (node->get_execution_cycle() + 1) * cycleTime) {
-        node->set_execution_cycle(floor(alap_executing_time / cycleTime));
+      float alap_complete_execution_time = alap_finish_time.at(node_id);
+      int new_cycle = floor(alap_complete_execution_time / cycleTime) - 1;
+      if (new_cycle > node->get_complete_execution_cycle()) {
+        node->set_complete_execution_cycle(new_cycle);
+        if (node->is_fp_op()) {
+          node->set_start_execution_cycle(
+              new_cycle - node->fp_node_latency_in_cycles() + 1);
+          alap_start_execution_time =
+              node->get_start_execution_cycle() * cycleTime;
+        } else {
+          node->set_start_execution_cycle(new_cycle);
+          alap_start_execution_time =
+              alap_complete_execution_time - node->fu_node_latency(cycleTime);
+        }
       }
-    } else {
-      alap_executing_time = node->get_execution_cycle() * cycleTime;
     }
 
     in_edge_iter in_i, in_end;
     for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
       int parent_id = vertexToName[source(*in_i, graph_)];
-      if (alap_finish_time.at(parent_id) > alap_executing_time)
-        alap_finish_time.at(parent_id) = alap_executing_time;
+      if (alap_finish_time.at(parent_id) > alap_start_execution_time)
+        alap_finish_time.at(parent_id) = alap_start_execution_time;
     }
   }
   return num_cycles;
@@ -265,15 +296,17 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
   float latency_after_current_node = 0;
-  if (node->is_memory_op()) {
-    latency_after_current_node = (num_cycles + 1 ) * cycleTime;
+  if (node->is_memory_op() || node->is_fp_op()) {
+    /*No packing for both memory ops and floating point ops. Children can only
+     * start at the cycle after. */
+    latency_after_current_node = (num_cycles + 1) * cycleTime;
   } else {
     if (node->get_time_before_execution() > num_cycles * cycleTime) {
-      latency_after_current_node = node->fu_node_latency(cycleTime) +
-                                     node->get_time_before_execution();
+      latency_after_current_node =
+          node->fu_node_latency(cycleTime) + node->get_time_before_execution();
     } else {
-      latency_after_current_node = node->fu_node_latency(cycleTime) +
-                                     num_cycles * cycleTime;
+      latency_after_current_node =
+          node->fu_node_latency(cycleTime) + num_cycles * cycleTime;
     }
   }
   Vertex curr_vertex = node->get_vertex();
@@ -291,21 +324,26 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
       if (child_node->get_num_parents() == 0) {
-        bool child_zero_latency = (child_node->is_memory_op()) ? false :
-                                  (child_node->fu_node_latency(cycleTime) == 0);
-        bool curr_zero_latency = (node->is_memory_op()) ? false :
-                                 (node->fu_node_latency(cycleTime) == 0);
+        bool child_zero_latency =
+            (child_node->is_memory_op())
+                ? false
+                : (child_node->fu_node_latency(cycleTime) == 0);
+        bool curr_zero_latency = (node->is_memory_op())
+                                     ? false
+                                     : (node->fu_node_latency(cycleTime) == 0);
         if ((child_zero_latency || curr_zero_latency) &&
             edge_parid != CONTROL_EDGE) {
           executingQueue.push_back(child_node);
-        } else if (child_node->is_memory_op() || node->is_memory_op()) {
-          /* Do not pack memory operations with functional unit operations.*/
+        } else if (child_node->is_memory_op() || node->is_memory_op() ||
+                   child_node->is_fp_op() || node->is_fp_op()) {
+          /* Do not pack memory operations and floating point functional units
+           *  with others. */
           if (child_node->is_store_op())
             readyToExecuteQueue.push_front(child_node);
           else
             readyToExecuteQueue.push_back(child_node);
         } else {
-          /* Both curr node and child node are non-memory operations.*/
+          /* Both curr node and child node are non-memory, non-fp operations.*/
           if (edge_parid == CONTROL_EDGE) {
             readyToExecuteQueue.push_back(child_node);
           } else {
@@ -332,7 +370,8 @@ void ScratchpadDatapath::dumpStats() {
 int ScratchpadDatapath::writeConfiguration(sql::Connection* con) {
   int unrolling_factor, partition_factor;
   bool pipelining_factor;
-  getCommonConfigParameters(unrolling_factor, pipelining_factor, partition_factor);
+  getCommonConfigParameters(
+      unrolling_factor, pipelining_factor, partition_factor);
 
   sql::Statement* stmt = con->createStatement();
   stringstream query;

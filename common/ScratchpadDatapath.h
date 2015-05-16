@@ -21,7 +21,6 @@ class ScratchpadDatapath : public BaseDatapath {
   void completePartition();
   void scratchpadPartition();
   virtual void setGraphForStepping();
-  virtual void updateChildren(ExecNode* node);
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();
@@ -32,6 +31,7 @@ class ScratchpadDatapath : public BaseDatapath {
                                   float* avg_dynamic,
                                   float* avg_leak);
   virtual void getMemoryBlocks(std::vector<std::string>& names);
+  virtual void updateChildren(ExecNode* node);
   virtual int rescheduleNodesWhenNeeded();
 
  protected:
@@ -39,6 +39,8 @@ class ScratchpadDatapath : public BaseDatapath {
   /*True if any of the scratchpads can still service memory requests.
     False if non of the scratchpads can service any memory requests.*/
   bool scratchpadCanService;
+  /* Stores number of cycles left for nodes currently in flight. */
+  std::map<unsigned, unsigned> inflight_nodes;
 #ifdef USE_DB
   int writeConfiguration(sql::Connection* con);
 #endif

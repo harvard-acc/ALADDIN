@@ -26,10 +26,10 @@ void Scratchpad::setScratchpad(std::string baseName,
   uca_org_t cacti_result;
   auto cacti_it = cacti_value.find(_cacti_key);
   if (cacti_it == cacti_value.end()) {
-      cacti_result = cactiWrapper(num_of_bytes, wordsize);
-      cacti_value[_cacti_key] = cacti_result;
+    cacti_result = cactiWrapper(num_of_bytes, wordsize);
+    cacti_value[_cacti_key] = cacti_result;
   } else {
-      cacti_result = cacti_it->second;
+    cacti_result = cacti_it->second;
   }
   // power in mW, energy in pJ, area in mm2
   readEnergyPerPartition.push_back(cacti_result.power.readOp.dynamic * 1e+12);

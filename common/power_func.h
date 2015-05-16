@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#define   SINGLE_PORT_SPAD 1
+#define SINGLE_PORT_SPAD 1
 
 /*Characterized FU latencies from FPGA virtex7 xc7v585tffg1761-2, in ns*/
 /*#define   Virtex7_ADD_LATENCY       1.87*/
@@ -251,6 +251,181 @@
 #define SHIFTER_6ns_area 374.446796
 #define SHIFTER_6ns_critical_path_delay 0.70
 
+/* Floating Point Power/Area/Energy Models.
+ * We use Synopsys DesignWare IP library to model 3-stage both single-precision
+ * (SP) and double precision (DP) floating point functional units, including
+ * adder/subtractor, multiplier/divider. */
+
+#define FP_LATENCY_IN_CYCLES 3
+
+#define FP_SP_3STAGE_ADD_1ns_int_power 1.827800e+00
+#define FP_SP_3STAGE_ADD_1ns_switch_power 2.177600e+00
+#define FP_SP_3STAGE_ADD_1ns_dynamic_power 4.005300e+00
+#define FP_SP_3STAGE_ADD_1ns_dynamic_energy 1.201590e+01
+#define FP_SP_3STAGE_ADD_1ns_leakage_power 3.826250e-02
+#define FP_SP_3STAGE_ADD_1ns_area 3.141860e+03
+
+#define FP_SP_3STAGE_ADD_2ns_int_power 5.470508e-01
+#define FP_SP_3STAGE_ADD_2ns_switch_power 7.768845e-01
+#define FP_SP_3STAGE_ADD_2ns_dynamic_power 1.323900e+00
+#define FP_SP_3STAGE_ADD_2ns_dynamic_energy 7.943400e+00
+#define FP_SP_3STAGE_ADD_2ns_leakage_power 1.548160e-02
+#define FP_SP_3STAGE_ADD_2ns_area 2.166394e+03
+
+#define FP_SP_3STAGE_ADD_3ns_int_power 3.591130e-01
+#define FP_SP_3STAGE_ADD_3ns_switch_power 4.881142e-01
+#define FP_SP_3STAGE_ADD_3ns_dynamic_power 8.472272e-01
+#define FP_SP_3STAGE_ADD_3ns_dynamic_energy 7.625045e+00
+#define FP_SP_3STAGE_ADD_3ns_leakage_power 1.453730e-02
+#define FP_SP_3STAGE_ADD_3ns_area 2.134868e+03
+
+#define FP_SP_3STAGE_ADD_4ns_int_power 2.163089e-01
+#define FP_SP_3STAGE_ADD_4ns_switch_power 2.576002e-01
+#define FP_SP_3STAGE_ADD_4ns_dynamic_power 4.739091e-01
+#define FP_SP_3STAGE_ADD_4ns_dynamic_energy 5.686909e+00
+#define FP_SP_3STAGE_ADD_4ns_leakage_power 1.133510e-02
+#define FP_SP_3STAGE_ADD_4ns_area 1.525684e+03
+
+#define FP_SP_3STAGE_ADD_5ns_int_power 1.743715e-01
+#define FP_SP_3STAGE_ADD_5ns_switch_power 2.064084e-01
+#define FP_SP_3STAGE_ADD_5ns_dynamic_power 3.807799e-01
+#define FP_SP_3STAGE_ADD_5ns_dynamic_energy 5.711699e+00
+#define FP_SP_3STAGE_ADD_5ns_leakage_power 1.095400e-02
+#define FP_SP_3STAGE_ADD_5ns_area 1.486674e+03
+
+#define FP_SP_3STAGE_ADD_6ns_int_power 1.455030e-01
+#define FP_SP_3STAGE_ADD_6ns_switch_power 1.718221e-01
+#define FP_SP_3STAGE_ADD_6ns_dynamic_power 3.173251e-01
+#define FP_SP_3STAGE_ADD_6ns_dynamic_energy 5.711852e+00
+#define FP_SP_3STAGE_ADD_6ns_leakage_power 1.091510e-02
+#define FP_SP_3STAGE_ADD_6ns_area 1.486674e+03
+
+#define FP_DP_3STAGE_ADD_1ns_int_power 4.704900e+00
+#define FP_DP_3STAGE_ADD_1ns_switch_power 5.802300e+00
+#define FP_DP_3STAGE_ADD_1ns_dynamic_power 1.050720e+01
+#define FP_DP_3STAGE_ADD_1ns_dynamic_energy 3.152160e+01
+#define FP_DP_3STAGE_ADD_1ns_leakage_power 9.596200e-02
+#define FP_DP_3STAGE_ADD_1ns_area 7.121293e+03
+
+#define FP_DP_3STAGE_ADD_2ns_int_power 1.215700e+00
+#define FP_DP_3STAGE_ADD_2ns_switch_power 1.923900e+00
+#define FP_DP_3STAGE_ADD_2ns_dynamic_power 3.139500e+00
+#define FP_DP_3STAGE_ADD_2ns_dynamic_energy 1.883700e+01
+#define FP_DP_3STAGE_ADD_2ns_leakage_power 3.244630e-02
+#define FP_DP_3STAGE_ADD_2ns_area 4.414889e+03
+
+#define FP_DP_3STAGE_ADD_3ns_int_power 7.982442e-01
+#define FP_DP_3STAGE_ADD_3ns_switch_power 1.266000e+00
+#define FP_DP_3STAGE_ADD_3ns_dynamic_power 2.064200e+00
+#define FP_DP_3STAGE_ADD_3ns_dynamic_energy 1.857780e+01
+#define FP_DP_3STAGE_ADD_3ns_leakage_power 2.945900e-02
+#define FP_DP_3STAGE_ADD_3ns_area 4.308973e+03
+
+#define FP_DP_3STAGE_ADD_4ns_int_power 5.641808e-01
+#define FP_DP_3STAGE_ADD_4ns_switch_power 8.312678e-01
+#define FP_DP_3STAGE_ADD_4ns_dynamic_power 1.395400e+00
+#define FP_DP_3STAGE_ADD_4ns_dynamic_energy 1.674480e+01
+#define FP_DP_3STAGE_ADD_4ns_leakage_power 2.518000e-02
+#define FP_DP_3STAGE_ADD_4ns_area 3.685273e+03
+
+#define FP_DP_3STAGE_ADD_5ns_int_power 4.519086e-01
+#define FP_DP_3STAGE_ADD_5ns_switch_power 6.656773e-01
+#define FP_DP_3STAGE_ADD_5ns_dynamic_power 1.117600e+00
+#define FP_DP_3STAGE_ADD_5ns_dynamic_energy 1.676400e+01
+#define FP_DP_3STAGE_ADD_5ns_leakage_power 2.525450e-02
+#define FP_DP_3STAGE_ADD_5ns_area 3.686180e+03
+
+#define FP_DP_3STAGE_ADD_6ns_int_power 3.920872e-01
+#define FP_DP_3STAGE_ADD_6ns_switch_power 5.645804e-01
+#define FP_DP_3STAGE_ADD_6ns_dynamic_power 9.566676e-01
+#define FP_DP_3STAGE_ADD_6ns_dynamic_energy 1.722002e+01
+#define FP_DP_3STAGE_ADD_6ns_leakage_power 2.756320e-02
+#define FP_DP_3STAGE_ADD_6ns_area 3.690263e+03
+
+#define FP_SP_3STAGE_MUL_1ns_int_power 3.638300e+00
+#define FP_SP_3STAGE_MUL_1ns_switch_power 4.843600e+00
+#define FP_SP_3STAGE_MUL_1ns_dynamic_power 8.481900e+00
+#define FP_SP_3STAGE_MUL_1ns_dynamic_energy 2.544570e+01
+#define FP_SP_3STAGE_MUL_1ns_leakage_power 8.633710e-02
+#define FP_SP_3STAGE_MUL_1ns_area 6.460171e+03
+
+#define FP_SP_3STAGE_MUL_2ns_int_power 1.416100e+00
+#define FP_SP_3STAGE_MUL_2ns_switch_power 2.144100e+00
+#define FP_SP_3STAGE_MUL_2ns_dynamic_power 3.560200e+00
+#define FP_SP_3STAGE_MUL_2ns_dynamic_energy 2.136120e+01
+#define FP_SP_3STAGE_MUL_2ns_leakage_power 4.280870e-02
+#define FP_SP_3STAGE_MUL_2ns_area 4.433033e+03
+
+#define FP_SP_3STAGE_MUL_3ns_int_power 8.810010e-01
+#define FP_SP_3STAGE_MUL_3ns_switch_power 1.343600e+00
+#define FP_SP_3STAGE_MUL_3ns_dynamic_power 2.224600e+00
+#define FP_SP_3STAGE_MUL_3ns_dynamic_energy 2.002140e+01
+#define FP_SP_3STAGE_MUL_3ns_leakage_power 3.558220e-02
+#define FP_SP_3STAGE_MUL_3ns_area 4.103946e+03
+
+#define FP_SP_3STAGE_MUL_4ns_int_power 5.845778e-01
+#define FP_SP_3STAGE_MUL_4ns_switch_power 9.265929e-01
+#define FP_SP_3STAGE_MUL_4ns_dynamic_power 1.511200e+00
+#define FP_SP_3STAGE_MUL_4ns_dynamic_energy 1.813440e+01
+#define FP_SP_3STAGE_MUL_4ns_leakage_power 3.244030e-02
+#define FP_SP_3STAGE_MUL_4ns_area 3.760571e+03
+
+#define FP_SP_3STAGE_MUL_5ns_int_power 4.191044e-01
+#define FP_SP_3STAGE_MUL_5ns_switch_power 7.505236e-01
+#define FP_SP_3STAGE_MUL_5ns_dynamic_power 1.169600e+00
+#define FP_SP_3STAGE_MUL_5ns_dynamic_energy 1.754400e+01
+#define FP_SP_3STAGE_MUL_5ns_leakage_power 3.037230e-02
+#define FP_SP_3STAGE_MUL_5ns_area 3.534224e+03
+
+#define FP_SP_3STAGE_MUL_6ns_int_power 3.484731e-01
+#define FP_SP_3STAGE_MUL_6ns_switch_power 6.216765e-01
+#define FP_SP_3STAGE_MUL_6ns_dynamic_power 9.701497e-01
+#define FP_SP_3STAGE_MUL_6ns_dynamic_energy 1.746269e+01
+#define FP_SP_3STAGE_MUL_6ns_leakage_power 3.024680e-02
+#define FP_SP_3STAGE_MUL_6ns_area 3.522431e+03
+
+#define FP_DP_3STAGE_MUL_1ns_int_power 1.107930e+01
+#define FP_DP_3STAGE_MUL_1ns_switch_power 1.624000e+01
+#define FP_DP_3STAGE_MUL_1ns_dynamic_power 2.731930e+01
+#define FP_DP_3STAGE_MUL_1ns_dynamic_energy 8.195790e+01
+#define FP_DP_3STAGE_MUL_1ns_leakage_power 1.991094e-01
+#define FP_DP_3STAGE_MUL_1ns_area 1.604361e+04
+
+#define FP_DP_3STAGE_MUL_2ns_int_power 4.705300e+00
+#define FP_DP_3STAGE_MUL_2ns_switch_power 7.774400e+00
+#define FP_DP_3STAGE_MUL_2ns_dynamic_power 1.247970e+01
+#define FP_DP_3STAGE_MUL_2ns_dynamic_energy 7.487820e+01
+#define FP_DP_3STAGE_MUL_2ns_leakage_power 1.403084e-01
+#define FP_DP_3STAGE_MUL_2ns_area 1.301152e+04
+
+#define FP_DP_3STAGE_MUL_3ns_int_power 2.799400e+00
+#define FP_DP_3STAGE_MUL_3ns_switch_power 4.849400e+00
+#define FP_DP_3STAGE_MUL_3ns_dynamic_power 7.648800e+00
+#define FP_DP_3STAGE_MUL_3ns_dynamic_energy 6.883920e+01
+#define FP_DP_3STAGE_MUL_3ns_leakage_power 1.103864e-01
+#define FP_DP_3STAGE_MUL_3ns_area 1.176253e+04
+
+#define FP_DP_3STAGE_MUL_4ns_int_power 2.095100e+00
+#define FP_DP_3STAGE_MUL_4ns_switch_power 3.602600e+00
+#define FP_DP_3STAGE_MUL_4ns_dynamic_power 5.697700e+00
+#define FP_DP_3STAGE_MUL_4ns_dynamic_energy 6.837240e+01
+#define FP_DP_3STAGE_MUL_4ns_leakage_power 1.089138e-01
+#define FP_DP_3STAGE_MUL_4ns_area 1.170039e+04
+
+#define FP_DP_3STAGE_MUL_5ns_int_power 1.623600e+00
+#define FP_DP_3STAGE_MUL_5ns_switch_power 2.840100e+00
+#define FP_DP_3STAGE_MUL_5ns_dynamic_power 4.463700e+00
+#define FP_DP_3STAGE_MUL_5ns_dynamic_energy 6.695550e+01
+#define FP_DP_3STAGE_MUL_5ns_leakage_power 1.010094e-01
+#define FP_DP_3STAGE_MUL_5ns_area 1.135701e+04
+
+#define FP_DP_3STAGE_MUL_6ns_int_power 1.316800e+00
+#define FP_DP_3STAGE_MUL_6ns_switch_power 2.309200e+00
+#define FP_DP_3STAGE_MUL_6ns_dynamic_power 3.626000e+00
+#define FP_DP_3STAGE_MUL_6ns_dynamic_energy 6.526800e+01
+#define FP_DP_3STAGE_MUL_6ns_leakage_power 9.714680e-02
+#define FP_DP_3STAGE_MUL_6ns_area 1.106716e+04
+
 void getRegisterPowerArea(float cycle_time,
                           float* internal_power_per_bit,
                           float* switch_power_per_bit,
@@ -276,4 +451,24 @@ void getShifterPowerArea(float cycle_time,
                          float* swich_power,
                          float* leakage_power,
                          float* area);
+void getSinglePrecisionFloatingPointAdderPowerArea(float cycle_time,
+                                                   float* internal_power,
+                                                   float* switch_power,
+                                                   float* leakage_power,
+                                                   float* area);
+void getDoublePrecisionFloatingPointAdderPowerArea(float cycle_time,
+                                                   float* internal_power,
+                                                   float* switch_power,
+                                                   float* leakage_power,
+                                                   float* area);
+void getSinglePrecisionFloatingPointMultiplierPowerArea(float cycle_time,
+                                                        float* internal_power,
+                                                        float* switch_power,
+                                                        float* leakage_power,
+                                                        float* area);
+void getDoublePrecisionFloatingPointMultiplierPowerArea(float cycle_time,
+                                                        float* internal_power,
+                                                        float* switch_power,
+                                                        float* leakage_power,
+                                                        float* area);
 #endif
