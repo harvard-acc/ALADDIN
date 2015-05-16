@@ -12,7 +12,7 @@
 #include "cacti-p/io.h"
 #include "cacti-p/cacti_interface.h"
 
-typedef std::pair<unsigned, unsigned> key;
+typedef std::pair<unsigned, unsigned> cacti_key;
 class Scratchpad {
  public:
   Scratchpad(unsigned p_ports_per_part, float cycle_time);
@@ -59,7 +59,7 @@ class Scratchpad {
   std::map<std::string, unsigned> partition_loads;
   /* Number of stores per partition. */
   std::map<std::string, unsigned> partition_stores;
-  std::map<key, uca_org_t> cacti_value;
+  std::map<cacti_key, uca_org_t> cacti_value;
 
   std::vector<bool> compPartition;
   std::vector<unsigned> sizePerPartition;
