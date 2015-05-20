@@ -151,7 +151,9 @@ void ScratchpadDatapath::scratchpadPartition() {
       }
     }
   }
+#ifdef DEBUG
   writeBaseAddress();
+#endif
 }
 
 void ScratchpadDatapath::setGraphForStepping() {
@@ -203,7 +205,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
   }
 }
 
-int ScratchpadDatapath::rescheduleNodesWhenNeeded(){
+int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // bottom nodes first
@@ -265,8 +267,8 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
           else
             readyToExecuteQueue.push_back(child_node);
         } else {
-          float after_child_time =
-              child_node->get_time_before_execution() + child_node->node_latency();
+          float after_child_time = child_node->get_time_before_execution() +
+                                   child_node->node_latency();
           if (after_child_time < (num_cycles + 1) * cycleTime &&
               edge_parid != CONTROL_EDGE)
             executingQueue.push_back(child_node);

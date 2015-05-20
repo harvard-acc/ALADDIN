@@ -6,6 +6,7 @@
 #include <zlib.h>
 #include <stdlib.h>
 
+#include "ExecNode.h"
 #include "file_func.h"
 #include "opcode_func.h"
 /*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
@@ -53,6 +54,7 @@ class DDDG {
   uint8_t prev_microop;
   std::string prev_bblock;
   std::string curr_bblock;
+  ExecNode* curr_node;
 
   std::string callee_function;
   std::string callee_dynamic_function;

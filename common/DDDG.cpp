@@ -1,12 +1,6 @@
 #include "DDDG.h"
 #include "BaseDatapath.h"
 
-gzFile dynamic_func_file;
-gzFile instid_file;
-gzFile line_num_file;
-gzFile memory_trace;
-gzFile getElementPtr_trace;
-
 DDDG::DDDG(BaseDatapath* _datapath, std::string _trace_name)
     : datapath(_datapath), trace_name(_trace_name) {
   num_of_reg_dep = 0;
@@ -22,12 +16,6 @@ int DDDG::num_edges() {
 int DDDG::num_nodes() { return num_of_instructions + 1; }
 int DDDG::num_of_register_dependency() { return num_of_reg_dep; }
 int DDDG::num_of_memory_dependency() { return num_of_mem_dep; }
-void DDDG::output_method_call_graph(std::string bench) {
-  std::string output_file_name(bench);
-  output_file_name += "_method_call_graph";
-  write_string_file(
-      output_file_name, method_call_graph.size(), method_call_graph);
-}
 void DDDG::output_dddg() {
 
   for (auto it = register_edge_table.begin(); it != register_edge_table.end();
@@ -46,7 +34,7 @@ void DDDG::parse_instruction_line(std::string line) {
   char instid[256], bblockid[256];
   int line_num;
   int microop;
-  int count;
+  int dyn_inst_count;
   sscanf(line.c_str(),
          "%d,%[^,],%[^,],%[^,],%d,%d\n",
          &line_num,
@@ -54,14 +42,20 @@ void DDDG::parse_instruction_line(std::string line) {
          bblockid,
          instid,
          &microop,
-         &count);
+         &dyn_inst_count);
 
   prev_microop = curr_microop;
   curr_microop = (uint8_t)microop;
-
-  datapath->insertNode(count, microop);
-
   curr_instid = instid;
+
+  curr_node = datapath->insertNode(dyn_inst_count, microop);
+  curr_node->set_line_num(line_num);
+  curr_node->set_inst_id(curr_instid);
+  curr_node->set_static_method(curr_static_function);
+  datapath->addFunctionName(curr_static_function);
+
+  int func_invocation_count = 0;
+  bool curr_func_found = false;
 
   if (!active_method.empty()) {
     char prev_static_function[256];
@@ -70,74 +64,51 @@ void DDDG::parse_instruction_line(std::string line) {
            "%[^-]-%u",
            prev_static_function,
            &prev_counts);
-    if (strcmp(curr_static_function, prev_static_function) != 0) {
-      auto func_it = function_counter.find(curr_static_function);
-      if (func_it == function_counter.end()) {
-        function_counter.insert(make_pair(curr_static_function, 0));
-        ostringstream oss;
-        oss << curr_static_function << "-0";
-        curr_dynamic_function = oss.str();
-      } else {
-        func_it->second++;
-        ostringstream oss;
-        oss << curr_static_function << "-" << func_it->second;
-        curr_dynamic_function = oss.str();
-      }
-      active_method.push(curr_dynamic_function);
-
-      // if prev inst is a IRCALL instruction
-      if (prev_microop == LLVM_IR_Call) {
-        assert(callee_function == curr_static_function);
-
-        ostringstream oss;
-        oss << num_of_instructions << "," << prev_static_function << "-"
-            << prev_counts << "," << active_method.top();
-        method_call_graph.push_back(oss.str());
-      }
-    } else {  // the same as last method
-      // calling it self
+    if (strcmp(curr_static_function, prev_static_function) == 0) {
+      // calling itself
       if (prev_microop == LLVM_IR_Call &&
           callee_function == curr_static_function) {
         // a new instantiation
         auto func_it = function_counter.find(curr_static_function);
         assert(func_it != function_counter.end());
-        func_it->second++;
-        ostringstream oss;
-        oss << curr_static_function << "-" << func_it->second;
-        curr_dynamic_function = oss.str();
-        active_method.push(curr_dynamic_function);
-      } else
-        curr_dynamic_function = active_method.top();
+        func_invocation_count = ++func_it->second;
+      } else {
+        func_invocation_count = prev_counts;
+      }
+      ostringstream oss;
+      oss << curr_static_function << "-" << func_invocation_count;
+      curr_dynamic_function = oss.str();
+      active_method.push(curr_dynamic_function);
+      curr_func_found = true;
     }
     if (microop == LLVM_IR_Ret)
       active_method.pop();
-  } else {
+  }
+  if (!curr_func_found) {
     auto func_it = function_counter.find(curr_static_function);
-    if (func_it != function_counter.end()) {
-      func_it->second++;
-      ostringstream oss;
-      oss << curr_static_function << "-" << func_it->second;
-      curr_dynamic_function = oss.str();
+    if (func_it == function_counter.end()) {
+      func_invocation_count = 0;
+      function_counter.insert(
+          make_pair(curr_static_function, func_invocation_count));
     } else {
-      function_counter.insert(make_pair(curr_static_function, 0));
-      ostringstream oss;
-      oss << curr_static_function << "-0";
-      curr_dynamic_function = oss.str();
+      func_invocation_count = ++func_it->second;
     }
+    ostringstream oss;
+    oss << curr_static_function << "-" << func_invocation_count;
+    curr_dynamic_function = oss.str();
     active_method.push(curr_dynamic_function);
   }
   if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
   curr_bblock = bblockid;
-  gzprintf(dynamic_func_file, "%s\n", curr_dynamic_function.c_str());
-  gzprintf(instid_file, "%s\n", curr_instid.c_str());
-  gzprintf(line_num_file, "%d\n", line_num);
+  curr_node->set_dynamic_invocation(func_invocation_count);
   num_of_instructions++;
   last_parameter = 0;
   parameter_value_per_inst.clear();
   parameter_size_per_inst.clear();
   parameter_label_per_inst.clear();
 }
+
 void DDDG::parse_parameter(std::string line, int param_tag) {
   int size, is_reg;
   double value;
@@ -176,6 +147,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     // Find the instruction that writes the register
     auto reg_it = register_last_written.find(unique_reg_id);
     if (reg_it != register_last_written.end()) {
+      /*Find the last instruction that writes to the register*/
       edge_node_info tmp_edge;
       tmp_edge.sink_node = num_of_instructions;
       tmp_edge.par_id = param_tag;
@@ -217,11 +189,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       }
       long long int base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
-      gzprintf(getElementPtr_trace,
-               "%d,%s,%lld\n",
-               num_of_instructions,
-               base_label.c_str(),
-               base_address);
+      curr_node->set_array_label(base_label);
+      datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
       // 1st arg of store is the value, 2nd arg is the pointer.
       long long int mem_address = parameter_value_per_inst[0];
@@ -234,30 +203,19 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
 
       long long int base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];
-      gzprintf(getElementPtr_trace,
-               "%d,%s,%lld\n",
-               num_of_instructions,
-               base_label.c_str(),
-               base_address);
+      curr_node->set_array_label(base_label);
+      datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
       long long int mem_address = parameter_value_per_inst[0];
       // TODO(samxi): We need to support floating point values as well.
       long long int store_value = parameter_value_per_inst[1];
       unsigned mem_size = parameter_size_per_inst.back();
-      gzprintf(memory_trace,
-               "%d,%lld,%u,%lld\n",
-               num_of_instructions,
-               mem_address,
-               mem_size,
-               store_value);
+      curr_node->set_mem_access(mem_address, mem_size, store_value);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       long long int base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
-      gzprintf(getElementPtr_trace,
-               "%d,%s,%lld\n",
-               num_of_instructions,
-               base_label.c_str(),
-               base_address);
+      curr_node->set_array_label(base_label);
+      datapath->addArrayBaseAddress(base_label, base_address);
     }
   }
 }
@@ -277,24 +235,16 @@ void DDDG::parse_result(std::string line) {
   else
     register_last_written[unique_reg_id] = num_of_instructions;
 
-  if (curr_microop == LLVM_IR_Alloca)
-    gzprintf(getElementPtr_trace,
-             "%d,%s,%lld\n",
-             num_of_instructions,
-             label,
-             (long long int)value);
-  else if (curr_microop == LLVM_IR_Load) {
+  if (curr_microop == LLVM_IR_Alloca) {
+    curr_node->set_array_label(label);
+    datapath->addArrayBaseAddress(label, (long long int)value);
+  } else if (curr_microop == LLVM_IR_Load) {
     long long int mem_address = parameter_value_per_inst.back();
-    gzprintf(
-        memory_trace, "%d,%lld,%u\n", num_of_instructions, mem_address, size);
+    curr_node->set_mem_access(mem_address, size, (long long int)value);
   } else if (is_dma_op(curr_microop)) {
     long long int mem_address = parameter_value_per_inst[1];
     unsigned mem_size = parameter_value_per_inst[2];
-    gzprintf(memory_trace,
-             "%d,%lld,%u\n",
-             num_of_instructions,
-             mem_address,
-             mem_size);
+    curr_node->set_mem_access(mem_address, mem_size);
   }
 }
 
@@ -332,24 +282,6 @@ bool DDDG::build_initial_dddg() {
   }
 
   std::string bench = datapath->getBenchName();
-  std::string func_file_name, instid_file_name;
-  std::string memory_trace_name, getElementPtr_trace_name;
-  std::string resultVar_trace_name, line_num_file_name;
-  std::string prevBasicBlock_trace_name;
-
-  func_file_name = bench + "_dynamic_funcid.gz";
-  instid_file_name = bench + "_instid.gz";
-  line_num_file_name = bench + "_linenum.gz";
-  memory_trace_name = bench + "_memaddr.gz";
-  getElementPtr_trace_name = bench + "_getElementPtr.gz";
-  prevBasicBlock_trace_name = bench + "_prevBasicBlock.gz";
-
-  dynamic_func_file = gzopen(func_file_name.c_str(), "w");
-  instid_file = gzopen(instid_file_name.c_str(), "w");
-  line_num_file = gzopen(line_num_file_name.c_str(), "w");
-  memory_trace = gzopen(memory_trace_name.c_str(), "w");
-  getElementPtr_trace = gzopen(getElementPtr_trace_name.c_str(), "w");
-
   gzFile tracefile_gz = gzopen(trace_name.c_str(), "r");
 
   char buffer[256];
@@ -375,12 +307,6 @@ bool DDDG::build_initial_dddg() {
   }
 
   gzclose(tracefile_gz);
-
-  gzclose(dynamic_func_file);
-  gzclose(instid_file);
-  gzclose(line_num_file);
-  gzclose(memory_trace);
-  gzclose(getElementPtr_trace);
 
   output_dddg();
 

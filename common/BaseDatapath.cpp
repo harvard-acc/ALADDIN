@@ -31,11 +31,6 @@ BaseDatapath::BaseDatapath(std::string bench,
   }
   vertexToName = get(boost::vertex_index, graph_);
 
-  initDynamicMethods(functionNames);
-  initInstID();
-  initLineNum();
-  initAddress();
-
   parse_config(bench, config_file);
 
   num_cycles = 0;
@@ -53,8 +48,9 @@ void BaseDatapath::addDddgEdge(unsigned int from,
     add_edge(from, to, EdgeProperty(parid), graph_);
 }
 
-void BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
+ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   exec_nodes[node_id] = new ExecNode(node_id, microop);
+  return exec_nodes[node_id];
 }
 
 // optimizationFunctions
@@ -154,7 +150,8 @@ void BaseDatapath::removePhiNodes() {
       }
       to_remove_edges.insert(*in_edge_it);
       for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
-           child_it != chil_E; ++child_it) {
+           child_it != chil_E;
+           ++child_it) {
         to_add_edges.push_back(
             { parent_node, child_it->first, child_it->second });
       }
@@ -168,7 +165,8 @@ void BaseDatapath::removePhiNodes() {
         ExecNode* parent_node = getNodeFromVertex(parent_vertex);
         to_remove_edges.insert(*in_edge_it);
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
-             child_it != chil_E; ++child_it) {
+             child_it != chil_E;
+             ++child_it) {
           to_add_edges.push_back(
               { parent_node, child_it->first, child_it->second });
         }
@@ -504,7 +502,8 @@ void BaseDatapath::loopUnrolling() {
           to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
         }
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
-             prev_node_it != E; prev_node_it++) {
+             prev_node_it != E;
+             prev_node_it++) {
           if (!doesEdgeExist(*prev_node_it, node) &&
               !((*prev_node_it)->is_dma_op() && node->is_dma_op())) {
             to_add_edges.push_back({ *prev_node_it, node, CONTROL_EDGE });
@@ -712,7 +711,8 @@ void BaseDatapath::storeBuffer() {
 
           if (parent_found) {
             for (auto load_it = store_child.begin(), E = store_child.end();
-                 load_it != E; ++load_it) {
+                 load_it != E;
+                 ++load_it) {
               Vertex load_node = *load_it;
               to_remove_nodes.push_back(vertexToName[load_node]);
 
@@ -925,7 +925,8 @@ void BaseDatapath::treeHeightReduction() {
       continue;
 
     for (auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end();
-         it != E; it++)
+         it != E;
+         it++)
       to_remove_edges.insert(*it);
 
     std::map<ExecNode*, unsigned> rank_map;
@@ -995,9 +996,9 @@ void BaseDatapath::findMinRankNodes(ExecNode** node1,
 void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {
     if (*it->from != *it->to && !doesEdgeExist(it->from, it->to))
-      get(boost::edge_name, graph_)[add_edge(it->from->get_node_id(),
-                                             it->to->get_node_id(), graph_)
-                                        .first] = it->parid;
+      get(boost::edge_name, graph_)[add_edge(
+          it->from->get_node_id(), it->to->get_node_id(), graph_).first] =
+          it->parid;
   }
 }
 void BaseDatapath::updateGraphWithIsolatedNodes(
@@ -1136,7 +1137,8 @@ void BaseDatapath::updatePerCycleActivity(
   int num_adds_so_far = 0, num_bits_so_far = 0;
   int num_shifters_so_far = 0;
   auto bound_it = loopBound.begin();
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end(); ++node_it) {
+  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+       ++node_it) {
     ExecNode* node = node_it->second;
     std::string func_id = node->get_static_method();
 
@@ -1465,86 +1467,6 @@ void BaseDatapath::writeOtherStats() {
   write_gzip_bool_file(isolated_file_name, isolated.size(), isolated);
 }
 
-void BaseDatapath::initPrevBasicBlock(
-    std::vector<std::string>& prevBasicBlock) {
-  std::string file_name(benchName);
-  file_name += "_prevBasicBlock.gz";
-  read_gzip_string_file(file_name, prevBasicBlock.size(), prevBasicBlock);
-}
-
-void BaseDatapath::initDynamicMethods(
-    std::unordered_set<std::string>& functions) {
-  std::string file_name(benchName);
-  file_name += "_dynamic_funcid.gz";
-  std::vector<std::string> methodid(numTotalNodes, "");
-  read_gzip_string_file(file_name, methodid.size(), methodid);
-  for (int i = 0; i < methodid.size(); i++) {
-    char func_id[256];
-    int count;
-    sscanf(methodid[i].c_str(), "%[^-]-%d\n", func_id, &count);
-    exec_nodes[i]->set_static_method(func_id);
-    exec_nodes[i]->set_dynamic_invocation(count);
-    if (functions.find(func_id) == functions.end())
-      functions.insert(func_id);
-  }
-}
-
-void BaseDatapath::initInstID() {
-  std::string file_name(benchName);
-  file_name += "_instid.gz";
-  std::vector<std::string> instid(numTotalNodes, "");
-  read_gzip_string_file(file_name, instid.size(), instid);
-  for (int i = 0; i < instid.size(); i++)
-    exec_nodes[i]->set_inst_id(instid[i]);
-}
-
-void BaseDatapath::initAddress() {
-  std::string file_name(benchName);
-  file_name += "_memaddr.gz";
-  gzFile gzip_file;
-  gzip_file = gzopen(file_name.c_str(), "r");
-  while (!gzeof(gzip_file)) {
-    char buffer[256];
-    if (gzgets(gzip_file, buffer, 256) == NULL)
-      break;
-    unsigned node_id = 0, size = 0;
-    long long int addr = 0, value = 0;
-    sscanf(buffer, "%d,%lld,%d,%lld\n", &node_id, &addr, &size, &value);
-    ExecNode* node = exec_nodes[node_id];
-    node->set_mem_access(addr, size, value);
-  }
-  gzclose(gzip_file);
-}
-
-void BaseDatapath::initLineNum() {
-  ostringstream file_name;
-  file_name << benchName << "_linenum.gz";
-  std::vector<int> line_num(numTotalNodes, 0);
-  read_gzip_file(file_name.str(), line_num.size(), line_num);
-  for (int i = 0; i < line_num.size(); i++)
-    exec_nodes[i]->set_line_num(line_num[i]);
-}
-
-void BaseDatapath::initGetElementPtr(
-    std::unordered_map<unsigned, pair<std::string, long long int>>&
-        get_element_ptr) {
-  ostringstream file_name;
-  file_name << benchName << "_getElementPtr.gz";
-  gzFile gzip_file;
-  gzip_file = gzopen(file_name.str().c_str(), "r");
-  while (!gzeof(gzip_file)) {
-    char buffer[256];
-    if (gzgets(gzip_file, buffer, 256) == NULL)
-      break;
-    unsigned node_id;
-    long long int address;
-    char label[256];
-    sscanf(buffer, "%d,%[^,],%lld\n", &node_id, label, &address);
-    get_element_ptr[node_id] = make_pair(label, address);
-  }
-  gzclose(gzip_file);
-}
-
 // stepFunctions
 // multiple function, each function is a separate graph
 void BaseDatapath::setGraphForStepping() {
@@ -1713,8 +1635,6 @@ void BaseDatapath::initBaseAddress() {
   std::cerr << "       Init Base Address       " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  std::unordered_map<unsigned, pair<std::string, long long int>> getElementPtr;
-  initGetElementPtr(getElementPtr);
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
   vertex_iter vi, vi_end;
@@ -1726,7 +1646,6 @@ void BaseDatapath::initBaseAddress() {
     if (!node->is_memory_op())
       continue;
     int node_microop = node->get_microop();
-    bool modified = 0;
     // iterate its parents, until it finds the root parent
     while (true) {
       bool found_parent = 0;
@@ -1746,32 +1665,20 @@ void BaseDatapath::initBaseAddress() {
         if (parent_microop == LLVM_IR_GetElementPtr ||
             parent_microop == LLVM_IR_Load) {
           // remove address calculation directly
-          std::string label = getElementPtr[parent_id].first;
-          long long int addr = getElementPtr[parent_id].second;
+          std::string label = getBaseAddressLabel(parent_id);
           node->set_array_label(label);
-          arrayBaseAddress[label] = addr;
           curr_vertex = source(*in_edge_it, graph_);
           node_microop = parent_microop;
           found_parent = 1;
-          modified = 1;
           break;
         } else if (parent_microop == LLVM_IR_Alloca) {
-          std::string label = getElementPtr[parent_id].first;
-          long long int addr = getElementPtr[parent_id].second;
+          std::string label = getBaseAddressLabel(parent_id);
           node->set_array_label(label);
-          arrayBaseAddress[label] = addr;
-          modified = 1;
           break;
         }
       }
       if (!found_parent)
         break;
-    }
-    if (!modified) {
-      std::string label = getElementPtr[node->get_node_id()].first;
-      long long int addr = getElementPtr[node->get_node_id()].second;
-      node->set_array_label(label);
-      arrayBaseAddress[label] = addr;
     }
   }
 #ifdef DEBUG
