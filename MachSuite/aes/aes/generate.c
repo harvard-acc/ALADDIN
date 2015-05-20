@@ -9,7 +9,7 @@
 
 #include "aes.h"
 // Fake benchmark function to satisfy the extern
-void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16]){}
+void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16], uint8_t rcon[1] ){}
 
 void generate_binary()
 {
@@ -24,11 +24,11 @@ void generate_binary()
   for(i=0; i<32; i++)
     data.k[i] = i;
   memcpy(data.buf, initial_contents, 16);
-
+  data.rcon[0] = 1;
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
+
   ptr = (char *) &data;
   while( written<sizeof(data) ) {
     status = write( fd, ptr, sizeof(data)-written );

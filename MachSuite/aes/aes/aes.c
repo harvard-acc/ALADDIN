@@ -22,13 +22,10 @@
 #ifdef DMA_MODE
 #include "gem5/dma_interface.h"
 #endif
-
 #define F(x)   (((x)<<1) ^ ((((x)>>7) & 1) * 0x1b))
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
-
 #define BACK_TO_TABLES
 #ifdef BACK_TO_TABLES
-
 const uint8_t sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5,
     0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -201,7 +198,7 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16], uin
 #endif
     //INIT
     uint8_t i;
-
+    rcon[0] = 1;
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
         ctx->enckey[i] = ctx->deckey[i] = k[i];

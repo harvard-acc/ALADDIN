@@ -150,6 +150,9 @@ def main(directory, kernel, algorithm, part, unroll, pipe, cycle_time):
     config.write('flatten,aes_subBytes,122\n') # trip_cnt = 16
     config.write('flatten,aes_addRoundKey,130\n') # trip_cnt = 16
     config.write('flatten,aes_addRoundKey_cpy,138\n') # trip_cnt = 16
+    config.write('flatten,aes_mixColumns,159\n') # trip_cnt = 4
+    config.write('flatten,aes_expandEncKey,179\n') # trip_cnt = 16
+    config.write('flatten,aes_expandEncKey,186\n') # trip_cnt = 16
     config.write('unrolling,aes256_encrypt_ecb,203,%s\n' %(unroll)) #trip_cnt = 32
     config.write('unrolling,aes256_encrypt_ecb,206,%s\n' %(unroll)) #trip_cnt = 8
     config.write('unrolling,aes256_encrypt_ecb,212,%s\n' %(unroll)) #tc = 13

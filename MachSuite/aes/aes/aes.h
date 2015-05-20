@@ -36,7 +36,6 @@ typedef struct {
 void aes256_encrypt_ecb(aes256_context* ctx, uint8_t k[32], uint8_t buf[16], uint8_t rcon[1]);
 
 extern const uint8_t sbox[256];
-extern uint8_t rcon;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
@@ -45,12 +44,12 @@ struct bench_args_t {
   aes256_context ctx;
   uint8_t k[32];
   uint8_t buf[16];
+  uint8_t rcon[1];
 };
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark(void* vargs) {
   struct bench_args_t* args = (struct bench_args_t*)vargs;
-  uint8_t rcon[1];
 
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
@@ -62,10 +61,10 @@ void run_benchmark(void* vargs) {
   mapArrayToAccelerator(
       MACHSUITE_AES_AES, "sbox", (void*)&(sbox[0]), sizeof(sbox));
   mapArrayToAccelerator(
-      MACHSUITE_AES_AES, "rcon", (void*)&(rcon[0]), sizeof(rcon));
+      MACHSUITE_AES_AES, "rcon", (void*)&(args->rcon[0]), sizeof(args->rcon));
   invokeAcceleratorAndBlock(MACHSUITE_AES_AES);
 #else
-  aes256_encrypt_ecb(&(args->ctx), args->k, args->buf, rcon);
+  aes256_encrypt_ecb(&(args->ctx), args->k, args->buf, args->rcon);
 #endif
 }
 
