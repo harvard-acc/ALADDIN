@@ -52,7 +52,6 @@ class DmaScratchpadDatapath : public ScratchpadDatapath, public Gem5Datapath {
     void event_step();
     bool step();
     void stepExecutingQueue();
-    void initActualAddress();
     Event& getTickEvent() { return tickEvent; }
 
     virtual double getTotalMemArea();

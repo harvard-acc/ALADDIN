@@ -208,7 +208,6 @@ class CacheDatapath :
     void copyToExecutingQueue();
     void stepExecutingQueue();
     void globalOptimizationPass();
-    void initActualAddress();
     void resetCacheCounters();
     Event& getTickEvent() { return tickEvent; }
 

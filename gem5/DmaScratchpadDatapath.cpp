@@ -48,7 +48,6 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
   datapath_name = name_builder.str();
   scratchpad = new Scratchpad(params->spadPorts, cycleTime);
   setGlobalGraph();
-  initAddress();
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;

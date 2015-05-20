@@ -54,7 +54,6 @@ CacheDatapath::CacheDatapath(const Params *p) :
   BaseDatapath::use_db = p->useDb;
   BaseDatapath::experiment_name = p->experimentName;
   BaseDatapath::cycleTime = p->cycleTime;
-  initAddress();
   setGlobalGraph();
   globalOptimizationPass();
   setGraphForStepping();
@@ -360,8 +359,9 @@ void CacheDatapath::sendFinishedSignal()
 void CacheDatapath::globalOptimizationPass()
 {
   // Node removals must come first.
-  removeInductionDependence();
   removePhiNodes();
+  removeInductionDependence();
+  memoryAmbiguation();
   // Base address must be initialized next.
   initBaseAddress();
   loopFlatten();
