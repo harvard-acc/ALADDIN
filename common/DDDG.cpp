@@ -156,6 +156,12 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       if (curr_microop == LLVM_IR_Call)
         last_call_source = reg_it->second;
     }
+    else if ((curr_microop == LLVM_IR_Store && param_tag == 2) ||
+             (curr_microop == LLVM_IR_Load && param_tag == 1) ) {
+      /*For the load/store op without a gep instruction before, assuming the
+       *load/store op performs a gep which writes to the label register*/
+      register_last_written[unique_reg_id] = num_of_instructions;
+    }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
       curr_microop == LLVM_IR_GetElementPtr || is_dma_op(curr_microop)) {
