@@ -26,9 +26,9 @@ class ExecNode {
   ExecNode(unsigned int _node_id, uint8_t _microop)
       : node_id(_node_id), microop(_microop), static_method(""),
         basic_block_id(""), inst_id(""), line_num(-1), execution_cycle(0),
-        num_parents(0), isolated(true), inductive(false),
-        dynamic_mem_op(false), array_label(""), time_before_execution(0.0),
-        mem_access(nullptr), vertex_assigned(false) {}
+        num_parents(0), isolated(true), inductive(false), dynamic_mem_op(false),
+        array_label(""), time_before_execution(0.0), mem_access(nullptr),
+        vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -85,7 +85,9 @@ class ExecNode {
   void set_inductive(bool inductive) { this->inductive = inductive; }
   void set_dynamic_mem_op(bool dynamic) { dynamic_mem_op = dynamic; }
   void set_array_label(std::string label) { array_label = label; }
-  void set_mem_access(long long int vaddr, size_t size, long long int value) {
+  void set_mem_access(long long int vaddr,
+                      size_t size,
+                      long long int value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
     mem_access->size = size;

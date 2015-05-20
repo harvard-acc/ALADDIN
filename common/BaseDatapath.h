@@ -111,7 +111,7 @@ class BaseDatapath {
 
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
-  void insertNode(unsigned node_id, uint8_t microop);
+  ExecNode* insertNode(unsigned node_id, uint8_t microop);
   void setGlobalGraph();
   virtual void setGraphForStepping();
   virtual int rescheduleNodesWhenNeeded();
@@ -150,6 +150,19 @@ class BaseDatapath {
     return exec_nodes[node_id];
   }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
+  /*Set graph stats*/
+  void addArrayBaseAddress(std::string label, long long int addr) {
+    arrayBaseAddress[label] = addr;
+  }
+  /*Return true if the func_name is added;
+    Return false if the func_name is already added.*/
+  bool addFunctionName(std::string func_name) {
+    if (functionNames.find(func_name) == functionNames.end()) {
+      functionNames.insert(func_name);
+      return true;
+    }
+    return false;
+  }
 
   // Graph optimizations.
   void removeInductionDependence();
@@ -196,14 +209,6 @@ class BaseDatapath {
   // State initialization.
   virtual void initBaseAddress();
   void initMethodID(std::vector<int>& methodid);
-  void initDynamicMethods(std::unordered_set<std::string>& functions);
-  void initPrevBasicBlock(std::vector<std::string>& prevBasicBlock);
-  void initInstID();
-  void initAddress();
-  void initLineNum();
-  void initGetElementPtr(
-      std::unordered_map<unsigned, pair<std::string, long long int>>&
-          get_element_ptr);
 
   // Graph updates.
   void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
