@@ -1655,6 +1655,9 @@ void BaseDatapath::initBaseAddress() {
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         int edge_parid = edge_to_parid[*in_edge_it];
+        /* For Load, not mem dependence.*/
+        /* For GEP, not the dependence that is caused by index */
+        /* For store, not the dependence caused by value or mem dependence */
         if ((node_microop == LLVM_IR_Load && edge_parid != 1) ||
             (node_microop == LLVM_IR_GetElementPtr && edge_parid != 1) ||
             (node_microop == LLVM_IR_Store && edge_parid != 2))
@@ -1663,7 +1666,8 @@ void BaseDatapath::initBaseAddress() {
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
         int parent_microop = exec_nodes[parent_id]->get_microop();
         if (parent_microop == LLVM_IR_GetElementPtr ||
-            parent_microop == LLVM_IR_Load) {
+            parent_microop == LLVM_IR_Load ||
+            parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
           std::string label = getBaseAddressLabel(parent_id);
           node->set_array_label(label);
