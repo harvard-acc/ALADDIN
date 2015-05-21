@@ -72,13 +72,14 @@ void DDDG::parse_instruction_line(std::string line) {
         auto func_it = function_counter.find(curr_static_function);
         assert(func_it != function_counter.end());
         func_invocation_count = ++func_it->second;
+        ostringstream oss;
+        oss << curr_static_function << "-" << func_invocation_count;
+        curr_dynamic_function = oss.str();
+        active_method.push(curr_dynamic_function);
       } else {
         func_invocation_count = prev_counts;
+        curr_dynamic_function = active_method.top();
       }
-      ostringstream oss;
-      oss << curr_static_function << "-" << func_invocation_count;
-      curr_dynamic_function = oss.str();
-      active_method.push(curr_dynamic_function);
       curr_func_found = true;
     }
     if (microop == LLVM_IR_Ret)
