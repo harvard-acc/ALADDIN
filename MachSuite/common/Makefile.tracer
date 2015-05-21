@@ -42,8 +42,9 @@ $(EXEC)-instrumented: full.s
 
 %-opt.llvm: %.c
 #	mkdir -p $(COMMON_TEMP_DIR)
-	clang -static -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops \
-        -fno-inline -emit-llvm \
+	echo $(WORKLOAD)
+	clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops \
+        -fno-inline -fno-builtin -emit-llvm \
         -I$(ALADDIN_HOME) \
         -D$(MODE) \
         $(BMARK_SPECIFIC_CFLAGS) \
@@ -54,7 +55,7 @@ clean:
 	rm -rf $(COMMON_TEMP_DIR)
 	rm -f *.llvm
 	rm -f *.o
-	rm -f dynamic_trace
+	rm -f dynamic_trace.gz
 	rm -f static_trace
 	rm -f *-instrumented
 	rm -f full.s
