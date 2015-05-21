@@ -73,7 +73,7 @@ void BaseDatapath::memoryAmbiguation() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
-    if (!node->is_memory_op())
+    if (!node->is_memory_op() || !node->has_vertex())
       continue;
     in_edge_iter in_edge_it, in_edge_end;
     for (tie(in_edge_it, in_edge_end) = in_edges(node->get_vertex(), graph_);
@@ -143,6 +143,7 @@ void BaseDatapath::removePhiNodes() {
       ExecNode* parent_node = getNodeFromVertex(parent_vertex);
       while (parent_node->get_microop() == LLVM_IR_PHI) {
         checked_phi_nodes.insert(parent_node);
+        assert(parent_node->has_vertex());
         Vertex parent_vertex = parent_node->get_vertex();
         if (boost::in_degree(parent_vertex, graph_) == 0)
           break;
@@ -393,6 +394,7 @@ void BaseDatapath::loopPipelining() {
       if (!doesEdgeExist(prev_first_n, first_node))
         to_add_edges.push_back({ prev_first_n, first_node, CONTROL_EDGE });
       // adding dependence between first_id and prev_branch's children
+      assert(prev_branch_n->has_vertex());
       out_edge_iter out_edge_it, out_edge_end;
       for (tie(out_edge_it, out_edge_end) =
                out_edges(prev_branch_n->get_vertex(), graph_);
@@ -408,6 +410,7 @@ void BaseDatapath::loopPipelining() {
       }
     }
     // update first_id's parents, dependence become strict control dependence
+    assert(first_node->has_vertex());
     in_edge_iter in_edge_it, in_edge_end;
     for (tie(in_edge_it, in_edge_end) =
              in_edges(first_node->get_vertex(), graph_);
@@ -422,6 +425,7 @@ void BaseDatapath::loopPipelining() {
       to_add_edges.push_back({ parent_node, first_node, CONTROL_EDGE });
     }
     // remove control dependence between br node to its children
+    assert(br_node->has_vertex());
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) =
              out_edges(br_node->get_vertex(), graph_);
@@ -619,6 +623,7 @@ void BaseDatapath::removeSharedLoads() {
                ++out_edge_it) {
             Edge curr_edge = *out_edge_it;
             Vertex child_vertex = target(curr_edge, graph_);
+            assert(prev_load->has_vertex());
             Vertex prev_load_vertex = prev_load->get_vertex();
             if (!doesEdgeExistVertex(prev_load_vertex, child_vertex)) {
               ExecNode* child_node = getNodeFromVertex(child_vertex);
@@ -1489,6 +1494,8 @@ void BaseDatapath::setGraphForStepping() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
+    if (!node->has_vertex())
+      continue;
     Vertex node_vertex = node->get_vertex();
     if (boost::degree(node_vertex, graph_) != 0 || node->is_dma_op()) {
       node->set_num_parents(boost::in_degree(node_vertex, graph_));
