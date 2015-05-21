@@ -56,3 +56,20 @@ SCENARIO("Test DDDG Generation w/ Pp_scan", "[pp_scan]") {
     }
   }
 }
+SCENARIO("Test DDDG Generation w/ aes", "[aes]") {
+  GIVEN("Test MachSuite aes-aes") {
+    std::string bench("outputs/aes-aes");
+    std::string trace_file("inputs/aes-aes-trace.gz");
+    std::string config_file("inputs/config-aes-aes");
+
+    ScratchpadDatapath* acc;
+    Scratchpad* spad;
+    WHEN("DDDG is generated.") {
+      acc = new ScratchpadDatapath(bench, trace_file, config_file);
+      THEN("The Graph Size should match expectations.") {
+        REQUIRE(acc->getNumOfNodes() == 14820);
+        REQUIRE(acc->getNumOfEdges() == 21375);
+      }
+    }
+  }
+}

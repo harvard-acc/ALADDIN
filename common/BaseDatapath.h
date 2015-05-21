@@ -152,6 +152,9 @@ class BaseDatapath {
     unsigned node_id = vertexToName[vertex];
     return exec_nodes[node_id];
   }
+  ExecNode* getNodeFromNodeId(unsigned node_id) {
+    return exec_nodes[node_id];
+  }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
