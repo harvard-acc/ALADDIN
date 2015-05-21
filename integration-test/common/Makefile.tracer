@@ -44,7 +44,7 @@ $(COMMON_TEMP_DIR)/$(EXEC)-instrumented: $(COMMON_TEMP_DIR)/full.s
 $(COMMON_TEMP_DIR)/%-opt.llvm: %.cpp
 	mkdir -p $(COMMON_TEMP_DIR)
 	clang -static -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops \
-        -fno-inline -emit-llvm \
+        -fno-inline -fno-builtin -emit-llvm \
         -I$(ALADDIN_HOME)/gem5 \
         -D$(MODE) \
         $(BMARK_SPECIFIC_CFLAGS) \
@@ -55,7 +55,7 @@ clean:
 	rm -rf $(COMMON_TEMP_DIR)
 	rm -f *.llvm
 	rm -f *.o
-	rm -f dynamic_trace
+	rm -f dynamic_trace.gz
 	rm -f static_trace
 	rm -f *-instrumented
 	rm -f full.s
