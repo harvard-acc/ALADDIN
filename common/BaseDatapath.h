@@ -55,6 +55,7 @@ struct partitionEntry {
   unsigned array_size;  // num of bytes
   unsigned wordsize;    // in bytes
   unsigned part_factor;
+  long long int base_addr;
 };
 struct cacheEntry {
   std::string type;
@@ -139,7 +140,7 @@ class BaseDatapath {
     return exec_nodes[node_id]->get_array_label();
   }
   long long int getBaseAddress(std::string label) {
-    return arrayBaseAddress[label];
+    return partition_config[label].base_addr;
   }
   bool doesEdgeExist(ExecNode* from, ExecNode* to) {
     if (from != nullptr && to != nullptr)
@@ -160,7 +161,9 @@ class BaseDatapath {
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
-    arrayBaseAddress[label] = addr;
+    auto part_it = partition_config.find(label);
+    if (part_it != partition_config.end());
+      part_it->second.base_addr = addr;
   }
   /*Return true if the func_name is added;
     Return false if the func_name is already added.*/
@@ -347,7 +350,6 @@ class BaseDatapath {
   std::map<unsigned int, ExecNode*> exec_nodes;
 
   std::vector<regEntry> regStats;
-  std::unordered_map<std::string, long long int> arrayBaseAddress;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;
   // Scheduling.

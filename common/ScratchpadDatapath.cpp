@@ -76,12 +76,12 @@ void ScratchpadDatapath::completePartition() {
   std::cerr << "-------------------------------" << std::endl;
 
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
-    std::string base_addr = it->first;
+    std::string array_label = it->first;
     unsigned p_factor = it->second.part_factor;
     /*Complete partition if p_factor is zero*/
     if (p_factor == 0) {
       unsigned size = it->second.array_size;
-      registers.createRegister(base_addr, size, cycleTime);
+      registers.createRegister(array_label, size, cycleTime);
     }
   }
 }
@@ -102,7 +102,7 @@ void ScratchpadDatapath::scratchpadPartition() {
 
   // set scratchpad
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
-    std::string base_addr = it->first;
+    std::string array_label = it->first;
     unsigned size = it->second.array_size;  // num of bytes
     unsigned p_factor = it->second.part_factor;
     unsigned wordsize = it->second.wordsize;  // in bytes
@@ -110,7 +110,7 @@ void ScratchpadDatapath::scratchpadPartition() {
 
     for (unsigned i = 0; i < p_factor; i++) {
       ostringstream oss;
-      oss << base_addr << "-" << i;
+      oss << array_label << "-" << i;
       scratchpad->setScratchpad(oss.str(), per_size, wordsize);
     }
   }
@@ -123,7 +123,7 @@ void ScratchpadDatapath::scratchpadPartition() {
     if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
     std::string base_label = node->get_array_label();
-    long long int base_addr = arrayBaseAddress[base_label];
+    long long int base_addr = getBaseAddress(base_label);
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
