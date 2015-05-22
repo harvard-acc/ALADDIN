@@ -49,18 +49,13 @@ void ScratchpadDatapath::globalOptimizationPass() {
  */
 void ScratchpadDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
-  std::unordered_map<std::string, unsigned> comp_part_config;
-  readCompletePartitionConfig(comp_part_config);
-  std::unordered_map<std::string, partitionEntry> part_config;
-  readPartitionConfig(part_config);
 
   for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
     ExecNode* node = it->second;
     if (!node->is_memory_op())
       continue;
     std::string part_name = node->get_array_label();
-    if (part_config.find(part_name) == part_config.end() &&
-        comp_part_config.find(part_name) == comp_part_config.end()) {
+    if (partition_config.find(part_name) == partition_config.end()) {
       std::cerr << "Unknown partition : " << part_name
                 << "@inst: " << node->get_node_id() << std::endl;
       exit(-1);
@@ -72,19 +67,21 @@ void ScratchpadDatapath::initBaseAddress() {
  * Modify scratchpad
  */
 void ScratchpadDatapath::completePartition() {
-  std::unordered_map<std::string, unsigned> comp_part_config;
-  if (!readCompletePartitionConfig(comp_part_config))
+  if (!partition_config.size())
     return;
 
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "        Mem to Reg Conv        " << std::endl;
   std::cerr << "-------------------------------" << std::endl;
 
-  for (auto it = comp_part_config.begin(); it != comp_part_config.end(); ++it) {
+  for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
     std::string base_addr = it->first;
-    unsigned size = it->second;
-
-    registers.createRegister(base_addr, size, cycleTime);
+    unsigned p_factor = it->second.part_factor;
+    /*Complete partition if p_factor is zero*/
+    if (p_factor == 0) {
+      unsigned size = it->second.array_size;
+      registers.createRegister(base_addr, size, cycleTime);
+    }
   }
 }
 
@@ -94,8 +91,7 @@ void ScratchpadDatapath::completePartition() {
 void ScratchpadDatapath::scratchpadPartition() {
   // read the partition config file to get the address range
   // <base addr, <type, part_factor> >
-  std::unordered_map<std::string, partitionEntry> part_config;
-  if (!readPartitionConfig(part_config) || part_config.empty())
+  if (!partition_config.size())
     return;
 
   std::cerr << "-------------------------------" << std::endl;
@@ -104,7 +100,7 @@ void ScratchpadDatapath::scratchpadPartition() {
   std::string bn(benchName);
 
   // set scratchpad
-  for (auto it = part_config.begin(); it != part_config.end(); ++it) {
+  for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
     std::string base_addr = it->first;
     unsigned size = it->second.array_size;  // num of bytes
     unsigned p_factor = it->second.part_factor;
@@ -128,26 +124,30 @@ void ScratchpadDatapath::scratchpadPartition() {
     std::string base_label = node->get_array_label();
     long long int base_addr = arrayBaseAddress[base_label];
 
-    auto part_it = part_config.find(base_label);
-    if (part_it != part_config.end()) {
+    auto part_it = partition_config.find(base_label);
+    if (part_it != partition_config.end()) {
       std::string p_type = part_it->second.type;
+      unsigned p_factor = part_it->second.part_factor;
+      /* continue if it's complete partition*/
+      if (p_factor == 0)
+        continue;
       assert((!p_type.compare("block")) || (!p_type.compare("cyclic")));
 
       unsigned num_of_elements = part_it->second.array_size;
-      unsigned p_factor = part_it->second.part_factor;
-      assert(p_factor != 0 && "Partition factor cannot be zero.");
       MemAccess* mem_access = node->get_mem_access();
       long long int abs_addr = mem_access->vaddr;
       unsigned data_size = (mem_access->size) / 8;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
-      if (!p_type.compare("block")) { // block partition
+      if (!p_type.compare("block")) {
+        /* block partition */
         ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << base_label << "-"
             << (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
         node->set_array_label(oss.str());
-      } else {  // cyclic partition
+      } else {
+        /* cyclic partition */
         ostringstream oss;
         oss << base_label << "-" << (rel_addr) % p_factor;
         node->set_array_label(oss.str());
@@ -288,6 +288,29 @@ void ScratchpadDatapath::dumpStats() {
   BaseDatapath::dumpStats();
   BaseDatapath::writePerCycleActivity();
 }
+
+#ifdef USE_DB
+int ScratchpadDatapath::writeConfiguration(sql::Connection* con) {
+  int unrolling_factor, partition_factor;
+  bool pipelining_factor;
+  getCommonConfigParameters(unrolling_factor, pipelining_factor, partition_factor);
+
+  sql::Statement* stmt = con->createStatement();
+  stringstream query;
+  query << "insert into configs (id, memory_type, trace_file, "
+           "config_file, pipelining, unrolling, partitioning) values (";
+  query << "NULL"
+        << ",\"spad\""
+        << ","
+        << "\"" << trace_file << "\""
+        << ",\"" << config_file << "\"," << pipelining_factor << ","
+        << unrolling_factor << "," << partition_factor << ")";
+  stmt->execute(query.str());
+  delete stmt;
+  // Get the newly added config_id.
+  return getLastInsertId(con);
+}
+#endif
 
 double ScratchpadDatapath::getTotalMemArea() {
   return scratchpad->getTotalArea();
