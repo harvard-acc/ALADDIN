@@ -116,20 +116,13 @@ void HybridDatapath::globalOptimizationPass() {
 
 void HybridDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
-  std::unordered_map<std::string, unsigned> comp_part_config;
-  readCompletePartitionConfig(comp_part_config);
-  std::unordered_map<std::string, partitionEntry> part_config;
-  readPartitionConfig(part_config);
-  std::unordered_map<std::string, cacheEntry> cache_config;
-  readCacheConfig(cache_config);
 
   for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
     ExecNode* node = it->second;
     if (!node->is_memory_op())
       continue;
     std::string part_name = node->get_array_label();
-    if (part_config.find(part_name) == part_config.end() &&
-        comp_part_config.find(part_name) == comp_part_config.end() &&
+    if (partition_config.find(part_name) == partition_config.end() &&
         cache_config.find(part_name) == cache_config.end()) {
       std::cerr << "Unknown partition : " << part_name
                 << "@inst: " << node->get_node_id() << std::endl;

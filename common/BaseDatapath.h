@@ -206,15 +206,6 @@ class BaseDatapath {
 
   // Configuration parsing and handling.
   void parse_config(std::string bench, std::string config_file);
-  bool readPipeliningConfig();
-  bool readUnrollingConfig(std::unordered_map<int, int>& unrolling_config);
-  bool readFlattenConfig(std::unordered_set<int>& flatten_config);
-  bool readPartitionConfig(
-      std::unordered_map<std::string, partitionEntry>& partition_config);
-  bool readCacheConfig(
-      std::unordered_map<std::string, cacheEntry>& cache_config);
-  bool readCompletePartitionConfig(
-      std::unordered_map<std::string, unsigned>& config);
 
   // State initialization.
   virtual void initBaseAddress();
@@ -304,7 +295,7 @@ class BaseDatapath {
 
   /* Extracts the base Aladdin configuration parameters from the config file. */
   void getCommonConfigParameters(int& unrolling_factor,
-                                 bool& pipelining,
+                                 bool& pipelining_factor,
                                  int& partition_factor);
 
   void writeSummaryToDatabase(summary_data_t& summary);
@@ -323,6 +314,17 @@ class BaseDatapath {
   float cycleTime;
   std::string trace_file;
   std::string config_file;
+
+  bool pipelining;
+  /* Unrolling and flattening share unrolling_config;
+   * flatten if factor is zero.
+   * it maps static-method-linenumber to unrolling factor. */
+  std::unordered_map<std::string, int> unrolling_config;
+  /* Complete partition and partition share partition_config:
+   * complete partition if partiion_factor is zero. */
+  std::unordered_map<std::string, partitionEntry> partition_config;
+  /* cache config*/
+  std::unordered_map<std::string, cacheEntry> cache_config;
   /* True if the summarized results should be stored to a database, false
    * otherwise */
   bool use_db;

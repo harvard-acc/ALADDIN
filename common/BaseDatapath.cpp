@@ -10,6 +10,8 @@
 BaseDatapath::BaseDatapath(std::string bench,
                            std::string trace_file,
                            std::string config_file) {
+  parse_config(bench, config_file);
+
   benchName = (char*)bench.c_str();
   this->trace_file = trace_file;
   this->config_file = config_file;
@@ -33,8 +35,6 @@ BaseDatapath::BaseDatapath(std::string bench,
     exec_nodes[get(boost::vertex_index, graph_, v)]->set_vertex(v);
   }
   vertexToName = get(boost::vertex_index, graph_);
-
-  parse_config(bench, config_file);
 
   num_cycles = 0;
 }
@@ -188,8 +188,7 @@ void BaseDatapath::removePhiNodes() {
  * Modify: graph_
  */
 void BaseDatapath::loopFlatten() {
-  std::unordered_set<int> flatten_config;
-  if (!readFlattenConfig(flatten_config))
+  if (!unrolling_config.size())
     return;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "         Loop Flatten          " << std::endl;
@@ -199,7 +198,11 @@ void BaseDatapath::loopFlatten() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
-    if (flatten_config.find(node->get_line_num()) == flatten_config.end())
+    char unrolling_id[256];
+    sprintf(unrolling_id, "%s-%d", node->get_static_method().c_str(),
+                                   node->get_line_num());
+    auto config_it = unrolling_config.find(unrolling_id);
+    if (config_it == unrolling_config.end() || config_it->second != 0)
       continue;
     if (node->is_compute_op())
       node->set_microop(LLVM_IR_Move);
@@ -312,13 +315,12 @@ void BaseDatapath::dumpStats() {
 }
 
 void BaseDatapath::loopPipelining() {
-  if (!readPipeliningConfig()) {
+  if (!pipelining) {
     std::cerr << "Loop Pipelining is not ON." << std::endl;
     return;
   }
 
-  std::unordered_map<int, int> unrolling_config;
-  if (!readUnrollingConfig(unrolling_config)) {
+  if (!unrolling_config.size()) {
     std::cerr << "Loop Unrolling is not defined. " << std::endl;
     std::cerr << "Loop pipelining is only applied to unrolled loops."
               << std::endl;
@@ -451,8 +453,6 @@ void BaseDatapath::loopPipelining() {
  * Write: loop_bound
  */
 void BaseDatapath::loopUnrolling() {
-  std::unordered_map<int, int> unrolling_config;
-  readUnrollingConfig(unrolling_config);
 
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "         Loop Unrolling        " << std::endl;
@@ -494,9 +494,12 @@ void BaseDatapath::loopUnrolling() {
         loopBound.push_back(node_id);
         prev_branch = node;
       }
-
-      auto unroll_it = unrolling_config.find(node->get_line_num());
-      if (unroll_it == unrolling_config.end()) {  // not unrolling branch
+      char unrolling_id[256];
+      sprintf(unrolling_id, "%s-%d", node->get_static_method().c_str(),
+                                     node->get_line_num());
+      auto unroll_it = unrolling_config.find(unrolling_id);
+      if (unroll_it == unrolling_config.end() || unroll_it->second == 0) {
+        // not unrolling branch
         if (!node->is_call_op()) {
           nodes_between.push_back(node);
           continue;
@@ -571,8 +574,7 @@ void BaseDatapath::loopUnrolling() {
  */
 void BaseDatapath::removeSharedLoads() {
 
-  std::unordered_set<int> flatten_config;
-  if (!readFlattenConfig(flatten_config) && loopBound.size() <= 2)
+  if (!unrolling_config.size()  && loopBound.size() <= 2)
     return;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "          Load Buffer          " << std::endl;
@@ -754,8 +756,7 @@ void BaseDatapath::storeBuffer() {
  * Modify: graph_
  */
 void BaseDatapath::removeRepeatedStores() {
-  std::unordered_set<int> flatten_config;
-  if (!readFlattenConfig(flatten_config) && loopBound.size() <= 2)
+  if (!unrolling_config.size() && loopBound.size() <= 2)
     return;
 
   std::cerr << "-------------------------------" << std::endl;
@@ -1667,7 +1668,7 @@ void BaseDatapath::initBaseAddress() {
     int node_microop = node->get_microop();
     // iterate its parents, until it finds the root parent
     while (true) {
-      bool found_parent = 0;
+      bool found_parent = false;
       in_edge_iter in_edge_it, in_edge_end;
 
       for (tie(in_edge_it, in_edge_end) = in_edges(curr_vertex, graph_);
@@ -1692,7 +1693,7 @@ void BaseDatapath::initBaseAddress() {
           node->set_array_label(label);
           curr_vertex = source(*in_edge_it, graph_);
           node_microop = parent_microop;
-          found_parent = 1;
+          found_parent = true;
           break;
         } else if (parent_microop == LLVM_IR_Alloca) {
           std::string label = getBaseAddressLabel(parent_id);
@@ -1743,161 +1744,12 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
 }
 
 // readConfigs
-bool BaseDatapath::readPipeliningConfig() {
-  ifstream config_file;
-  std::string file_name(benchName);
-  file_name += "_pipelining_config";
-  config_file.open(file_name.c_str());
-  if (!config_file.is_open())
-    return false;
-  std::string wholeline;
-  getline(config_file, wholeline);
-  if (wholeline.size() == 0)
-    return false;
-  bool flag = atoi(wholeline.c_str());
-  return flag;
-}
-
-bool BaseDatapath::readUnrollingConfig(
-    std::unordered_map<int, int>& unrolling_config) {
-  ifstream config_file;
-  std::string file_name(benchName);
-  file_name += "_unrolling_config";
-  config_file.open(file_name.c_str());
-  if (!config_file.is_open())
-    return false;
-  while (!config_file.eof()) {
-    std::string wholeline;
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    char func[256];
-    int line_num, factor;
-    sscanf(wholeline.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
-    unrolling_config[line_num] = factor;
-  }
-  config_file.close();
-  return true;
-}
-
-bool BaseDatapath::readFlattenConfig(std::unordered_set<int>& flatten_config) {
-  ifstream config_file;
-  std::string file_name(benchName);
-  file_name += "_flatten_config";
-  config_file.open(file_name.c_str());
-  if (!config_file.is_open())
-    return false;
-  while (!config_file.eof()) {
-    std::string wholeline;
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    char func[256];
-    int line_num;
-    sscanf(wholeline.c_str(), "%[^,],%d\n", func, &line_num);
-    flatten_config.insert(line_num);
-  }
-  config_file.close();
-  return true;
-}
-
-bool BaseDatapath::readCompletePartitionConfig(
-    std::unordered_map<std::string, unsigned>& config) {
-  std::string comp_partition_file(benchName);
-  comp_partition_file += "_complete_partition_config";
-
-  if (!fileExists(comp_partition_file))
-    return false;
-
-  ifstream config_file;
-  config_file.open(comp_partition_file);
-  std::string wholeline;
-  while (!config_file.eof()) {
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    unsigned size;
-    char type[256];
-    char base_addr[256];
-    sscanf(wholeline.c_str(), "%[^,],%[^,],%d\n", type, base_addr, &size);
-    config[base_addr] = size;
-  }
-  config_file.close();
-  return true;
-}
-
-bool BaseDatapath::readPartitionConfig(
-    std::unordered_map<std::string, partitionEntry>& partition_config) {
-  ifstream config_file;
-  std::string file_name(benchName);
-  file_name += "_partition_config";
-  if (!fileExists(file_name))
-    return false;
-
-  config_file.open(file_name.c_str());
-  std::string wholeline;
-  while (!config_file.eof()) {
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    unsigned size = 0, p_factor = 0, wordsize = 0;
-    char type[256];
-    char base_addr[256];
-    sscanf(wholeline.c_str(),
-           "%[^,],%[^,],%d,%d,%d\n",
-           type,
-           base_addr,
-           &size,
-           &wordsize,
-           &p_factor);
-    std::string p_type(type);
-    partition_config[base_addr] = { p_type, size, wordsize, p_factor };
-  }
-  config_file.close();
-  return true;
-}
-
-bool BaseDatapath::readCacheConfig(
-    std::unordered_map<std::string, cacheEntry>& cache_config) {
-  ifstream config_file;
-  std::string file_name(benchName);
-  file_name += "_cache_config";
-  if (!fileExists(file_name))
-    return false;
-
-  config_file.open(file_name.c_str());
-  std::string wholeline;
-  while (!config_file.eof()) {
-    getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
-    unsigned size, wordsize;
-    char type[256];
-    char base_addr[256];
-    sscanf(wholeline.c_str(),
-           "%[^,],%d,%d\n",
-           base_addr,
-           &size,
-           &wordsize);
-    std::string p_type(type);
-    cache_config[base_addr] = { p_type, size, wordsize };
-  }
-  config_file.close();
-  return true;
-}
-
 void BaseDatapath::parse_config(std::string bench,
                                 std::string config_file_name) {
   ifstream config_file;
   config_file.open(config_file_name);
   std::string wholeline;
-
-  std::vector<std::string> flatten_config;
-  std::vector<std::string> unrolling_config;
-  std::vector<std::string> partition_config;
-  std::vector<std::string> cache_config;
-  std::vector<std::string> comp_partition_config;
-  std::vector<std::string> pipelining_config;
+  pipelining = false;
 
   while (!config_file.eof()) {
     wholeline.clear();
@@ -1911,18 +1763,47 @@ void BaseDatapath::parse_config(std::string bench,
     type = wholeline.substr(0, pos_end_tag);
     rest_line = wholeline.substr(pos_end_tag + 1);
     if (!type.compare("flatten")) {
-      flatten_config.push_back(rest_line);
+      char func[256], unrolling_id[256];
+      int line_num;
+      sscanf(rest_line.c_str(), "%[^,],%d\n", func, &line_num);
+      sprintf(unrolling_id, "%s-%d", func, line_num);
+      unrolling_config[unrolling_id] = 0;
     } else if (!type.compare("unrolling")) {
-      unrolling_config.push_back(rest_line);
+      char func[256], unrolling_id[256];
+      int line_num, factor;
+      sscanf(rest_line.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
+      sprintf(unrolling_id, "%s-%d", func, line_num);
+      unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
-      if (wholeline.find("complete") == std::string::npos)
-        partition_config.push_back(rest_line);
-      else
-        comp_partition_config.push_back(rest_line);
+      unsigned size=0, p_factor=0, wordsize=0;
+      char type[256];
+      char base_addr[256];
+      if (wholeline.find("complete") == std::string::npos){
+        sscanf(rest_line.c_str(),
+               "%[^,],%[^,],%d,%d,%d\n",
+               type,
+               base_addr,
+               &size,
+               &wordsize,
+               &p_factor);
+      } else {
+        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", type, base_addr, &size);
+      }
+      std::string p_type(type);
+      partition_config[base_addr] = { p_type, size, wordsize, p_factor };
     } else if (!type.compare("cache")) {
-      cache_config.push_back(rest_line);
+      unsigned size, wordsize;
+      char type[256];
+      char base_addr[256];
+      sscanf(rest_line.c_str(),
+             "%[^,],%d,%d\n",
+             base_addr,
+             &size,
+             &wordsize);
+      std::string p_type(type);
+      cache_config[base_addr] = { p_type, size, wordsize };
     } else if (!type.compare("pipelining")) {
-      pipelining_config.push_back(rest_line);
+      pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("cycle_time")) {
       // Update the global cycle time parameter.
       cycleTime = stof(rest_line);
@@ -1932,64 +1813,6 @@ void BaseDatapath::parse_config(std::string bench,
     }
   }
   config_file.close();
-  if (flatten_config.size() != 0) {
-    string file_name(bench);
-    file_name += "_flatten_config";
-    ofstream output;
-    output.open(file_name);
-    for (unsigned i = 0; i < flatten_config.size(); ++i)
-      output << flatten_config.at(i) << endl;
-    output.close();
-  }
-  if (unrolling_config.size() != 0) {
-    string file_name(bench);
-    file_name += "_unrolling_config";
-    ofstream output;
-    output.open(file_name);
-    for (unsigned i = 0; i < unrolling_config.size(); ++i)
-      output << unrolling_config.at(i) << endl;
-    output.close();
-  }
-  if (pipelining_config.size() != 0) {
-    string pipelining(bench);
-    pipelining += "_pipelining_config";
-
-    ofstream pipe_config;
-    pipe_config.open(pipelining);
-    for (unsigned i = 0; i < pipelining_config.size(); ++i)
-      pipe_config << pipelining_config.at(i) << endl;
-    pipe_config.close();
-  }
-  if (partition_config.size() != 0) {
-    string partition(bench);
-    partition += "_partition_config";
-
-    ofstream part_config;
-    part_config.open(partition);
-    for (unsigned i = 0; i < partition_config.size(); ++i)
-      part_config << partition_config.at(i) << endl;
-    part_config.close();
-  }
-  if (cache_config.size() != 0) {
-    string cache_fname(bench);
-    cache_fname += "_cache_config";
-
-    ofstream config;
-    config.open(cache_fname);
-    for (unsigned i = 0; i < cache_config.size(); ++i)
-      config << cache_config.at(i) << endl;
-    config.close();
-  }
-  if (comp_partition_config.size() != 0) {
-    string complete_partition(bench);
-    complete_partition += "_complete_partition_config";
-
-    ofstream comp_config;
-    comp_config.open(complete_partition);
-    for (unsigned i = 0; i < comp_partition_config.size(); ++i)
-      comp_config << comp_partition_config.at(i) << endl;
-    comp_config.close();
-  }
 }
 
 /* Tokenizes an input string and returns a vector. */
@@ -2011,19 +1834,15 @@ void BaseDatapath::setExperimentParameters(std::string experiment_name) {
 }
 
 void BaseDatapath::getCommonConfigParameters(int& unrolling_factor,
-                                             bool& pipelining,
+                                             bool& pipelining_factor,
                                              int& partition_factor) {
   // First, collect pipelining, unrolling, and partitioning parameters. We'll
   // assume that all parameters are uniform for all loops, and we'll insert a
   // path to the actual config file if we need to look up the actual
   // configurations.
-  std::unordered_map<int, int> unrolling_config;
-  BaseDatapath::readUnrollingConfig(unrolling_config);
   unrolling_factor =
       unrolling_config.empty() ? 1 : unrolling_config.begin()->second;
-  pipelining = readPipeliningConfig();
-  std::unordered_map<std::string, partitionEntry> partition_config;
-  BaseDatapath::readPartitionConfig(partition_config);
+  pipelining_factor = pipelining;
   partition_factor = partition_config.empty()
                          ? 1
                          : partition_config.begin()->second.part_factor;
