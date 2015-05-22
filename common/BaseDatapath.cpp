@@ -1177,13 +1177,13 @@ void BaseDatapath::updatePerCycleActivity(
       bit_activity[func_id].at(node_level) += 1;
       num_bits_so_far += 1;
     } else if (is_load_op(node_microop)) {
-      std::string base_addr = node->get_array_label();
-      if (ld_activity.find(base_addr) != ld_activity.end())
-        ld_activity[base_addr].at(node_level) += 1;
+      std::string array_label = node->get_array_label();
+      if (ld_activity.find(array_label) != ld_activity.end())
+        ld_activity[array_label].at(node_level) += 1;
     } else if (is_store_op(node_microop)) {
-      std::string base_addr = node->get_array_label();
-      if (st_activity.find(base_addr) != st_activity.end())
-        st_activity[base_addr].at(node_level) += 1;
+      std::string array_label = node->get_array_label();
+      if (st_activity.find(array_label) != st_activity.end())
+        st_activity[array_label].at(node_level) += 1;
     }
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
@@ -1440,7 +1440,7 @@ void BaseDatapath::writeBaseAddress() {
              "node:%u,part:%s,base:%lld\n",
              it->first,
              partitioned_label.c_str(),
-             arrayBaseAddress[original_label]);
+             getBaseAddress(original_label));
   }
   gzclose(gzip_file);
 }
@@ -1765,31 +1765,32 @@ void BaseDatapath::parse_config(std::string bench,
     } else if (!type.compare("partition")) {
       unsigned size=0, p_factor=0, wordsize=0;
       char type[256];
-      char base_addr[256];
+      char array_label[256];
       if (wholeline.find("complete") == std::string::npos){
         sscanf(rest_line.c_str(),
                "%[^,],%[^,],%d,%d,%d\n",
                type,
-               base_addr,
+               array_label,
                &size,
                &wordsize,
                &p_factor);
       } else {
-        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", type, base_addr, &size);
+        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", type, array_label, &size);
       }
       std::string p_type(type);
-      partition_config[base_addr] = { p_type, size, wordsize, p_factor };
+      long long int addr = 0;
+      partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
     } else if (!type.compare("cache")) {
       unsigned size, wordsize;
       char type[256];
-      char base_addr[256];
+      char array_label[256];
       sscanf(rest_line.c_str(),
              "%[^,],%d,%d\n",
-             base_addr,
+             array_label,
              &size,
              &wordsize);
       std::string p_type(type);
-      cache_config[base_addr] = { p_type, size, wordsize };
+      cache_config[array_label] = { p_type, size, wordsize };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("cycle_time")) {
