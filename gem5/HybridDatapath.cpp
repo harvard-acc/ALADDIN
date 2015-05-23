@@ -76,7 +76,7 @@ HybridDatapath::HybridDatapath(
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
   setGlobalGraph();
-  globalOptimizationPass();
+  ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
   // TODO: Remove this feature.
@@ -87,53 +87,6 @@ HybridDatapath::HybridDatapath(
 }
 
 HybridDatapath::~HybridDatapath() {}
-
-/* TODO: This is copied verbatim from ScratchpadDatapath. This is so that the
- * right initBaseAddress() function is called. I will come up with a better way
- * to do this that doesn't require so much redundant code later.
- */
-void HybridDatapath::globalOptimizationPass() {
-  // Node removals must come first.
-  removePhiNodes();
-  /* memoryAmbiguation() should execute after removeInductionDependence()
-   * because it needs induction_nodes. */
-  removeInductionDependence();
-  memoryAmbiguation();
-  // Base address must be initialized next.
-  initBaseAddress();
-  completePartition();
-  scratchpadPartition();
-  loopFlatten();
-  loopUnrolling();
-  removeSharedLoads();
-  storeBuffer();
-  removeRepeatedStores();
-  treeHeightReduction();
-  // Must do loop pipelining last; after all the data/control dependences are
-  // fixed
-  loopPipelining();
-}
-
-void HybridDatapath::initBaseAddress() {
-  BaseDatapath::initBaseAddress();
-
-  vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
-    if (boost::degree(*vi, graph_) == 0)
-      continue;
-    Vertex curr_vertex = *vi;
-    ExecNode* node = getNodeFromVertex(curr_vertex);
-    if (!node->is_memory_op())
-      continue;
-    std::string part_name = node->get_array_label();
-    if (partition_config.find(part_name) == partition_config.end() &&
-        cache_config.find(part_name) == cache_config.end()) {
-      std::cerr << "Unknown partition : " << part_name
-                << "@inst: " << node->get_node_id() << std::endl;
-      exit(-1);
-    }
-  }
-}
 
 BaseMasterPort&
 HybridDatapath::getMasterPort(const string &if_name, PortID idx)

@@ -81,9 +81,7 @@ void ScratchpadDatapath::completePartition() {
 
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
     std::string array_label = it->first;
-    unsigned p_factor = it->second.part_factor;
-    /*Complete partition if p_factor is zero*/
-    if (p_factor == 0) {
+    if (!array_label.compare("complete")) {
       unsigned size = it->second.array_size;
       registers.createRegister(array_label, size, cycleTime);
     }
@@ -104,12 +102,18 @@ void ScratchpadDatapath::scratchpadPartition() {
   std::cerr << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
+  bool spad_partition = false;
   // set scratchpad
-  for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
-    std::string array_label = it->first;
-    unsigned size = it->second.array_size;  // num of bytes
-    unsigned p_factor = it->second.part_factor;
-    unsigned wordsize = it->second.wordsize;  // in bytes
+  for (auto part_it = partition_config.begin();
+            part_it != partition_config.end(); ++part_it) {
+    std::string p_type = part_it->second.type;
+    if (!p_type.compare("complete") || !p_type.compare("cache"))
+      continue;
+    spad_partition = true;
+    std::string array_label = part_it->first;
+    unsigned size = part_it->second.array_size;  // num of bytes
+    unsigned p_factor = part_it->second.part_factor;
+    unsigned wordsize = part_it->second.wordsize;  // in bytes
     unsigned per_size = ceil(((float)size) / p_factor);
 
     for (unsigned i = 0; i < p_factor; i++) {
@@ -118,6 +122,8 @@ void ScratchpadDatapath::scratchpadPartition() {
       scratchpad->setScratchpad(oss.str(), per_size, wordsize);
     }
   }
+  if (!spad_partition)
+    return;
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
@@ -132,12 +138,12 @@ void ScratchpadDatapath::scratchpadPartition() {
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
       std::string p_type = part_it->second.type;
-      unsigned p_factor = part_it->second.part_factor;
-      /* continue if it's complete partition*/
-      if (p_factor == 0)
+      /* continue if it's complete partition or cache*/
+      if (!p_type.compare("complete") || !p_type.compare("cache"))
         continue;
       assert((!p_type.compare("block")) || (!p_type.compare("cyclic")));
 
+      unsigned p_factor = part_it->second.part_factor;
       unsigned num_of_elements = part_it->second.array_size;
       MemAccess* mem_access = node->get_mem_access();
       long long int abs_addr = mem_access->vaddr;

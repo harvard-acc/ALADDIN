@@ -56,10 +56,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     BaseMasterPort &getMasterPort(const std::string &if_name,
                                   PortID idx = InvalidPortID);
 
-    /* Custom global optimization pass.
-     */
-    void globalOptimizationPass();
-
     /* Wrapper function for the real step() function to match EventWrapper
      * interface.
      */
@@ -182,12 +178,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                            unsigned node_id,
                            long long int value);
     void completeCacheRequest(PacketPtr pkt);
-
-    /* Initializes base addresses for all memory operations (including cache
-     * accesses, which is what distinguishes this from its overriden method in
-     * ScratchpadDatapath.
-     */
-    virtual void initBaseAddress();
 
     /* This port has to accept snoops but it doesn't need to do anything. See
      * arch/arm/table_walker.hh

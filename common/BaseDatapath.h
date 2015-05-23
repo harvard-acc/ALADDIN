@@ -57,11 +57,6 @@ struct partitionEntry {
   unsigned part_factor;
   long long int base_addr;
 };
-struct cacheEntry {
-  std::string type;
-  unsigned array_size;  // num of bytes
-  unsigned wordsize;    // in bytes
-};
 struct regEntry {
   int size;
   int reads;
@@ -323,11 +318,8 @@ class BaseDatapath {
    * flatten if factor is zero.
    * it maps static-method-linenumber to unrolling factor. */
   std::unordered_map<std::string, int> unrolling_config;
-  /* Complete partition and partition share partition_config:
-   * complete partition if partiion_factor is zero. */
+  /* complete, block, cyclic, and cache partition share partition_config */
   std::unordered_map<std::string, partitionEntry> partition_config;
-  /* cache config*/
-  std::unordered_map<std::string, cacheEntry> cache_config;
   /* True if the summarized results should be stored to a database, false
    * otherwise */
   bool use_db;
