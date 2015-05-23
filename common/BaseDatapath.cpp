@@ -1781,15 +1781,15 @@ void BaseDatapath::parse_config(std::string bench,
       long long int addr = 0;
       partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
     } else if (!type.compare("cache")) {
-      unsigned size, wordsize;
+      unsigned size=0, p_factor=0, wordsize=0;
       char array_label[256];
       sscanf(rest_line.c_str(),
-             "%[^,],%d,%d\n",
+             "%[^,],%d\n",
              array_label,
-             &size,
-             &wordsize);
+             &size);
       std::string p_type(type);
-      cache_config[array_label] = { p_type, size, wordsize };
+      long long int addr = 0;
+      partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("cycle_time")) {
