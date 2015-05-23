@@ -117,8 +117,12 @@ void HybridDatapath::globalOptimizationPass() {
 void HybridDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
 
-  for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
-    ExecNode* node = it->second;
+  vertex_iter vi, vi_end;
+  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
+    if (boost::degree(*vi, graph_) == 0)
+      continue;
+    Vertex curr_vertex = *vi;
+    ExecNode* node = getNodeFromVertex(curr_vertex);
     if (!node->is_memory_op())
       continue;
     std::string part_name = node->get_array_label();
