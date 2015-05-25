@@ -4,7 +4,6 @@
 #include <string>
 
 #include "BaseDatapath.h"
-#include "DatabaseDeps.h"
 #include "ExecNode.h"
 #include "Scratchpad.h"
 
