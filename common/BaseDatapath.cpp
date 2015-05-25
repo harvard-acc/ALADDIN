@@ -1764,25 +1764,24 @@ void BaseDatapath::parse_config(std::string bench,
       unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
       unsigned size=0, p_factor=0, wordsize=0;
-      char type[256];
+      char part_type[256];
       char array_label[256];
       if (wholeline.find("complete") == std::string::npos){
         sscanf(rest_line.c_str(),
                "%[^,],%[^,],%d,%d,%d\n",
-               type,
+               part_type,
                array_label,
                &size,
                &wordsize,
                &p_factor);
       } else {
-        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", type, array_label, &size);
+        sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", part_type, array_label, &size);
       }
-      std::string p_type(type);
+      std::string p_type(part_type);
       long long int addr = 0;
       partition_config[array_label] = { p_type, size, wordsize, p_factor, addr };
     } else if (!type.compare("cache")) {
       unsigned size, wordsize;
-      char type[256];
       char array_label[256];
       sscanf(rest_line.c_str(),
              "%[^,],%d,%d\n",
