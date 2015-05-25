@@ -162,7 +162,7 @@ class BaseDatapath {
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
     auto part_it = partition_config.find(label);
-    if (part_it != partition_config.end());
+    if (part_it != partition_config.end())
       part_it->second.base_addr = addr;
   }
   /*Return true if the func_name is added;
