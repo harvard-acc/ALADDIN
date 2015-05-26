@@ -1,3 +1,8 @@
+Aladdin Public Release, v1.2.1
+05-26-2015
+*DDDG class refactoring. Removed unnecessary file I/Os.
+
+-------------------------------------------------------------------------------
 Aladdin Public Release, v1.2.0
 05-16-2015
 *Major refactoring datapath class. Thanks Sam for the hard work!
