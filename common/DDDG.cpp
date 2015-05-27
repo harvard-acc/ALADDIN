@@ -165,7 +165,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
-      curr_microop == LLVM_IR_GetElementPtr || is_dma_op(curr_microop)) {
+      curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op()) {
     parameter_value_per_inst.push_back((long long int)value);
     parameter_size_per_inst.push_back(size);
     parameter_label_per_inst.push_back(label);
@@ -248,7 +248,7 @@ void DDDG::parse_result(std::string line) {
   } else if (curr_microop == LLVM_IR_Load) {
     long long int mem_address = parameter_value_per_inst.back();
     curr_node->set_mem_access(mem_address, size, (long long int)value);
-  } else if (is_dma_op(curr_microop)) {
+  } else if (curr_node->is_dma_op()) {
     long long int mem_address = parameter_value_per_inst[1];
     unsigned mem_size = parameter_value_per_inst[2];
     curr_node->set_mem_access(mem_address, mem_size);
@@ -264,7 +264,7 @@ void DDDG::parse_forward(std::string line) {
   assert(is_reg);
 
   char unique_reg_id[256];
-  assert(is_call_op(curr_microop) || is_dma_op(curr_microop));
+  assert(curr_node->is_call_op() || curr_node->is_dma_op());
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
 
   auto reg_it = register_last_written.find(unique_reg_id);
