@@ -257,18 +257,18 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   } else {
     latency_after_current_node += num_cycles * cycleTime;
   }
-  Vertex v = node->get_vertex();
+  Vertex curr_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (tie(out_edge_it, out_edge_end) = out_edges(v, graph_);
+  for (tie(out_edge_it, out_edge_end) = out_edges(curr_vertex, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     Vertex child_vertex = target(*out_edge_it, graph_);
     ExecNode* child_node = getNodeFromVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     float child_earliest_time = child_node->get_time_before_execution();
-    if (edge_parid != CONTROL_EDGE &&
-        child_earliest_time < latency_after_current_node)
+    if (child_earliest_time < latency_after_current_node) {
       child_node->set_time_before_execution(latency_after_current_node);
+    }
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
       if (child_node->get_num_parents() == 0) {

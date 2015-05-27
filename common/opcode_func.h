@@ -68,23 +68,4 @@
 #define LLVM_IR_SilentStore         101
 // clang-format on
 
-bool is_associative(unsigned microop);
-bool is_memory_op(unsigned microop);
-bool is_compute_op(unsigned microop);
-bool is_store_op(unsigned microop);
-bool is_bit_op(unsigned microop);
-bool is_shifter_op(unsigned microop);
-bool is_add_op(unsigned microop);
-bool is_mul_op(unsigned microop);
-bool is_load_op(unsigned microop);
-bool is_call_op(unsigned microop);
-bool is_branch_op(unsigned microop);
-bool is_control_op(unsigned microop);
-bool is_index_op(unsigned microop);
-bool is_convert_op(unsigned microop);
-bool is_dma_load(unsigned microop);
-bool is_dma_store(unsigned microop);
-bool is_dma_op(unsigned microop);
-float node_latency(unsigned microop);
-
 #endif

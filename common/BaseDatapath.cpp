@@ -1166,24 +1166,23 @@ void BaseDatapath::updatePerCycleActivity(
     if (node->is_isolated())
       continue;
     int node_level = node->get_execution_cycle();
-    int node_microop = node->get_microop();
 
-    if (is_mul_op(node_microop))
+    if (node->is_mul_op())
       mul_activity[func_id].at(node_level) += 1;
-    else if (is_add_op(node_microop)) {
+    else if (node->is_add_op()) {
       add_activity[func_id].at(node_level) += 1;
       num_adds_so_far += 1;
-    } else if (is_shifter_op(node_microop)) {
+    } else if (node->is_shifter_op()) {
       shifter_activity[func_id].at(node_level) += 1;
       num_shifters_so_far += 1;
-    } else if (is_bit_op(node_microop)) {
+    } else if (node->is_bit_op()) {
       bit_activity[func_id].at(node_level) += 1;
       num_bits_so_far += 1;
-    } else if (is_load_op(node_microop)) {
+    } else if (node->is_load_op()) {
       std::string array_label = node->get_array_label();
       if (ld_activity.find(array_label) != ld_activity.end())
         ld_activity[array_label].at(node_level) += 1;
-    } else if (is_store_op(node_microop)) {
+    } else if (node->is_store_op()) {
       std::string array_label = node->get_array_label();
       if (st_activity.find(array_label) != st_activity.end())
         st_activity[array_label].at(node_level) += 1;
