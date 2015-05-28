@@ -271,14 +271,93 @@ class ExecNode {
     }
   }
 
-  float node_latency() {
-    if (is_mul_op())
-      return MUL_LATENCY;
-    if (is_add_op())
-      return ADD_LATENCY;
-    if (is_memory_op() || microop == LLVM_IR_Ret)
-      return MEMOP_LATENCY;
-    return 0;
+  /* Node latency for functional units. Should only be called for non-memory
+   * operations.
+   * Node latencies for memory operations are obtained from memory models
+   * (scratchpad or cache) .*/
+  float fu_node_latency(float cycle_time) {
+    if (microop == LLVM_IR_Ret)
+      return cycle_time;
+    switch ((int)cycle_time) {
+      case 6:
+        if (is_mul_op())
+          return MUL_6ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_6ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_6ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_6ns_critical_path_delay;
+        else
+          return 0;
+      case 5:
+        if (is_mul_op())
+          return MUL_5ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_5ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_5ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_5ns_critical_path_delay;
+        else
+          return 0;
+      case 4:
+        if (is_mul_op())
+          return MUL_4ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_4ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_4ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_4ns_critical_path_delay;
+        else
+          return 0;
+      case 3:
+        if (is_mul_op())
+          return MUL_3ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_3ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_3ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_3ns_critical_path_delay;
+        else
+          return 0;
+      case 2:
+        if (is_mul_op())
+          return MUL_2ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_2ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_2ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_2ns_critical_path_delay;
+        else
+          return 0;
+      case 1:
+        if (is_mul_op())
+          return MUL_1ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_1ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_1ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_1ns_critical_path_delay;
+        else
+          return 0;
+      default:
+        /* Using 6ns model as the default. */
+        if (is_mul_op())
+          return MUL_6ns_critical_path_delay;
+        else if (is_add_op())
+          return ADD_6ns_critical_path_delay;
+        else if (is_shifter_op())
+          return SHIFTER_6ns_critical_path_delay;
+        else if (is_bit_op())
+          return BIT_6ns_critical_path_delay;
+        else
+          return 0;
+    }
   }
 
  protected:

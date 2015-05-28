@@ -170,7 +170,7 @@ uca_org_t Scratchpad::cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
   if (cache_size / line_size < 64)
     cache_size = line_size * 64;  // minimum scratchpad size: 64 words
   int associativity = 1;
-  int rw_ports = RW_PORTS;
+  int rw_ports = SINGLE_PORT_SPAD;
   int excl_read_ports = 0;
   int excl_write_ports = 0;
   int single_ended_read_ports = 0;
