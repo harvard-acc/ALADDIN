@@ -230,7 +230,7 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
       continue;
     float alap_executing_time = alap_finish_time.at(node_id);
     if (!node->is_memory_op() && !node->is_branch_op()) {
-      alap_executing_time -= node->node_latency();
+      alap_executing_time -= node->fu_node_latency(cycleTime);
       if (alap_executing_time > (node->get_execution_cycle() + 1) * cycleTime) {
         node->set_execution_cycle(floor(alap_executing_time / cycleTime));
       }
@@ -247,14 +247,32 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   }
   return num_cycles;
 }
+/* Insert children nodes to the executing queue if they are ready, otherwise
+ * decrement children's number of parents executed counters.
+
+ * The difference compared to the BaseDatapath::updateChildren() is that this
+ * implementation considers functional units packing, where multiple functional
+ * units can be packed into the same cycles if their overall critical path delay
+ * is smaller than cycleTime.
+
+ * One thing here is that we only pack multiple functional units into one cycle,
+ * but not pack memory operations and functional units together, since memory
+ * operation latency is non deterministic, especially in the case of cache
+ * access.*/
 void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (!node->has_vertex())
     return;
-  float latency_after_current_node = node->node_latency();
-  if (node->get_time_before_execution() > num_cycles * cycleTime) {
-    latency_after_current_node += node->get_time_before_execution();
+  float latency_after_current_node = 0;
+  if (node->is_memory_op()) {
+    latency_after_current_node = (num_cycles + 1 ) * cycleTime;
   } else {
-    latency_after_current_node += num_cycles * cycleTime;
+    if (node->get_time_before_execution() > num_cycles * cycleTime) {
+      latency_after_current_node = node->fu_node_latency(cycleTime) +
+                                     node->get_time_before_execution();
+    } else {
+      latency_after_current_node = node->fu_node_latency(cycleTime) +
+                                     num_cycles * cycleTime;
+    }
   }
   Vertex curr_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
@@ -271,22 +289,31 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
       if (child_node->get_num_parents() == 0) {
-        if ((child_node->node_latency() == 0 || node->node_latency() == 0) &&
-            edge_parid != CONTROL_EDGE)
+        bool child_zero_latency = (child_node->is_memory_op()) ? false :
+                                  (child_node->fu_node_latency(cycleTime) == 0);
+        bool curr_zero_latency = (node->is_memory_op()) ? false :
+                                 (node->fu_node_latency(cycleTime) == 0);
+        if ((child_zero_latency || curr_zero_latency) &&
+            edge_parid != CONTROL_EDGE) {
           executingQueue.push_back(child_node);
-        else if (child_node->is_memory_op()) {
+        } else if (child_node->is_memory_op() || node->is_memory_op()) {
+          /* Do not pack memory operations with functional unit operations.*/
           if (child_node->is_store_op())
             readyToExecuteQueue.push_front(child_node);
           else
             readyToExecuteQueue.push_back(child_node);
         } else {
-          float after_child_time = child_node->get_time_before_execution() +
-                                   child_node->node_latency();
-          if (after_child_time < (num_cycles + 1) * cycleTime &&
-              edge_parid != CONTROL_EDGE)
-            executingQueue.push_back(child_node);
-          else
+          /* Both curr node and child node are non-memory operations.*/
+          if (edge_parid == CONTROL_EDGE) {
             readyToExecuteQueue.push_back(child_node);
+          } else {
+            float after_child_time = child_node->get_time_before_execution() +
+                                     child_node->fu_node_latency(cycleTime);
+            if (after_child_time < (num_cycles + 1) * cycleTime)
+              executingQueue.push_back(child_node);
+            else
+              readyToExecuteQueue.push_back(child_node);
+          }
         }
         child_node->set_num_parents(-1);
       }

@@ -1618,7 +1618,11 @@ void BaseDatapath::updateChildren(ExecNode* node) {
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
       if (child_node->get_num_parents() == 0) {
-        if ((child_node->node_latency() == 0 || node->node_latency() == 0) &&
+        bool child_zero_latency = (child_node->is_memory_op()) ? false :
+                                  (child_node->fu_node_latency(cycleTime) == 0);
+        bool curr_zero_latency = (node->is_memory_op()) ? false :
+                                 (node->fu_node_latency(cycleTime) == 0);
+        if ((child_zero_latency || curr_zero_latency) &&
             edge_parid != CONTROL_EDGE) {
           executingQueue.push_back(child_node);
         } else {

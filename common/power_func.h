@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <iostream>
 
+#define   SINGLE_PORT_SPAD 1
+
 /*Characterized FU latencies from FPGA virtex7 xc7v585tffg1761-2, in ns*/
-#define   ADD_LATENCY       1.87
-#define   MEMOP_LATENCY     2.39
-#define   MUL_LATENCY       9.74
-#define   RW_PORTS 1
-/* All the power numbers are in mW, energy numbers are in nJ */
+/*#define   Virtex7_ADD_LATENCY       1.87*/
+/*#define   Virtex7_MEMOP_LATENCY     2.39*/
+/*#define   Virtex7_MUL_LATENCY       9.74*/
 
 /* Function units power model normalized to a comercial 40g */
+/* Power in mW, energy in nJ, time in ns. */
 /* MUL     : integer MUL,DIV model*/
 /* ADD     : integer ADD,SUB model*/
 /* BIT     : AND,OR,XOR model*/
@@ -65,6 +66,7 @@
 #define	ADD_1ns_dynamic_energy	2.104162e-01
 #define	ADD_1ns_leakage_power	2.249908e-03
 #define	ADD_1ns_area	2.779792e+02
+#define ADD_1ns_critical_path_delay 0.98
 
 #define	ADD_2ns_int_power	2.436880e-02
 #define	ADD_2ns_switch_power	1.850702e-02
@@ -72,6 +74,7 @@
 #define	ADD_2ns_dynamic_energy	8.575164e-02
 #define	ADD_2ns_leakage_power	2.380803e-03
 #define	ADD_2ns_area	1.794430e+02
+#define ADD_2ns_critical_path_delay 1.75
 
 #define	ADD_3ns_int_power	1.626669e-02
 #define	ADD_3ns_switch_power	1.235638e-02
@@ -79,6 +82,7 @@
 #define	ADD_3ns_dynamic_energy	8.586963e-02
 #define	ADD_3ns_leakage_power	2.380803e-03
 #define	ADD_3ns_area	1.794430e+02
+#define ADD_3ns_critical_path_delay 1.75
 
 #define	ADD_4ns_int_power	1.217552e-02
 #define	ADD_4ns_switch_power	9.249207e-03
@@ -86,6 +90,7 @@
 #define	ADD_4ns_dynamic_energy	8.569890e-02
 #define	ADD_4ns_leakage_power	2.380803e-03
 #define	ADD_4ns_area	1.794430e+02
+#define ADD_4ns_critical_path_delay 1.75
 
 #define	ADD_5ns_int_power	9.743773e-03
 #define	ADD_5ns_switch_power	7.400587e-03
@@ -93,6 +98,7 @@
 #define	ADD_5ns_dynamic_energy	8.572111e-02
 #define	ADD_5ns_leakage_power	2.380803e-03
 #define	ADD_5ns_area	1.794430e+02
+#define ADD_5ns_critical_path_delay 1.75
 
 #define	ADD_6ns_int_power	8.115300e-03
 #define	ADD_6ns_switch_power	6.162853e-03
@@ -100,6 +106,7 @@
 #define	ADD_6ns_dynamic_energy	8.566836e-02
 #define	ADD_6ns_leakage_power	2.380803e-03
 #define	ADD_6ns_area	1.794430e+02
+#define ADD_6ns_critical_path_delay 1.75
 
 #define	MUL_1ns_int_power	4.979808e+00
 #define	MUL_1ns_switch_power	7.703601e+00
@@ -107,6 +114,7 @@
 #define	MUL_1ns_dynamic_energy	1.268341e+01
 #define	MUL_1ns_leakage_power	7.786052e-02
 #define	MUL_1ns_area	6.351338e+03
+#define MUL_1ns_critical_path_delay 0.98
 
 #define	MUL_2ns_int_power	1.748818e+00
 #define	MUL_2ns_switch_power	3.028611e+00
@@ -114,6 +122,7 @@
 #define	MUL_2ns_dynamic_energy	9.554858e+00
 #define	MUL_2ns_leakage_power	4.831147e-02
 #define	MUL_2ns_area	5.137736e+03
+#define MUL_2ns_critical_path_delay 1.97
 
 #define	MUL_3ns_int_power	1.125718e+00
 #define	MUL_3ns_switch_power	1.808644e+00
@@ -121,6 +130,7 @@
 #define	MUL_3ns_dynamic_energy	8.803084e+00
 #define	MUL_3ns_leakage_power	4.668189e-02
 #define	MUL_3ns_area	4.974349e+03
+#define MUL_3ns_critical_path_delay 2.97
 
 #define	MUL_4ns_int_power	8.601815e-01
 #define	MUL_4ns_switch_power	1.305749e+00
@@ -128,6 +138,7 @@
 #define	MUL_4ns_dynamic_energy	8.663723e+00
 #define	MUL_4ns_leakage_power	4.853217e-02
 #define	MUL_4ns_area	4.619555e+03
+#define MUL_4ns_critical_path_delay 3.98
 
 #define	MUL_5ns_int_power	6.866739e-01
 #define	MUL_5ns_switch_power	1.038409e+00
@@ -135,6 +146,7 @@
 #define	MUL_5ns_dynamic_energy	8.625412e+00
 #define	MUL_5ns_leakage_power	4.817683e-02
 #define	MUL_5ns_area	4.595000e+03
+#define MUL_5ns_critical_path_delay 4.17
 
 #define	MUL_6ns_int_power	5.725752e-01
 #define	MUL_6ns_switch_power	8.662890e-01
@@ -142,6 +154,7 @@
 #define	MUL_6ns_dynamic_energy	8.633185e+00
 #define	MUL_6ns_leakage_power	4.817683e-02
 #define	MUL_6ns_area	4.595000e+03
+#define MUL_6ns_critical_path_delay 4.17
 
 #define	BIT_1ns_int_power	1.010606e-02
 #define	BIT_1ns_switch_power	7.950398e-03
@@ -149,6 +162,7 @@
 #define	BIT_1ns_dynamic_energy	1.805590e-02
 #define	BIT_1ns_leakage_power	6.111633e-04
 #define	BIT_1ns_area	5.036996e+01
+#define BIT_1ns_critical_path_delay 0.06
 
 #define	BIT_2ns_int_power	5.047962e-03
 #define	BIT_2ns_switch_power	3.971243e-03
@@ -156,6 +170,7 @@
 #define	BIT_2ns_dynamic_energy	1.803786e-02
 #define	BIT_2ns_leakage_power	6.111633e-04
 #define	BIT_2ns_area	5.036996e+01
+#define BIT_2ns_critical_path_delay 0.06
 
 #define	BIT_3ns_int_power	3.362023e-03
 #define	BIT_3ns_switch_power	2.644812e-03
@@ -163,6 +178,7 @@
 #define	BIT_3ns_dynamic_energy	1.801981e-02
 #define	BIT_3ns_leakage_power	6.111633e-04
 #define	BIT_3ns_area	5.036996e+01
+#define BIT_3ns_critical_path_delay 0.06
 
 #define	BIT_4ns_int_power	2.518915e-03
 #define	BIT_4ns_switch_power	1.981596e-03
@@ -170,6 +186,7 @@
 #define	BIT_4ns_dynamic_energy	1.800177e-02
 #define	BIT_4ns_leakage_power	6.111633e-04
 #define	BIT_4ns_area	5.036996e+01
+#define BIT_4ns_critical_path_delay 0.06
 
 #define	BIT_5ns_int_power	2.013105e-03
 #define	BIT_5ns_switch_power	1.583778e-03
@@ -177,6 +194,7 @@
 #define	BIT_5ns_dynamic_energy	1.798511e-02
 #define	BIT_5ns_leakage_power	6.111633e-04
 #define	BIT_5ns_area	5.036996e+01
+#define BIT_5ns_critical_path_delay 0.06
 
 #define	BIT_6ns_int_power	1.680942e-03
 #define	BIT_6ns_switch_power	1.322420e-03
@@ -184,6 +202,7 @@
 #define	BIT_6ns_dynamic_energy	1.801981e-02
 #define	BIT_6ns_leakage_power	6.111633e-04
 #define	BIT_6ns_area	5.036996e+01
+#define BIT_6ns_critical_path_delay 0.06
 
 #define	SHIFTER_1ns_int_power	3.414631e-01
 #define	SHIFTER_1ns_switch_power	4.554229e-01
@@ -191,6 +210,7 @@
 #define	SHIFTER_1ns_dynamic_energy	7.968859e-01
 #define	SHIFTER_1ns_leakage_power	4.048142e-03
 #define	SHIFTER_1ns_area	5.197551e+02
+#define SHIFTER_1ns_critical_path_delay 0.70
 
 #define	SHIFTER_2ns_int_power	1.729524e-01
 #define	SHIFTER_2ns_switch_power	2.305570e-01
@@ -198,6 +218,7 @@
 #define	SHIFTER_2ns_dynamic_energy	8.070188e-01
 #define	SHIFTER_2ns_leakage_power	4.054110e-03
 #define	SHIFTER_2ns_area	5.197551e+02
+#define SHIFTER_2ns_critical_path_delay 0.70
 
 #define	SHIFTER_3ns_int_power	1.154395e-01
 #define	SHIFTER_3ns_switch_power	1.537972e-01
@@ -205,6 +226,7 @@
 #define	SHIFTER_3ns_dynamic_energy	8.077128e-01
 #define	SHIFTER_3ns_leakage_power	4.063272e-03
 #define	SHIFTER_3ns_area	5.197551e+02
+#define SHIFTER_3ns_critical_path_delay 0.70
 
 #define	SHIFTER_4ns_int_power	8.696481e-02
 #define	SHIFTER_4ns_switch_power	1.158184e-01
@@ -212,6 +234,7 @@
 #define	SHIFTER_4ns_dynamic_energy	8.111274e-01
 #define	SHIFTER_4ns_leakage_power	4.065076e-03
 #define	SHIFTER_4ns_area	5.197551e+02
+#define SHIFTER_4ns_critical_path_delay 0.70
 
 #define	SHIFTER_5ns_int_power	6.979866e-02
 #define	SHIFTER_5ns_switch_power	9.279467e-02
@@ -219,6 +242,7 @@
 #define	SHIFTER_5ns_dynamic_energy	8.129736e-01
 #define	SHIFTER_5ns_leakage_power	4.069101e-03
 #define	SHIFTER_5ns_area	5.197551e+02
+#define SHIFTER_5ns_critical_path_delay 0.70
 
 #define	SHIFTER_6ns_int_power	5.823888e-02
 #define	SHIFTER_6ns_switch_power	7.743299e-02
@@ -226,6 +250,7 @@
 #define	SHIFTER_6ns_dynamic_energy	8.140285e-01
 #define	SHIFTER_6ns_leakage_power	4.069379e-03
 #define	SHIFTER_6ns_area	5.197551e+02
+#define SHIFTER_6ns_critical_path_delay 0.70
 
 void getRegisterPowerArea(float cycle_time,
                           float* internal_power_per_bit,
