@@ -158,6 +158,7 @@ HybridDatapath::stepExecutingQueue()
       }
     } else {
       // Not a memory operation node, so it can be completed in one cycle.
+      markNodeStarted(node);
       markNodeCompleted(it, index);
     }
   }
@@ -217,6 +218,7 @@ HybridDatapath::getMemoryOpType(ExecNode* node)
 bool
 HybridDatapath::handleRegisterMemoryOp(ExecNode* node)
 {
+  markNodeStarted(node);
   std::string reg = node->get_array_label();
   if (node->is_load_op())
     registers.getRegister(reg)->increment_loads();
@@ -233,6 +235,7 @@ HybridDatapath::handleSpadMemoryOp(ExecNode* node)
   if (!satisfied)
     return false;
 
+  markNodeStarted(node);
   if (node->is_load_op())
     scratchpad->increment_loads(node_part);
   else
@@ -251,6 +254,7 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
     status = inflight_mem_ops[node_id];
   if (status == Ready && inflight_mem_ops.size() < MAX_INFLIGHT_NODES) {
     //first time see, do access
+    markNodeStarted(node);
     bool isLoad = node->is_dma_load();
     /* TODO: HACK!!! dmaStore sometimes goes out-of-order...schedule it until
      * the very end, fix this after ISCA. --Sophia */
@@ -289,6 +293,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     int size = mem_access->size;
     if (dtb.canRequestTranslation() &&
         issueTLBRequest(vaddr, size, isLoad, node_id)) {
+      markNodeStarted(node);
       inflight_mem_ops[node_id] = Translating;
       dtb.incrementRequestCounter();
       DPRINTF(HybridDatapath, "node:%d mem access is translating\n", node_id);
