@@ -133,7 +133,7 @@ class ExecNode {
 
   /* Opcode functions. */
   bool is_associative() {
-    if (microop == LLVM_IR_Add)
+    if (is_int_add_op() || is_fp_add_op())
       return true;
     return false;
   }
