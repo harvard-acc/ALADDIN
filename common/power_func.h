@@ -12,7 +12,7 @@
 /*#define   Virtex7_MUL_LATENCY       9.74*/
 
 /* Function units power model normalized to a comercial 40g */
-/* Power in mW, energy in nJ, time in ns. */
+/* Power in mW, energy in pJ, time in ns. */
 /* MUL     : integer MUL,DIV model*/
 /* ADD     : integer ADD,SUB model*/
 /* BIT     : AND,OR,XOR model*/
