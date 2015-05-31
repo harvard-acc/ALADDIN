@@ -79,8 +79,9 @@ void ScratchpadDatapath::completePartition() {
   std::cerr << "-------------------------------" << std::endl;
 
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
-    std::string array_label = it->first;
-    if (!array_label.compare("complete")) {
+    std::string p_type = it->second.type;
+    if (!p_type.compare("complete")) {
+      std::string array_label = it->first;
       unsigned size = it->second.array_size;
       registers.createRegister(array_label, size, cycleTime);
     }
