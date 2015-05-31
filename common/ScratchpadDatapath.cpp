@@ -196,7 +196,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
     if (node->is_memory_op()) {
       std::string node_part = node->get_array_label();
       if (registers.has(node_part)) {
-        markNodeStarted(it);
+        markNodeStarted(node);
         if (node->is_load_op())
           registers.getRegister(node_part)->increment_loads();
         else
@@ -205,7 +205,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
         executed = true;
       } else if (scratchpadCanService) {
         if (scratchpad->canServicePartition(node_part)) {
-          markNodeStarted(it);
+          markNodeStarted(node);
           if (node->is_load_op())
             scratchpad->increment_loads(node_part);
           else
@@ -220,7 +220,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
       unsigned node_id = node->get_node_id();
       if (inflight_nodes.find(node_id) == inflight_nodes.end()) {
         inflight_nodes[node_id] = node->fp_node_latency_in_cycles();
-        markNodeStarted(it);
+        markNodeStarted(node);
       } else {
         unsigned remaining_cycles = inflight_nodes[node_id];
         if (remaining_cycles == 1) {
@@ -232,7 +232,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
         }
       }
     } else {
-      markNodeStarted(it);
+      markNodeStarted(node);
       markNodeCompleted(it, index);
       executed = true;
     }
