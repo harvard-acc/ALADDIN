@@ -11,7 +11,6 @@ Source('../common/DDDG.cpp')
 Source('../common/file_func.cpp')
 Source('../common/power_func.cpp')
 Source('../common/generic_func.cpp')
-Source('../common/opcode_func.cpp')
 Source('../common/DatabaseConfig.cpp')
 Source('../common/Registers.cpp')
 
