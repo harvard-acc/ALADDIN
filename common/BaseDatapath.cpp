@@ -111,7 +111,6 @@ void BaseDatapath::removePhiNodes() {
   std::set<Edge> to_remove_edges;
   std::vector<newEdge> to_add_edges;
   std::unordered_set<ExecNode*> checked_phi_nodes;
-
   for (auto node_it = exec_nodes.rbegin(); node_it != exec_nodes.rend();
        node_it++) {
     ExecNode* node = node_it->second;
@@ -880,8 +879,7 @@ void BaseDatapath::treeHeightReduction() {
                  in_edges(chain_node->get_vertex(), graph_);
              in_edge_it != in_edge_end;
              ++in_edge_it) {
-          int parent_id = vertexToName[source(*in_edge_it, graph_)];
-          if (exec_nodes[parent_id]->is_branch_op())
+          if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
             continue;
           num_of_chain_parents++;
         }
@@ -891,12 +889,12 @@ void BaseDatapath::treeHeightReduction() {
                    in_edges(chain_node->get_vertex(), graph_);
                in_edge_it != in_edge_end;
                ++in_edge_it) {
+            if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
+              continue;
             Vertex parent_vertex = source(*in_edge_it, graph_);
             int parent_id = vertexToName[parent_vertex];
             ExecNode* parent_node = getNodeFromVertex(parent_vertex);
             assert(*parent_node < *chain_node);
-            if (parent_node->is_branch_op())
-              continue;
 
             Edge curr_edge = *in_edge_it;
             tmp_remove_edges.push_back(curr_edge);
@@ -926,7 +924,9 @@ void BaseDatapath::treeHeightReduction() {
             }
           }
         } else {
-          leaves.push_back(make_pair(chain_node, 0));
+          /* Promote the single parent node with higher priority. This affects
+           * mostly the top of the graph where no parent exists. */
+          leaves.push_back(make_pair(chain_node, 1));
         }
       } else {
         leaves.push_back(make_pair(chain_node, 0));
@@ -936,7 +936,6 @@ void BaseDatapath::treeHeightReduction() {
     // build the tree
     if (nodes.size() < 3)
       continue;
-
     for (auto it = tmp_remove_edges.begin(), E = tmp_remove_edges.end();
          it != E;
          it++)
