@@ -18,16 +18,15 @@ class Register {
     num_bytes = size;
     loads = 0;
     stores = 0;
-    // Units are confusing.
-    // REG_int_power is mW, cycleTime is ns, and we want energy in nJ, so we
-    // have to convert mW to W by dividing by 1000.
+    // Units are confusing...they are...
+    // REG_int_power is mW, cycleTime is ns, and we want energy in pJ.
     float reg_int_power, reg_sw_power, reg_leak_power, reg_area;
     getRegisterPowerArea(
         cycleTime, &reg_int_power, &reg_sw_power, &reg_leak_power, &reg_area);
     readEnergy =
-        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime / 1000;
+        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
     writeEnergy =
-        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime / 1000;
+        num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
     // REG_leak_power is mW and we want leakPower in mW so we're fine.
     leakPower = num_bytes * 8 * (reg_leak_power);
     area = num_bytes * 8 * (reg_area);

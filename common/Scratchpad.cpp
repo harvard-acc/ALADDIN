@@ -31,9 +31,9 @@ void Scratchpad::setScratchpad(std::string baseName,
   } else {
       cacti_result = cacti_it->second;
   }
-  // power in mW, energy in nJ, area in mm2
-  readEnergyPerPartition.push_back(cacti_result.power.readOp.dynamic * 1e+9);
-  writeEnergyPerPartition.push_back(cacti_result.power.writeOp.dynamic * 1e+9);
+  // power in mW, energy in pJ, area in mm2
+  readEnergyPerPartition.push_back(cacti_result.power.readOp.dynamic * 1e+12);
+  writeEnergyPerPartition.push_back(cacti_result.power.writeOp.dynamic * 1e+12);
   leakPowerPerPartition.push_back(cacti_result.power.readOp.leakage * 1000);
   areaPerPartition.push_back(cacti_result.area);
 }
@@ -88,7 +88,7 @@ unsigned Scratchpad::findPartitionID(std::string baseName) {
     exit(0);
   }
 }
-// power in mW, energy in nJ, time in ns
+// power in mW, energy in pJ, time in ns
 void Scratchpad::getAveragePower(unsigned int cycles,
                                  float* avg_power,
                                  float* avg_dynamic,
@@ -107,7 +107,7 @@ void Scratchpad::getAveragePower(unsigned int cycles,
 
   // Load power and store power are computed per cycle, so we have to average
   // the aggregated per cycle power.
-  *avg_dynamic = (load_energy + store_energy) * 1000 / (cycleTime * cycles);
+  *avg_dynamic = (load_energy + store_energy) / (cycleTime * cycles);
   *avg_leak = leakage_power;
   *avg_power = *avg_dynamic + *avg_leak;
 }
