@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cfg_home=${ALADDIN_HOME}/integration-test/with-cpu/test_machsuite
+cfg_home=${ALADDIN_HOME}/integration-test/with-cpu/test_aes_hybrid
 bmk_home=${ALADDIN_HOME}/MachSuite/aes/aes
 gem5_dir=${ALADDIN_HOME}/../..
 
