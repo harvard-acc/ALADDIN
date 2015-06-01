@@ -32,6 +32,14 @@ extern unsigned SHOC_STENCIL;
 extern unsigned SHOC_TRIAD;
 
 extern unsigned CORTEXSUITE_STITCH;
+extern unsigned CORTEXSUITE_LOCALIZATION;
+extern unsigned CORTEXSUITE_SIFT;
+extern unsigned CORTEXSUITE_DISPARITY;
+extern unsigned CORTEXSUITE_MSER;
+extern unsigned CORTEXSUITE_MULTI_NCUT;
+extern unsigned CORTEXSUITE_SVM;
+extern unsigned CORTEXSUITE_TEXTURE_SYNTHESIS;
+extern unsigned CORTEXSUITE_TRACKING;
 
 // A special code used by integration tests.
 extern unsigned INTEGRATION_TEST;
