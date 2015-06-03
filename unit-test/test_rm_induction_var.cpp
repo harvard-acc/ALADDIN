@@ -14,7 +14,7 @@ SCENARIO("Test removeInductionVariable w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
@@ -35,7 +35,7 @@ SCENARIO("Test removeInductionVariable w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
@@ -56,7 +56,7 @@ SCENARIO("Test removeInductionVariable w/ Pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "

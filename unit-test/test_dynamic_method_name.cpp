@@ -15,6 +15,7 @@ SCENARIO("Test Dynamic Method Name w/ aes", "[aes]") {
     Scratchpad* spad;
     WHEN("DDDG is generated.") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
+      acc->buildDddg();
       THEN("The unique static node id should match.") {
         REQUIRE(acc->getNodeFromNodeId(0)->get_static_node_id().compare(
                     "aes256_encrypt_ecb-0-0-4") == 0);

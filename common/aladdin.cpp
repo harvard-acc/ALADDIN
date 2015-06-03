@@ -44,10 +44,18 @@ int main(int argc, const char* argv[]) {
   ScratchpadDatapath* acc;
 
   acc = new ScratchpadDatapath(bench, trace_file, config_file);
-  acc->setGlobalGraph();
+#ifdef USE_DB
+  bool use_db = (argc == 5);
+  if (use_db) {
+    experiment_name = std::string(argv[4]);
+    acc->setExperimentParameters(experiment_name);
+  }
+#endif
+  // Get the complete graph.
+  acc->buildDddg();
   acc->globalOptimizationPass();
   /* Profiling */
-  acc->setGraphForStepping();
+  acc->prepareForScheduling();
 
   // Scheduling
   while (!acc->step()) {

@@ -14,7 +14,7 @@ SCENARIO("Test treeHeightReduction w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();

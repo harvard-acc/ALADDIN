@@ -19,7 +19,6 @@ class ScratchpadDatapath : public BaseDatapath {
   void globalOptimizationPass();
   void completePartition();
   void scratchpadPartition();
-  virtual void setGraphForStepping();
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();
