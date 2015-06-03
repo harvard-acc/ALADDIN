@@ -189,8 +189,8 @@ HybridDatapath::step()
   } else {
     dumpStats();
     DPRINTF(HybridDatapath, "Accelerator completed.\n");
+    system->deregisterAccelerator(accelerator_id);
     if (execute_standalone) {
-      system->deregisterAccelerator(accelerator_id);
       if (system->numRunningAccelerators() == 0) {
         exitSimLoop("Aladdin called exit()");
       }
