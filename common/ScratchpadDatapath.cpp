@@ -22,6 +22,9 @@ ScratchpadDatapath::ScratchpadDatapath(std::string bench,
 ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
 
 void ScratchpadDatapath::globalOptimizationPass() {
+  std::cerr << "=============================================" << std::endl;
+  std::cerr << "      Optimizing...            " << benchName << std::endl;
+  std::cerr << "=============================================" << std::endl;
   // Node removals must come first.
   removePhiNodes();
   /* memoryAmbiguation() should execute after removeInductionDependence()
@@ -168,10 +171,6 @@ void ScratchpadDatapath::scratchpadPartition() {
 #ifdef DEBUG
   writeBaseAddress();
 #endif
-}
-
-void ScratchpadDatapath::setGraphForStepping() {
-  BaseDatapath::setGraphForStepping();
 }
 
 bool ScratchpadDatapath::step() {

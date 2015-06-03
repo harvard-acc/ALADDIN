@@ -16,6 +16,14 @@ BaseDatapath::BaseDatapath(std::string bench,
   this->trace_file = trace_file;
   this->config_file = config_file;
   use_db = false;
+}
+
+BaseDatapath::~BaseDatapath() {
+  for (int i = 0; i < exec_nodes.size(); i++)
+    delete exec_nodes[i];
+}
+
+void BaseDatapath::buildDddg(){
   DDDG* dddg;
   dddg = new DDDG(this, trace_file);
   /* Build initial DDDG. */
@@ -39,11 +47,6 @@ BaseDatapath::BaseDatapath(std::string bench,
   num_cycles = 0;
 }
 
-BaseDatapath::~BaseDatapath() {
-  for (int i = 0; i < exec_nodes.size(); i++)
-    delete exec_nodes[i];
-}
-
 void BaseDatapath::addDddgEdge(unsigned int from,
                                unsigned int to,
                                uint8_t parid) {
@@ -54,13 +57,6 @@ void BaseDatapath::addDddgEdge(unsigned int from,
 ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   exec_nodes[node_id] = new ExecNode(node_id, microop);
   return exec_nodes[node_id];
-}
-
-// optimizationFunctions
-void BaseDatapath::setGlobalGraph() {
-  std::cerr << "=============================================" << std::endl;
-  std::cerr << "      Optimizing...            " << benchName << std::endl;
-  std::cerr << "=============================================" << std::endl;
 }
 
 void BaseDatapath::memoryAmbiguation() {
@@ -1585,7 +1581,7 @@ void BaseDatapath::writeOtherStats() {
 
 // stepFunctions
 // multiple function, each function is a separate graph
-void BaseDatapath::setGraphForStepping() {
+void BaseDatapath::prepareForScheduling() {
   std::cerr << "=============================================" << std::endl;
   std::cerr << "      Scheduling...            " << benchName << std::endl;
   std::cerr << "=============================================" << std::endl;

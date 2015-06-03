@@ -15,7 +15,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     acc->initBaseAddress();

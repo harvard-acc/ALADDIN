@@ -57,10 +57,10 @@ int main(int argc, const char* argv[]) {
   }
 #endif
   // Get the complete graph.
-  acc->setGlobalGraph();
+  acc->buildDddg();
   acc->globalOptimizationPass();
   /* Profiling */
-  acc->setGraphForStepping();
+  acc->prepareForScheduling();
 
   // Scheduling
   while (!acc->step()) {

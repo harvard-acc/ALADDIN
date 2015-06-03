@@ -129,11 +129,13 @@ class BaseDatapath {
   BaseDatapath(std::string bench, string trace_file, string config_file);
   virtual ~BaseDatapath();
 
+  // Build graph.
+  void buildDddg();
+
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setGlobalGraph();
-  virtual void setGraphForStepping();
+  virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
 
