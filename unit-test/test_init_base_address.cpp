@@ -14,7 +14,7 @@ SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     WHEN("Test initBaseAddress()") {
@@ -41,7 +41,7 @@ SCENARIO("Test initBaseAddress w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     WHEN("Test initBaseAddress()") {
@@ -67,7 +67,7 @@ SCENARIO("Test initBaseAddress w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     WHEN("Test initBaseAddress()") {
@@ -90,7 +90,7 @@ SCENARIO("Test initBaseAddress w/ Pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
-    acc->setGlobalGraph();
+    acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
     WHEN("Test initBaseAddress()") {
