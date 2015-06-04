@@ -24,8 +24,7 @@ class Gem5Datapath : public MemObject
 
   public:
     /* These extra parameters are needed because making a Gem5DatapathParams
-     * object that serves as a base class to CacheDatapathParams and
-     * DmaScratchpadDatapathParams is more work than it is worth, and
+     * object that serves as a base class to HybridDatapathParams.
      * Gem5Datapath has to pass the base class of MemObjectParams to its parent
      * constructor, which doesn't contain any of our custom parameters.
      */
@@ -39,6 +38,9 @@ class Gem5Datapath : public MemObject
 
     /* Return the tick event object for the event queue for this datapath. */
     virtual Event& getTickEvent() = 0;
+
+    /* Build, optimize, register and prepare datapath for scheduling. */
+    virtual void initializeDatapath(int delay = 1) = 0;
 
     /* Add the tick event to the gem5 event queue. */
     void scheduleOnEventQueue(unsigned delay_cycles = 1)
@@ -74,19 +76,24 @@ class Gem5Datapath : public MemObject
      */
     virtual Addr getBaseAddress(std::string label) = 0;
 
-    /* Insert an entry into the datapath's TLB.
+    /* Insert a vpn -> ppn mapping into the datapath's TLB.
      *
-     * This is currently used to create a mapping between the base address of an
-     * array in the dynamic trace with the actual physical address in the
-     * simulator.
+     * This is currently used to create a mapping between the simulated virtual
+     * address of an array in the program with the actual physical address in
+     * the simulator.
      *
      * Datapath models that do not support TLB structures should abort
      * simulation if this is called.
      *
      * TODO(samxi): Maybe this should not be part of Gem5Datapath? But I'm not
-     * sure if a dynamic_cast to CacheDatapath would work here.
+     * sure if a dynamic_cast to HybridDatapath would work here.
      */
-    virtual void insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr) = 0;
+    virtual void insertTLBEntry(Addr vaddr, Addr paddr) = 0;
+
+    /* Insert a mapping between array labels to their simulated virtual
+     * addresses. */
+    virtual void
+      insertArrayLabelToVirtual(std::string array_label, Addr vaddr) = 0;
 
   protected:
     /* True if gem5 is being simulated with just Aladdin, false if there are

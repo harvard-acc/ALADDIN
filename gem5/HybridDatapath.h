@@ -38,6 +38,11 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     HybridDatapath(const HybridDatapathParams* params);
     ~HybridDatapath();
 
+    // Build, optimize, register and prepare datapath for scheduling.
+    virtual void initializeDatapath(int delay = 1);
+    // Start scheduling datapath
+    void startDatapathScheduling(int delay = 1);
+
     virtual MasterPort &getDataPort() { return spadPort; };
     virtual MasterPort &getCachePort() { return cachePort; };
     MasterID getSpadMasterId() { return spadMasterId; };
@@ -81,7 +86,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     virtual Addr getBaseAddress(std::string label);
 
     // Insert a new virtual to physical address mapping into the Aladdin TLB.
-    virtual void insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr);
+    virtual void insertTLBEntry(Addr vaddr, Addr paddr);
+
+    // Insert an array label to its simulated virtual address mapping.
+    virtual void insertArrayLabelToVirtual(std::string array_label, Addr vaddr);
 
     // Invoked by the TLB when a TLB request has completed.
     void completeTLBRequest(PacketPtr pkt, bool was_miss);
@@ -206,7 +214,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
      protected:
       virtual bool recvTimingResp(PacketPtr pkt);
-      virtual void recvTimingSnoopReq(PacketPtr pkt);
+      virtual void recvTimingSnoopReq(PacketPtr pkt) {}
       virtual void recvFunctionalSnoop(PacketPtr pkt) {}
       virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
       virtual void recvRetry();

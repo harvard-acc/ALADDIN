@@ -75,18 +75,26 @@ HybridDatapath::HybridDatapath(
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
-  setGlobalGraph();
-  ScratchpadDatapath::globalOptimizationPass();
-  setGraphForStepping();
-  num_cycles = 0;
   // TODO: Remove this feature.
   tokenizeString(params->acceleratorDeps, accelerator_deps);
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   if (execute_standalone)
-    scheduleOnEventQueue(1);
+    initializeDatapath();
 }
 
 HybridDatapath::~HybridDatapath() {}
+
+void HybridDatapath::initializeDatapath(int delay) {
+  buildDddg();
+  globalOptimizationPass();
+  prepareForScheduling();
+  num_cycles = 0;
+  startDatapathScheduling(delay);
+}
+
+void HybridDatapath::startDatapathScheduling(int delay) {
+  scheduleOnEventQueue(delay);
+}
 
 BaseMasterPort&
 HybridDatapath::getMasterPort(const string &if_name, PortID idx)
@@ -104,11 +112,10 @@ HybridDatapath::getMasterPort(const string &if_name, PortID idx)
 }
 
 void
-HybridDatapath::insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr)
+HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
 {
   DPRINTF(HybridDatapath,
-          "Mapping trace_addr 0x%x, vaddr 0x%x -> paddr 0x%x.\n",
-          trace_addr,
+          "Mapping vaddr 0x%x -> paddr 0x%x.\n",
           vaddr,
           paddr);
   Addr vpn = vaddr & ~(dtb.pageMask());
@@ -116,7 +123,15 @@ HybridDatapath::insertTLBEntry(Addr trace_addr, Addr vaddr, Addr paddr)
   DPRINTF(
       HybridDatapath, "Inserting TLB entry vpn 0x%x -> ppn 0x%x.\n", vpn, ppn);
   dtb.insert(vpn, ppn);
-  dtb.insertTraceToVirtual(trace_addr, vaddr);
+}
+
+void
+HybridDatapath::insertArrayLabelToVirtual(std::string array_label, Addr vaddr)
+{
+  DPRINTF(
+      HybridDatapath, "Inserting array label mapping %s -> vpn 0x%x.\n",
+      array_label.c_str(), vaddr);
+  dtb.insertArrayLabelToVirtual(array_label, vaddr);
 }
 
 void
@@ -449,17 +464,6 @@ HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt)
     delete pkt;
   }
   return true;
-}
-
-void HybridDatapath::CachePort::recvTimingSnoopReq(PacketPtr pkt) {
-  DPRINTF(HybridDatapath,
-          "recvTimingSnoopReq for addr:%#x %s\n",
-          pkt->getAddr(),
-          pkt->cmdString());
-  if (pkt->isInvalidate()) {
-    DPRINTF(
-        HybridDatapath, "received invalidation for addr:%#x\n", pkt->getAddr());
-  }
 }
 
 bool

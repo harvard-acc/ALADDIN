@@ -124,9 +124,10 @@ AladdinTLB::translateTiming(PacketPtr pkt)
    * address to access memory. Otherwise, if Aladdin was invoked by a simulated
    * program, we perform address translation as follows:
    *
-   * We use the node id to get the base address of the array being accessed. We
-   * then look up the translation from this trace address to the simulated
-   * virtual address (which represents the head of the array). Next, we compute
+   * We use the node id to get the array name of the array being accessed. We
+   * then look up the translation from this array name to the simulated
+   * virtual address (which represents the head of the array). We also get the
+   * base trace address from the same array name. Next, we compute
    * the offset between the accessed trace address and the base trace address
    * and add this offset to the base simulated virtual address.  Finally, we
    * consult the TLB to translate the simulated virtual address to the
@@ -140,9 +141,9 @@ AladdinTLB::translateTiming(PacketPtr pkt)
   } else {
     TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
     std::string array_name = datapath->getBaseAddressLabel(state->node_id);
+    Addr base_sim_vaddr = lookupVirtualAddr(array_name);
     Addr base_trace_addr =
         static_cast<Addr>(datapath->getBaseAddress(array_name));
-    Addr base_sim_vaddr = lookupVirtualAddr(base_trace_addr);
     Addr trace_req_vaddr = pkt->req->getPaddr();
     Addr array_offset = trace_req_vaddr - base_trace_addr;
     vaddr = base_sim_vaddr + array_offset;

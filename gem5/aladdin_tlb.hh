@@ -170,12 +170,12 @@ class AladdinTLB
      */
     std::map<Addr, Addr> infiniteBackupTLB;
 
-    /* Translations from trace base addresses to simulated virtual addresses.
+    /* Translations from array labels to simulated virtual addresses.
      *
      * This is purely an artifact of how Aladdin is implemented so it doesn't
      * need to be modeled for timing.
      */
-    std::map<Addr, Addr> traceToVirtualAddrMap;
+    std::map<std::string, Addr> arrayLabelToVirtualAddrMap;
 
   public:
     AladdinTLB(HybridDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
@@ -207,22 +207,23 @@ class AladdinTLB
      */
     AladdinTLBEntry* insert(Addr vpn, Addr ppn);
 
-    /* Translates trace addresses to simulated virtual addresses.
+    /* Translates array labels to simulated virtual addresses.
      *
      * Because trace addresses and the simulated addresses live in entirely
      * disjunct address spaces, we need more than just bit manipulations to
-     * properly translate trace address to physical addresses. Use this
-     * translation to get the simulated virtual address, and then consult the
-     * TLB to get the simulated physical address.
-     */
-    void insertTraceToVirtual(Addr trace_addr, Addr sim_vaddr)
+     * properly translate trace address to physical addresses.
+     * This method inserts a mapping between the array name and its
+     * corresponding simulated virtual address. */
+
+    void insertArrayLabelToVirtual(std::string array_label, Addr sim_vaddr)
     {
-      traceToVirtualAddrMap[trace_addr] = sim_vaddr;
+      arrayLabelToVirtualAddrMap[array_label] = sim_vaddr;
     }
 
-    Addr lookupVirtualAddr(Addr trace_addr)
+    /* Get the simulated virtual address from its array name. */
+    Addr lookupVirtualAddr(std::string array_label)
     {
-      return traceToVirtualAddrMap[trace_addr];
+      return arrayLabelToVirtualAddrMap[array_label];
     }
 
     bool translateTiming(PacketPtr pkt);
