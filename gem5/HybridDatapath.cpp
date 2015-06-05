@@ -82,7 +82,15 @@ HybridDatapath::HybridDatapath(
     initializeDatapath();
 }
 
-HybridDatapath::~HybridDatapath() {}
+HybridDatapath::~HybridDatapath() {
+  if (!execute_standalone)
+    system->deregisterAccelerator(accelerator_id);
+}
+
+void HybridDatapath::clearDatapath() {
+  ScratchpadDatapath::clearDatapath();
+  dtb.clear();
+}
 
 void HybridDatapath::initializeDatapath(int delay) {
   buildDddg();
@@ -203,9 +211,10 @@ HybridDatapath::step()
     return true;
   } else {
     dumpStats();
+    clearDatapath();
     DPRINTF(HybridDatapath, "Accelerator completed.\n");
-    system->deregisterAccelerator(accelerator_id);
     if (execute_standalone) {
+      system->deregisterAccelerator(accelerator_id);
       if (system->numRunningAccelerators() == 0) {
         exitSimLoop("Aladdin called exit()");
       }

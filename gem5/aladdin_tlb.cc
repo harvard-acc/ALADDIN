@@ -39,6 +39,12 @@ AladdinTLB::~AladdinTLB()
   delete tlbMemory;
 }
 
+void AladdinTLB::clear() {
+  infiniteBackupTLB.clear();
+  arrayLabelToVirtualAddrMap.clear();
+  tlbMemory->clear();
+}
+
 AladdinTLB::deHitQueueEvent::deHitQueueEvent(AladdinTLB *_tlb)
    : Event(Default_Pri, AutoDelete),
      tlb(_tlb) {}
@@ -85,12 +91,7 @@ AladdinTLB::outStandingWalkReturnEvent::process()
     ppn = vpn;
   }
   DPRINTF(HybridDatapath, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
-  AladdinTLBEntry* evicted = tlb->insert(vpn, ppn);
-  if (evicted) {
-    DPRINTF(HybridDatapath, "TLB fill after page table walk evicted the entry "
-            "vpn %#x -> ppn %#x.\n", evicted->vpn, evicted->ppn);
-    tlb->infiniteBackupTLB[evicted->vpn] = evicted->ppn;
-  }
+  tlb->insert(vpn, ppn);
 
   auto range = tlb->missQueue.equal_range(vpn);
   for(auto it = range.first; it!= range.second; ++it)
@@ -207,12 +208,9 @@ AladdinTLB::translateTiming(PacketPtr pkt)
   }
 }
 
-AladdinTLBEntry*
-AladdinTLB::insert(Addr vpn, Addr ppn)
-{
-    AladdinTLBEntry* evicted = tlbMemory->insert(vpn, ppn);
-    infiniteBackupTLB[vpn] = ppn;
-    return evicted;
+void AladdinTLB::insert(Addr vpn, Addr ppn) {
+  tlbMemory->insert(vpn, ppn);
+  infiniteBackupTLB[vpn] = ppn;
 }
 
 bool
@@ -301,16 +299,14 @@ TLBMemory::lookup(Addr vpn, Addr& ppn, bool set_mru)
     return false;
 }
 
-AladdinTLBEntry*
-TLBMemory::insert(Addr vpn, Addr ppn)
-{
+void TLBMemory::insert(Addr vpn, Addr ppn) {
+
     Addr a;
     if (lookup(vpn, a)) {
-        return nullptr;
+        return;
     }
     int way = (vpn / pageBytes) % ways;
     AladdinTLBEntry* entry = nullptr;
-    AladdinTLBEntry* evicted_entry = nullptr;
     Tick minTick = curTick();
     for (int i=0; i < sets; i++) {
         if (entries[way][i].free) {
@@ -324,13 +320,10 @@ TLBMemory::insert(Addr vpn, Addr ppn)
     assert(entry);
     if (!entry->free) {
         DPRINTF(HybridDatapath, "Evicting entry for vpn %#x\n", entry->vpn);
-        evicted_entry = new AladdinTLBEntry(*entry);
     }
 
     entry->vpn = vpn;
     entry->ppn = ppn;
     entry->free = false;
     entry->setMRU();
-
-    return evicted_entry;
 }

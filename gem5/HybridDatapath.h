@@ -42,6 +42,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     virtual void initializeDatapath(int delay = 1);
     // Start scheduling datapath
     void startDatapathScheduling(int delay = 1);
+    virtual void clearDatapath();
 
     virtual MasterPort &getDataPort() { return spadPort; };
     virtual MasterPort &getCachePort() { return cachePort; };

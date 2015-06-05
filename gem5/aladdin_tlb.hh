@@ -27,18 +27,24 @@ class AladdinTLBEntry
         mruTick(entry.mruTick), hits(entry.hits) {}
 
     void setMRU() {mruTick = curTick();}
+    void clear() {
+      vpn = 0;
+      ppn = 0;
+      free = true;
+      mruTick = 0;
+      hits = 0;
+    }
 };
 
 class BaseTLBMemory {
 
 public:
     virtual ~BaseTLBMemory(){}
+    virtual void clear() = 0;
     virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru=true) = 0;
-    /* Inserts a translation into the TLB and returns a newly allocated pointer
-     * to the translation entry that was evicted, or NULL if there was no
-     * eviction. The caller is responsible for destroying the pointer.
+    /* Inserts a translation into the TLB.
      */
-    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn) = 0;
+    virtual void insert(Addr vpn, Addr ppn) = 0;
     // Name of the TLB structure for printing traces.
 };
 
@@ -75,8 +81,14 @@ public:
         delete[] entries;
     }
 
+    virtual void clear() {
+      for (int i=0; i < ways ; i++) {
+        entries[i]->clear();
+      }
+    }
+
     virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru=true);
-    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn);
+    virtual void insert(Addr vpn, Addr ppn);
 };
 
 class InfiniteTLBMemory : public BaseTLBMemory {
@@ -85,7 +97,7 @@ public:
     InfiniteTLBMemory() {}
     ~InfiniteTLBMemory() {}
 
-    bool lookup(Addr vpn, Addr& ppn, bool set_mru=true)
+    virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru=true)
     {
         auto it = entries.find(vpn);
         if (it != entries.end()) {
@@ -97,10 +109,12 @@ public:
         }
     }
 
-    virtual AladdinTLBEntry* insert(Addr vpn, Addr ppn)
-    {
+    virtual void insert(Addr vpn, Addr ppn) {
         entries[vpn] = ppn;
-        return nullptr;  // Infinite TLB never has to evict.
+    }
+
+    virtual void clear() {
+      entries.clear();
     }
 };
 
@@ -185,6 +199,7 @@ class AladdinTLB
     ~AladdinTLB();
 
     std::string name() const;
+    void clear();
 
     /* Getters. */
     unsigned getNumEntries() { return numEntries; }
@@ -202,10 +217,9 @@ class AladdinTLB
      * simulated virtual address space of the simulator.
      *
      * Note that the entries are actually page-aligned addresses instead of just
-     * page numbers (e.g. 0xf000 instead of 0xf). If the insert results in an
-     * eviction, the evicted entry is returned.
+     * page numbers (e.g. 0xf000 instead of 0xf).
      */
-    AladdinTLBEntry* insert(Addr vpn, Addr ppn);
+    void insert(Addr vpn, Addr ppn);
 
     /* Translates array labels to simulated virtual addresses.
      *
