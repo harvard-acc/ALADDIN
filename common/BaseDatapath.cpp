@@ -6,31 +6,34 @@
 #include "ExecNode.h"
 
 BaseDatapath::BaseDatapath(std::string bench,
-                           std::string trace_file,
+                           std::string trace_file_name,
                            std::string config_file) {
   parse_config(bench, config_file);
 
   benchName = (char*)bench.c_str();
-  this->trace_file = trace_file;
   this->config_file = config_file;
   use_db = false;
-}
-
-BaseDatapath::~BaseDatapath() {
-  for (int i = 0; i < exec_nodes.size(); i++)
-    delete exec_nodes[i];
-}
-
-void BaseDatapath::buildDddg(){
-  DDDG* dddg;
-  dddg = new DDDG(this, trace_file);
-  /* Build initial DDDG. */
-  if (dddg->build_initial_dddg()) {
+  if (!fileExists(trace_file_name)) {
+    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << " ERROR: Input Trace Not Found  " << std::endl;
+    std::cerr << "-------------------------------" << std::endl;
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "       Aladdin Ends..          " << std::endl;
     std::cerr << "-------------------------------" << std::endl;
     exit(0);
   }
+  trace_file = gzopen(trace_file_name.c_str(), "r");
+}
+
+BaseDatapath::~BaseDatapath() {
+  gzclose(trace_file);
+}
+
+void BaseDatapath::buildDddg() {
+  DDDG* dddg;
+  dddg = new DDDG(this);
+  /* Build initial DDDG. */
+  dddg->build_initial_dddg(trace_file);
   delete dddg;
   std::cerr << "-------------------------------" << std::endl;
   std::cerr << "    Initializing BaseDatapath      " << std::endl;
@@ -43,6 +46,16 @@ void BaseDatapath::buildDddg(){
   vertexToName = get(boost::vertex_index, graph_);
 
   num_cycles = 0;
+}
+
+void BaseDatapath::clearDatapath() {
+  clearExecNodes();
+  clearFunctionName();
+  clearArrayBaseAddress();
+  clearLoopBound();
+  clearRegStats();
+  graph_.clear();
+  registers.clear();
 }
 
 void BaseDatapath::addDddgEdge(unsigned int from,
@@ -303,6 +316,7 @@ void BaseDatapath::removeInductionDependence() {
 void BaseDatapath::dumpStats() {
   rescheduleNodesWhenNeeded();
   updateRegStats();
+  writePerCycleActivity();
 #ifdef DEBUG
   dumpGraph(benchName);
   writeOtherStats();
@@ -352,7 +366,7 @@ void BaseDatapath::loopPipelining() {
   bound_it++;  // skip first region
   while (node_it != exec_nodes.end()) {
     assert(exec_nodes[*bound_it]->is_branch_op());
-    while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
+    while (node_it != exec_nodes.end() && node_it->first < *bound_it) {
       curr_node = node_it->second;
       if (!curr_node->has_vertex() ||
           boost::degree(curr_node->get_vertex(), graph_) == 0 ||

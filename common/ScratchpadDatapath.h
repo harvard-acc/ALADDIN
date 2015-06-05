@@ -19,10 +19,10 @@ class ScratchpadDatapath : public BaseDatapath {
   void globalOptimizationPass();
   void completePartition();
   void scratchpadPartition();
+  virtual void clearDatapath();
   virtual void initBaseAddress();
   virtual void stepExecutingQueue();
   virtual bool step();
-  virtual void dumpStats();
   virtual double getTotalMemArea();
   virtual unsigned getTotalMemSize();
   virtual void getAverageMemPower(unsigned int cycles,

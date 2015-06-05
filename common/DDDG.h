@@ -31,14 +31,13 @@ class DDDG {
   BaseDatapath* datapath;
 
  public:
-  DDDG(BaseDatapath* _datapath, std::string _trace_name);
+  DDDG(BaseDatapath* _datapath);
   int num_edges();
   int num_nodes();
   int num_of_register_dependency();
   int num_of_memory_dependency();
-  void output_method_call_graph(std::string bench);
   void output_dddg();
-  bool build_initial_dddg();
+  bool build_initial_dddg(gzFile trace_file);
 
  private:
   void parse_instruction_line(std::string line);
@@ -46,8 +45,9 @@ class DDDG {
   void parse_result(std::string line);
   void parse_forward(std::string line);
   void parse_call_parameter(std::string line, int param_tag);
+  std::string parse_function_name(std::string line);
+  bool is_function_returned(std::string line, std::string target_function);
 
-  std::string trace_name;
   std::string curr_dynamic_function;
 
   uint8_t curr_microop;
@@ -68,7 +68,6 @@ class DDDG {
   std::vector<long long int> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
-  std::vector<std::string> method_call_graph;
   int num_of_instructions;
   int num_of_reg_dep;
   int num_of_mem_dep;

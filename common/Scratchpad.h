@@ -18,6 +18,7 @@ class Scratchpad {
  public:
   Scratchpad(unsigned p_ports_per_part, float cycle_time);
   virtual ~Scratchpad();
+  void clear();
   void step();
   void setScratchpad(std::string baseName,
                      unsigned num_of_bytes,

@@ -20,6 +20,11 @@ ScratchpadDatapath::ScratchpadDatapath(std::string bench,
 
 ScratchpadDatapath::~ScratchpadDatapath() { delete scratchpad; }
 
+void ScratchpadDatapath::clearDatapath() {
+  BaseDatapath::clearDatapath();
+  scratchpad->clear();
+}
+
 void ScratchpadDatapath::globalOptimizationPass() {
   std::cerr << "=============================================" << std::endl;
   std::cerr << "      Optimizing...            " << benchName << std::endl;
@@ -357,11 +362,6 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
       }
     }
   }
-}
-
-void ScratchpadDatapath::dumpStats() {
-  BaseDatapath::dumpStats();
-  BaseDatapath::writePerCycleActivity();
 }
 
 #ifdef USE_DB
