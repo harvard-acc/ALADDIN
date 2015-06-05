@@ -3,9 +3,14 @@
 #include "Registers.h"
 
 Registers::~Registers() {
+  clear();
+}
+
+void Registers::clear() {
   for (auto it = regs.begin(); it != regs.end(); ++it) {
     delete it->second;
   }
+  regs.clear();
 }
 
 void Registers::createRegister(std::string baseName,

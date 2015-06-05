@@ -8,6 +8,20 @@ Scratchpad::Scratchpad(unsigned p_ports_per_part, float cycle_time) {
 
 Scratchpad::~Scratchpad() {}
 
+void Scratchpad::clear() {
+  numOfPartitions = 0;
+  baseToPartitionID.clear();
+  occupiedBWPerPartition.clear();
+  partition_loads.clear();
+  partition_stores.clear();
+  cacti_value.clear();
+  compPartition.clear();
+  sizePerPartition.clear();
+  readEnergyPerPartition.clear();
+  writeEnergyPerPartition.clear();
+  leakPowerPerPartition.clear();
+  areaPerPartition.clear();
+}
 // wordsize in bytes
 void Scratchpad::setScratchpad(std::string baseName,
                                unsigned num_of_bytes,

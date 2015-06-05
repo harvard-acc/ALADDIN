@@ -1,8 +1,8 @@
 #include "DDDG.h"
 #include "BaseDatapath.h"
 
-DDDG::DDDG(BaseDatapath* _datapath, std::string _trace_name)
-    : datapath(_datapath), trace_name(_trace_name) {
+DDDG::DDDG(BaseDatapath* _datapath)
+    : datapath(_datapath) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
@@ -44,11 +44,12 @@ void DDDG::parse_instruction_line(std::string line) {
          &microop,
          &dyn_inst_count);
 
+  num_of_instructions++;
   prev_microop = curr_microop;
   curr_microop = (uint8_t)microop;
   curr_instid = instid;
 
-  curr_node = datapath->insertNode(dyn_inst_count, microop);
+  curr_node = datapath->insertNode(num_of_instructions, microop);
   curr_node->set_line_num(line_num);
   curr_node->set_inst_id(curr_instid);
   curr_node->set_static_method(curr_static_function);
@@ -103,7 +104,6 @@ void DDDG::parse_instruction_line(std::string line) {
     prev_bblock = curr_bblock;
   curr_bblock = bblockid;
   curr_node->set_dynamic_invocation(func_invocation_count);
-  num_of_instructions++;
   last_parameter = 0;
   parameter_value_per_inst.clear();
   parameter_size_per_inst.clear();
@@ -277,44 +277,85 @@ void DDDG::parse_forward(std::string line) {
   else
     register_last_written[unique_reg_id] = tmp_written_inst;
 }
-bool DDDG::build_initial_dddg() {
-  if (!fileExists(trace_name)) {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << " ERROR: Input Trace Not Found  " << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
-    return 1;
-  } else {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "      Generating DDDG          " << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
-  }
 
-  std::string bench = datapath->getBenchName();
-  gzFile tracefile_gz = gzopen(trace_name.c_str(), "r");
+std::string DDDG::parse_function_name(std::string line) {
+  char curr_static_function[256];
+  char instid[256], bblockid[256];
+  int line_num;
+  int microop;
+  int dyn_inst_count;
+  sscanf(line.c_str(),
+         "%d,%[^,],%[^,],%[^,],%d,%d\n",
+         &line_num,
+         curr_static_function,
+         bblockid,
+         instid,
+         &microop,
+         &dyn_inst_count);
+  return curr_static_function;
+}
+
+bool DDDG::is_function_returned(std::string line, std::string target_function) {
+  char curr_static_function[256];
+  char instid[256], bblockid[256];
+  int line_num;
+  int microop;
+  int dyn_inst_count;
+  sscanf(line.c_str(),
+         "%d,%[^,],%[^,],%[^,],%d,%d\n",
+         &line_num,
+         curr_static_function,
+         bblockid,
+         instid,
+         &microop,
+         &dyn_inst_count);
+  if (microop == LLVM_IR_Ret &&
+      (!target_function.compare(curr_static_function)) )
+      return true;
+  return false;
+}
+
+bool DDDG::build_initial_dddg(gzFile trace_file) {
+
+  std::cerr << "-------------------------------" << std::endl;
+  std::cerr << "      Generating DDDG          " << std::endl;
+  std::cerr << "-------------------------------" << std::endl;
 
   char buffer[256];
-  while (tracefile_gz && !gzeof(tracefile_gz)) {
-    if (gzgets(tracefile_gz, buffer, sizeof(buffer)) == NULL)
+  std::string first_function;
+  bool seen_first_line = false;
+  bool first_function_returned = false;
+  while (trace_file && !gzeof(trace_file)) {
+    if (gzgets(trace_file, buffer, sizeof(buffer)) == NULL) {
       continue;
+    }
     std::string wholeline(buffer);
     size_t pos_end_tag = wholeline.find(",");
 
     if (pos_end_tag == std::string::npos) {
+      if (first_function_returned)
+        break;
       continue;
     }
     std::string tag = wholeline.substr(0, pos_end_tag);
     std::string line_left = wholeline.substr(pos_end_tag + 1);
-    if (tag.compare("0") == 0)
+    if (tag.compare("0") == 0) {
+      if (!seen_first_line) {
+        seen_first_line = true;
+        first_function = parse_function_name(line_left);
+      }
+      first_function_returned =
+        is_function_returned(line_left, first_function);
       parse_instruction_line(line_left);
-    else if (tag.compare("r") == 0)
+    } else if (tag.compare("r") == 0) {
       parse_result(line_left);
-    else if (tag.compare("f") == 0)
+    } else if (tag.compare("f") == 0) {
       parse_forward(line_left);
-    else
+    } else {
       parse_parameter(line_left, atoi(tag.c_str()));
+    }
   }
 
-  gzclose(tracefile_gz);
 
   output_dddg();
 

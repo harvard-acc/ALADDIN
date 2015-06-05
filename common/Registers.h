@@ -70,6 +70,7 @@ class Registers {
   double getReadEnergy(std::string baseName);
   double getWriteEnergy(std::string baseName);
   bool has(std::string baseName);
+  void clear();
 
  private:
   std::map<std::string, Register*> regs;

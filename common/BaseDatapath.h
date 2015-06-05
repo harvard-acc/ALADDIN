@@ -126,7 +126,8 @@ struct summary_data_t {
 
 class BaseDatapath {
  public:
-  BaseDatapath(std::string bench, string trace_file, string config_file);
+  BaseDatapath(std::string bench, std::string trace_file_name,
+               std::string config_file);
   virtual ~BaseDatapath();
 
   // Build graph.
@@ -173,6 +174,8 @@ class BaseDatapath {
   }
   ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
+  void dumpStats();
+
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
     auto part_it = partition_config.find(label);
@@ -188,6 +191,22 @@ class BaseDatapath {
     }
     return false;
   }
+
+  /* Clear graph stats. */
+  virtual void clearDatapath();
+  void clearExecNodes() {
+    for (int i = 0; i < exec_nodes.size(); i++)
+      delete exec_nodes[i];
+  }
+  void clearFunctionName() { functionNames.clear(); }
+  void clearArrayBaseAddress() {
+    for (auto part_it = partition_config.begin();
+              part_it != partition_config.end(); ++part_it)
+      part_it->second.base_addr = 0;
+  }
+  void clearLoopBound() { loopBound.clear(); }
+  void clearRegStats() { regStats.clear(); }
+
 
   // Graph optimizations.
   void removeInductionDependence();
@@ -305,14 +324,12 @@ class BaseDatapath {
   void tokenizeString(std::string input, std::vector<int>& tokenized_list);
 
   virtual bool step();
-  virtual void dumpStats();
   virtual void stepExecutingQueue() = 0;
   virtual void globalOptimizationPass() = 0;
 
   char* benchName;
   int num_cycles;
   float cycleTime;
-  std::string trace_file;
   std::string config_file;
 
   bool pipelining;
@@ -351,6 +368,9 @@ class BaseDatapath {
   unsigned executedNodes;
   std::list<ExecNode*> executingQueue;
   std::list<ExecNode*> readyToExecuteQueue;
+
+  // Trace file.
+  gzFile trace_file;
 };
 
 #endif

@@ -67,6 +67,7 @@ int main(int argc, const char* argv[]) {
   }
 
   acc->dumpStats();
+  acc->clearDatapath();
   delete acc;
   return 0;
 }
