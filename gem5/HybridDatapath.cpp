@@ -314,6 +314,13 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   if (inflight_mem_op == Ready) {
     // First time seeing this node. Start the memory access procedure.
     Addr vaddr = mem_access->vaddr;
+    // If Aladdin is executing standalone, then the actual addresses that are
+    // sent to the memory system of gem5 don't matter as long as there is a 1:1
+    // correspondence between them and those in the trace. This mask ensures
+    // that even if a trace was generated on a 64 bit system, gem5 will not
+    // attempt to access an address outside of a 32-bit address space.
+    if (isExecuteStandalone())
+      vaddr &= ADDR_MASK;
     int size = mem_access->size;
     if (dtb.canRequestTranslation() &&
         issueTLBRequest(vaddr, size, isLoad, node_id)) {
