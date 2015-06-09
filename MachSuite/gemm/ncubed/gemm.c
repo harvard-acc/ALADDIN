@@ -28,9 +28,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gemm.h"
-#include "gem5/dma_interface.h"
-void gemm( TYPE m1[row_size * col_size], 
-           TYPE m2[row_size * col_size], 
+
+void gemm( TYPE m1[row_size * col_size],
+           TYPE m2[row_size * col_size],
            TYPE prod[row_size * col_size]){
 #ifdef DMA_MODE
   dmaLoad(&m1[0],4096*4*8);

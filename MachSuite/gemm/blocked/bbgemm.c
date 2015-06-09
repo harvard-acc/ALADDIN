@@ -33,7 +33,7 @@ M. D. Lam, E. E. Rothberg, and M. E. Wolf
 ASPLOS 1991
 */
 #include "bbgemm.h"
-#include "gem5/dma_interface.h"
+
 void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
     int i, k, j, jj, kk, temp_x;
     int i_row, k_row;

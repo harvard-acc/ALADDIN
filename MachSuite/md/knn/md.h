@@ -27,8 +27,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Implemenataion based on:
-A. Danalis, G. Marin, C. McCurdy, J. S. Meredith, P. C. Roth, K. Spafford, V. Tipparaju, and J. S. Vetter. 
-The scalable heterogeneous computing (shoc) benchmark suite. 
+A. Danalis, G. Marin, C. McCurdy, J. S. Meredith, P. C. Roth, K. Spafford, V. Tipparaju, and J. S. Vetter.
+The scalable heterogeneous computing (shoc) benchmark suite.
 In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Processing Units, 2010.
 */
 
@@ -43,6 +43,15 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 // LJ coefficients
 #define lj1           1.5
 #define lj2           2.0
+
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
@@ -68,9 +77,34 @@ void md_kernel(TYPE d_force_x[nAtoms],
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "d_force_x", (void*)&args->d_force_x,
+      sizeof(args->d_force_x));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "d_force_y", (void*)&args->d_force_y,
+      sizeof(args->d_force_y));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "d_force_z", (void*)&args->d_force_z,
+      sizeof(args->d_force_z));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_x", (void*)&args->position_x,
+      sizeof(args->position_x));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_y", (void*)&args->position_y,
+      sizeof(args->position_y));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_z", (void*)&args->position_z,
+      sizeof(args->position_z));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "NL", (void*)&args->NL, sizeof(args->NL));
+  invokeAcceleratorAndBlock(MACHSUITE_MD_KNN);
+#else
   md_kernel( args->d_force_x, args->d_force_y, args->d_force_z,
              args->position_x, args->position_y, args->position_z,
              args->NL );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

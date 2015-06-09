@@ -37,6 +37,15 @@ Implementation based on http://www-igm.univ-mlv.fr/~lecroq/string/node8.html
 #define PATTERN_SIZE 4
 #define STRING_SIZE (32411)
 
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int kmpNext[PATTERN_SIZE]);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
@@ -51,7 +60,18 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "pattern", (void*)&args->pattern, sizeof(args->pattern));
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "input", (void*)&args->input, sizeof(args->input));
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "kmpNext", (void*)&args->kmpNext, sizeof(args->kmpNext));
+  invokeAcceleratorAndBlock(MACHSUITE_KMP_KMP);
+#else
   kmp( args->pattern, args->input, args->kmpNext);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

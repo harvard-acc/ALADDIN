@@ -47,6 +47,15 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 // upper limit
 #define N_LEVELS 10
 
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 // Larger than necessary for small graphs, but appropriate for large ones
 typedef uint64_t edge_index_t;
 typedef uint64_t node_index_t;
@@ -82,7 +91,21 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES], node_index_t starting_nod
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_QUEUE, "nodes", (void*)&args->nodes, sizeof(args->nodes));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_QUEUE, "edges", (void*)&args->edges, sizeof(args->edges));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_QUEUE, "level", (void*)&args->level, sizeof(args->level));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_QUEUE, "level_counts", (void*)&args->level_counts,
+                                           sizeof(args->level_counts));
+  invokeAcceleratorAndBlock(MACHSUITE_BFS_QUEUE);
+#else
   bfs(args->nodes, args->edges, args->starting_node, args->level, args->level_counts);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

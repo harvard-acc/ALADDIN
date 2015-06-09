@@ -41,13 +41,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define blockSide     1
 #define nBlocks       (blockSide*blockSide*blockSide)
 #define blockEdge     (domainEdge/((double)blockSide))
-// Memory Bound 
+// Memory Bound
 // This is an artifact of using statically-allocated arrays. We'll pretend that
 // it doesn't exist and instead track the actual number of points.
 #define densityFactor 10
 // LJ coefficients
 #define lj1           1.5
 #define lj2           2.0
+
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
 
 typedef struct {
   double x, y, z;
@@ -73,7 +82,21 @@ void md( int n_points[blockSide][blockSide][blockSide],
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_STRIDED, "n_points", (void*)&args->n_points,
+      sizeof(args->n_points));
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_STRIDED, "d_force", (void*)&args->d_force,
+      sizeof(args->d_force));
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_STRIDED, "position", (void*)&args->position,
+      sizeof(args->position));
+  invokeAcceleratorAndBlock(MACHSUITE_MD_GRID);
+#else
   md( args->n_points, args->d_force, args->position );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

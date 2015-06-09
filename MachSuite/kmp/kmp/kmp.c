@@ -30,13 +30,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Implementation based on http://www-igm.univ-mlv.fr/~lecroq/string/node8.html
 */
 #include "kmp.h"
-#include "gem5/dma_interface.h"
+
 
 void CPF(char pattern[PATTERN_SIZE], int kmpNext[PATTERN_SIZE]) {
     int k, q;
     k = 0;
     kmpNext[0] = 0;
-    
+
     c1 : for(q = 1; q < PATTERN_SIZE; q++){
         c2 : while(k > 0 && pattern[k] != pattern[q]){
             k = kmpNext[q];
@@ -51,7 +51,7 @@ int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int kmpNext[PATTERN
 #ifdef DMA_MODE
   dmaLoad(&input[0],32411*1*8);
 #endif
-    int i, q; 
+    int i, q;
     int outs;
     outs = 0;
 

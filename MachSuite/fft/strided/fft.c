@@ -1,5 +1,5 @@
 #include "fft.h"
-#include "gem5/dma_interface.h"
+
 void fft(double real[NUM], double img[NUM], double real_twid[NUM], double img_twid[NUM]){
 #ifdef DMA_MODE
   dmaLoad(&real[0],1024*8*8);
@@ -26,7 +26,7 @@ void fft(double real[NUM], double img[NUM], double real_twid[NUM], double img_tw
 
             rootindex = (even<<log) & (NUM - 1);
             if(rootindex){
-                temp = real_twid[rootindex] * real[odd] - 
+                temp = real_twid[rootindex] * real[odd] -
                     img_twid[rootindex]  * img[odd];
                 img[odd] = real_twid[rootindex]*img[odd] +
                     img_twid[rootindex]*real[odd];

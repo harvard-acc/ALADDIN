@@ -53,6 +53,15 @@ ASPLOS 1991
 //Set number of iterations to execute
 #define MAX_ITERATION 1
 
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
@@ -67,7 +76,18 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_BLOCKED, "m1", (void*)&args->m1, sizeof(args->m1));
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_BLOCKED, "m2", (void*)&args->m2, sizeof(args->m2));
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_BLOCKED, "prod", (void*)&args->prod, sizeof(args->prod));
+  invokeAcceleratorAndBlock(MACHSUITE_GEMM_BLOCKED);
+#else
   bbgemm( args->m1, args->m2, args->prod );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

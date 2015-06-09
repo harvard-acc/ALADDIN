@@ -32,9 +32,9 @@ Harish and Narayanan. "Accelerating large graph algorithms on the GPU using CUDA
 Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CPU and GPU." PACT, 2011.
 */
 #include "bulk.h"
-#include "gem5/dma_interface.h"
-void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES], 
-            node_index_t starting_node, level_t level[N_NODES], 
+
+void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
+            node_index_t starting_node, level_t level[N_NODES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
@@ -60,7 +60,7 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
         loop_neighbors: for( e=tmp_begin; e<tmp_end; e++ ) {
           node_index_t tmp_dst = edges[e].dst;
           level_t tmp_level = level[tmp_dst];
-          
+
           if( tmp_level ==MAX_LEVEL ) { // Unmarked
             level[tmp_dst] = horizon+1;
             ++cnt;

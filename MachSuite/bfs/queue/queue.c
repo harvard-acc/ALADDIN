@@ -32,14 +32,14 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 */
 
 #include "queue.h"
-#include "gem5/dma_interface.h"
+
 #define Q_PUSH(node) { queue[q_in==0?N_NODES-1:q_in-1]=node; q_in=(q_in+1)%N_NODES; }
 #define Q_PEEK() (queue[q_out])
 #define Q_POP() { q_out = (q_out+1)%N_NODES; }
 #define Q_EMPTY() (q_in>q_out ? q_in==q_out+1 : (q_in==0)&&(q_out==N_NODES-1))
 
-void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES], 
-            node_index_t starting_node, level_t level[N_NODES], 
+void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
+            node_index_t starting_node, level_t level[N_NODES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
@@ -70,7 +70,7 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
     loop_neighbors: for( e=tmp_begin; e<tmp_end; e++ ) {
       node_index_t tmp_dst = edges[e].dst;
       level_t tmp_level = level[tmp_dst];
-      
+
       if( tmp_level ==MAX_LEVEL ) { // Unmarked
         level_t tmp_level = level[n]+1;
         level[tmp_dst] = tmp_level;

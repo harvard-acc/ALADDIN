@@ -30,7 +30,7 @@ Implementations based on:
 V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
 */
 #include "fft.h"
-#include "gem5/dma_interface.h"
+
 //////BEGIN TWIDDLES ////////
 #define THREADS 64
 #define cmplx_M_x(a_x, a_y, b_x, b_y) (a_x*b_x - a_y *b_y)

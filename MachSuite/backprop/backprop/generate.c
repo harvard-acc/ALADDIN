@@ -40,7 +40,7 @@ void generate_binary()
         for(j=0; j < SIZE_OUT; j++){
             data.targets[i][j] = (((double)random())/((double)RAND_MAX));
         }
-    } 
+    }
 
     // Open and write
     fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);

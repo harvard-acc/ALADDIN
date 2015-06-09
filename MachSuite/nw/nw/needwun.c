@@ -12,24 +12,24 @@ modification, are permitted provided that the following conditions are met:
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 
-* Neither the name of Harvard University nor the names of its contributors may 
+* Neither the name of Harvard University nor the names of its contributors may
   be used to endorse or promote products derived from this software without
   specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "needwun.h"
-#include "gem5/dma_interface.h"
-void needwun(char SEQA[N], char SEQB[M], char allignedA[sum_size], char allignedB[sum_size], 
+
+void needwun(char SEQA[N], char SEQB[M], char alignedA[sum_size], char alignedB[sum_size],
              int A[dyn_size], char ptr[dyn_size]){
 #ifdef DMA_MODE
   dmaLoad(&SEQA[0],128*1*8);
@@ -99,30 +99,30 @@ void needwun(char SEQA[N], char SEQB[M], char allignedA[sum_size], char alligned
     trace : while(i > 0 || j > 0){
         Mul3 = j*M;
         if (ptr[i + Mul3] == 0){
-            allignedA[i_t] = SEQA[i];
-            allignedB[j_t] = SEQB[j];
+            alignedA[i_t] = SEQA[i];
+            alignedB[j_t] = SEQB[j];
             j_t++;
             i_t++;
             i--;
             j--;
         }
         else if(ptr[i + Mul3] == 1){
-            allignedA[i_t] = SEQA[i];
-            allignedB[j_t] = 'X';
+            alignedA[i_t] = SEQA[i];
+            alignedB[j_t] = 'X';
             j_t++;
             i_t++;
             i--;
         }
         else{
-            allignedA[i_t] = 'X';
-            allignedB[j_t] = SEQB[j];
+            alignedA[i_t] = 'X';
+            alignedB[j_t] = SEQB[j];
             j_t++;
             i_t++;
             j--;
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&allignedB[0],256*1*8);
-  dmaStore(&allignedB[0],256*1*8);
+  dmaStore(&alignedB[0],256*1*8);
+  dmaStore(&alignedB[0],256*1*8);
 #endif
 }

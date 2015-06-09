@@ -33,7 +33,7 @@ The scalable heterogeneous computing (shoc) benchmark suite.
 In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Processing Units, 2010
 */
 #include "radix.h"
-#include "gem5/dma_interface.h"
+
 
 void local_scan(int bucket[BUCKETSIZE])
 {

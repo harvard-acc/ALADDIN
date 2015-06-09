@@ -46,6 +46,16 @@ typedef struct complex_t {
 #ifndef M_SQRT1_2
 #define M_SQRT1_2      0.70710678118654752440f
 #endif
+
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 void fft1D_512(TYPE work_x[512], TYPE work_y[512]);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +69,18 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_TRANSPOSE, "work_x", (void*)&args->work_x,
+      sizeof(args->work_x));
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_TRANSPOSE, "work_y", (void*)&args->work_y,
+      sizeof(args->work_y));
+  invokeAcceleratorAndBlock(MACHSUITE_FFT_TRANSPOSE);
+#else
   fft1D_512( args->work_x, args->work_y);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

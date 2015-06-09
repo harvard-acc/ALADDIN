@@ -27,10 +27,19 @@
 //Momentum
 #define M 0.1
 
+#ifdef GEM5_HARNESS
+#include "gem5/aladdin_sys_connection.h"
+#include "gem5/aladdin_sys_constants.h"
+#endif
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 static const int layer_size[] = {SIZE_IN, MAX_COLS, SIZE_OUT};
 
-void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS], 
-        TYPE inputs[NUM_TRAIN][SIZE_IN], 
+void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS],
+        TYPE inputs[NUM_TRAIN][SIZE_IN],
         TYPE targets[NUM_TRAIN][SIZE_OUT]);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +55,21 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_BACKPROP_BACKPROP, "weights", (void*)&args->weights,
+                                              sizeof(args->weights));
+  mapArrayToAccelerator(
+      MACHSUITE_BACKPROP_BACKPROP, "inputs", (void*)&args->inputs,
+                                              sizeof(args->inputs));
+  mapArrayToAccelerator(
+      MACHSUITE_BACKPROP_BACKPROP, "targets", (void*)&args->targets,
+                                              sizeof(args->targets));
+  invokeAcceleratorAndBlock(MACHSUITE_BACKPROP_BACKPROP);
+#else
   backprop( args->weights, args->inputs, args->targets );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 fft: fft.c fft.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o fft fft.c ../../common/harness.c -lm
+	$(CC) $(CFLAGS) -o fft $(SRCS) $(OTHER_SRCS) -lm
 
 run: fft input.data check.data
 	./fft input.data check.data
@@ -9,3 +9,15 @@ hls: fft.c fft.h
 
 clean:
 	rm -f fft
+
+include ../../common/Makefile.gem5
+
+# For the tracer makefile
+SRCS = fft.c ../../common/harness.c
+ACCEL_NAME = fft-transpose
+TEST_BIN = $(ACCEL_NAME)
+export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
+ifndef WORKLOAD
+  export WORKLOAD=twiddles8,loadx8,loady8,fft1D_512
+endif
+include ../../common/Makefile.tracer

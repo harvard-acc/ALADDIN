@@ -2,9 +2,9 @@
 
 //Activation function..
 TYPE sigmoid(TYPE x){
-    TYPE temp, one;    
+    TYPE temp, one;
     one = (double)1.0;
-    temp = one + exp(-x);    
+    temp = one + exp(-x);
     temp = one/temp;
     return temp;
 }
@@ -23,7 +23,7 @@ void update_layer(int numIn, int numOut, TYPE weightsIn[MAX_ROWS][MAX_COLS], TYP
     }
 }
 
-void update(TYPE weights[][MAX_ROWS][MAX_COLS], 
+void update(TYPE weights[][MAX_ROWS][MAX_COLS],
         TYPE *input,
         TYPE activations[][MAX_ROWS]){
     int i, j;
@@ -52,17 +52,17 @@ void propagate_error_out(TYPE *activationsOut, TYPE *deltas, TYPE *targets){
 }
 
 
-void propagate_error_layer(int level, 
+void propagate_error_layer(int level,
         int level_in, int level_out,
-        TYPE weightsIn[MAX_ROWS][MAX_COLS], 
-        TYPE *activationsOut, 
+        TYPE weightsIn[MAX_ROWS][MAX_COLS],
+        TYPE *activationsOut,
         TYPE *deltasIn, TYPE *deltasOut){
 
     int kk, jj;
     TYPE error;
 
     //for the take in the last calc activities and deltas and comp differences...
-    //In and Out are relative to the way BACKPROP is moving... opposite the forward pass... 
+    //In and Out are relative to the way BACKPROP is moving... opposite the forward pass...
 
     pel_1 : for(jj = 0; jj < layer_size[level]; jj++){
         error = 0.0;
@@ -74,8 +74,8 @@ void propagate_error_layer(int level,
 }
 
 void update_weights(int level,
-        TYPE weights[][MAX_COLS], 
-        TYPE *deltas, TYPE activations[], 
+        TYPE weights[][MAX_COLS],
+        TYPE *deltas, TYPE activations[],
         TYPE changeMat[][MAX_COLS]){
 
     int ii, jj;
@@ -94,9 +94,9 @@ void update_weights(int level,
     }
 }
 
-void propagate_errors(TYPE weights[][MAX_ROWS][MAX_COLS], 
-        TYPE activations[][MAX_ROWS], 
-        TYPE *targets, 
+void propagate_errors(TYPE weights[][MAX_ROWS][MAX_COLS],
+        TYPE activations[][MAX_ROWS],
+        TYPE *targets,
         TYPE changeMat[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS]){
 
     int i, j;
@@ -137,8 +137,8 @@ TYPE comp_error(TYPE *targets, TYPE *activations){
     return error;
 }
 
-void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS], 
-        TYPE inputs[NUM_TRAIN][SIZE_IN], 
+void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS],
+        TYPE inputs[NUM_TRAIN][SIZE_IN],
         TYPE targets[NUM_TRAIN][SIZE_OUT]){
 
     int ee, rows, cols, jj, II, JJ;
@@ -169,7 +169,7 @@ void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS],
             //Run forward pass of the training data through the network
             //get activations input stimulated
             update(weights, inputs[jj], activations);
-            
+
             //Adjust weights based on deltas between generated output and
             //known answer
             propagate_errors(weights, activations, targets[jj], changeMat);

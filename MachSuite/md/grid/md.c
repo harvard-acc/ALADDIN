@@ -28,7 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "md.h"
-#include "gem5/dma_interface.h"
+
 #define MIN(x,y) ( (x)<(y) ? (x) : (y) )
 #define MAX(x,y) ( (x)>(y) ? (x) : (y) )
 void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockSide][blockSide][blockSide][densityFactor],
