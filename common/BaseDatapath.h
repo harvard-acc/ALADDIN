@@ -289,8 +289,28 @@ class BaseDatapath {
                                   float* avg_leak) = 0;
   virtual void getMemoryBlocks(std::vector<std::string>& names) = 0;
 
-  // Miscellaneous
-  void tokenizeString(std::string input, std::vector<int>& tokenized_list);
+#ifdef USE_DB
+  /* Gets the experiment id for experiment_name. If this is a new
+   * experiment_name that doesn't exist in the database, it creates a new unique
+   * experiment id and inserts it and the name into the database. */
+  int getExperimentId(sql::Connection* con);
+
+  /* Writes the current simulation configuration parameters into the appropriate
+   * database table. Since different accelerators have different configuration
+   * parameters, this is left pure virtual. */
+  virtual int writeConfiguration(sql::Connection* con) = 0;
+
+  /* Returns the last auto_incremented column value. This is used to get the
+   * newly inserted config.id field. */
+  int getLastInsertId(sql::Connection* con);
+
+  /* Extracts the base Aladdin configuration parameters from the config file. */
+  void getCommonConfigParameters(int& unrolling_factor,
+                                 bool& pipelining_factor,
+                                 int& partition_factor);
+
+  void writeSummaryToDatabase(summary_data_t& summary);
+#endif
 
   virtual bool step();
   virtual void stepExecutingQueue() = 0;

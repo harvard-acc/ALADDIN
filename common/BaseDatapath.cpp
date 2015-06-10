@@ -1,5 +1,4 @@
 #include <sstream>
-#include <boost/tokenizer.hpp>
 
 #include "opcode_func.h"
 #include "BaseDatapath.h"
@@ -1939,18 +1938,6 @@ void BaseDatapath::parse_config(std::string bench,
     }
   }
   config_file.close();
-}
-
-/* Tokenizes an input string and returns a vector. */
-void BaseDatapath::tokenizeString(std::string input,
-                                  std::vector<int>& tokenized_list) {
-  using namespace boost;
-  tokenizer<> tok(input);
-  for (tokenizer<>::iterator beg = tok.begin(); beg != tok.end(); ++beg) {
-    int value;
-    istringstream(*beg) >> value;
-    tokenized_list.push_back(value);
-  }
 }
 
 #ifdef USE_DB
