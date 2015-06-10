@@ -320,9 +320,6 @@ class BaseDatapath {
   void writeSummaryToDatabase(summary_data_t& summary);
 #endif
 
-  // Miscellaneous
-  void tokenizeString(std::string input, std::vector<int>& tokenized_list);
-
   virtual bool step();
   virtual void stepExecutingQueue() = 0;
   virtual void globalOptimizationPass() = 0;

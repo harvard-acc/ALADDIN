@@ -11,7 +11,6 @@ class CacheDatapath(MemObject):
   cycleTime = Param.Unsigned(6, "Clock Period: 6ns default")
   acceleratorName = Param.String("", "Unique accelerator name")
   acceleratorId = Param.Int(0, "Accelerator Id")
-  acceleratorDeps = Param.String("", "Accelerator dependencies, comma separated.")
 
   cacheSize = Param.String("16kB", "Private cache size")
   cacheLineSize = Param.Int("64", "Cache line size (in bytes)")

@@ -75,8 +75,6 @@ HybridDatapath::HybridDatapath(
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
-  // TODO: Remove this feature.
-  tokenizeString(params->acceleratorDeps, accelerator_deps);
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   if (execute_standalone)
     initializeDatapath();
@@ -190,13 +188,6 @@ HybridDatapath::stepExecutingQueue()
 bool
 HybridDatapath::step()
 {
-  // If the dependencies have not yet been fulfilled, do not proceed with
-  // execution.
-  if (system->numAcceleratorDepsRemaining(accelerator_id) > 0) {
-    schedule(tickEvent, clockEdge(Cycles(1)));
-    // TODO: Maybe add a counter for number of cycles spent waiting here.
-    return true;
-  }
   resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();

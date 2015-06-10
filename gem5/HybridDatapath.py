@@ -11,7 +11,6 @@ class HybridDatapath(MemObject):
   cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
   acceleratorName = Param.String("", "Unique accelerator name")
   acceleratorId = Param.Int(-1, "Accelerator Id")
-  acceleratorDeps = Param.String("", "Accelerator dependencies.")
   experimentName = Param.String("NULL", "Experiment name. String identifier "
       "for a set of related simulations.")
   system = Param.System(Parent.any, "system object")

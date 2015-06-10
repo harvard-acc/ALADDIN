@@ -51,7 +51,6 @@ DmaScratchpadDatapath::DmaScratchpadDatapath(
   ScratchpadDatapath::globalOptimizationPass();
   setGraphForStepping();
   num_cycles = 0;
-  tokenizeString(params->acceleratorDeps, accelerator_deps);
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   if (execute_standalone)
     scheduleOnEventQueue(1);
@@ -153,14 +152,6 @@ DmaScratchpadDatapath::stepExecutingQueue()
 
 bool
 DmaScratchpadDatapath::step() {
-  // If the dependencies have not yet been fulfilled, do not proceed with
-  // execution.
-  if (system->numAcceleratorDepsRemaining(accelerator_id) > 0)
-  {
-    schedule(tickEvent, clockEdge(Cycles(1)));
-    // Maybe add a counter for number of cycles spent waiting here.
-    return true;
-  }
   stepExecutingQueue();
   copyToExecutingQueue();
   DPRINTF(DmaScratchpadDatapath, "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
