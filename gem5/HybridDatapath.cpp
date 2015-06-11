@@ -717,11 +717,26 @@ HybridDatapath::writeConfiguration(sql::Connection *con)
   stringstream query;
   query << "insert into configs (id, memory_type, trace_file, "
            "config_file, pipelining, unrolling, partitioning, "
-           "max_dma_requests, dma_setup_latency) values (";
-  query << "NULL" << ",\"spad\"" << "," << "\"" << trace_file << "\"" << ",\""
-        << config_file << "\"," << pipelining << "," << unrolling_factor << ","
-        << partition_factor << "," << spadPort.max_req << ","
-        << dmaSetupLatency << ")";
+           "max_dma_requests, dma_setup_latency, cache_size, cache_line_sz, "
+           "cache_assoc, cache_hit_latency, "
+           "is_perfect_tlb, tlb_page_size, tlb_assoc, tlb_miss_latency, "
+           "tlb_hit_latency, tlb_max_outstanding_walks, tlb_bandwidth, "
+           "tlb_entries, load_queue_size, store_queue_size, load_bandwidth, "
+           "store_bandwidth) values (";
+  query << "NULL"
+        << ",\"spad\""
+        << ","
+        << "\"" << trace_file << "\""
+        << ",\"" << config_file << "\"," << pipelining << ","
+        << unrolling_factor << "," << partition_factor << ","
+        << spadPort.max_req << "," << dmaSetupLatency << ",\"" << cacheSize
+        << "\"," << cacheLineSize << "," << cacheAssoc << "," << cacheHitLatency
+        << "," << dtb.getIsPerfectTLB() << "," << dtb.getPageBytes() << ","
+        << dtb.getAssoc() << "," << dtb.getMissLatency() << ","
+        << dtb.getHitLatency() << "," << dtb.getNumOutStandingWalks() << ","
+        << dtb.bandwidth << "," << dtb.getNumEntries() << "," << load_queue.size
+        << "," << store_queue.size << "," << load_queue.bandwidth << ","
+        << store_queue.bandwidth << ")";
   stmt->execute(query.str());
   delete stmt;
   // Get the newly added config_id.

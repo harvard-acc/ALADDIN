@@ -115,7 +115,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   protected:
 #ifdef USE_DB
-    // TODO: Merge the DmaScratchpad and cache configurations.
     int writeConfiguration(sql::Connection *con);
 #endif
 
