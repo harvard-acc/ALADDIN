@@ -92,7 +92,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     // Insert an array label to its simulated virtual address mapping.
     virtual void insertArrayLabelToVirtual(std::string array_label, Addr vaddr);
 
-    // Invoked by the TLB when a TLB request has completed.
+    /* Invoked by the TLB when a TLB request has completed.
+     *
+     * If the translation did not miss, the the physical address is stored
+     * into the load store queues. Otherwise, the status of the translation
+     * request is reset to its original state while the miss is being
+     * processed.
+     */
     void completeTLBRequest(PacketPtr pkt, bool was_miss);
 
     // Compute power and area of the caches.
@@ -172,6 +178,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
      */
     bool handleCacheMemoryOp(ExecNode* node);
 
+    /* Delete all load-store queue entries that are in state Returned.
+     *
+     * This opens up space for new memory requests.
+     */
+    void retireReturnedLSQEntries();
+
     // DMA access functions.
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id);
     void completeDmaRequest(unsigned node_id);
@@ -250,18 +262,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
       const char* description() const;
     };
 
-    // Current status of a memory access. Used for caches and DMA requests.
-    enum MemAccessStatus {
-      Ready,
-      Translating,
-      Translated,
-      WaitingFromCache,
-      WaitingFromDma,
-      Returned
-    };
-
-    // Stores status information about memory accesses currently in flight.
-    std::map<unsigned, MemAccessStatus> inflight_mem_ops;
+    /* Stores status information about memory nodes currently in flight.
+     *
+     * TODO: DMA memory ops still use this map, but for all other memory
+     * operations, this is not used. Get rid of this entirely, including for
+     * DMA ops.
+     */
+    std::map<unsigned, MemAccessStatus> inflight_mem_nodes;
 
     // FIFO queue for DMA accesses.
     std::deque<Addr> dmaQueue;

@@ -12,6 +12,26 @@
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64
 
+// Current status of a memory access. Used for caches and DMA requests.
+enum MemAccessStatus {
+  Ready,
+  Translating,
+  Translated,
+  WaitingFromCache,
+  WaitingFromDma,
+  Returned
+};
+
+struct MemoryQueueEntry {
+  MemAccessStatus status;  // Current status of the request.
+  Addr paddr;  // Physical address, returned by the TLB.
+
+  MemoryQueueEntry() {
+    status = Ready;
+    paddr = 0x0;
+  }
+};
+
 /* A generic memory queue that stores the number of reads and writes from some
  * shared memory resource.
  */
@@ -21,7 +41,7 @@ class MemoryQueue {
               int _bandwidth,
               std::string _name,
               std::string _cacti_config)
-      : size(_size), bandwidth(_bandwidth), in_flight(0), issued_this_cycle(0),
+      : size(_size), bandwidth(_bandwidth), issued_this_cycle(0),
         name(_name), cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
         leakagePower(0), area(0) {
     readStats.name(name + "_reads")
@@ -36,7 +56,54 @@ class MemoryQueue {
    * size of the request queue.
    */
   bool can_issue() {
-    return (in_flight < size) && (issued_this_cycle < bandwidth);
+    return (queue.size() < size) && (issued_this_cycle < bandwidth);
+  }
+
+  /* Returns true if the queue already contains an entry for this address. */
+  bool contains(Addr vaddr) {
+    return (queue.find(vaddr) != queue.end());
+  }
+
+  bool is_full() {
+    return (queue.size() == size);
+  }
+
+  bool enqueue(Addr vaddr) {
+    if (!contains(vaddr) && !is_full()) {
+      queue[vaddr] = MemoryQueueEntry();
+      return true;
+    }
+    return false;
+  }
+
+  void dequeue(Addr vaddr) {
+    queue.erase(vaddr);
+  }
+
+  void setStatus(Addr vaddr, MemAccessStatus status) {
+    queue[vaddr].status = status;
+  }
+
+  MemAccessStatus getStatus(Addr vaddr) {
+    return queue[vaddr].status;
+  }
+
+  void setPhysicalAddress(Addr vaddr, Addr paddr) {
+    queue[vaddr].paddr = paddr;
+  }
+
+  /* Retires all entries that are returned.
+   *
+   * This is done at the end of every cycle to free space for new requests.
+   */
+  void retireReturnedEntries() {
+
+    for (auto it = queue.begin(); it != queue.end() /* no increment */) {
+      if (it->second->status == Returned)
+        queue.erase(it++);  // Must be post-increment!
+      else
+        ++it;
+    }
   }
 
   void computeCactiResults() {
@@ -73,7 +140,6 @@ class MemoryQueue {
 
   const int size;         // Size of the queue.
   const int bandwidth;    // Max requests per cycle.
-  int in_flight;          // Number of requests in the queue.
   int issued_this_cycle;  // Requests issued in the current cycle.
   Stats::Scalar readStats;
   Stats::Scalar writeStats;
@@ -85,6 +151,11 @@ class MemoryQueue {
   float writeEnergy;
   float leakagePower;
   float area;
+
+  // The actual "queue". We can use a map here because it's actually the
+  // Aladdin scheduler that determines which memory node gets executed, not the
+  // position of the memory access in the queue.
+  std::map<Addr, MemAccessStatus> queue;
 };
 
 #endif

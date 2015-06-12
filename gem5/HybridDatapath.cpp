@@ -190,12 +190,20 @@ HybridDatapath::stepExecutingQueue()
   }
 }
 
+void
+HybridDatapath::retireReturnedLSQEntries()
+{
+  load_queue.retireReturnedEntries();
+  store_queue.retireReturnedEntries();
+}
+
 bool
 HybridDatapath::step()
 {
   resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();
+  retireReturnedLSQEntries();
   DPRINTF(HybridDatapath,
           "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
           num_cycles,
@@ -268,11 +276,11 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
 {
   MemAccessStatus status = Ready;
   unsigned node_id = node->get_node_id();
-  if (inflight_mem_ops.find(node_id) == inflight_mem_ops.end())
-    inflight_mem_ops[node_id] = status;
+  if (inflight_mem_nodes.find(node_id) == inflight_mem_nodes.end())
+    inflight_mem_nodes[node_id] = status;
   else
-    status = inflight_mem_ops[node_id];
-  if (status == Ready && inflight_mem_ops.size() < MAX_INFLIGHT_NODES) {
+    status = inflight_mem_nodes[node_id];
+  if (status == Ready && inflight_mem_nodes.size() < MAX_INFLIGHT_NODES) {
     //first time see, do access
     markNodeStarted(node);
     bool isLoad = node->is_dma_load();
@@ -283,13 +291,13 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
       unsigned size = mem_access->size;
       Addr vaddr = mem_access->vaddr;
       issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
-      inflight_mem_ops[node_id] = WaitingFromDma;
+      inflight_mem_nodes[node_id] = WaitingFromDma;
       DPRINTF(
           HybridDatapath, "node:%d is a dma request\n", node->get_node_id());
     }
     return false; // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
-    inflight_mem_ops.erase(node_id);
+    inflight_mem_nodes.erase(node_id);
     return true;  // DMA op completed.
   } else {
     // Still waiting from the cache. Move on to the next node.
@@ -301,31 +309,56 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   MemAccessStatus inflight_mem_op = Ready;
   MemAccess* mem_access = node->get_mem_access();
   unsigned node_id = node->get_node_id();
-  if (inflight_mem_ops.find(node_id) == inflight_mem_ops.end())
-    inflight_mem_ops[node_id] = inflight_mem_op;
-  else
-    inflight_mem_op = inflight_mem_ops[node_id];
-
   bool isLoad = node->is_load_op();
+
+  // If Aladdin is executing standalone, then the actual addresses that are
+  // sent to the memory system of gem5 don't matter as long as there is a 1:1
+  // correspondence between them and those in the trace. This mask ensures
+  // that even if a trace was generated on a 64 bit system, gem5 will not
+  // attempt to access an address outside of a 32-bit address space.
+  Addr vaddr = mem_access->vaddr;
+  if (isExecuteStandalone())
+    vaddr &= ADDR_MASK;
+
+  // Track memory accesses at cache line granularity.
+  vaddr = vaddr / cacheLineSize;
+
+  MemoryQueue& queue = isLoad ? load_queue : store_queue;
+  Stats::Scalar& mem_stat = isLoad ? loads : stores;
+
+  if (queue.contains(vaddr))
+    inflight_mem_op = queue.getStatus(vaddr);
+
   if (inflight_mem_op == Ready) {
-    // First time seeing this node. Start the memory access procedure.
-    Addr vaddr = mem_access->vaddr;
-    // If Aladdin is executing standalone, then the actual addresses that are
-    // sent to the memory system of gem5 don't matter as long as there is a 1:1
-    // correspondence between them and those in the trace. This mask ensures
-    // that even if a trace was generated on a 64 bit system, gem5 will not
-    // attempt to access an address outside of a 32-bit address space.
-    if (isExecuteStandalone())
-      vaddr &= ADDR_MASK;
+    // First time seeing this node. Start the memory access procedure by
+    // enqueuing this memory request. It is possible that two nodes access the
+    // same address, in which case we don't want to try to enqueue both.
+    if (!queue.contains(vaddr) && !queue.is_full()) {
+      queue.enqueue(vaddr);
+      mem_stat++;
+    } else {
+      if (queue.is_full()) {
+        DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
+                node_id, isLoad ?  "load" : "store");
+      } else {
+        DPRINTF(HybridDatapath,
+                "node:%d %s was merged into an existing entry.\n",
+                node_id, isLoad ? "load" : "store");
+      }
+      return false;
+    }
+
     int size = mem_access->size;
     if (dtb.canRequestTranslation() &&
         issueTLBRequest(vaddr, size, isLoad, node_id)) {
       markNodeStarted(node);
-      inflight_mem_ops[node_id] = Translating;
       dtb.incrementRequestCounter();
+      queue.setStatus(vaddr, Translating);
       DPRINTF(HybridDatapath, "node:%d mem access is translating\n", node_id);
     } else if (!dtb.canRequestTranslation()) {
-      DPRINTF(HybridDatapath, "node:%d TLB queue is full\n", node_id);
+      DPRINTF(HybridDatapath,
+              "node:%d TLB cannot accept any more requests\n",
+              node_id);
     }
     return false;
   } else if (inflight_mem_op == Translated) {
@@ -334,29 +367,17 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     long long int value = mem_access->value;
 
     if (issueCacheRequest(paddr, size, isLoad, node_id, value)) {
-      inflight_mem_ops[node_id] = WaitingFromCache;
-      if (isLoad) {
-        load_queue.in_flight++;
-        loads++;
-      } else {
-        store_queue.in_flight++;
-        stores++;
-      }
+      queue.setStatus(vaddr, WaitingFromCache);
       DPRINTF(
           HybridDatapath, "node:%d mem access is accessing cache\n", node_id);
     } else {
-      if (isLoad)
-        DPRINTF(HybridDatapath, "node:%d load queue is full\n", node_id);
-      else
-        DPRINTF(HybridDatapath, "node:%d store queue is full\n", node_id);
+      DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
+              node_id, isLoad ? "load" : "store");
     }
     return false;
   } else if (inflight_mem_op == Returned) {
-    if (isLoad)
-      load_queue.in_flight--;
-    else
-      store_queue.in_flight--;
-    inflight_mem_ops.erase(node_id);
+    // Load store queue entries that have returned will be deleted at the end
+    // of the cycle.
     return true;
   } else {
     return false;
@@ -370,7 +391,7 @@ HybridDatapath::completeDmaRequest(unsigned node_id)
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
           exec_nodes[node_id]->get_mem_access()->vaddr);
-  inflight_mem_ops[node_id] = Returned;
+  inflight_mem_nodes[node_id] = Returned;
 }
 
 // Issue a DMA request for memory.
@@ -525,58 +546,62 @@ HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
           "completeTLBRequest for addr:%#x %s\n",
           pkt->getAddr(),
           pkt->cmdString());
+  Addr vaddr = pkt->getAddr();
   unsigned node_id = state->node_id;
-  assert(inflight_mem_ops.find(node_id) != inflight_mem_ops.end());
-  assert(inflight_mem_ops[node_id] == Translating);
+  ExecNode* node = exec_nodes[node_id];
+  MemoryQueue& queue = node->is_load_op() ? load_queue: store_queue;
+  assert(queue.contains(vaddr) &&
+         queue.getStatus(vaddr) == Translating);
+
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
    * state may have changed during the waiting time, so we go back to Ready
    * instead of Translated. The next translation request should hit.
    */
   if (was_miss) {
-    inflight_mem_ops[node_id] = Ready;
+    queue.setStatus(vaddr) = Ready;
   } else {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
     Addr paddr = *pkt->getPtr<Addr>();
-    inflight_mem_ops[node_id] = Translated;
     MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
     mem_access->paddr = paddr;
+    queue.setStatus(vaddr, Translated);
+    queue.setPhysicalAddress(vaddr, paddr);
+    DPRINTF(HybridDatapath, "node:%d mem access was translated\n", node_id);
   }
-  DPRINTF(HybridDatapath, "node:%d mem access is translated\n", node_id);
   delete state;
   delete pkt->req;
   delete pkt;
 }
 
-bool
-HybridDatapath::issueCacheRequest(
-    Addr addr, unsigned size, bool isLoad, unsigned node_id, long long int value)
-{
+bool HybridDatapath::issueCacheRequest(Addr addr,
+                                       unsigned size,
+                                       bool isLoad,
+                                       unsigned node_id,
+                                       long long int value) {
   DPRINTF(HybridDatapath, "issueCacheRequest for addr:%#x\n", addr);
   bool queues_available = (isLoad && load_queue.can_issue()) ||
                           (!isLoad && store_queue.can_issue());
-  if (!queues_available)
-  {
-    DPRINTF(HybridDatapath, "Load/store queues are full or no more ports are available.\n");
+  if (!queues_available) {
+    DPRINTF(HybridDatapath,
+            "Load/store queues are full or no more ports are available.\n");
     return false;
   }
-  if (isCacheBlocked)
-  {
+  if (isCacheBlocked) {
     DPRINTF(HybridDatapath, "MSHR is full. Waiting for misses to return.\n");
     return false;
   }
 
   // Bandwidth limitations.
   if (isLoad) {
-    load_queue.issued_this_cycle ++;
-    load_queue.writeStats ++;
-  }
-  else {
-    store_queue.issued_this_cycle ++;
-    store_queue.writeStats ++;
+    load_queue.issued_this_cycle++;
+    load_queue.writeStats++;
+  } else {
+    store_queue.issued_this_cycle++;
+    store_queue.writeStats++;
   }
 
-  Request *req = NULL;
+  Request* req = NULL;
   Flags<Packet::FlagsType> flags = 0;
   /* To use strided prefetching, we need to include a "PC" so the prefetcher
    * can predict memory behavior similar to how branch predictors work. We
@@ -584,7 +609,7 @@ HybridDatapath::issueCacheRequest(
    * node.  */
   std::string unique_id = exec_nodes[node_id]->get_static_node_id();
   Addr pc = static_cast<Addr>(std::hash<std::string>()(unique_id));
-  req = new Request( addr, size/8, flags, getCacheMasterId(), curTick(), pc);
+  req = new Request(addr, size / 8, flags, getCacheMasterId(), curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
    * gem5, but they aren't actually required for the mechanics of the memory
    * checking itsef. This has to be set outside of the constructor or the
@@ -605,22 +630,26 @@ HybridDatapath::issueCacheRequest(
   DatapathSenderState *state = new DatapathSenderState(node_id);
   data_pkt->senderState = state;
 
-  if(!cachePort.sendTimingReq(data_pkt))
-  {
-    //blocked, retry
+  if (!cachePort.sendTimingReq(data_pkt)) {
+    // blocked, retry
     assert(retryPkt == NULL);
     retryPkt = data_pkt;
     isCacheBlocked = true;
     DPRINTF(HybridDatapath, "port is blocked. Will retry later...\n");
-  }
-  else
-  {
+  } else {
     if (isLoad)
-      DPRINTF(HybridDatapath, "Node id %d load from address %#x issued to "
-              "dcache!\n", node_id, addr);
+      DPRINTF(HybridDatapath,
+              "Node id %d load from address %#x issued to "
+              "dcache!\n",
+              node_id,
+              addr);
     else
-      DPRINTF(HybridDatapath, "Node id %d store of value %d to address %#x "
-              "issued to dcache!\n", node_id, value, addr);
+      DPRINTF(HybridDatapath,
+              "Node id %d store of value %d to address %#x "
+              "issued to dcache!\n",
+              node_id,
+              value,
+              addr);
   }
 
   return true;
@@ -632,33 +661,18 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
-  Addr vaddr = pkt->getAddr();
+  Addr paddr = pkt->getAddr();  // Packet address is physical.
   DPRINTF(HybridDatapath,
           "completeCacheRequest for node_id %d, addr:%#x %s\n",
           node_id,
           pkt->getAddr(),
           pkt->cmdString());
-  /* Loop through the executingQueue to update the status of memory
-   * operations, mark nodes accessing data on the same cache line ready to fire.
-   * Remember that these are physical addresses.
-   */
-  Addr blockAddr = vaddr / cacheLineSize;
-  if (inflight_mem_ops.find(node_id) != inflight_mem_ops.end()) {
-    for (auto it = executingQueue.begin(); it != executingQueue.end(); ++it) {
-      ExecNode* node = *it;
-      unsigned n_id = node->get_node_id();
-      if (node->is_memory_op() &&
-          inflight_mem_ops[n_id] == WaitingFromCache) {
-        Addr paddr = node->get_mem_access()->paddr;
-        if (paddr / cacheLineSize == blockAddr)
-          inflight_mem_ops[n_id] = Returned;
-      }
-    }
-    assert(inflight_mem_ops[node_id] == Returned);
-  }
   DPRINTF(HybridDatapath, "node:%d mem access is returned\n", node_id);
 
   // Data that is returned gets written back into the load store queues.
+  // Note that due to our trace driven execution framework, we don't actually
+  // care about the dynamic data returned by a load. We only care that a store
+  // successfully writes the value into the cache.
   if (pkt->cmd == MemCmd::ReadReq)
     load_queue.writeStats ++;
   else if (pkt->cmd == MemCmd::WriteReq)
@@ -668,7 +682,8 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   delete pkt;
 }
 
-bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
+bool
+HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
 {
   return DmaPort::recvTimingResp(pkt);
 }
