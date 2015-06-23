@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 2.8.12)
 
+# disable in-source-build
+get_filename_component(srcdir "${CMAKE_SOURCE_DIR}" REALPATH)
+get_filename_component(bindir "${CMAKE_BINARY_DIR}" REALPATH)
+if("${srcdir}" STREQUAL "${bindir}")
+  message(FATAL_ERROR "In-source builds are forbidden!")
+endif()
+
 project(Aladdin CXX)
 enable_testing()
 
