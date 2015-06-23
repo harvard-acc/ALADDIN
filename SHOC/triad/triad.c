@@ -26,5 +26,5 @@ int main(){
     fprintf(output, "%d,", c[i]);
   fprintf(output, "\n");
   fclose(output);
-	return a[0];
+  return 0;
 }
