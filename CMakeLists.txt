@@ -23,3 +23,4 @@ add_subdirectory(${TRACER_DIR})
 
 # build aladdin
 add_subdirectory(common)
+add_subdirectory(SHOC)

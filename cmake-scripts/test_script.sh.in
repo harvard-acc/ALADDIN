@@ -1,0 +1,14 @@
+#!/bin/bash
+CURRENT_DIR=`pwd`
+if ! [ -f "@TRACE_DATA@" ]
+then
+  echo "finds no @TRACE_DATA@, generate it!"
+  cd @CMAKE_CURRENT_BINARY_DIR@
+  @PROFILE_EXE@
+  cd $CURRENT_DIR
+fi
+
+python @config_py@ @CMAKE_CURRENT_BINARY_DIR@ @f_TEST_NAME@ @f_CONFIG@ && \
+cd @RUN_TEST_DIRECTORY@ && \
+@ALADDIN_EXECUTABLE@ @f_TEST_NAME@ @TRACE_DATA@ @CONFIG_FILE@ && \
+cd $CURRENT_DIR
