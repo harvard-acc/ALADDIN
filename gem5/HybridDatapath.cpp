@@ -71,6 +71,9 @@ HybridDatapath::HybridDatapath(
 {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
+  if (use_db) {
+    BaseDatapath::setExperimentParameters(experiment_name);
+  }
   BaseDatapath::cycleTime = params->cycleTime;
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
@@ -375,7 +378,7 @@ HybridDatapath::issueDmaRequest(
 {
   DPRINTF(
       HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", addr, size);
-
+  addr &= ADDR_MASK;
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
   uint8_t *data = new uint8_t[size];
@@ -769,6 +772,7 @@ HybridDatapath::getAverageMemPower(
 {
   float cache_avg_power = 0, cache_avg_dynamic = 0, cache_avg_leak = 0;
   float spad_avg_power = 0, spad_avg_dynamic = 0, spad_avg_leak = 0;
+  computeCactiResults();
   getAverageCachePower(
       cycles, &cache_avg_power, &cache_avg_dynamic, &cache_avg_leak);
   getAverageSpadPower(
