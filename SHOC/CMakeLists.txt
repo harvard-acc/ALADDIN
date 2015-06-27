@@ -1,4 +1,4 @@
-include("${CMAKE_SOURCE_DIR}/cmake-scripts/buildAladdinTest.cmake")
+include("${ALADDIN_SCRIPT_DIR}/buildAladdinTest.cmake")
 
 # collect all the directory containing CMakeLists.txt
 FILE(GLOB TEST_DIR */CMakeLists.txt)
