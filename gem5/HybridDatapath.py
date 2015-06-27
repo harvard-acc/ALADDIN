@@ -11,12 +11,12 @@ class HybridDatapath(MemObject):
   cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
   acceleratorName = Param.String("", "Unique accelerator name")
   acceleratorId = Param.Int(-1, "Accelerator Id")
-  experimentName = Param.String("NULL", "Experiment name. String identifier "
-      "for a set of related simulations.")
   system = Param.System(Parent.any, "system object")
   executeStandalone = Param.Bool(True, "Execute Aladdin standalone, without a "
       "CPU/user program.")
   useDb = Param.Bool(False, "Store results in database.")
+  experimentName = Param.String("NULL", "Experiment name. String identifier "
+      "for a set of related simulations.")
 
   # Scratchpad/DMA parameters.
   dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")

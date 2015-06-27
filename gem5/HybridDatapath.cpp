@@ -71,9 +71,11 @@ HybridDatapath::HybridDatapath(
 {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
+#ifdef USE_DB
   if (use_db) {
     BaseDatapath::setExperimentParameters(experiment_name);
   }
+#endif
   BaseDatapath::cycleTime = params->cycleTime;
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
