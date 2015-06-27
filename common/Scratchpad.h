@@ -12,6 +12,26 @@
 #include "cacti-p/io.h"
 #include "cacti-p/cacti_interface.h"
 
+struct partition_t {
+  unsigned occupied_bw;
+  unsigned loads;
+  unsigned stores;
+  unsigned size;
+  float read_energy;
+  float write_energy;
+  float leak_power;
+  float area;
+  partition_t() {
+    occupied_bw = 0;
+    loads = 0;
+    stores = 0;
+    size = 0;
+    read_energy = 0;
+    write_energy = 0;
+    leak_power = 0;
+    area = 0;
+  }
+};
 /* Use <number of bytes, word size> as a unique key for cacti */
 typedef std::pair<unsigned, unsigned> cacti_key;
 class Scratchpad {
@@ -26,7 +46,6 @@ class Scratchpad {
   bool canService();
   bool canServicePartition(std::string baseName);
   bool partitionExist(std::string baseName);
-  unsigned findPartitionID(std::string baseName);
   bool addressRequest(std::string baseName);
 
   /* Increment the loads counter for the specified partition. */
@@ -54,21 +73,9 @@ class Scratchpad {
   unsigned numOfPartitions;
   unsigned numOfPortsPerPartition;
   float cycleTime;  // in ns
-  std::unordered_map<std::string, unsigned> baseToPartitionID;
-  /* Occupied BW  per partition. */
-  std::unordered_map<std::string, unsigned> occupiedBWPerPartition;
-  /* Number of loads per partition. */
-  std::map<std::string, unsigned> partition_loads;
-  /* Number of stores per partition. */
-  std::map<std::string, unsigned> partition_stores;
-  std::map<cacti_key, uca_org_t> cacti_value;
+  std::unordered_map<std::string, partition_t> partitions;
 
-  std::vector<bool> compPartition;
-  std::vector<unsigned> sizePerPartition;
-  std::vector<float> readEnergyPerPartition;
-  std::vector<float> writeEnergyPerPartition;
-  std::vector<float> leakPowerPerPartition;
-  std::vector<float> areaPerPartition;
+  std::map<cacti_key, uca_org_t> cacti_value;
 };
 
 #endif
