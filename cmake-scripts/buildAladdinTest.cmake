@@ -2,7 +2,12 @@ set(py_script_dir "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 set(config_py "${py_script_dir}/config.py")
 set(run_aladdin_py "${py_script_dir}/run_aladdin.py")
 set(run_script_template "${CMAKE_SOURCE_DIR}/cmake-scripts/test_script.sh.in")
-set(ALADDIN_EXECUTABLE "${CMAKE_BINARY_DIR}/common/aladdin")
+
+if(${BUILD_ON_SOURCE})
+  set(ALADDIN_EXECUTABLE "${CMAKE_SOURCE_DIR}/common/aladdin")
+else()
+  set(ALADDIN_EXECUTABLE "${CMAKE_BINARY_DIR}/common/aladdin")
+endif()
 
 # API example :
 # build_aladdin_test(${TEST_NAME} SRC ${WORKLOAD} CONFIGS)

@@ -18,3 +18,8 @@ include_directories("${CACTI_DIR}")
 add_library(cacit-p ${CACTI_SRC})
 add_executable(aladdin ${ALADDIN_SRC})
 target_link_libraries(aladdin "cacit-p" ${Boost_LIBRARIES} pthread z)
+
+if(${BUILD_ON_SOURCE})
+  set_target_properties(aladdin PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                         "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
