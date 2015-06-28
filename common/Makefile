@@ -36,7 +36,7 @@ ifeq ($(wildcard $(MYSQL_HOME)),)
     $(error Set MYSQL_HOME to a valid location)
 endif
 LFLAGS += -lmysqlcppconn
-CFLAGS += -I$(MYSQL_HOME) -DUSE_DB
+CFLAGS += -I$(MYSQL_HOME)/include -DUSE_DB
 OBJS += DatabaseConfig.o
 endif
 
