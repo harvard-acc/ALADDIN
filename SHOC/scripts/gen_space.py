@@ -19,17 +19,17 @@ pipe = [0,1]
 #In this case, llvm_coompile.py inside run_aladdin.py only need to run once
 #to generate the dynamic instruction trace
 
-#for f_unroll in unroll:
-  #for f_part in part:
-    #for f_pipe in pipe:
-      #os.system('python run_aladdin.py %s %i %i %i' % (bench, f_part, f_unroll, f_pipe))
 
 benchmarks = ['triad', 'reduction', 'stencil', 'fft', 'md', 'pp_scan', 'bb_gemm']
-ALADDIN_HOME = os.getenv('ALADDIN_HOME')
+ALADDIN_HOME = str(os.getenv('ALADDIN_HOME'))
 
 for bench in benchmarks:
   print bench
 
+  for f_unroll in unroll:
+    for f_part in part:
+      for f_pipe in pipe:
+        os.system('python run_aladdin.py %s %i %i %i 6' % (bench, f_part, f_unroll, f_pipe))
   cycle = []
   total_power = []
   fu_power = []
@@ -40,6 +40,8 @@ for bench in benchmarks:
 
 
   BENCH_HOME = ALADDIN_HOME + '/SHOC/' + bench
+  if not os.path.exists(ALADDIN_HOME + '/SHOC/scripts/data/'):
+    os.makedirs(ALADDIN_HOME + '/SHOC/scripts/data/')
 
   os.chdir(BENCH_HOME + '/sim/')
 
@@ -123,3 +125,4 @@ for bench in benchmarks:
   curr_plot.set_ylabel('MEM Area (uM^2)')
   curr_plot.grid(True)
   plt.savefig(bench + '-cycles-mem-area.pdf')
+  os.chdir(ALADDIN_HOME + '/SHOC/scripts/')
