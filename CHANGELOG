@@ -1,4 +1,9 @@
 Aladdin Public Release, v1.3.0
+06-29-2015
+*Refactored Scratchpad and BaseDatapath/DDDG.
+
+-------------------------------------------------------------------------------
+Aladdin Public Release, v1.3.0
 06-06-2015
 *Support 3-stage, both single and double precision floating point operations!
 
