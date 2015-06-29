@@ -137,11 +137,13 @@ Step-by-step:
    1. Both Aladdin and LLVM-Tracer track regions of interest inside a program. In the
       triad example, we want to analyze the triad kernel instead of the setup
       and initialization work done in main. To tell LLVM-Tracer the functions we are
-      interested, set enviroment variable `WORKLOAD` to be the function names (if you
-      have multiple functions interested, separated by comma):
+      interested in, set enviroment variable `WORKLOAD` to be the function names):
 
     ```
     export WORKLOAD=triad
+    ```
+    (if you have multiple functions you are interested in, separate with commas):
+    ```
     export WORKLOAD=md,md_kernel
     ```
    2. Generate LLVM IR:
@@ -155,7 +157,7 @@ Step-by-step:
      ```
      export TRACER_HOME=/your/path/to/LLVM-Tracer
      opt -S -load=$TRACER_HOME/full-trace/full_trace.so -fulltrace triad.llvm -o triad-opt.llvm
-     llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/tracer_logger.llvm
+     llvm-link -o full.llvm triad-opt.llvm $TRACER_HOME/profile-func/trace_logger.llvm
      ```
 
    4. Generate machine code:
