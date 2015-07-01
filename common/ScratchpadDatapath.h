@@ -38,8 +38,8 @@ class ScratchpadDatapath : public BaseDatapath {
   /*True if any of the scratchpads can still service memory requests.
     False if non of the scratchpads can service any memory requests.*/
   bool scratchpadCanService;
-  /* Stores number of cycles left for nodes currently in flight. */
-  std::map<unsigned, unsigned> inflight_nodes;
+  /* Stores number of cycles left for multi-cycle nodes currently in flight. */
+  std::map<unsigned, unsigned> inflight_multicycle_nodes;
 #ifdef USE_DB
   int writeConfiguration(sql::Connection* con);
 #endif

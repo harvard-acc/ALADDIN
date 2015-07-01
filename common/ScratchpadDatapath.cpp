@@ -217,19 +217,20 @@ void ScratchpadDatapath::stepExecutingQueue() {
           scratchpadCanService = scratchpad->canService();
         }
       }
-    } else if (node->is_fp_op()) {
+    } else if (node->is_multicycle_op()) {
       unsigned node_id = node->get_node_id();
-      if (inflight_nodes.find(node_id) == inflight_nodes.end()) {
-        inflight_nodes[node_id] = node->fp_node_latency_in_cycles();
+      if (inflight_multicycle_nodes.find(node_id)
+            == inflight_multicycle_nodes.end()) {
+        inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
         markNodeStarted(node);
       } else {
-        unsigned remaining_cycles = inflight_nodes[node_id];
+        unsigned remaining_cycles = inflight_multicycle_nodes[node_id];
         if (remaining_cycles == 1) {
-          inflight_nodes.erase(node_id);
+          inflight_multicycle_nodes.erase(node_id);
           markNodeCompleted(it, index);
           executed = true;
         } else {
-          inflight_nodes[node_id]--;
+          inflight_multicycle_nodes[node_id]--;
         }
       }
     } else {

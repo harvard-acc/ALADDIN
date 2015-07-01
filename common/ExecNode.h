@@ -365,6 +365,10 @@ class ExecNode {
     }
   }
 
+  bool is_multicycle_op() {
+    return is_fp_op();
+  }
+
   bool is_fp_op() {
     switch (microop) {
       case LLVM_IR_FAdd:
@@ -397,6 +401,11 @@ class ExecNode {
       default:
         return false;
     }
+  }
+  unsigned get_multicycle_latency() {
+    if (is_fp_op())
+      return fp_node_latency_in_cycles();
+    return 1;
   }
 
   unsigned fp_node_latency_in_cycles() { return FP_LATENCY_IN_CYCLES; }

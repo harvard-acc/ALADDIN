@@ -159,9 +159,9 @@ HybridDatapath::stepExecutingQueue()
   int index = 0;
   while (it != executingQueue.end()) {
     ExecNode* node = *it;
+    bool op_satisfied = false;
     if (node->is_memory_op() || node->is_dma_op()) {
       MemoryOpType type = getMemoryOpType(node);
-      bool op_satisfied = false;
       switch (type) {
         case Register:
           op_satisfied = handleRegisterMemoryOp(node);
@@ -178,14 +178,32 @@ HybridDatapath::stepExecutingQueue()
       }
       if (op_satisfied) {
         markNodeCompleted(it, index);
+      }
+    } else if (node->is_multicycle_op()) {
+      unsigned node_id = node->get_node_id();
+      if (inflight_multicycle_nodes.find(node_id)
+            == inflight_multicycle_nodes.end()) {
+        inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
+        markNodeStarted(node);
       } else {
-        ++it;
-        ++index;
+        unsigned remaining_cycles = inflight_multicycle_nodes[node_id];
+        if (remaining_cycles == 1) {
+          inflight_multicycle_nodes.erase(node_id);
+          markNodeCompleted(it, index);
+          op_satisfied = true;
+        } else {
+          inflight_multicycle_nodes[node_id]--;
+        }
       }
     } else {
-      // Not a memory operation node, so it can be completed in one cycle.
+      // Not a memory/fp operation node, so it can be completed in one cycle.
       markNodeStarted(node);
       markNodeCompleted(it, index);
+      op_satisfied = true;
+    }
+    if (!op_satisfied) {
+        ++it;
+        ++index;
     }
   }
 }
