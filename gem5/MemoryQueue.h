@@ -81,6 +81,7 @@ class MemoryQueue {
   }
 
   void setStatus(Addr vaddr, MemAccessStatus status) {
+    assert(contains(vaddr));
     queue[vaddr].status = status;
   }
 
@@ -98,8 +99,8 @@ class MemoryQueue {
    */
   void retireReturnedEntries() {
 
-    for (auto it = queue.begin(); it != queue.end() /* no increment */) {
-      if (it->second->status == Returned)
+    for (auto it = queue.begin(); it != queue.end(); /* no increment */) {
+      if (it->second.status == Returned)
         queue.erase(it++);  // Must be post-increment!
       else
         ++it;
@@ -155,7 +156,7 @@ class MemoryQueue {
   // The actual "queue". We can use a map here because it's actually the
   // Aladdin scheduler that determines which memory node gets executed, not the
   // position of the memory access in the queue.
-  std::map<Addr, MemAccessStatus> queue;
+  std::map<Addr, MemoryQueueEntry> queue;
 };
 
 #endif

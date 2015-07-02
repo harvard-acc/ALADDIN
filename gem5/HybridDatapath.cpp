@@ -321,7 +321,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     vaddr &= ADDR_MASK;
 
   // Track memory accesses at cache line granularity.
-  vaddr = vaddr / cacheLineSize;
+  vaddr = vaddr - (vaddr % cacheLineSize);
 
   MemoryQueue& queue = isLoad ? load_queue : store_queue;
   Stats::Scalar& mem_stat = isLoad ? loads : stores;
@@ -330,21 +330,20 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     inflight_mem_op = queue.getStatus(vaddr);
 
   if (inflight_mem_op == Ready) {
-    // First time seeing this node. Start the memory access procedure by
-    // enqueuing this memory request. It is possible that two nodes access the
-    // same address, in which case we don't want to try to enqueue both.
-    if (!queue.contains(vaddr) && !queue.is_full()) {
-      queue.enqueue(vaddr);
+    // This is either the first time we're seeing this node, or we are retrying
+    // this node after a TLB miss. We'll enqueue it - if it already exists in
+    // the queue, a duplicate won't be added.
+    if (!queue.is_full()) {
+      bool enqueued = queue.enqueue(vaddr);
       mem_stat++;
-    } else {
-      if (queue.is_full()) {
-        DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
-                node_id, isLoad ?  "load" : "store");
-      } else {
+      if (!enqueued) {
         DPRINTF(HybridDatapath,
                 "node:%d %s was merged into an existing entry.\n",
                 node_id, isLoad ? "load" : "store");
       }
+    } else {
+      DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
+              node_id, isLoad ?  "load" : "store");
       return false;
     }
 
@@ -558,7 +557,7 @@ HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
    * instead of Translated. The next translation request should hit.
    */
   if (was_miss) {
-    queue.setStatus(vaddr) = Ready;
+    queue.setStatus(vaddr, Ready);
   } else {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
@@ -655,6 +654,11 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   return true;
 }
 
+/* Data that is returned gets written back into the load store queues.
+ * Note that due to our trace driven execution framework, we don't actually
+ * care about the dynamic data returned by a load. We only care that a store
+ * successfully writes the value into the cache.
+ */
 void
 HybridDatapath::completeCacheRequest(PacketPtr pkt)
 {
@@ -665,18 +669,24 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   DPRINTF(HybridDatapath,
           "completeCacheRequest for node_id %d, addr:%#x %s\n",
           node_id,
-          pkt->getAddr(),
+          paddr,
           pkt->cmdString());
   DPRINTF(HybridDatapath, "node:%d mem access is returned\n", node_id);
 
-  // Data that is returned gets written back into the load store queues.
-  // Note that due to our trace driven execution framework, we don't actually
-  // care about the dynamic data returned by a load. We only care that a store
-  // successfully writes the value into the cache.
-  if (pkt->cmd == MemCmd::ReadReq)
-    load_queue.writeStats ++;
-  else if (pkt->cmd == MemCmd::WriteReq)
-    store_queue.writeStats ++;
+  // TODO: Queues are keyed by virtual addresses. We need a lookup
+  // function for the queues in order to properly model this behavior. Need to
+  // look up some more details on how load store queues are implemented.
+  bool isLoad = (pkt->cmd == MemCmd::ReadResp);
+  MemoryQueue& queue = isLoad ? load_queue : store_queue;
+  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
+  Addr blockAddr = mem_access->vaddr - (mem_access->vaddr % cacheLineSize);
+  queue.setStatus(blockAddr, Returned);
+  queue.writeStats++;
+  DPRINTF(HybridDatapath,
+          "setting %s queue entry for address %#x to Returned.\n",
+          isLoad ? "load" : "store",
+          blockAddr);
+
   delete state;
   delete pkt->req;
   delete pkt;
