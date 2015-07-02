@@ -52,11 +52,10 @@ class MemoryQueue {
         .flags(Stats::total | Stats::nonan);
   }
 
-  /* Returns true if we have not exceeded the cache's bandwidth or the
-   * size of the request queue.
+  /* Returns true if we have not exceeded the cache's bandwidth.
    */
   bool can_issue() {
-    return (queue.size() < size) && (issued_this_cycle < bandwidth);
+    return (issued_this_cycle < bandwidth);
   }
 
   /* Returns true if the queue already contains an entry for this address. */

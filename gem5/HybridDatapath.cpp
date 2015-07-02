@@ -351,14 +351,13 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     // This is either the first time we're seeing this node, or we are retrying
     // this node after a TLB miss. We'll enqueue it - if it already exists in
     // the queue, a duplicate won't be added.
-    if (!queue.is_full()) {
-      bool enqueued = queue.enqueue(vaddr);
+    if (queue.contains(vaddr)) {
+      DPRINTF(HybridDatapath,
+              "node:%d %s was merged into an existing entry.\n",
+              node_id, isLoad ? "load" : "store");
+    } else if (!queue.is_full()) {
+      queue.enqueue(vaddr);
       mem_stat++;
-      if (!enqueued) {
-        DPRINTF(HybridDatapath,
-                "node:%d %s was merged into an existing entry.\n",
-                node_id, isLoad ? "load" : "store");
-      }
     } else {
       DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
               node_id, isLoad ?  "load" : "store");
@@ -388,7 +387,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
       DPRINTF(
           HybridDatapath, "node:%d mem access is accessing cache\n", node_id);
     } else {
-      DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
+      DPRINTF(HybridDatapath, "node:%d %s queue cannot issue\n",
               node_id, isLoad ? "load" : "store");
     }
     return false;
@@ -601,7 +600,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
                           (!isLoad && store_queue.can_issue());
   if (!queues_available) {
     DPRINTF(HybridDatapath,
-            "Load/store queues are full or no more ports are available.\n");
+            "Load/store queues have no more ports available.\n");
     return false;
   }
   if (isCacheBlocked) {
@@ -697,7 +696,10 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   bool isLoad = (pkt->cmd == MemCmd::ReadResp);
   MemoryQueue& queue = isLoad ? load_queue : store_queue;
   MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
-  Addr blockAddr = mem_access->vaddr - (mem_access->vaddr % cacheLineSize);
+  Addr vaddr = mem_access->vaddr;
+  if (isExecuteStandalone())
+    vaddr &= ADDR_MASK;
+  Addr blockAddr = vaddr - (vaddr % cacheLineSize);
   queue.setStatus(blockAddr, Returned);
   queue.writeStats++;
   DPRINTF(HybridDatapath,
