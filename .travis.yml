@@ -10,8 +10,8 @@ language: c++
 compiler:
   - g++
 script:
-  - cd common && make
-  - cd ../unit-test && make && make test
+  - cd common && make -j4
+  - cd ../unit-test && make -j4 && make test
 notifications:
   email:
     on_success: never
