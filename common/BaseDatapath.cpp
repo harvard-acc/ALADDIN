@@ -847,15 +847,15 @@ void BaseDatapath::treeHeightReduction() {
   int region_id = 0;
   unsigned node_id = 0;
   auto bound_it = loopBound.begin();
-  while (node_id < *bound_it) {
+  while (node_id <= *bound_it && node_id < numTotalNodes) {
     bound_region.at(node_id) = region_id;
-    node_id++;
     if (node_id == *bound_it) {
       region_id++;
       bound_it++;
       if (bound_it == loopBound.end())
         break;
     }
+    node_id++;
   }
 
   std::set<Edge> to_remove_edges;
