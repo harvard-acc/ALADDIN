@@ -1,0 +1,20 @@
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libboost-graph-dev
+  - sudo apt-get install -y libboost-regex-dev
+  - sudo apt-get install -y libz-dev
+  - sudo apt-get install -y libpthread-stubs0-dev
+env:
+  - ALADDIN_HOME=$PWD BOOST_ROOT=/usr/include/boost
+language: c++
+compiler:
+  - g++
+script:
+  - cd common && make
+  - cd ../unit-test && make && make test
+notifications:
+  email:
+    on_success: never
+    on_failure: always
+    recipients:
+      - shao@eecs.harvard.edu
