@@ -1,7 +1,11 @@
-set(py_script_dir "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+set(py_script_dir "${CMAKE_SOURCE_DIR}/SHOC/scripts")
 set(config_py "${py_script_dir}/config.py")
 set(run_aladdin_py "${py_script_dir}/run_aladdin.py")
-set(run_script_template "${CMAKE_SOURCE_DIR}/cmake-scripts/test_script.sh.in")
+set(gen_space_py "${py_script_dir}/gen_space.py")
+set(run_script_template "${ALADDIN_SCRIPT_DIR}/test_script.sh.in")
+set(plot_script_template "${ALADDIN_SCRIPT_DIR}/plot_config_space.sh.in")
+set(ALADDIN_PLOT_TEST_NAME data_plot)
+
 
 if(${BUILD_ON_SOURCE})
   set(ALADDIN_EXECUTABLE "${CMAKE_SOURCE_DIR}/common/aladdin")
@@ -17,6 +21,7 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
 
   set(f_CONFIG_ARRAY "${${f_CONFIGS}}")
   build_tracer_bitcode(${f_TEST_NAME} ${f_SRC} ${f_WORKLOAD})
+
 
   # Configure scripts for running tests of certain parameter
   # The scripts checks whether dynamic_trace exists. If not, run PROFILE_EXE
@@ -37,7 +42,10 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
     set(f_ALADDIN_TEST_NAME ${f_TEST_NAME}_${PARAEMETER_STRING})
     add_test(NAME ${f_ALADDIN_TEST_NAME} COMMAND bash ${run_script})
     set_tests_properties(${f_ALADDIN_TEST_NAME} PROPERTIES DEPENDS ${f_TEST_NAME})
+
+    list(APPEND ALADDIN_LIST ${f_ALADDIN_TEST_NAME})
   endforeach(f_CONFIG)
 
-  # add the scripts as one of ctest
+  # pass the list of tests to parent scope
+  set(ALADDIN_LIST ${ALADDIN_LIST} PARENT_SCOPE)
 endfunction(build_aladdin_test)
