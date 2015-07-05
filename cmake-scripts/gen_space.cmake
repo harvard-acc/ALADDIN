@@ -1,0 +1,22 @@
+function(generate_space f_VAR_NAME)
+  if ("${f_VAR_NAME}" STREQUAL "")
+    message(FATAL_ERROR "generate space to empty var name")
+  endif()
+
+  set(PARTION_RANGE 1 2 4 8 16 32 64)
+  set(UNROLL_RANGE 1 2 4 8 16 32 64)
+  set(PIPELINE_RANGE 1 2)
+  set(CLOCK_RANGE 1 6)
+
+  foreach(part ${PARTION_RANGE})
+  foreach(unroll ${UNROLL_RANGE})
+  foreach(pipe ${PIPELINE_RANGE})
+  foreach(clock ${CLOCK_RANGE})
+    list(APPEND CONFIG_SPACE "${part} ${unroll} ${pipe} ${clock}")
+  endforeach(clock)
+  endforeach(pipe)
+  endforeach(unroll)
+  endforeach(part)
+
+  set(${f_VAR_NAME} ${CONFIG_SPACE} PARENT_SCOPE)
+endfunction(generate_space)
