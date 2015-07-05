@@ -4,7 +4,7 @@ get_filename_component(TEST_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 file(GLOB SRC "*.c*")
 
 # The workload string used by LLVM-Tracer
-set(WORKLOAD "triad")
+set(WORKLOAD "ss_sort,init,hist,local_scan,sum_scan,last_step_scan,update")
 
 # If want to use your own config space for ctest,
 # write somethin like the following.
@@ -13,4 +13,3 @@ set(WORKLOAD "triad")
 set(CONFIGS ${ALL_CONFIG_SPACE})
 
 build_aladdin_test(${TEST_NAME} SRC ${WORKLOAD} CONFIGS)
-set(ALADDIN_LIST ${ALADDIN_LIST} PARENT_SCOPE)
