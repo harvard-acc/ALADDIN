@@ -11,8 +11,6 @@ if (NOT DEFINED NTHREADS)
 endif()
 
 # find Boost library
-find_package(Boost 1.55.0 REQUIRED COMPONENTS graph regex)
-include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 add_definitions("-DNTHREADS=${NTHREADS}")

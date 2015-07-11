@@ -12,6 +12,7 @@ enable_testing()
 
 set(ALADDIN_SCRIPT_DIR "${CMAKE_SOURCE_DIR}/cmake-scripts")
 include("${ALADDIN_SCRIPT_DIR}/AladdinConfig.cmake")
+include("${ALADDIN_SCRIPT_DIR}/checkDependency.cmake")
 
 
 # reuse cmake-script of LLVM-Tracer
