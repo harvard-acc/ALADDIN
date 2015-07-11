@@ -22,6 +22,14 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
   set(f_CONFIG_ARRAY "${${f_CONFIGS}}")
   build_tracer_bitcode(${f_TEST_NAME} ${f_SRC} ${f_WORKLOAD})
 
+  # The python scripts is not thread-safe and want to create
+  # this directory. Create it in advance.
+  set(TEST_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/sim")
+  if(NOT EXISTS ${TEST_OUTPUT_DIR})
+    file(MAKE_DIRECTORY ${TEST_OUTPUT_DIR})
+  endif()
+
+
 
   # Configure scripts for running tests of certain parameter
   # The scripts checks whether dynamic_trace exists. If not, run PROFILE_EXE
