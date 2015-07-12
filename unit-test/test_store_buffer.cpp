@@ -7,6 +7,9 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     std::string trace_file("inputs/pp_scan-128-trace.gz");
     std::string config_file("inputs/config-pp_scan-p4-u4-P1");
 
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
+
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);

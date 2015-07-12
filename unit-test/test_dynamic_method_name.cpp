@@ -6,6 +6,9 @@ SCENARIO("Test Dynamic Method Name w/ aes", "[aes]") {
     std::string trace_file("inputs/aes-aes-trace.gz");
     std::string config_file("inputs/config-aes-aes");
 
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
+
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     WHEN("DDDG is generated.") {

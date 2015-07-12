@@ -6,6 +6,9 @@ SCENARIO("Test treeHeightReduction w/ Reduction", "[reduction]") {
     std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
 
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
+
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);

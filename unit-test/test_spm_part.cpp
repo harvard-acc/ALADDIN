@@ -7,6 +7,9 @@ SCENARIO("Test scratchpadPartition w/ Triad", "[triad]") {
     std::string trace_file("inputs/triad-128-trace.gz");
     std::string config_file("inputs/config-triad-p2-u2-P1");
 
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
+
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
@@ -39,6 +42,9 @@ SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]") {
     std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
 
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
+
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
@@ -63,6 +69,9 @@ SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]") {
     std::string bench("outputs/pp_scan-128");
     std::string trace_file("inputs/pp_scan-128-trace.gz");
     std::string config_file("inputs/config-pp_scan-p4-u4-P1");
+
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
 
     ScratchpadDatapath* acc;
     Scratchpad* spad;
