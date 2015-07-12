@@ -24,11 +24,12 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
 
   # The python scripts is not thread-safe and want to create
   # this directory. Create it in advance.
-  set(TEST_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/sim")
-  if(NOT EXISTS ${TEST_OUTPUT_DIR})
-    file(MAKE_DIRECTORY ${TEST_OUTPUT_DIR})
-  endif()
-
+  set(CREATE_DIR_LIST "${CMAKE_CURRENT_BINARY_DIR}/sim" "${py_script_dir}/data")
+  foreach(TEST_OUTPUT_DIR ${CREATE_DIR_LIST})
+    if(NOT EXISTS ${TEST_OUTPUT_DIR})
+      file(MAKE_DIRECTORY ${TEST_OUTPUT_DIR})
+    endif()
+  endforeach(TEST_OUTPUT_DIR)
 
 
   # Configure scripts for running tests of certain parameter
