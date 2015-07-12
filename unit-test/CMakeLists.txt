@@ -1,5 +1,6 @@
 include_directories(${ZLIB_INCLUDE_DIRS})
 include_directories("${CMAKE_SOURCE_DIR}/common")
+add_definitions("-DINPUT_ROOT_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 
 file(GLOB TEST_SRC_LIST "*.cpp")
 
