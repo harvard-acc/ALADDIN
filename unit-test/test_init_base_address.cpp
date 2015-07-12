@@ -1,9 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-#include "DDDG.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "unit-test-config.h"
 
 SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]") {
   GIVEN("Test c[i]=a[i] case w/ Input Size 32") {

@@ -1,9 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-#include "DDDG.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "unit-test-config.h"
 
 SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
   GIVEN("Test pp_scan w/ Input Size 128, cyclic partition with a factor of 4, "
