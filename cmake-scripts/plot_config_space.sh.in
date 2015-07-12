@@ -6,4 +6,4 @@ if [ ! -d "$PLOT_DATA_PLACE" ] ; then
   mkdir -p $PLOT_DATA_PLACE
 fi
 
-python @gen_space_py@
+python @gen_space_py@  @f_TEST_NAME@

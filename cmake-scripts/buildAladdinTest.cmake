@@ -1,7 +1,7 @@
 set(py_script_dir "${CMAKE_SOURCE_DIR}/SHOC/scripts")
 set(config_py "${py_script_dir}/config.py")
 set(run_aladdin_py "${py_script_dir}/run_aladdin.py")
-set(gen_space_py "${py_script_dir}/gen_space.py")
+set(gen_space_py "${py_script_dir}/plot_space.py")
 set(run_script_template "${ALADDIN_SCRIPT_DIR}/test_script.sh.in")
 set(plot_script_template "${ALADDIN_SCRIPT_DIR}/plot_config_space.sh.in")
 set(ALADDIN_PLOT_TEST_NAME data_plot)
@@ -54,6 +54,11 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
     list(APPEND ALADDIN_LIST ${f_ALADDIN_TEST_NAME})
   endforeach(f_CONFIG)
 
-  # pass the list of tests to parent scope
-  set(ALADDIN_LIST ${ALADDIN_LIST} PARENT_SCOPE)
+  set(plot_script "${CMAKE_CURRENT_BINARY_DIR}/${f_TEST_NAME}_plot.sh")
+  configure_file(${plot_script_template} ${plot_script})
+  set(f_plot_test_name ${f_TEST_NAME}_${ALADDIN_PLOT_TEST_NAME})
+  add_test(NAME ${f_plot_test_name} COMMAND bash ${plot_script})
+
+  set_tests_properties(${f_plot_test_name} PROPERTIES DEPENDS "${ALADDIN_LIST}")
+
 endfunction(build_aladdin_test)
