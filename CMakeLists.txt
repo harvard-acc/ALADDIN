@@ -26,3 +26,4 @@ add_subdirectory(${TRACER_DIR} "${CMAKE_BINARY_DIR}/LLVM-Tracer")
 # build aladdin
 add_subdirectory(common)
 add_subdirectory(SHOC)
+add_subdirectory(unit-test)
