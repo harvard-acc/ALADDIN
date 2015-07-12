@@ -13,4 +13,3 @@ set(WORKLOAD "pp_scan,local_scan,sum_scan,last_step_scan")
 set(CONFIGS ${ALL_CONFIG_SPACE})
 
 build_aladdin_test(${TEST_NAME} SRC ${WORKLOAD} CONFIGS)
-set(ALADDIN_LIST ${ALADDIN_LIST} PARENT_SCOPE)
