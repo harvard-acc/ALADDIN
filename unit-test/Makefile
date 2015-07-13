@@ -9,10 +9,10 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
-CFLAGS = -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
+CFLAGS += -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
          -I$(ALADDIN_HOME)/common
-LFLAGS = -g -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin -lz -lpthread
+LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
+         -L$(ALADDIN_HOME) -laladdin -lpthread -lz
 
 all : $(TESTS)
 
@@ -26,7 +26,7 @@ $(ALADDIN_HOME)/libaladdin.a :
 	$(MAKE) -C ../common lib
 
 $(TESTS) : % : %.o $(TEST_DEPS)
-	$(CXX) $(CFLAGS) -o $@ $*.o $(LFLAGS)
+	$(CXX) -o $@ $*.o $(LFLAGS)
 
 %.o : %.cpp
 	$(CXX) -c $(CFLAGS) $< -o $*.o
