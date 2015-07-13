@@ -4,6 +4,8 @@ ifeq ($(USE_DB), 1)
 ifeq ($(wildcard $(MYSQL_HOME)),)
     $(error Set MYSQL_HOME to a valid location)
 endif
+LFLAGS += -lmysqlcppconn
+CFLAGS += -I$(MYSQL_HOME)/include -DUSE_DB
 endif
 
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
@@ -15,10 +17,10 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a
 
-CFLAGS = -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
-         -I$(ALADDIN_HOME)/common -I$(MYSQL_HOME)
-LFLAGS = -g -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin -lmysqlcppconn
+CFLAGS += -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
+         -I$(ALADDIN_HOME)/common
+LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
+         -L$(ALADDIN_HOME) -laladdin -lpthread -lz
 
 all : $(TESTS)
 
@@ -32,7 +34,7 @@ $(ALADDIN_HOME)/libaladdin.a :
 	$(MAKE) -C ../common lib
 
 $(TESTS) : % : %.o $(TEST_DEPS)
-	$(CXX) $(CFLAGS) -o $@ $*.o $(LFLAGS)
+	$(CXX) -o $@ $*.o $(LFLAGS)
 
 %.o : %.cpp
 	$(CXX) -c $(CFLAGS) $< -o $*.o

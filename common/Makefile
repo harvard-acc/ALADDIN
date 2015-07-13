@@ -29,7 +29,7 @@ CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
 DEBUG =
 CFLAGS += $(DEBUG) $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
-LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib  -lboost_graph -lboost_regex
+LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex
 
 ifeq ($(USE_DB), 1)
 ifeq ($(wildcard $(MYSQL_HOME)),)
@@ -46,7 +46,7 @@ obj_dir:
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(CACTI_OBJ_DIR)
 
-lib : $(OBJ_FILES) $(CACTI_OBJ_FILES)
+lib : obj_dir $(OBJ_FILES) $(CACTI_OBJ_FILES)
 	ar rcs $(ALADDIN_HOME)/libaladdin.a $(OBJ_FILES) $(CACTI_OBJ_FILES)
 
 $(EXE): obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES)
