@@ -18,3 +18,7 @@ endif()
 if(NOT EXISTS ${TRACER_DIR})
   message(FATAL_ERROR "finds no ${TRACER_DIR}")
 endif()
+
+if(NOT DEFINED BOOST_ROOT)
+  set(BOOST_ROOT "$ENV{BOOST_ROOT}")
+endif()
