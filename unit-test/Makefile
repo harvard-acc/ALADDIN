@@ -1,4 +1,6 @@
-.PHONY: all clean
+.PHONY: all clean report_dir test junit_test
+
+TEST_REPORT_DIR = report_dir
 
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_dynamic_method_name.o test_loop_pipelining.o \
@@ -14,13 +16,16 @@ CFLAGS += -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
 LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
          -L$(ALADDIN_HOME) -laladdin -lpthread -lz
 
-all : $(TESTS)
+report_dir:
+	@mkdir -p $(TEST_REPORT_DIR)
 
-test : $(TESTS)
-	@for unit_test in $(TESTS) ; do \
-    echo $$unit_test ; \
-		./$$unit_test ; \
-	done
+all : report_dir $(TESTS)
+
+test : report_dir $(TESTS)
+	$(foreach t,$(TESTS),./$t;)
+
+junit_test: report_dir $(TESTS)
+	$(foreach t,$(TESTS),./$t -r junit -o $(TEST_REPORT_DIR)/$t.xml;)
 
 $(ALADDIN_HOME)/libaladdin.a :
 	$(MAKE) -C ../common lib
@@ -35,3 +40,4 @@ clean:
 	rm -f *.o
 	rm -f $(TESTS)
 	rm -f $(ALADDIN_HOME)/libaladdin.a
+	rm -rf $(TEST_REPORT_DIR)
