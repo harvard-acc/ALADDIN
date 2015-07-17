@@ -32,6 +32,9 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
   endforeach(TEST_OUTPUT_DIR)
 
 
+  set(run_script "${CMAKE_CURRENT_BINARY_DIR}/${f_TEST_NAME}.sh")
+  configure_file(${run_script_template} ${run_script} @ONLY)
+
   # Configure scripts for running tests of certain parameter
   # The scripts checks whether dynamic_trace exists. If not, run PROFILE_EXE
   # These scripts should be executable by users and ctest.
@@ -43,20 +46,16 @@ function(build_aladdin_test f_TEST_NAME f_SRC f_WORKLOAD f_CONFIGS)
     list(GET f_CONFIG_LIST 3 CLOCK_CONFIG)
                            
     set(PARAEMETER_STRING "p${PART_CONFIG}_u${UNROLL_CONFIG}_P${PIPE_CONFIG}_${CLOCK_CONFIG}ns")
-    set(RUN_TEST_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/sim/${PARAEMETER_STRING}")
-    set(CONFIG_FILE "${RUN_TEST_DIRECTORY}/config_${PARAEMETER_STRING}")
-    set(run_script "${CMAKE_CURRENT_BINARY_DIR}/${f_TEST_NAME}_${PARAEMETER_STRING}.sh")
 
-    configure_file(${run_script_template} ${run_script})
     set(f_ALADDIN_TEST_NAME ${f_TEST_NAME}_${PARAEMETER_STRING})
-    add_test(NAME ${f_ALADDIN_TEST_NAME} COMMAND bash ${run_script})
+    add_test(NAME ${f_ALADDIN_TEST_NAME} COMMAND bash ${run_script} ${f_CONFIG_LIST})
     set_tests_properties(${f_ALADDIN_TEST_NAME} PROPERTIES DEPENDS ${f_TEST_NAME})
 
     list(APPEND ALADDIN_LIST ${f_ALADDIN_TEST_NAME})
   endforeach(f_CONFIG)
 
   set(plot_script "${CMAKE_CURRENT_BINARY_DIR}/${f_TEST_NAME}_plot.sh")
-  configure_file(${plot_script_template} ${plot_script})
+  configure_file(${plot_script_template} ${plot_script} @ONLY)
   set(f_plot_test_name ${f_TEST_NAME}_${ALADDIN_PLOT_TEST_NAME})
   add_test(NAME ${f_plot_test_name} COMMAND bash ${plot_script})
 
