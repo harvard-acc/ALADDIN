@@ -15,8 +15,10 @@ else()
 endif()
 
 
-if(NOT EXISTS ${TRACER_DIR})
-  message(FATAL_ERROR "finds no ${TRACER_DIR}")
+if(NOT EXISTS "${TRACER_DIR}/CMakeLists.txt")
+  message(FATAL_ERROR "LLVM-Tracer not found: ${TRACER_DIR}")
+else()
+  message(STATUS "found LLVM-Tracer: ${TRACER_DIR}")
 endif()
 
 if(NOT DEFINED BOOST_ROOT)
