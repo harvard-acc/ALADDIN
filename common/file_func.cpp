@@ -19,7 +19,7 @@ void read_file(std::string file_name, std::vector<int>& output) {
     file.close();
   } else {
     cerr << "file not open " << file_name << endl;
-    exit(0);
+    exit(1);
   }
 }
 
@@ -43,7 +43,7 @@ void read_gzip_string_file(std::string gzip_file_name,
   gzclose(gzip_file);
   if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
-    exit(0);
+    exit(1);
   }
 }
 
@@ -116,7 +116,7 @@ void read_gzip_file_no_size(std::string gzip_file_name,
 
   if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
-    exit(0);
+    exit(1);
   }
 }
 
@@ -146,7 +146,7 @@ void read_gzip_2_unsigned_file(
 
   if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
-    exit(0);
+    exit(1);
   }
 }
 
@@ -170,7 +170,7 @@ void read_gzip_1in2_unsigned_file(std::string gzip_file_name,
   gzclose(gzip_file);
   if (i == 0) {
     cerr << "file not open " << gzip_file_name << endl;
-    exit(0);
+    exit(1);
   }
 }
 

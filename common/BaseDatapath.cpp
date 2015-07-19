@@ -22,7 +22,7 @@ BaseDatapath::BaseDatapath(std::string bench,
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "       Aladdin Ends..          " << std::endl;
     std::cerr << "-------------------------------" << std::endl;
-    exit(0);
+    exit(1);
   }
   trace_file = gzopen(trace_file_name.c_str(), "r");
   std::string file_name = bench + "_summary";
@@ -2000,7 +2000,7 @@ void BaseDatapath::parse_config(std::string bench,
       cycleTime = stof(rest_line);
     } else {
       std::cerr << "Invalid config type: " << wholeline << std::endl;
-      exit(0);
+      exit(1);
     }
   }
   config_file.close();
