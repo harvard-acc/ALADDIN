@@ -197,6 +197,7 @@ class BaseDatapath {
   void clearExecNodes() {
     for (int i = 0; i < exec_nodes.size(); i++)
       delete exec_nodes[i];
+    exec_nodes.clear();
   }
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
