@@ -338,9 +338,6 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
 
-  // Track memory accesses at cache line granularity.
-  vaddr = vaddr - (vaddr % cacheLineSize);
-
   MemoryQueue& queue = isLoad ? load_queue : store_queue;
   Stats::Scalar& mem_stat = isLoad ? loads : stores;
 
@@ -370,7 +367,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
       markNodeStarted(node);
       dtb.incrementRequestCounter();
       queue.setStatus(vaddr, Translating);
-      DPRINTF(HybridDatapath, "node:%d mem access is translating\n", node_id);
+      DPRINTF(HybridDatapath, "node:%d, vaddr = %x, is translating\n", node_id,
+      vaddr);
     } else if (!dtb.canRequestTranslation()) {
       DPRINTF(HybridDatapath,
               "node:%d TLB cannot accept any more requests\n",
@@ -385,7 +383,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     if (issueCacheRequest(paddr, size, isLoad, node_id, value)) {
       queue.setStatus(vaddr, WaitingFromCache);
       DPRINTF(
-          HybridDatapath, "node:%d mem access is accessing cache\n", node_id);
+          HybridDatapath, "node:%d, vaddr = %x, paddr = %d is accessing cache\n",
+                           node_id, vaddr, paddr);
     } else {
       DPRINTF(HybridDatapath, "node:%d %s queue cannot issue\n",
               node_id, isLoad ? "load" : "store");
@@ -583,7 +582,8 @@ HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
     mem_access->paddr = paddr;
     queue.setStatus(vaddr, Translated);
     queue.setPhysicalAddress(vaddr, paddr);
-    DPRINTF(HybridDatapath, "node:%d mem access was translated\n", node_id);
+    DPRINTF(HybridDatapath, "node:%d was translated, vaddr = %x, paddr = %x\n",
+                             node_id, vaddr, paddr);
   }
   delete state;
   delete pkt->req;
@@ -699,13 +699,12 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   Addr vaddr = mem_access->vaddr;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
-  Addr blockAddr = vaddr - (vaddr % cacheLineSize);
-  queue.setStatus(blockAddr, Returned);
+  queue.setStatus(vaddr, Returned);
   queue.writeStats++;
   DPRINTF(HybridDatapath,
           "setting %s queue entry for address %#x to Returned.\n",
           isLoad ? "load" : "store",
-          blockAddr);
+          vaddr);
 
   delete state;
   delete pkt->req;
