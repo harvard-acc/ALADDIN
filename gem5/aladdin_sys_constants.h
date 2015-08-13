@@ -43,6 +43,7 @@ extern unsigned CORTEXSUITE_MULTI_NCUT;
 extern unsigned CORTEXSUITE_SVM;
 extern unsigned CORTEXSUITE_TEXTURE_SYNTHESIS;
 extern unsigned CORTEXSUITE_TRACKING;
+extern unsigned CORTEXSUITE_IMAGE_BLUR;
 
 // A special code used by integration tests.
 extern unsigned INTEGRATION_TEST;
