@@ -221,6 +221,14 @@ class AladdinTLB
      */
     void insert(Addr vpn, Addr ppn);
 
+    /* Inserts a translation between simulated virtual and physical pages to the
+     * infiniteBackupTLB, not the real TLB.
+     *
+     * This operation only happens when we activate accelerators, to dump the
+     * true virtual to physical translation from CPU to accelerators.
+     */
+    void insertBackupTLB(Addr vpn, Addr ppn);
+
     /* Translates array labels to simulated virtual addresses.
      *
      * Because trace addresses and the simulated addresses live in entirely

@@ -213,6 +213,10 @@ void AladdinTLB::insert(Addr vpn, Addr ppn) {
   infiniteBackupTLB[vpn] = ppn;
 }
 
+void AladdinTLB::insertBackupTLB(Addr vpn, Addr ppn) {
+  infiniteBackupTLB[vpn] = ppn;
+}
+
 bool
 AladdinTLB::canRequestTranslation()
 {

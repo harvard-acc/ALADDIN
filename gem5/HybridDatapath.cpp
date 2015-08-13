@@ -133,7 +133,7 @@ HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
   Addr ppn = paddr & ~(dtb.pageMask());
   DPRINTF(
       HybridDatapath, "Inserting TLB entry vpn 0x%x -> ppn 0x%x.\n", vpn, ppn);
-  dtb.insert(vpn, ppn);
+  dtb.insertBackupTLB(vpn, ppn);
 }
 
 void
