@@ -253,16 +253,16 @@ AladdinTLB::computeCactiResults()
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
   if (numEntries >= MIN_CACTI_SIZE)
   {
-    readEnergy = cacti_result.power.readOp.dynamic * 1e9;
-    writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+    readEnergy = cacti_result.power.readOp.dynamic * 1e12;
+    writeEnergy = cacti_result.power.writeOp.dynamic * 1e12;
     leakagePower = cacti_result.power.readOp.leakage * 1000;
     area = cacti_result.area;
   }
   else
   {
     /*Assuming it scales linearly with cache size*/
-    readEnergy = cacti_result.power.readOp.dynamic * 1e9 * numEntries / MIN_CACTI_SIZE;
-    writeEnergy = cacti_result.power.writeOp.dynamic * 1e9 * numEntries / MIN_CACTI_SIZE;
+    readEnergy = cacti_result.power.readOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
+    writeEnergy = cacti_result.power.writeOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
     leakagePower = cacti_result.power.readOp.leakage * 1000 * numEntries / MIN_CACTI_SIZE;
     area = cacti_result.area * numEntries / MIN_CACTI_SIZE;
   }

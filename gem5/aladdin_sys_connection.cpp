@@ -21,7 +21,7 @@ bool isValidRequestCode(unsigned req) {
   unsigned shifted = req >> 4;
   return ((req & 0xFFFFFFFF0) == req &&
           shifted >= 0x01 &&
-          shifted <= 0x25) ||
+          shifted <= 0x26) ||
           (req == INTEGRATION_TEST);
 }
 

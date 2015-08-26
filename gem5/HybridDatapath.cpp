@@ -801,8 +801,9 @@ void HybridDatapath::computeCactiResults()
   DPRINTF(HybridDatapath,
           "Invoking CACTI for cache power and area estimates.\n");
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
-  cache_readEnergy = cacti_result.power.readOp.dynamic * 1e9;
-  cache_writeEnergy = cacti_result.power.writeOp.dynamic * 1e9;
+  // power in mW, energy in pJ, area in mm2
+  cache_readEnergy = cacti_result.power.readOp.dynamic * 1e12;
+  cache_writeEnergy = cacti_result.power.writeOp.dynamic * 1e12;
   cache_leakagePower = cacti_result.power.readOp.leakage * 1000;
   cache_area = cacti_result.area;
 
