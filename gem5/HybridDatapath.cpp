@@ -92,7 +92,15 @@ HybridDatapath::~HybridDatapath() {
 
 void HybridDatapath::clearDatapath() {
   ScratchpadDatapath::clearDatapath();
-  dtb.clear();
+  dtb.resetCounters();
+  load_queue.resetCounters();
+  store_queue.resetCounters();
+  resetCounters();
+}
+
+void HybridDatapath::resetCounters() {
+  loads = 0;
+  stores = 0;
 }
 
 void HybridDatapath::initializeDatapath(int delay) {

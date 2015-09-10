@@ -200,6 +200,7 @@ class AladdinTLB
 
     std::string name() const;
     void clear();
+    void resetCounters();
 
     /* Getters. */
     unsigned getNumEntries() { return numEntries; }

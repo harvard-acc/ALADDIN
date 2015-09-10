@@ -136,6 +136,12 @@ class MemoryQueue {
     *avg_leak = leakagePower;
     *avg_power = *avg_dynamic + *avg_leak;
   }
+
+  void resetCounters() {
+    readStats = 0;
+    writeStats = 0;
+  }
+
   float getArea() { return area; }
 
   const int size;         // Size of the queue.

@@ -45,6 +45,11 @@ void AladdinTLB::clear() {
   tlbMemory->clear();
 }
 
+void AladdinTLB::resetCounters() {
+  reads = 0;
+  updates = 0;
+}
+
 AladdinTLB::deHitQueueEvent::deHitQueueEvent(AladdinTLB *_tlb)
    : Event(Default_Pri, AutoDelete),
      tlb(_tlb) {}
