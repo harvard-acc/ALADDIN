@@ -285,7 +285,10 @@ void BaseDatapath::removeInductionDependence() {
     std::string node_instid = node->get_inst_id();
     if (node_instid.find("indvars") != std::string::npos) {
       node->set_inductive(true);
-      if (node->is_int_add_op())
+      /* TODO: Here we generalize the conversion from compute nodes to addition.
+       * Ideally we want to have a strength reduction path to eliminate address
+       * calculation multiplier. */
+      if (node->is_compute_op())
         node->set_microop(LLVM_IR_IndexAdd);
     } else {
       bool inductive_parents = true;
@@ -304,7 +307,7 @@ void BaseDatapath::removeInductionDependence() {
       }
       if (inductive_parents) {
         node->set_inductive(true);
-        if (node->is_int_add_op())
+        if (node->is_compute_op())
           node->set_microop(LLVM_IR_IndexAdd);
       }
     }
