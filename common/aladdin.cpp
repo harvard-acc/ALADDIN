@@ -49,6 +49,7 @@ int main(int argc, const char* argv[]) {
   ScratchpadDatapath* acc;
 
   acc = new ScratchpadDatapath(bench, trace_file, config_file);
+
 #ifdef USE_DB
   bool use_db = (argc == 5);
   if (use_db) {
@@ -56,6 +57,7 @@ int main(int argc, const char* argv[]) {
     acc->setExperimentParameters(experiment_name);
   }
 #endif
+
   // Get the complete graph.
   acc->buildDddg();
   acc->globalOptimizationPass();
