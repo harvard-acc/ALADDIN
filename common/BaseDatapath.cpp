@@ -1272,14 +1272,14 @@ void BaseDatapath::outputPerCycleActivity(
   ofstream stats;
   std::string bn(benchName);
   std::string file_name = bn + "_stats";
-  stats.open(file_name.c_str());
+  stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   stats << num_cycles << ",";
 
 #ifdef DEBUG
   ofstream power_stats;
   file_name += "_power";
-  power_stats.open(file_name.c_str());
+  power_stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   power_stats << num_cycles << ",";
 #endif
@@ -1482,7 +1482,7 @@ void BaseDatapath::outputPerCycleActivity(
   writeSummary(std::cerr, summary);
   ofstream summary_file;
   file_name = bn + "_summary";
-  summary_file.open(file_name.c_str());
+  summary_file.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   writeSummary(summary_file, summary);
   summary_file.close();
 
@@ -1614,7 +1614,7 @@ void BaseDatapath::prepareForScheduling() {
 }
 
 void BaseDatapath::dumpGraph(std::string graph_name) {
-  std::ofstream out(graph_name + "_graph.dot");
+  std::ofstream out(graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
   write_graphviz(out, graph_);
 }
 /*As Late As Possible (ALAP) rescheduling for non-memory, non-control nodes.
