@@ -158,6 +158,8 @@ HybridDatapath::event_step()
 {
   step();
   scratchpad->step();
+  printf_guards.write_buffered_output();
+  printf_guards.reset();
 }
 
 void
@@ -357,15 +359,19 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     // this node after a TLB miss. We'll enqueue it - if it already exists in
     // the queue, a duplicate won't be added.
     if (queue.contains(vaddr)) {
-      DPRINTF(HybridDatapath,
-              "node:%d %s was merged into an existing entry.\n",
-              node_id, isLoad ? "load" : "store");
+      if (printf_guards.lsq_merge_count < printf_guards.threshold)
+        DPRINTF(HybridDatapath,
+                "node:%d %s was merged into an existing entry.\n",
+                node_id, isLoad ? "load" : "store");
+      printf_guards.lsq_merge_count++;
     } else if (!queue.is_full()) {
       queue.enqueue(vaddr);
       mem_stat++;
     } else {
-      DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
-              node_id, isLoad ?  "load" : "store");
+      if (printf_guards.lsq_full_count < printf_guards.threshold)
+        DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
+                node_id, isLoad ?  "load" : "store");
+      printf_guards.lsq_full_count++;
       return false;
     }
 
@@ -378,9 +384,11 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
       DPRINTF(HybridDatapath, "node:%d, vaddr = %x, is translating\n", node_id,
       vaddr);
     } else if (!dtb.canRequestTranslation()) {
-      DPRINTF(HybridDatapath,
-              "node:%d TLB cannot accept any more requests\n",
-              node_id);
+      if (printf_guards.tlb_bw_count < printf_guards.threshold)
+        DPRINTF(HybridDatapath,
+                "node:%d TLB cannot accept any more requests\n",
+                node_id);
+      printf_guards.tlb_bw_count++;
     }
     return false;
   } else if (inflight_mem_op == Translated) {
@@ -391,11 +399,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     if (issueCacheRequest(paddr, size, isLoad, node_id, value)) {
       queue.setStatus(vaddr, WaitingFromCache);
       DPRINTF(
-          HybridDatapath, "node:%d, vaddr = %x, paddr = %d is accessing cache\n",
+          HybridDatapath, "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
                            node_id, vaddr, paddr);
-    } else {
-      DPRINTF(HybridDatapath, "node:%d %s queue cannot issue\n",
-              node_id, isLoad ? "load" : "store");
     }
     return false;
   } else if (inflight_mem_op == Returned) {
@@ -607,8 +612,10 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   bool queues_available = (isLoad && load_queue.can_issue()) ||
                           (!isLoad && store_queue.can_issue());
   if (!queues_available) {
-    DPRINTF(HybridDatapath,
-            "Load/store queues have no more ports available.\n");
+    if (printf_guards.lsq_ports_count < printf_guards.threshold)
+      DPRINTF(HybridDatapath,
+              "Load/store queues have no more ports available.\n");
+    printf_guards.lsq_ports_count++;
     return false;
   }
   if (isCacheBlocked) {
