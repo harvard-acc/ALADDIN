@@ -67,7 +67,8 @@ HybridDatapath::HybridDatapath(
         params->tlbBandwidth,
         params->tlbCactiConfig,
         params->acceleratorName),
-    tickEvent(this)
+    tickEvent(this),
+    executedNodesLastTrigger(0)
 {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
@@ -228,15 +229,25 @@ HybridDatapath::retireReturnedLSQEntries()
 bool
 HybridDatapath::step()
 {
+  executedNodesLastTrigger = executedNodes;
   resetCacheCounters();
   stepExecutingQueue();
   copyToExecutingQueue();
   retireReturnedLSQEntries();
   DPRINTF(HybridDatapath,
-          "Cycles:%d, executedNodes:%d, totalConnectedNodes:%d\n",
+          "[CYCLES]:%d. executedNodes:%d, totalConnectedNodes:%d\n",
           num_cycles,
           executedNodes,
           totalConnectedNodes);
+  if (executedNodesLastTrigger != executedNodes)
+    cycles_since_last_node++;
+  else
+    cycles_since_last_node = 0;
+  if (cycles_since_last_node > deadlock_threshold) {
+    exitSimLoop("Detected deadlock!");
+    return false;
+  }
+
   num_cycles++;
   if (executedNodes < totalConnectedNodes) {
     schedule(tickEvent, clockEdge(Cycles(1)));

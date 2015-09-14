@@ -34,7 +34,7 @@ class Gem5Datapath : public MemObject
                  System* _system)
         : MemObject(params), execute_standalone(_execute_standalone),
           accelerator_id(_accelerator_id), finish_flag(0), context_id(-1),
-          thread_id(-1), system(_system) {}
+          thread_id(-1), cycles_since_last_node(0), system(_system) {}
 
     /* Return the tick event object for the event queue for this datapath. */
     virtual Event& getTickEvent() = 0;
@@ -115,6 +115,12 @@ class Gem5Datapath : public MemObject
     /* Thread and context ids of the thread that activated this accelerator. */
     int context_id;
     int thread_id;
+
+    /* Deadlock detector. Counts the number of ticks that have passed since the
+     * last node was executed. If this exceeds deadlock_threshold, then
+     * simulation is terminated with an error. */
+    unsigned cycles_since_last_node;
+    const unsigned deadlock_threshold = 1000;
 
     /* Dependencies of this accelerator, expressed as a list of other
      * accelerator ids. All other accelerators must complete execution before

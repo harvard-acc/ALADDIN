@@ -369,6 +369,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     EventWrapper<HybridDatapath,
                  &HybridDatapath::event_step> tickEvent;
 
+    // Number of executed nodes as of the last event trigger.
+    // This is required for deadlock detection.
+    unsigned executedNodesLastTrigger;
+
     // Name of the datapath object assigned by gem5.
     std::string datapath_name;
 };
