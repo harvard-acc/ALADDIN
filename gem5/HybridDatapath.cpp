@@ -91,18 +91,25 @@ HybridDatapath::~HybridDatapath() {
     system->deregisterAccelerator(accelerator_id);
 }
 
-void HybridDatapath::clearDatapath() {
+void HybridDatapath::clearDatapath(bool flush_tlb) {
   ScratchpadDatapath::clearDatapath();
   dtb.resetCounters();
   load_queue.resetCounters();
   store_queue.resetCounters();
-  resetCounters();
+  resetCounters(flush_tlb);
 }
 
-void HybridDatapath::resetCounters() {
+void HybridDatapath::resetCounters(bool flush_tlb) {
   loads = 0;
   stores = 0;
+  if (flush_tlb)
+    dtb.clear();
 }
+
+void HybridDatapath::clearDatapath() {
+  clearDatapath(false);
+}
+
 
 void HybridDatapath::initializeDatapath(int delay) {
   buildDddg();
@@ -254,7 +261,9 @@ HybridDatapath::step()
     return true;
   } else {
     dumpStats();
-    clearDatapath();
+    // TODO: For multiple invocations, there's no purpose in flushing the TLB
+    // in between invocations.
+    clearDatapath(false);
     DPRINTF(HybridDatapath, "Accelerator completed.\n");
     if (execute_standalone) {
       system->deregisterAccelerator(accelerator_id);
