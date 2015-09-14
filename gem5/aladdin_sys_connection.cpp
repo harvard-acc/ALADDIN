@@ -26,7 +26,7 @@ bool isValidRequestCode(unsigned req) {
 }
 
 void invokeAcceleratorAndBlock(unsigned req_code) {
-  int finish_flag = NOT_COMPLETED;
+  int volatile finish_flag = NOT_COMPLETED;
   ioctl(ALADDIN_FD, req_code, &finish_flag);
   while (finish_flag == NOT_COMPLETED)
     ;
