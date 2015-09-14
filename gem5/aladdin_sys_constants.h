@@ -48,6 +48,8 @@ extern unsigned CORTEXSUITE_IMAGE_BLUR_SHADOW;
 extern unsigned CORTEXSUITE_SOBEL;
 extern unsigned CORTEXSUITE_SOBEL_SHADOW;
 
+extern unsigned PERFECT_WAMI_LK_STEEPEST;
+
 // A special code used by integration tests.
 extern unsigned INTEGRATION_TEST;
 

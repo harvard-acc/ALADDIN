@@ -19,9 +19,9 @@ bool isValidRequestCode(unsigned req) {
   // rule) and if it is within the range of request codes specified.
 
   unsigned shifted = req >> 4;
-  return ((req & 0xFFFFFFFF0) == req &&
-          shifted >= 0x01 &&
-          shifted <= 0x28) ||
+  return ((req & 0xFFFFFFF0) == req &&
+          shifted >= 0x01  &&
+          shifted <= 0x29)  ||
           (req == INTEGRATION_TEST);
 }
 
