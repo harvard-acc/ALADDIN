@@ -47,6 +47,7 @@ HybridDatapath::HybridDatapath(
                 params->storeBandwidth,
                 params->acceleratorName + ".store_queue",
                 params->storeQueueCacheConfig),
+    enable_stats_dump(params->enableStatsDump),
     cacheSize(params->cacheSize),
     cacti_cfg(params->cactiCacheConfig),
     cacheLineSize(params->cacheLineSize),
@@ -271,6 +272,12 @@ HybridDatapath::step()
         exitSimLoop("Aladdin called exit()");
       }
     } else {
+      if (enable_stats_dump) {
+        std::string exit_reason =
+          DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
+        exitSimLoop(exit_reason);
+      }
+
       sendFinishedSignal();
     }
   }

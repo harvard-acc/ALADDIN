@@ -49,6 +49,9 @@ class HybridDatapath(MemObject):
   tlbBandwidth = Param.Int(
       1, "Number of translations that can be requested per cycle.")
 
+  enableStatsDump = Param.Bool(
+      False, "Dump m5 stats after each accelerator invocation.")
+
   spad_port = MasterPort("HybridDatapath DMA port")
   cache_port = MasterPort("HybridDatapath cache coherent port")
   # This is the set of ports that should be connected to the memory bus.

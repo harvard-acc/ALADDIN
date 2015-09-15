@@ -347,6 +347,11 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     // Tracks the debug output optimization.
     PrintfGuards printf_guards;
 
+    // If True, this exits the sim loop at the end of each accelerator
+    // invocation so that stats can be dumped. The simulation script will
+    // resume execution afterwards.
+    bool enable_stats_dump;
+
     // Data cache structural parameters.
     std::string cacheSize;  // Because of GEM5's stupid xxkB format.
     std::string cacti_cfg;  // CACTI configuration file for the main cache.
