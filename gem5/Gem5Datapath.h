@@ -120,7 +120,7 @@ class Gem5Datapath : public MemObject
      * last node was executed. If this exceeds deadlock_threshold, then
      * simulation is terminated with an error. */
     unsigned cycles_since_last_node;
-    const unsigned deadlock_threshold = 1000;
+    const unsigned deadlock_threshold = 1000000;
 
     /* Dependencies of this accelerator, expressed as a list of other
      * accelerator ids. All other accelerators must complete execution before

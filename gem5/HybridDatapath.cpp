@@ -252,7 +252,7 @@ HybridDatapath::step()
   else
     cycles_since_last_node = 0;
   if (cycles_since_last_node > deadlock_threshold) {
-    exitSimLoop("Detected deadlock!");
+    exitSimLoop("Deadlock detected!");
     return false;
   }
 
