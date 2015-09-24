@@ -64,4 +64,18 @@ extern int ALADDIN_MAP_ARRAY;
 // A preprovided sentinel value to detect changes in finish flags.
 extern int NOT_COMPLETED;
 
+// A special request code that triggers gem5 to dump all stats.
+extern int DUMP_STATS;
+
+// A special request code that triggers gem5 to reset all stats.
+extern int RESET_STATS;
+
+// A string to pass to exitSimLoop to indicate that this is just a point to
+// dump stats, not to end simulation.
+extern const char* DUMP_STATS_EXIT_SIM_SIGNAL;
+
+// A string to pass to exitSimLoop to indicate that this is just a point to
+// reset gem5 stats (without dumping), not to end simulation.
+extern const char* RESET_STATS_EXIT_SIM_SIGNAL;
+
 #endif

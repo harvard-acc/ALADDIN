@@ -21,6 +21,7 @@
 #include "aladdin/common/ExecNode.h"
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "debug/HybridDatapath.hh"
+#include "aladdin_sys_constants.h"
 #include "aladdin_tlb.hh"
 #include "HybridDatapath.h"
 
@@ -277,7 +278,6 @@ HybridDatapath::step()
           DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
         exitSimLoop(exit_reason);
       }
-
       sendFinishedSignal();
     }
   }

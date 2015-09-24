@@ -60,6 +60,23 @@ void invokeAcceleratorAndBlock(unsigned req_code);
  */
 int* invokeAcceleratorAndReturn(unsigned req_code);
 
+/* Trigger gem5 to dump its stats and then resume simulation.
+ *
+ * This is accomplished using a special request code in lieu of one assigned to
+ * an accelerator.
+ *
+ * Args:
+ *   stats_desc: A description of what the code just performed. This will be
+ *   dumped inline with the stats.
+ */
+void dumpGem5Stats(char* stats_desc);
+
+/* Trigger gem5 to reset all its stats and then resume simulation.
+ *
+ * In this case, statistics are NOT dumped to the stats file.
+ */
+void resetGem5Stats();
+
 /* Create a virtual to physical address mapping for the specified array for
  * the dynamic trace used in Aladdin.
  *

@@ -20,9 +20,11 @@ bool isValidRequestCode(unsigned req) {
 
   unsigned shifted = req >> 4;
   return ((req & 0xFFFFFFF0) == req &&
-          shifted >= 0x01  &&
+          shifted >= 0x01 &&
           shifted <= 0x29)  ||
-          (req == INTEGRATION_TEST);
+          req == INTEGRATION_TEST ||
+          req == DUMP_STATS ||
+          req == RESET_STATS;
 }
 
 void invokeAcceleratorAndBlock(unsigned req_code) {
@@ -37,6 +39,14 @@ int* invokeAcceleratorAndReturn(unsigned req_code) {
   *finish_flag = NOT_COMPLETED;
   ioctl(ALADDIN_FD, req_code, finish_flag);
   return finish_flag;
+}
+
+void dumpGem5Stats(char* stats_desc) {
+  ioctl(ALADDIN_FD, DUMP_STATS, stats_desc);
+}
+
+void resetGem5Stats() {
+  ioctl(ALADDIN_FD, RESET_STATS, NULL);
 }
 
 void mapArrayToAccelerator(
