@@ -15,12 +15,10 @@ extern "C" {
 #endif
 
 bool isValidRequestCode(unsigned req) {
-  // Checks if the last four bits are zero (to enforce the 16-value separation
-  // rule) and if it is within the range of request codes specified.
+  // Check if it is within the range of request codes specified.
 
   unsigned shifted = req >> 4;
-  return ((req & 0xFFFFFFF0) == req &&
-          shifted >= 0x01 &&
+  return (shifted >= 0x01 &&
           shifted <= 0x29)  ||
           req == INTEGRATION_TEST ||
           req == DUMP_STATS ||

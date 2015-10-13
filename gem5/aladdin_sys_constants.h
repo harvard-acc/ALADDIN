@@ -43,10 +43,14 @@ extern unsigned CORTEXSUITE_MULTI_NCUT;
 extern unsigned CORTEXSUITE_SVM;
 extern unsigned CORTEXSUITE_TEXTURE_SYNTHESIS;
 extern unsigned CORTEXSUITE_TRACKING;
+extern unsigned CORTEXSUITE_TRACKING_HARRIS;
+extern unsigned CORTEXSUITE_TRACKING_AREASUM;
+extern unsigned CORTEXSUITE_TRACKING_LAMBDA;
+
 extern unsigned CORTEXSUITE_IMAGE_BLUR;
-extern unsigned CORTEXSUITE_IMAGE_BLUR_SHADOW;
-extern unsigned CORTEXSUITE_SOBEL;
-extern unsigned CORTEXSUITE_SOBEL_SHADOW;
+extern unsigned CORTEXSUITE_IMAGE_RESIZE;
+extern unsigned CORTEXSUITE_SOBEL_DX;
+extern unsigned CORTEXSUITE_SOBEL_DY;
 
 extern unsigned PERFECT_WAMI_LK_STEEPEST;
 
