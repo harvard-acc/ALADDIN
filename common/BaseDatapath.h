@@ -21,6 +21,7 @@
 #include <list>
 #include <set>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "DatabaseDeps.h"
 

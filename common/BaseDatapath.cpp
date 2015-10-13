@@ -26,7 +26,7 @@ BaseDatapath::BaseDatapath(std::string bench,
   trace_file = gzopen(trace_file_name.c_str(), "r");
   std::string file_name = bench + "_summary";
   /* Remove the old file. */
-  if (remove(file_name.c_str()) != 0)
+  if (access(file_name.c_str(), F_OK) != -1 && remove(file_name.c_str()) != 0)
     perror("Failed to delete the old summary file");
 }
 
