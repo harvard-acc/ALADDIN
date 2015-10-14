@@ -289,13 +289,16 @@ void BaseDatapath::removeInductionDependence() {
     std::string node_instid = node->get_inst_id();
     if (node_instid.find("indvars") != std::string::npos) {
       node->set_inductive(true);
-      /* TODO: Here we generalize the conversion from compute nodes to addition.
-       * Ideally we want to have a strength reduction path to eliminate address
-       * calculation multiplier. */
-      if (node->is_compute_op())
+      if (node->is_int_add_op())
         node->set_microop(LLVM_IR_IndexAdd);
+      else if (node->is_int_mul_op())
+        node->set_microop(LLVM_IR_Shl);
     } else {
-      bool inductive_parents = true;
+      /* If all the parents are inductive, then the current node is inductive.*/
+      bool all_inductive = true;
+      /* If one of the parent is inductive, and the operation is an integer mul,
+       * do strength reduction that converts the mul/div to a shifter.*/
+      bool any_inductive = false;
       in_edge_iter in_edge_it, in_edge_end;
       for (tie(in_edge_it, in_edge_end) = in_edges(node->get_vertex(), graph_);
            in_edge_it != in_edge_end;
@@ -305,14 +308,20 @@ void BaseDatapath::removeInductionDependence() {
         Vertex parent_vertex = source(*in_edge_it, graph_);
         ExecNode* parent_node = getNodeFromVertex(parent_vertex);
         if (!parent_node->is_inductive()) {
-          inductive_parents = false;
-          break;
+          all_inductive = false;
+        } else {
+          any_inductive = true;
         }
       }
-      if (inductive_parents) {
+      if (all_inductive) {
         node->set_inductive(true);
-        if (node->is_compute_op())
+        if (node->is_int_add_op())
           node->set_microop(LLVM_IR_IndexAdd);
+        else if (node->is_int_mul_op())
+          node->set_microop(LLVM_IR_Shl);
+      } else if (any_inductive) {
+        if (node->is_int_mul_op())
+          node->set_microop(LLVM_IR_Shl);
       }
     }
   }
