@@ -12,7 +12,7 @@ LOGGER = $(TRACER_HOME)/profile-func/trace_logger.llvm
 COMMON_TEMP_DIR = obj
 MODE = LLVM_TRACE
 
-LLVM_OBJS = $(patsubst %.cpp, $(COMMON_TEMP_DIR)/%-opt.llvm, $(SRCS))
+LLVM_OBJS = $(patsubst %.c, $(COMMON_TEMP_DIR)/%-opt.llvm, $(SRCS))
 
 trace: $(COMMON_TEMP_DIR)/$(EXEC)-instrumented
 
@@ -41,7 +41,7 @@ $(COMMON_TEMP_DIR)/full.s: $(COMMON_TEMP_DIR)/full.llvm
 $(COMMON_TEMP_DIR)/$(EXEC)-instrumented: $(COMMON_TEMP_DIR)/full.s
 	$(CXX) -static -O0 -fno-inline -o $@ $< -lm -lz
 
-$(COMMON_TEMP_DIR)/%-opt.llvm: %.cpp
+$(COMMON_TEMP_DIR)/%-opt.llvm: %.c
 	mkdir -p $(COMMON_TEMP_DIR)
 	clang -static -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops \
         -fno-inline -fno-builtin -emit-llvm \

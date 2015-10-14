@@ -4,26 +4,26 @@
  * finished.
  */
 
-#include <iostream>
-
+#include <stdio.h>
 #include "aladdin_sys_connection.h"
 #include "aladdin_sys_constants.h"
+#define TYPE int
 
-int test_stores(int* store_vals, int* store_loc, int num_vals) {
+int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
   int num_failures = 0;
   for (int i = 0; i < num_vals; i++) {
     if (store_loc[i] != store_vals[i]) {
-      std::cout << "FAILED: store_loc[" << i << "] = " << store_loc[i]
-                << ", should be " << store_vals[i] << "\n";
+      fprintf(stdout, "FAILED: store_loc[%d] = %d, should be %d\n",
+                               i, store_loc[i], store_vals[i]);
       num_failures++;
     }
   }
-  std::cout << std::endl;
   return num_failures;
 }
 
+
 // Read values from store_vals and copy them into store_loc.
-void store_kernel(int* store_vals, int* store_loc, int num_vals) {
+void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
   for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_vals[i];
 }
@@ -31,8 +31,8 @@ void store_kernel(int* store_vals, int* store_loc, int num_vals) {
 int main() {
 
   const int num_vals = 2048;
-  int* store_vals = new int[num_vals];
-  int* store_loc = new int[num_vals];
+  TYPE* store_vals =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
+  TYPE* store_loc =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
   for (int i = 0; i < num_vals; i++) {
     store_vals[i] = i;
     store_loc[i] = -1;
@@ -46,16 +46,16 @@ int main() {
   mapArrayToAccelerator(
       INTEGRATION_TEST, "store_loc", &(store_loc[0]), num_vals * sizeof(int));
 
-  std::cout << "Invoking accelerator!\n";
+  fprintf(stdout, "Invoking accelerator!\n");
   invokeAcceleratorAndBlock(INTEGRATION_TEST);
-  std::cout << "Accelerator finished!\n";
+  fprintf(stdout, "Accelerator finished!\n");
 #endif
 
   int num_failures = test_stores(store_vals, store_loc, num_vals);
-  if (num_failures == 0)
-    std::cout << "Test passed!" << std::endl;
-  else
-    std::cout << "Test failed with " << num_failures << " errors." << std::endl;
-
+  if (num_failures != 0) {
+    fprintf(stdout, "Test failed with %d errors.", num_failures);
+    return -1;
+  }
+  fprintf(stdout, "Test passed!\n");
   return 0;
 }
