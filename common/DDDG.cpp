@@ -112,13 +112,13 @@ void DDDG::parse_instruction_line(std::string line) {
 
 void DDDG::parse_parameter(std::string line, int param_tag) {
   int size, is_reg;
-  double value;
+  char char_value[256];
   char label[256], prev_bbid[256];
   if (curr_microop == LLVM_IR_PHI) {
     sscanf(line.c_str(),
-           "%d,%lf,%d,%[^,],%[^,],\n",
+           "%d,%[^,],%d,%[^,],%[^,],\n",
            &size,
-           &value,
+           char_value,
            &is_reg,
            label,
            prev_bbid);
@@ -126,8 +126,14 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       return;
     }
   } else {
-    sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
+    sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
   }
+  bool is_float = false;
+  string tmp_value(char_value);
+  std::size_t found = tmp_value.find('.');
+  if (found != std::string::npos)
+    is_float = true;
+  double value = atof(char_value);
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
@@ -170,7 +176,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     parameter_label_per_inst.push_back(label);
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
-      long long int mem_address = parameter_value_per_inst.back();
+      long long int mem_address = (long long int) parameter_value_per_inst.back();
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
         unsigned source_inst = addr_it->second;
@@ -193,7 +199,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
           num_of_mem_dep++;
         }
       }
-      long long int base_address = parameter_value_per_inst.back();
+      long long int base_address = (long long int) parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
@@ -213,10 +219,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
       long long int mem_address = parameter_value_per_inst[0];
-      // TODO(samxi): We need to support floating point values as well.
-      long long int store_value = parameter_value_per_inst[1];
       unsigned mem_size = parameter_size_per_inst.back();
-      curr_node->set_mem_access(mem_address, mem_size, store_value);
+      double store_value = value;
+      curr_node->set_mem_access(mem_address, mem_size, is_float, store_value);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       long long int base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
@@ -251,7 +256,7 @@ void DDDG::parse_result(std::string line) {
     curr_node->set_mem_access(mem_address, size, (long long int)value);
   } else if (curr_node->is_dma_op()) {
     long long int mem_address = parameter_value_per_inst[1];
-    unsigned mem_size = parameter_value_per_inst[2];
+    unsigned mem_size = (unsigned) parameter_value_per_inst[2];
     curr_node->set_mem_access(mem_address, mem_size);
   }
 }

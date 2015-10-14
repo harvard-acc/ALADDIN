@@ -18,14 +18,16 @@ struct MemAccess {
   uint64_t paddr;
   // Size of the memory access in BITS.
   size_t size;
+  // Is floating-point value or not.
+  bool is_float;
   // If this is not a store, then this value is meaningless.
-  // TODO(samxi): Support floating point stores as well.
-  uint64_t value;
+  double value;
 
   MemAccess() {
     vaddr = 0x0;
     paddr = 0x0;
     size = 0;
+    is_float = false;
     value = 0;
   }
 };
@@ -105,11 +107,12 @@ class ExecNode {
   }
   void set_array_label(std::string label) { array_label = label; }
   void set_mem_access(long long int vaddr,
-                      size_t size,
-                      long long int value = 0) {
+                      size_t size, bool is_float = false,
+                      double value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
     mem_access->size = size;
+    mem_access->is_float = is_float;
     mem_access->value = value;
   }
   void set_time_before_execution(float time) { time_before_execution = time; }

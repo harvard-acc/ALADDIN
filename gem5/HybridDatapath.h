@@ -239,7 +239,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                            unsigned size,
                            bool isLoad,
                            unsigned node_id,
-                           long long int value);
+                           bool is_float,
+                           double value);
     void completeCacheRequest(PacketPtr pkt);
 
     /* This port has to accept snoops but it doesn't need to do anything. See

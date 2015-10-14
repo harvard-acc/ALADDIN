@@ -421,9 +421,10 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   } else if (inflight_mem_op == Translated) {
     Addr paddr = mem_access->paddr;
     int size = mem_access->size;
-    long long int value = mem_access->value;
+    bool is_float = mem_access->is_float;
+    double value = mem_access->value;
 
-    if (issueCacheRequest(paddr, size, isLoad, node_id, value)) {
+    if (issueCacheRequest(paddr, size, isLoad, node_id, is_float, value)) {
       queue.setStatus(vaddr, WaitingFromCache);
       DPRINTF(
           HybridDatapath, "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
@@ -634,7 +635,8 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
                                        unsigned size,
                                        bool isLoad,
                                        unsigned node_id,
-                                       long long int value) {
+                                       bool is_float,
+                                       double value) {
   DPRINTF(HybridDatapath, "issueCacheRequest for addr:%#x\n", addr);
   bool queues_available = (isLoad && load_queue.can_issue()) ||
                           (!isLoad && store_queue.can_issue());
@@ -675,15 +677,33 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   req->setThreadContext(context_id, thread_id);
 
   MemCmd command;
-  long long int *data = new long long int;
-  *data = value;
+  uint8_t *data;
+  /* Convert the current value in double to its original type (int or float). */
+  if (size == 64 ) {
+    data = new uint8_t[8];
+    if (!is_float) {
+      int true_value = (long long int) value;
+      memcpy(data, &true_value, 8);
+    } else {
+      memcpy(data, &value, 8);
+    }
+  } else {
+    data = new uint8_t[4];
+    if (!is_float) {
+      int true_value = (int) value;
+      memcpy(data, &true_value, 4);
+    } else {
+      float tmp_value = (float) value;
+      memcpy(data, &tmp_value, 4);
+    }
+  }
   if (isLoad) {
     command = MemCmd::ReadReq;
   } else {
     command = MemCmd::WriteReq;
   }
   PacketPtr data_pkt = new Packet(req, command);
-  data_pkt->dataStatic<long long int>(data);
+  data_pkt->dataStatic(data);
 
   DatapathSenderState *state = new DatapathSenderState(node_id);
   data_pkt->senderState = state;
@@ -701,13 +721,14 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
               "dcache!\n",
               node_id,
               addr);
-    else
+    else {
       DPRINTF(HybridDatapath,
-              "Node id %d store of value %d to address %#x "
+              "Node id %d store of value %lf to address %#x "
               "issued to dcache!\n",
               node_id,
               value,
               addr);
+    }
   }
 
   return true;
