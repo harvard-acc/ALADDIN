@@ -84,6 +84,8 @@ HybridDatapath::HybridDatapath(
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
+  isCacheBlocked = false;
+  retryPkt = nullptr;
   if (execute_standalone)
     initializeDatapath();
 }
@@ -118,6 +120,8 @@ void HybridDatapath::initializeDatapath(int delay) {
   globalOptimizationPass();
   prepareForScheduling();
   num_cycles = 0;
+  isCacheBlocked = false;
+  retryPkt = NULL;
   startDatapathScheduling(delay);
 }
 
@@ -263,10 +267,7 @@ HybridDatapath::step()
     return true;
   } else {
     dumpStats();
-    // TODO: For multiple invocations, there's no purpose in flushing the TLB
-    // in between invocations.
-    clearDatapath(false);
-    DPRINTF(HybridDatapath, "Accelerator completed.\n");
+    DPRINTF(Aladdin, "Accelerator completed.\n");
     if (execute_standalone) {
       system->deregisterAccelerator(accelerator_id);
       if (system->numRunningAccelerators() == 0) {
@@ -280,6 +281,7 @@ HybridDatapath::step()
       }
       sendFinishedSignal();
     }
+    clearDatapath(false);
   }
   return false;
 }
@@ -488,6 +490,7 @@ HybridDatapath::sendFinishedSignal()
   {
     assert(retryPkt == NULL);
     retryPkt = pkt;
+    isCacheBlocked = true;
     DPRINTF(HybridDatapath,
             "Sending finished signal failed, retrying.\n");
   }

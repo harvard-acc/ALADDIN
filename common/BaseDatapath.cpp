@@ -1288,31 +1288,29 @@ void BaseDatapath::outputPerCycleActivity(
                                                 &fp_dp_add_leak_power,
                                                 &fp_dp_add_area);
 
-  ofstream stats;
   std::string bn(benchName);
-  std::string file_name = bn + "_stats";
+  std::string file_name;
+#ifdef DEBUG
+  file_name = bn + "_stats";
+  ofstream stats;
   stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   stats << num_cycles << ",";
 
-#ifdef DEBUG
   ofstream power_stats;
   file_name += "_power";
   power_stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   power_stats << num_cycles << ",";
-#endif
 
   /*Start writing the second line*/
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
     stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
           << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul," << *it
           << "-add," << *it << "-bit," << *it << "-shifter,";
-#ifdef DEBUG
     power_stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
                 << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul,"
                 << *it << "-add," << *it << "-bit," << *it << "-shifter,";
-#endif
   }
   stats << "reg,";
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
@@ -1320,7 +1318,6 @@ void BaseDatapath::outputPerCycleActivity(
     stats << *it << "-read," << *it << "-write,";
   }
   stats << std::endl;
-#ifdef DEBUG
   power_stats << "reg,";
   power_stats << std::endl;
 #endif
@@ -1372,12 +1369,13 @@ void BaseDatapath::outputPerCycleActivity(
 
   /*Start writing per cycle activity */
   for (unsigned curr_level = 0; ((int)curr_level) < num_cycles; ++curr_level) {
-    stats << curr_level << ",";
 #ifdef DEBUG
+    stats << curr_level << ",";
     power_stats << curr_level << ",";
 #endif
     // For FUs
     for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
+#ifdef DEBUG
       stats << func_activity[*it].at(curr_level).fp_sp_mul << ","
             << func_activity[*it].at(curr_level).fp_dp_mul << ","
             << func_activity[*it].at(curr_level).fp_sp_add << ","
@@ -1386,6 +1384,7 @@ void BaseDatapath::outputPerCycleActivity(
             << func_activity[*it].at(curr_level).add << ","
             << func_activity[*it].at(curr_level).bit << ","
             << func_activity[*it].at(curr_level).shifter << ",";
+#endif
 
       float curr_fp_sp_mul_dynamic_power =
           (fp_sp_mul_switch_power + fp_sp_mul_int_power) *
@@ -1439,6 +1438,7 @@ void BaseDatapath::outputPerCycleActivity(
     }
     fu_dynamic_energy += curr_reg_dynamic_energy;
 
+#ifdef DEBUG
     stats << curr_reg_reads << "," << curr_reg_writes << ",";
 
     for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
@@ -1447,13 +1447,12 @@ void BaseDatapath::outputPerCycleActivity(
             << mem_activity.at(*it).at(curr_level).write << ",";
     }
     stats << std::endl;
-#ifdef DEBUG
     power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
     power_stats << std::endl;
 #endif
   }
-  stats.close();
 #ifdef DEBUG
+  stats.close();
   power_stats.close();
 #endif
 
