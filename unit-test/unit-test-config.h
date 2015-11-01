@@ -9,8 +9,6 @@
   #define INPUT_ROOT_DIR .
 #endif
 
-// turn foo into "foo"
-// reference: http://stackoverflow.com/questions/240353/convert-a-preprocessor-token-to-a-string
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 

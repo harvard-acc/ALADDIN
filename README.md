@@ -75,6 +75,11 @@ Requirements:
 
        **Skip this step if you want to use CMake to build.**
 
+       If you plan to use the CMake to build Aladdin, we provide
+       an automatic way of installing LLVM and LLVM-Tracer through
+       CMake scripts. In this case, you don't need to install/build
+       LLVM-Tracer separately
+
        ```
        cd /path/to/LLVM-Tracer
        cd /path/to/LLVM-Tracer/full-trace
@@ -95,8 +100,8 @@ Build:
 
   2. Directly build with Makefile :
 
-       If you want to keep all the things simple, or you do not have
-       CMake, choose [Makefile](#build-with-makefile)
+       If you want to use a simple and clean Makefile interface, you can
+       build ALaddin directly with [Makefile](#build-with-makefile)
 
 
 Build with CMake:
@@ -106,7 +111,9 @@ Aladdin Requires CMake newer than 2.8.12. By default, CMake
 searches for LLVM 3.4.
 
 
-1. Set `$BOOST_ROOT`,  `TRACER_HOME`, `LLVM_HOME` to let Aladdin know where the tools and libraries are.
+1. Set environment variables `BOOST_ROOT`, `TRACER_HOME`, `LLVM_HOME` to
+   let Aladdin know where to search tools and libraries. Aladdin will
+   not use environment variables to install LLVM.
 
    ```
    export BOOST_ROOT=/your/path/to/boost
@@ -116,22 +123,27 @@ searches for LLVM 3.4.
 
 2. Use CMake to configure Aladdin and build libraries and executables
 
+   If you want to put the final executables and libraries on source
+   directory, pass `-DBUILD_ON_SOURCE=TRUE` arguemnt to `cmake`.
+   Otherwise, `-DBUILD_ON_SOURCE=FALSE`. The default is FALSE.
+
    ```
-   mkdir /where/you/want/to/put/your/binary
-   cd /where/you/want/to/put/your/binary
-   cmake /your/path/to/Aladdin
+   mkdir /where/you/want/to/bulid/your/binary
+   cd /where/you/want/to/bulid/your/binary
+   cmake /your/path/to/Aladdin/source
    make -j4
    ```
 
 3. (Optional) Run tests with `ctest` command
 
-   **CAUTION : Takes a long time**
-
-   **Suggest running part of them, like `"triad"` or `"unit_test"`.**
+   **CAUTION : Running the full test will take a long time.**
 
    There are 1397 tests. On Intel Xeon E5-2650 2.60GHz,
-   execution in 32 jobs takes 39 minutes,
+   execution in 32 simultaneous processes takes 39 minutes,
    and execution in sequential takes 6.5 hours.
+
+
+   **Suggest running part of them, like `"unit_test"` or `"triad"`.**
 
 
    Runs all the tests in sequential.
@@ -140,19 +152,25 @@ searches for LLVM 3.4.
    ```
 
    Runs all the tests in parallel. You can mix this option with test
-   filtering option to speed up tests.
+   filtering option to speed up tests. The JOB_NUM here means the max
+   job number to run simultaneously. Just like how you use `make -j NUM`
    ```
    ctest -j JOB_NUM
    ```
 
-   Runs `triad` tests. Use `-R` flag to denotes the regular expression to match.
-   ```
-   ctest -R triad
-   ```
+   Each test has name and the shell command. the name of test can be used
+   to filter out the unwanted tests.
 
-   Runs unit-tests
+
+   Runs `unit_test` related tests. Use `-R` to pass the regular expression to
+   match for.
    ```
    ctest -R unit_test
+   ```
+
+   Runs triad related tests.
+   ```
+   ctest -R triad
    ```
 
    If just want to know what -R `triad` matches. There is no actual execution of tests
@@ -180,7 +198,7 @@ searches for LLVM 3.4.
    ------------------------------------------------
 
    The available testcases:
-      * bb_gemm, fft, md, pp_scan, reduction, stencil, triad, ss_sort
+      * bb_gemm, fft, md, pp_scan, reduction, stencil, triad, ss_sort, unit_test
 
    The generated design space goes through:
 
@@ -192,9 +210,13 @@ searches for LLVM 3.4.
      CLOCK_RANGE          |   [1 6]
 
 
-   Partial CTestName-Command table:
+   This is a partial CTestName-ShellCommand table.
+   The left side is the test names valid in CTest. While the right
+   side is the corresponding shell commands. Just a subset of tests.
+   Giving hints for how test names are comprised in Aladdin.
 
-     ctest name                    |    command
+
+     ctest name                    |    shell command
      ------------------------------|---------------------------
      triad                         |    triad-instrumented
      triad_p2_u16_P2_1ns           |    triad.sh 2 16 2 1
@@ -275,6 +297,9 @@ searches for LLVM 3.4.
 
    -DCMAKE_BUILD_TYPE=None,Debug,Release    (default : None)
      You can choose one from three of bulid types.
+     The build type here is used to hint CMake what the optimization
+     level is and what the debug level is. Debug type will invoke -g3
+     to gcc. Release type will invoke -O2 to gcc.
 
    -DBUILD_ON_SOURCE=TRUE,FALSE    (default : FALSE)
      By assign this option, CMake will build fulltrace.so &
