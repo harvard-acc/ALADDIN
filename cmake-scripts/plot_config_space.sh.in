@@ -1,0 +1,9 @@
+#!/bin/bash
+export ALADDIN_HOME=@CMAKE_BINARY_DIR@
+PLOT_DATA_PLACE=$ALADDIN_HOME/SHOC/scripts/data
+
+if [ ! -d "$PLOT_DATA_PLACE" ] ; then
+  mkdir -p $PLOT_DATA_PLACE
+fi
+
+python @gen_space_py@  @f_TEST_NAME@

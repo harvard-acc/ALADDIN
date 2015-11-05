@@ -1,15 +1,13 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-#include "DDDG.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "unit-test-config.h"
 
 SCENARIO("Test Dynamic Method Name w/ aes", "[aes]") {
   GIVEN("Test MachSuite aes-aes") {
     std::string bench("outputs/aes-aes");
     std::string trace_file("inputs/aes-aes-trace.gz");
     std::string config_file("inputs/config-aes-aes");
+
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
 
     ScratchpadDatapath* acc;
     Scratchpad* spad;

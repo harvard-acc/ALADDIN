@@ -1,9 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-#include "DDDG.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "unit-test-config.h"
 
 SCENARIO("Test loopPipelining w/ Triad", "[triad]") {
   GIVEN("Test Triad w/ Input Size 128, cyclic partition with a factor of 2, "
@@ -11,6 +6,9 @@ SCENARIO("Test loopPipelining w/ Triad", "[triad]") {
     std::string bench("outputs/triad-128");
     std::string trace_file("inputs/triad-128-trace.gz");
     std::string config_file("inputs/config-triad-p2-u2-P1");
+
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
 
     ScratchpadDatapath* acc;
     Scratchpad* spad;
@@ -58,6 +56,9 @@ SCENARIO("Test loopPipelining w/ Reduction", "[reduction]") {
     std::string bench("outputs/reduction-128");
     std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
+
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
 
     ScratchpadDatapath* acc;
     Scratchpad* spad;

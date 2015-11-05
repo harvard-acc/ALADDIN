@@ -73,6 +73,13 @@ Requirements:
 
    2. Go to where you put LLVM-Tracer source code
 
+       **Skip this step if you want to use CMake to build.**
+
+       If you plan to use the CMake to build Aladdin, we provide
+       an automatic way of installing LLVM and LLVM-Tracer through
+       CMake scripts. In this case, you don't need to install/build
+       LLVM-Tracer separately
+
        ```
        cd /path/to/LLVM-Tracer
        cd /path/to/LLVM-Tracer/full-trace
@@ -82,7 +89,230 @@ Requirements:
        ```
 
 Build:
-------
+-----------------
+  Aladdin currently supports two ways to build.
+
+  1. Configure with CMake, then build with Make :
+
+       If you are familiar with CMake, or you are interested in a script
+       which can build out-of-source and offer automatical LLVM/Clang
+       installation, choose [CMake](#build-with-cmake)
+
+  2. Directly build with Makefile :
+
+       If you want to use a simple and clean Makefile interface, you can
+       build ALaddin directly with [Makefile](#build-with-makefile)
+
+
+Build with CMake:
+-----------------
+CMake is a configure tool which allows you to out-of-source build.
+Aladdin Requires CMake newer than 2.8.12. By default, CMake
+searches for LLVM 3.4.
+
+
+1. Set environment variables `BOOST_ROOT`, `TRACER_HOME`, `LLVM_HOME` to
+   let Aladdin know where to search tools and libraries. Aladdin will
+   not use environment variables to install LLVM.
+
+   ```
+   export BOOST_ROOT=/your/path/to/boost
+   export TRACER_HOME=/your/path/to/LLVM-Tracer
+   export LLVM_HOME=/your/path/to/llvm
+   ```
+
+2. Use CMake to configure Aladdin and build libraries and executables
+
+   If you want to put the final executables and libraries on source
+   directory, pass `-DBUILD_ON_SOURCE=TRUE` arguemnt to `cmake`.
+   Otherwise, `-DBUILD_ON_SOURCE=FALSE`. The default is FALSE.
+
+   ```
+   mkdir /where/you/want/to/bulid/your/binary
+   cd /where/you/want/to/bulid/your/binary
+   cmake /your/path/to/Aladdin/source
+   make -j4
+   ```
+
+3. (Optional) Run tests with `ctest` command
+
+   **CAUTION : Running the full test will take a long time.**
+
+   There are 1397 tests. On Intel Xeon E5-2650 2.60GHz,
+   execution in 32 simultaneous processes takes 39 minutes,
+   and execution in sequential takes 6.5 hours.
+
+
+   **Suggest running part of them, like `"unit_test"` or `"triad"`.**
+
+
+   Runs all the tests in sequential.
+   ```
+   ctest
+   ```
+
+   Runs all the tests in parallel. You can mix this option with test
+   filtering option to speed up tests. The JOB_NUM here means the max
+   job number to run simultaneously. Just like how you use `make -j NUM`
+   ```
+   ctest -j JOB_NUM
+   ```
+
+   Each test has name and the shell command. the name of test can be used
+   to filter out the unwanted tests.
+
+
+   Runs `unit_test` related tests. Use `-R` to pass the regular expression to
+   match for.
+   ```
+   ctest -R unit_test
+   ```
+
+   Runs triad related tests.
+   ```
+   ctest -R triad
+   ```
+
+   If just want to know what -R `triad` matches. There is no actual execution of tests
+   ```
+   ctest -R triad --show-only
+   ```
+
+4. Available test names of CTest
+
+   CMake collects available test cases and generate a list of configs,
+   then generate bash shell scripts for each tests.
+   `ctest` command for Aladdin executable usually runs these bash scripts.
+
+   Besides tests using Aladdin, CMake also build tests which generates
+   `dynamic_trace.gz`. It is named after just the case name without the
+   config settings like `triad` or `fft`. CMake also applies the python
+   script `plot_space.py` to plot design space. They are named in
+   `X_data_plot` scheme.
+
+   Of course, if multiple of tests are active at the same
+   time, CTest will schedule all Aladdin tests according to predefined
+   dependencies. Plot tests depend on Aladdin tests and Aladdin tests
+   depend on LLVM-Tracer tests.
+
+   ------------------------------------------------
+
+   The available testcases:
+      * bb_gemm, fft, md, pp_scan, reduction, stencil, triad, ss_sort, unit_test
+
+   The generated design space goes through:
+
+     Config               |   range
+     ---------------------|---------------------------
+     PARTITION_RANGE      |   [1 2 4 8 16 32 64]
+     UNROLL_RANGE         |   [1 2 4 8 16 32 64]
+     PIPELINE_RANGE       |   [1 2]
+     CLOCK_RANGE          |   [1 6]
+
+
+   This is a partial CTestName-ShellCommand table.
+   The left side is the test names valid in CTest. While the right
+   side is the corresponding shell commands. Just a subset of tests.
+   Giving hints for how test names are comprised in Aladdin.
+
+
+     ctest name                    |    shell command
+     ------------------------------|---------------------------
+     triad                         |    triad-instrumented
+     triad_p2_u16_P2_1ns           |    triad.sh 2 16 2 1
+     triad_p2_u2_P1_6ns            |    triad.sh 2 2 1 6
+     triad_p4_u8_P2_1ns            |    triad.sh 4 8 2 1
+     triad_data_plot               |    triad_plot.sh
+     fft_p4_u8_P2_1ns              |    fft.sh 4 8 2 1
+     bb_gemm_p4_u8_P2_1ns          |    bb_gemm.sh 4 8 2 1
+     unit_test_init_base_address   |    unit_test_init_base_address
+     unit_test_store_buffer        |    unit_test_store_buffer
+
+
+5. Available CMake Settings
+
+   ```
+   -DTRACER_DIR=/where/your/llvm/install  (default : $TRACER_HOME)
+     You may denote the path of LLVM-Tracer source code by this option.
+     After the source code of LLVM-Tracer is found by CMake script of
+     Aladdin, CMake script of Aladdin will reuse CMake scripts of
+     LLVM-Tracer and build LLVM-Tracer on Aladdin's binary directory.
+     If this option is not defined, environment variable TRACER_HOME
+     will be used.
+
+   -DBOOST_ROOT=/where/your/boost/install  (default : $BOOST_ROOT)
+     You can manually specify the installation path of boost library
+     by this CMake options. If this option is not defined, environment
+     variable BOOST_ROOT will be used.
+
+   ```
+
+6. Available CMake Settings from LLVM-Tracer
+
+   ```
+   -DLLVM_ROOT=/where/your/llvm/install   (default : $LLVM_HOME)
+     You may denote the path of LLVM to find/install by this option. If
+     this option is not defined, environment variable LLVM_HOME will be
+     used.
+
+   -DLLVMC_FLAGS="additional cflags"        (default : empty)
+     This option offers you the power to pass additional cflags
+     to Clang while building LLVM IR.
+
+   -DTRACER_LD_FLAGS="additional ldflags"   (default : empty)
+     This option offers you the power to pass additional ldflags
+     to g++ while linking instrumented LLVM IR to executable.
+
+   -DLLVM_RECOMMEND_VERSION="3.4", "3.5"    (default : 3.4)
+     LLVM-Tracer supports both LLVM 3.4 and 3.5. It uses LLVM 3.4 by
+     default, but you can manually specify the LLVM version to use.
+
+   -DGCC_INSTALL_PREFIX="/your/gcc/location"       (default : empty)
+     Clang++ requires stdc++ of GCC. This option denotes the
+     path to search libstdc++ and it's headers. If this option
+     is undefined, Clang++ will apply it's default settings.
+     In LLVM auto-installer, this option will be used as the
+     default search path by the installed Clang.
+
+   -DCMAKE_PREFIX_PATH="/your/toolchain/location"  (default : empty)
+     This CMake option denotes the additional path to search
+     dependent tools. In a sitution where you want to use LLVM
+     auto-installer and have pyhton 2.7 installed outside from
+     system directories, you should manually specify location
+     of python via this option.
+
+   -DAUTOINSTALL=TRUE,FALSE    (default : FALSE)
+     By this option, CMake scripts will automatically download, build and
+     install LLVM for you if finds no LLVM installation. Using this
+     function requires tar-1.22 or newer to extract xz format.
+
+     The default installation path is under /your/build_dir/lib/llvm-3.x.
+     You can manually define the installation path by
+     -DLLVM_ROOT=/where/to/install.
+
+     The default installation version will be 3.4. You can define
+     the installation version by -DLLVM_RECOMMEND_VERSION="3.5" or "3.4".
+     This auto install script will try to use the latest patch version
+     according to cmake-scripts/AutoInstall/LLVMPatchVersion.cmake
+
+   -DCMAKE_BUILD_TYPE=None,Debug,Release    (default : None)
+     You can choose one from three of bulid types.
+     The build type here is used to hint CMake what the optimization
+     level is and what the debug level is. Debug type will invoke -g3
+     to gcc. Release type will invoke -O2 to gcc.
+
+   -DBUILD_ON_SOURCE=TRUE,FALSE    (default : FALSE)
+     By assign this option, CMake will build fulltrace.so &
+     trace_logger.llvm under the source directory.
+     Other llvm bitcode and object files still remain in the build directory.
+
+   -DDYN_LINK_TRACE_CODE=TRUE,FALSE    (default : FALSE)
+     By turn on this option, all the LLVM-Tracer instrumented code
+     are linked with dynamic libraries.
+   ```
+
+Build with Makefile:
+--------------------
 1. Set `$ALDDIN_HOME` to where put Aladdin source code.
 
    `export ALADDIN_HOME=/your/path/to/aladdin`

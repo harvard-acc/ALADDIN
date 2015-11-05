@@ -1,15 +1,13 @@
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-#include "DDDG.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "unit-test-config.h"
 
 SCENARIO("Test treeHeightReduction w/ Reduction", "[reduction]") {
   GIVEN("Test Reduction w/ Input Size 128") {
     std::string bench("outputs/reduction-128");
     std::string trace_file("inputs/reduction-128-trace.gz");
     std::string config_file("inputs/config-reduction-p4-u4-P1");
+
+    trace_file = root_dir + trace_file;
+    config_file = root_dir + config_file;
 
     ScratchpadDatapath* acc;
     Scratchpad* spad;
