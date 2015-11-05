@@ -845,6 +845,8 @@ void BaseDatapath::treeHeightReduction() {
   int region_id = 0;
   unsigned node_id = 0;
   auto bound_it = loopBound.begin();
+  if (*bound_it == 0)
+    bound_it++;
   while (node_id < *bound_it) {
     bound_region.at(node_id) = region_id;
     node_id++;
@@ -974,7 +976,6 @@ void BaseDatapath::treeHeightReduction() {
              (node2->get_node_id() != numTotalNodes));
       to_add_edges.push_back({ node1, *new_node_it, 1 });
       to_add_edges.push_back({ node2, *new_node_it, 1 });
-
       // place the new node in the map, remove the two old nodes
       rank_map[*new_node_it] = max(rank_map[node1], rank_map[node2]) + 1;
       rank_map.erase(node1);
