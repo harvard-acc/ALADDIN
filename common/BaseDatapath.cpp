@@ -1150,21 +1150,21 @@ void BaseDatapath::updatePerCycleActivity(
 
     if (node->is_fp_op()) {
       for (unsigned stage = 0;
-           node_level + stage <= node->get_complete_execution_cycle();
+           node_level + stage < node->get_complete_execution_cycle();
            stage++) {
-        curr_fu_activity = func_activity[func_id].at(node_level + stage);
+        funcActivity& fp_fu_activity = func_activity[func_id].at(node_level + stage);
         /* Activity for floating point functional units includes all their
          * stages.*/
         if (node->is_fp_add_op()) {
           if (node->is_double_precision())
-            curr_fu_activity.fp_dp_add += 1;
+            fp_fu_activity.fp_dp_add += 1;
           else
-            curr_fu_activity.fp_sp_add += 1;
+            fp_fu_activity.fp_sp_add += 1;
         } else if (node->is_fp_mul_op()) {
           if (node->is_double_precision())
-            curr_fu_activity.fp_dp_mul += 1;
+            fp_fu_activity.fp_dp_mul += 1;
           else
-            curr_fu_activity.fp_sp_mul += 1;
+            fp_fu_activity.fp_sp_mul += 1;
         }
       }
     } else if (node->is_int_mul_op())
