@@ -12,7 +12,7 @@
 /*#define   Virtex7_MUL_LATENCY       9.74*/
 
 /* Function units power model with TSMC 40g */
-/* Power in mW, energy in pJ, time in ns. */
+/* Power in mW, energy in pJ, time in ns, area in um^2 */
 /* MUL     : integer MUL,DIV model*/
 /* ADD     : integer ADD,SUB model*/
 /* BIT     : AND,OR,XOR model*/
@@ -58,6 +58,14 @@
 #define REG_6ns_dynamic_energy 6.4918e-03
 #define REG_6ns_leakage_power 5.3278e-05
 #define REG_6ns_area 4.309200
+
+#define ADD_0_5ns_int_power         6.7465e-02
+#define ADD_0_5ns_switch_power      1.3690e-01
+#define ADD_0_5ns_dynamic_power     2.0436e-01
+#define ADD_0_5ns_dynamic_energy    1.0218e-01
+#define ADD_0_5ns_leakage_power     2.3529e-03
+#define ADD_0_5ns_area              273.293995
+#define ADD_0_5ns_critical_path_delay 0.47
 
 #define ADD_1ns_int_power 3.9795e-02
 #define ADD_1ns_switch_power 1.1180e-01
@@ -106,6 +114,13 @@
 #define ADD_6ns_leakage_power 1.7152e-03
 #define ADD_6ns_area 129.275995
 #define ADD_6ns_critical_path_delay 1.75
+
+#define MUL_3STAGE_0_5ns_int_power       5.403900e+00
+#define MUL_3STAGE_0_5ns_switch_power    3.693900e+00
+#define MUL_3STAGE_0_5ns_dynamic_power   9.097900e+00
+#define MUL_3STAGE_0_5ns_dynamic_energy  1.364685e+01
+#define MUL_3STAGE_0_5ns_leakage_power   7.826750e-02
+#define MUL_3STAGE_0_5ns_area             6.008386e+03
 
 #define MUL_1ns_int_power 3.5876e+00
 #define MUL_1ns_switch_power 5.5499e+00
@@ -203,52 +218,52 @@
 #define BIT_6ns_area 36.287998
 #define BIT_6ns_critical_path_delay 0.06
 
-#define SHIFTER_1ns_int_power 2.4600e-01
-#define SHIFTER_1ns_switch_power 3.2810e-01
-#define SHIFTER_1ns_dynamic_power 5.7410e-01
-#define SHIFTER_1ns_dynamic_energy 5.7410e-01
-#define SHIFTER_1ns_leakage_power 2.9164e-03
-#define SHIFTER_1ns_area 374.446796
+#define SHIFTER_1ns_int_power         5.8804e-02
+#define SHIFTER_1ns_switch_power      2.4180e-01
+#define SHIFTER_1ns_dynamic_power     3.0060e-01
+#define SHIFTER_1ns_dynamic_energy    3.0060e-01
+#define SHIFTER_1ns_leakage_power     1.2232e-03
+#define SHIFTER_1ns_area              179.852394
 #define SHIFTER_1ns_critical_path_delay 0.70
 
-#define SHIFTER_2ns_int_power 1.2460e-01
-#define SHIFTER_2ns_switch_power 1.6610e-01
-#define SHIFTER_2ns_dynamic_power 2.9070e-01
-#define SHIFTER_2ns_dynamic_energy 5.8140e-01
-#define SHIFTER_2ns_leakage_power 2.9207e-03
-#define SHIFTER_2ns_area 374.446796
+#define SHIFTER_2ns_int_power         2.8568e-02
+#define SHIFTER_2ns_switch_power      1.1790e-01
+#define SHIFTER_2ns_dynamic_power     1.4647e-01
+#define SHIFTER_2ns_dynamic_energy    2.9294e-01
+#define SHIFTER_2ns_leakage_power     1.2320e-03
+#define SHIFTER_2ns_area              179.852394
 #define SHIFTER_2ns_critical_path_delay 0.70
 
-#define SHIFTER_3ns_int_power 8.3166e-02
-#define SHIFTER_3ns_switch_power 1.1080e-01
-#define SHIFTER_3ns_dynamic_power 1.9397e-01
-#define SHIFTER_3ns_dynamic_energy 5.8190e-01
-#define SHIFTER_3ns_leakage_power 2.9273e-03
-#define SHIFTER_3ns_area 374.446796
+#define SHIFTER_3ns_int_power         2.0250e-02
+#define SHIFTER_3ns_switch_power      8.1185e-02
+#define SHIFTER_3ns_dynamic_power     1.0143e-01
+#define SHIFTER_3ns_dynamic_energy    3.0430e-01
+#define SHIFTER_3ns_leakage_power     1.2837e-03
+#define SHIFTER_3ns_area              179.852394
 #define SHIFTER_3ns_critical_path_delay 0.70
 
-#define SHIFTER_4ns_int_power 6.2652e-02
-#define SHIFTER_4ns_switch_power 8.3439e-02
-#define SHIFTER_4ns_dynamic_power 1.4609e-01
-#define SHIFTER_4ns_dynamic_energy 5.8436e-01
-#define SHIFTER_4ns_leakage_power 2.9286e-03
-#define SHIFTER_4ns_area 374.446796
+#define SHIFTER_4ns_int_power         1.4824e-02
+#define SHIFTER_4ns_switch_power      6.0828e-02
+#define SHIFTER_4ns_dynamic_power     7.5652e-02
+#define SHIFTER_4ns_dynamic_energy    3.0261e-01
+#define SHIFTER_4ns_leakage_power     1.2472e-03
+#define SHIFTER_4ns_area              179.852394
 #define SHIFTER_4ns_critical_path_delay 0.70
 
-#define SHIFTER_5ns_int_power 5.0285e-02
-#define SHIFTER_5ns_switch_power 6.6852e-02
-#define SHIFTER_5ns_dynamic_power 1.1714e-01
-#define SHIFTER_5ns_dynamic_energy 5.8569e-01
-#define SHIFTER_5ns_leakage_power 2.9315e-03
-#define SHIFTER_5ns_area 374.446796
+#define SHIFTER_5ns_int_power         1.1747e-02
+#define SHIFTER_5ns_switch_power      4.8268e-02
+#define SHIFTER_5ns_dynamic_power     6.0015e-02
+#define SHIFTER_5ns_dynamic_energy    3.0007e-01
+#define SHIFTER_5ns_leakage_power     1.2210e-03
+#define SHIFTER_5ns_area              179.852394
 #define SHIFTER_5ns_critical_path_delay 0.70
 
-#define SHIFTER_6ns_int_power 4.1957e-02
-#define SHIFTER_6ns_switch_power 5.5785e-02
-#define SHIFTER_6ns_dynamic_power 9.7742e-01
-#define SHIFTER_6ns_dynamic_energy 5.8645e-01
-#define SHIFTER_6ns_leakage_power 2.9317e-03
-#define SHIFTER_6ns_area 374.446796
+#define SHIFTER_6ns_int_power         9.8106e-03
+#define SHIFTER_6ns_switch_power      4.0359e-02
+#define SHIFTER_6ns_dynamic_power     5.0170e-02
+#define SHIFTER_6ns_dynamic_energy    3.0102e-01
+#define SHIFTER_6ns_leakage_power     1.2217e-03
+#define SHIFTER_6ns_area              179.852394
 #define SHIFTER_6ns_critical_path_delay 0.70
 
 /* Floating Point Power/Area/Energy Models.
@@ -299,6 +314,13 @@
 #define FP_SP_3STAGE_ADD_6ns_dynamic_energy 5.711852e+00
 #define FP_SP_3STAGE_ADD_6ns_leakage_power 1.091510e-02
 #define FP_SP_3STAGE_ADD_6ns_area 1.486674e+03
+
+#define FP_DP_3STAGE_ADD_0_5ns_int_power       6.496800e+00
+#define FP_DP_3STAGE_ADD_0_5ns_switch_power    3.373900e+00
+#define FP_DP_3STAGE_ADD_0_5ns_dynamic_power   9.870800e+00
+#define FP_DP_3STAGE_ADD_0_5ns_dynamic_energy  1.480620e+01
+#define FP_DP_3STAGE_ADD_0_5ns_leakage_power   1.269811e-01
+#define FP_DP_3STAGE_ADD_0_5ns_area            9.262512e+03
 
 #define FP_DP_3STAGE_ADD_1ns_int_power 4.704900e+00
 #define FP_DP_3STAGE_ADD_1ns_switch_power 5.802300e+00
@@ -383,6 +405,13 @@
 #define FP_SP_3STAGE_MUL_6ns_dynamic_energy 1.746269e+01
 #define FP_SP_3STAGE_MUL_6ns_leakage_power 3.024680e-02
 #define FP_SP_3STAGE_MUL_6ns_area 3.522431e+03
+
+#define FP_DP_3STAGE_MUL_0_5ns_int_power       2.006710e+01
+#define FP_DP_3STAGE_MUL_0_5ns_switch_power    1.344190e+01
+#define FP_DP_3STAGE_MUL_0_5ns_dynamic_power   3.350900e+01
+#define FP_DP_3STAGE_MUL_0_5ns_dynamic_energy  5.026350e+01
+#define FP_DP_3STAGE_MUL_0_5ns_leakage_power   2.529007e-01
+#define FP_DP_3STAGE_MUL_0_5ns_area            2.059684e+04
 
 #define FP_DP_3STAGE_MUL_1ns_int_power 1.107930e+01
 #define FP_DP_3STAGE_MUL_1ns_switch_power 1.624000e+01
