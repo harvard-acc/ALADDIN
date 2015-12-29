@@ -1,4 +1,5 @@
 #include <sstream>
+#include <utility>
 
 #include "opcode_func.h"
 #include "BaseDatapath.h"
@@ -132,7 +133,7 @@ void BaseDatapath::removePhiNodes() {
       continue;
     Vertex node_vertex = node->get_vertex();
     // find its children
-    std::vector<pair<ExecNode*, int>> phi_child;
+    std::vector<std::pair<ExecNode*, int>> phi_child;
     out_edge_iter out_edge_it, out_edge_end;
     for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
          out_edge_it != out_edge_end;
@@ -141,7 +142,7 @@ void BaseDatapath::removePhiNodes() {
       to_remove_edges.insert(*out_edge_it);
       Vertex v = target(*out_edge_it, graph_);
       phi_child.push_back(
-          make_pair(getNodeFromVertex(v), edge_to_parid[*out_edge_it]));
+          std::make_pair(getNodeFromVertex(v), edge_to_parid[*out_edge_it]));
     }
     if (phi_child.size() == 0 || boost::in_degree(node_vertex, graph_) == 0)
       continue;
@@ -187,7 +188,7 @@ void BaseDatapath::removePhiNodes() {
         }
       }
     }
-    std::vector<pair<ExecNode*, int>>().swap(phi_child);
+    std::vector<std::pair<ExecNode*, int>>().swap(phi_child);
   }
 
   updateGraphWithIsolatedEdges(to_remove_edges);
@@ -798,7 +799,7 @@ void BaseDatapath::removeRepeatedStores() {
   bound_it--;
   bound_it--;
   while (node_id >= 0) {
-    unordered_map<unsigned, int> address_store_map;
+    std::unordered_map<unsigned, int> address_store_map;
 
     while (node_id >= *bound_it && node_id >= 0) {
       ExecNode* node = exec_nodes[node_id];
@@ -890,7 +891,7 @@ void BaseDatapath::treeHeightReduction() {
 
     std::list<ExecNode*> nodes;
     std::vector<Edge> tmp_remove_edges;
-    std::vector<pair<ExecNode*, bool>> leaves;
+    std::vector<std::pair<ExecNode*, bool>> leaves;
     std::vector<ExecNode*> associative_chain;
     associative_chain.push_back(node);
     int chain_id = 0;
@@ -927,7 +928,7 @@ void BaseDatapath::treeHeightReduction() {
             if (parent_region == node_region) {
               updated.at(parent_id) = 1;
               if (!parent_node->is_associative())
-                leaves.push_back(make_pair(parent_node, 0));
+                leaves.push_back(std::make_pair(parent_node, 0));
               else {
                 out_edge_iter out_edge_it, out_edge_end;
                 int num_of_children = 0;
@@ -942,19 +943,19 @@ void BaseDatapath::treeHeightReduction() {
                 if (num_of_children == 1)
                   associative_chain.push_back(parent_node);
                 else
-                  leaves.push_back(make_pair(parent_node, 0));
+                  leaves.push_back(std::make_pair(parent_node, 0));
               }
             } else {
-              leaves.push_back(make_pair(parent_node, 1));
+              leaves.push_back(std::make_pair(parent_node, 1));
             }
           }
         } else {
           /* Promote the single parent node with higher priority. This affects
            * mostly the top of the graph where no parent exists. */
-          leaves.push_back(make_pair(chain_node, 1));
+          leaves.push_back(std::make_pair(chain_node, 1));
         }
       } else {
-        leaves.push_back(make_pair(chain_node, 0));
+        leaves.push_back(std::make_pair(chain_node, 0));
       }
       chain_id++;
     }
@@ -994,7 +995,7 @@ void BaseDatapath::treeHeightReduction() {
       to_add_edges.push_back({ node2, *new_node_it, 1 });
 
       // place the new node in the map, remove the two old nodes
-      rank_map[*new_node_it] = max(rank_map[node1], rank_map[node2]) + 1;
+      rank_map[*new_node_it] = std::max(rank_map[node1], rank_map[node2]) + 1;
       rank_map.erase(node1);
       rank_map.erase(node2);
       ++new_node_it;
@@ -1292,12 +1293,12 @@ void BaseDatapath::outputPerCycleActivity(
   std::string file_name;
 #ifdef DEBUG
   file_name = bn + "_stats";
-  ofstream stats;
+  std::ofstream stats;
   stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   stats << num_cycles << ",";
 
-  ofstream power_stats;
+  std::ofstream power_stats;
   file_name += "_power";
   power_stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
@@ -1499,7 +1500,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary.max_fp_dp_add = max_fp_dp_add;
 
   writeSummary(std::cerr, summary);
-  ofstream summary_file;
+  std::ofstream summary_file;
   file_name = bn + "_summary";
   summary_file.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   writeSummary(summary_file, summary);
@@ -1560,7 +1561,7 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
 }
 
 void BaseDatapath::writeBaseAddress() {
-  ostringstream file_name;
+  std::ostringstream file_name;
   file_name << benchName << "_baseAddr.gz";
   gzFile gzip_file;
   gzip_file = gzopen(file_name.str().c_str(), "w");
@@ -1866,7 +1867,7 @@ void BaseDatapath::initExecutingQueue() {
 
 int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
                                                unsigned int to) {
-  std::list<pair<unsigned int, unsigned int>> queue;
+  std::list<std::pair<unsigned int, unsigned int>> queue;
   queue.push_back({ from, 0 });
   while (queue.size() != 0) {
     unsigned int curr_node = queue.front().first;
@@ -1891,17 +1892,17 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
 // readConfigs
 void BaseDatapath::parse_config(std::string bench,
                                 std::string config_file_name) {
-  ifstream config_file;
+  std::ifstream config_file;
   config_file.open(config_file_name);
   std::string wholeline;
   pipelining = false;
 
   while (!config_file.eof()) {
     wholeline.clear();
-    getline(config_file, wholeline);
+    std::getline(config_file, wholeline);
     if (wholeline.size() == 0)
       break;
-    string type, rest_line;
+    std::string type, rest_line;
     int pos_end_tag = wholeline.find(",");
     if (pos_end_tag == -1)
       break;
@@ -1958,7 +1959,7 @@ void BaseDatapath::parse_config(std::string bench,
       // Update the global cycle time parameter.
       cycleTime = stof(rest_line);
     } else {
-      std::cerr << "Invalid config type: " << wholeline << endl;
+      std::cerr << "Invalid config type: " << wholeline << std::endl;
       exit(0);
     }
   }

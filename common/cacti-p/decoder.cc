@@ -38,9 +38,6 @@
 #include <math.h>
 #include <assert.h>
 
-using namespace std;
-
-
 Decoder::Decoder(
     int    _num_dec_signals,
     bool   flag_way_select,
@@ -756,10 +753,10 @@ void PredecBlk::compute_area()
 
 
 
-pair<double, double> PredecBlk::compute_delays(
-    pair<double, double> inrisetime)  // <nand2, nand3>
+std::pair<double, double> PredecBlk::compute_delays(
+    std::pair<double, double> inrisetime)  // <nand2, nand3>
 {
-  pair<double, double> ret_val;
+  std::pair<double, double> ret_val;
   ret_val.first  = 0;  // outrisetime_nand2_path
   ret_val.second = 0;  // outrisetime_nand3_path
 
@@ -1304,11 +1301,11 @@ void PredecBlkDrv::compute_area()
 
 
 
-pair<double, double> PredecBlkDrv::compute_delays(
+std::pair<double, double> PredecBlkDrv::compute_delays(
     double inrisetime_nand2_path,
     double inrisetime_nand3_path)
 {
-  pair<double, double> ret_val;
+  std::pair<double, double> ret_val;
   ret_val.first  = 0;  // outrisetime_nand2_path
   ret_val.second = 0;  // outrisetime_nand3_path
   int i;
@@ -1469,7 +1466,7 @@ void PredecBlkDrv::leakage_feedback(double temperature)
 double Predec::compute_delays(double inrisetime)
 {
   // TODO: Jung Ho thinks that predecoder block driver locates between decoder and predecoder block.
-  pair<double, double> tmp_pair1, tmp_pair2;
+  std::pair<double, double> tmp_pair1, tmp_pair2;
   tmp_pair1 = drv1->compute_delays(inrisetime, inrisetime);
   tmp_pair1 = blk1->compute_delays(tmp_pair1);
   tmp_pair2 = drv2->compute_delays(inrisetime, inrisetime);
@@ -1530,11 +1527,11 @@ void Predec::leakage_feedback(double temperature)
 }
 
 // returns <delay, risetime>
-pair<double, double> Predec::get_max_delay_before_decoder(
-    pair<double, double> input_pair1,
-    pair<double, double> input_pair2)
+std::pair<double, double> Predec::get_max_delay_before_decoder(
+    std::pair<double, double> input_pair1,
+    std::pair<double, double> input_pair2)
 {
-  pair<double, double> ret_val;
+  std::pair<double, double> ret_val;
   double delay;
 
   delay = drv1->delay_nand2_path + blk1->delay_nand2_path;

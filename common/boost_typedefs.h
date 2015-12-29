@@ -1,17 +1,16 @@
 #ifndef __BOOST_TYPEDEFS_H__
 #define __BOOST_TYPEDEFS_H__
 
-#include <boost/graph/graphviz.hpp>
 #include <boost/config.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
-#include <boost/graph/iteration_macros.hpp>
 
 // Typedefs for Boost::Graph.
 
-using namespace std;
 typedef boost::property<boost::vertex_index_t, unsigned> VertexProperty;
 typedef boost::property<boost::edge_name_t, uint8_t> EdgeProperty;
 typedef boost::adjacency_list<boost::listS,

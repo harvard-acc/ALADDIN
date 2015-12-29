@@ -125,7 +125,7 @@ void ScratchpadDatapath::scratchpadPartition() {
     unsigned per_size = ceil(((float)size) / p_factor);
 
     for (unsigned i = 0; i < p_factor; i++) {
-      ostringstream oss;
+      std::ostringstream oss;
       oss << array_label << "-" << i;
       scratchpad->setScratchpad(oss.str(), per_size, wordsize);
     }
@@ -160,14 +160,14 @@ void ScratchpadDatapath::scratchpadPartition() {
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
       if (!p_type.compare("block")) {
         /* block partition */
-        ostringstream oss;
+        std::ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         oss << base_label << "-"
             << (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
         node->set_array_label(oss.str());
       } else {
         /* cyclic partition */
-        ostringstream oss;
+        std::ostringstream oss;
         oss << base_label << "-" << (rel_addr) % p_factor;
         node->set_array_label(oss.str());
       }

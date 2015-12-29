@@ -36,7 +36,7 @@
 
 #define VER_MAJOR_CACTI		6	/* CACTI-P and DVS */
 #define VER_MINOR_CACTI		5
-const string VER_postfix_CACTI =  "-P";
+const std::string VER_postfix_CACTI =  "-P";
 #define VER_COMMENT_CACTI	"CAM and fully associative cache, power gating, and DVS"
 #define VER_UPDATE_CACTI	"Feb, 2014"
 

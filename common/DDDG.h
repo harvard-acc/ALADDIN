@@ -2,15 +2,13 @@
 #define __DDDG_H__
 
 #include <stack>
-#include <string.h>
+#include <string>
 #include <zlib.h>
 #include <stdlib.h>
 
 #include "ExecNode.h"
 #include "file_func.h"
 #include "opcode_func.h"
-/*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
-using namespace std;
 
 struct edge_node_info {
   unsigned sink_node;
@@ -18,9 +16,9 @@ struct edge_node_info {
 };
 
 // data structure used to track dependency
-typedef unordered_map<std::string, unsigned int> string_to_uint;
-typedef unordered_map<long long int, unsigned int> uint_to_uint;
-typedef unordered_multimap<unsigned int, edge_node_info>
+typedef std::unordered_map<std::string, unsigned int> string_to_uint;
+typedef std::unordered_map<long long int, unsigned int> uint_to_uint;
+typedef std::unordered_multimap<unsigned int, edge_node_info>
     multi_uint_to_node_info;
 
 class BaseDatapath;
@@ -78,7 +76,7 @@ class DDDG {
   multi_uint_to_node_info register_edge_table;
   multi_uint_to_node_info memory_edge_table;
   // keep track of currently executed methods
-  stack<std::string> active_method;
+  std::stack<std::string> active_method;
   // manage methods
   string_to_uint function_counter;
   string_to_uint register_last_written;

@@ -37,8 +37,6 @@
 #include "cacti_interface.h"
 #include "basic_circuit.h"
 
-using namespace std;
-
 class Area
 {
  public:

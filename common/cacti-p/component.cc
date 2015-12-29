@@ -40,10 +40,6 @@
 #include "component.h"
 #include "decoder.h"
 
-using namespace std;
-
-
-
 Component::Component()
   :area(), power(), rt_power(),delay(0)
 {
@@ -126,7 +122,7 @@ double Component::compute_gate_area(
       total_pdiff_w = compute_diffusion_width(1, num_inputs * num_folded_pmos);
       break;
     default:
-      cout << "Unknown gate type: " << gate_type << endl;
+      std::cout << "Unknown gate type: " << gate_type << std::endl;
       exit(1);
   }
 

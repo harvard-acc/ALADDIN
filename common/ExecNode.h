@@ -120,13 +120,13 @@ class ExecNode {
   /* Compound accessors. */
   std::string get_dynamic_method() {
     // TODO: Really inefficient - make something better.
-    stringstream oss;
+    std::stringstream oss;
     oss << static_method << "-" << dynamic_invocation;
     return oss.str();
   }
   std::string get_static_node_id() {
     // TODO: Really inefficient - make something better.
-    stringstream oss;
+    std::stringstream oss;
     oss << static_method << "-" << dynamic_invocation << "-" << inst_id;
     return oss.str();
   }

@@ -73,7 +73,7 @@ void DDDG::parse_instruction_line(std::string line) {
         auto func_it = function_counter.find(curr_static_function);
         assert(func_it != function_counter.end());
         func_invocation_count = ++func_it->second;
-        ostringstream oss;
+        std::ostringstream oss;
         oss << curr_static_function << "-" << func_invocation_count;
         curr_dynamic_function = oss.str();
         active_method.push(curr_dynamic_function);
@@ -91,11 +91,11 @@ void DDDG::parse_instruction_line(std::string line) {
     if (func_it == function_counter.end()) {
       func_invocation_count = 0;
       function_counter.insert(
-          make_pair(curr_static_function, func_invocation_count));
+          std::make_pair(curr_static_function, func_invocation_count));
     } else {
       func_invocation_count = ++func_it->second;
     }
-    ostringstream oss;
+    std::ostringstream oss;
     oss << curr_static_function << "-" << func_invocation_count;
     curr_dynamic_function = oss.str();
     active_method.push(curr_dynamic_function);
@@ -129,7 +129,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
   }
   bool is_float = false;
-  string tmp_value(char_value);
+  std::string tmp_value(char_value);
   std::size_t found = tmp_value.find('.');
   if (found != std::string::npos)
     is_float = true;
@@ -139,7 +139,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     if (curr_microop == LLVM_IR_Call)
       callee_function = label;
     auto func_it = function_counter.find(callee_function);
-    ostringstream oss;
+    std::ostringstream oss;
     if (func_it != function_counter.end())
       oss << callee_function << "-" << func_it->second + 1;
     else
@@ -158,7 +158,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       edge_node_info tmp_edge;
       tmp_edge.sink_node = num_of_instructions;
       tmp_edge.par_id = param_tag;
-      register_edge_table.insert(make_pair(reg_it->second, tmp_edge));
+      register_edge_table.insert(std::make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
       if (curr_microop == LLVM_IR_Call)
         last_call_source = reg_it->second;
@@ -195,7 +195,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
           tmp_edge.sink_node = num_of_instructions;
           // tmp_edge.var_id = "";
           tmp_edge.par_id = -1;
-          memory_edge_table.insert(make_pair(source_inst, tmp_edge));
+          memory_edge_table.insert(std::make_pair(source_inst, tmp_edge));
           num_of_mem_dep++;
         }
       }
@@ -211,7 +211,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         addr_it->second = num_of_instructions;
       else
         address_last_written.insert(
-            make_pair(mem_address, num_of_instructions));
+            std::make_pair(mem_address, num_of_instructions));
 
       long long int base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];

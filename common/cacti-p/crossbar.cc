@@ -148,6 +148,7 @@ void CactiCrossbar::compute_power()
 
 void CactiCrossbar::print_crossbar()
 {
+  using namespace std;
   cout << "\nCactiCrossbar Stats (" << n_inp << "x" << n_out << ")\n\n";
   cout << "Flit size        : " << flit_size << " bits" << endl;
   cout << "Width            : " << area.w << " u" << endl;

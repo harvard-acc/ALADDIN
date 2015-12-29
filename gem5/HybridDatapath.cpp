@@ -130,7 +130,7 @@ void HybridDatapath::startDatapathScheduling(int delay) {
 }
 
 BaseMasterPort&
-HybridDatapath::getMasterPort(const string &if_name, PortID idx)
+HybridDatapath::getMasterPort(const std::string &if_name, PortID idx)
 {
   // Get the right port based on name. This applies to all the
   // subclasses of the base CPU and relies on their implementation

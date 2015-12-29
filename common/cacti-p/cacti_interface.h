@@ -41,9 +41,6 @@
 #include <iostream>
 #include "const.h"
 
-using namespace std;
-
-
 class min_values_t;
 class mem_array;
 class uca_org_t;
@@ -119,7 +116,7 @@ class InputParameter
   public:
 
     InputParameter();
-    void parse_cfg(const string & infile);
+    void parse_cfg(const std::string & infile);
 
     bool error_checking();  // return false if the input parameters are problematic
     void display_ip();
@@ -413,7 +410,7 @@ class uca_org_t
 
 void reconfigure(InputParameter *local_interface, uca_org_t *fin_res);
 
-uca_org_t cacti_interface(const string & infile_name);
+uca_org_t cacti_interface(const std::string & infile_name);
 //McPAT's plain interface, please keep !!!
 uca_org_t cacti_interface(InputParameter * const local_interface);
 //McPAT's plain interface, please keep !!!

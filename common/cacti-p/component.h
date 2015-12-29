@@ -37,8 +37,6 @@
 #include "parameter.h"
 #include "area.h"
 
-using namespace std;
-
 class CactiCrossbar;
 class Bank;
 

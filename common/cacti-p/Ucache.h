@@ -63,8 +63,8 @@ struct solution
 {
   int    tag_array_index;
   int    data_array_index;
-  list<mem_array *>::iterator tag_array_iter;
-  list<mem_array *>::iterator data_array_iter;
+  std::list<mem_array *>::iterator tag_array_iter;
+  std::list<mem_array *>::iterator data_array_iter;
   double access_time;
   double cycle_time;
   double area;
@@ -126,8 +126,8 @@ struct calc_time_mt_wrapper_struct
   min_values_t * data_res;
   min_values_t * tag_res;
 
-  list<mem_array *> data_arr;
-  list<mem_array *> tag_arr;
+  std::list<mem_array *> data_arr;
+  std::list<mem_array *> tag_arr;
 };
 
 void *calc_time_mt_wrapper(void * void_obj);

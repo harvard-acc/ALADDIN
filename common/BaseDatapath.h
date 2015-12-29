@@ -9,7 +9,6 @@
  * getTotalMemArea()
  * getAverageMemPower()
  * writeConfiguration()
- *
  */
 
 #include <iostream>
@@ -36,8 +35,6 @@
 
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
-
-using namespace std;
 
 struct memActivity {
   unsigned read;

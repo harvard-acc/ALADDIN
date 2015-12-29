@@ -37,8 +37,6 @@
 #include "const.h"
 #include "cacti_interface.h"
 
-using namespace std;
-
 #define UNI_LEAK_STACK_FACTOR 0.43
 
 int powers (int base, int n);

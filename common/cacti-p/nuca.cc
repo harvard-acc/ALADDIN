@@ -57,7 +57,7 @@ Nuca::init_cont()
   char jk[5000];
   cont = fopen("contention.dat", "r");
   if (!cont) {
-    cout << "contention.dat file is missing!\n";
+    std::cout << "contention.dat file is missing!\n";
     exit(0);
   }
 
@@ -79,6 +79,7 @@ Nuca::init_cont()
   void
 Nuca::print_cont_stats()
 {
+  using namespace std;
   for(int i=0; i<2; i++) {
     for(int j=2; j<5; j++) {
       for(int k=0; k<ROUTER_TYPES; k++) {
@@ -149,7 +150,7 @@ Nuca::sim_nuca()
   uca_org_t ures;
   nuca_org_t *opt_n;
   mem_array tag, data;
-  list<nuca_org_t *> nuca_list;
+  std::list<nuca_org_t *> nuca_list;
   CactiRouter *router_s[ROUTER_TYPES];
   router_s[0] = new CactiRouter(64.0, 8, 4, &(g_tp.peri_global));
   router_s[0]->print_router();
@@ -195,7 +196,7 @@ Nuca::sim_nuca()
   if (g_ip->cores <= 4) core_in = 2;
   else if (g_ip->cores <= 8) core_in = 3;
   else if (g_ip->cores <= 16) core_in = 4;
-  else {cout << "Number of cores should be <= 16!\n"; exit(0);}
+  else {std::cout << "Number of cores should be <= 16!\n"; exit(0);}
 
 
   // set the lower bound to an appropriate value. this depends on cache associativity
@@ -234,7 +235,7 @@ Nuca::sim_nuca()
     iterations = bank_start+1;
     g_ip->cache_sz = g_ip->cache_sz/g_ip->nuca_bank_count;
   }
-  cout << "Simulating various NUCA configurations\n";
+  std::cout << "Simulating various NUCA configurations\n";
   for (it=bank_start; it<iterations; it++) { /* different bank count values */
     ures.tag_array2 = &tag;
     ures.data_array2 = &data;
@@ -244,7 +245,7 @@ Nuca::sim_nuca()
     solve(&ures);
 //    output_UCA(&ures);
     bank_count = g_ip->nuca_cache_sz/g_ip->cache_sz;
-    cout << "====" <<  g_ip->cache_sz << "\n";
+    std::cout << "====" <<  g_ip->cache_sz << "\n";
 
     for (wr=wt_min; wr<=wt_max; wr++) {
 
@@ -403,7 +404,7 @@ Nuca::sim_nuca()
   print_nuca(opt_n);
   g_ip->cache_sz = g_ip->nuca_cache_sz/opt_n->bank_count;
 
-  list<nuca_org_t *>::iterator niter;
+  std::list<nuca_org_t *>::iterator niter;
   for (niter = nuca_list.begin(); niter != nuca_list.end(); ++niter)
   {
     delete *niter;
@@ -488,7 +489,7 @@ Nuca::print_nuca (nuca_org_t *fr)
 
 
   nuca_org_t *
-Nuca::find_optimal_nuca (list<nuca_org_t *> *n, min_values_t *minval)
+Nuca::find_optimal_nuca (std::list<nuca_org_t *> *n, min_values_t *minval)
 {
   double cost = 0;
   double min_cost = BIGNUM;
@@ -501,7 +502,7 @@ Nuca::find_optimal_nuca (list<nuca_org_t *> *n, min_values_t *minval)
   d = g_ip->delay_wt_nuca;
   c = g_ip->cycle_time_wt_nuca;
 
-  list<nuca_org_t *>::iterator niter;
+  std::list<nuca_org_t *>::iterator niter;
 
 
   for (niter = n->begin(); niter != n->end(); niter++) {

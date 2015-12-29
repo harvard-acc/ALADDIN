@@ -128,7 +128,7 @@ void init_tech_params(double technology, bool is_tag)
     tech_hi = 22;
     if (ram_cell_tech_type == 3 )
     {
-       cout<<"current version does not support eDRAM technologies at 22nm"<<endl;
+       std::cout<<"current version does not support eDRAM technologies at 22nm"<<std::endl;
        exit(0);
     }
   }
@@ -169,7 +169,7 @@ void init_tech_params(double technology, bool is_tag)
 //    }
       else
     {
-  	  cout<<"Invalid technology nodes"<<endl;
+  	  std::cout<<"Invalid technology nodes"<<std::endl;
   	  exit(0);
     }
 
@@ -1091,7 +1091,7 @@ void init_tech_params(double technology, bool is_tag)
       vdd[0] = 0.9;
       vdd_real[0] = g_ip->specific_hp_vdd ? g_ip->hp_Vdd : vdd[0];//TODO
       
-      //cerr << "tech == 32," << g_ip->specific_hp_vdd << "," << g_ip->hp_Vdd << endl;
+      //std::cerr << "tech == 32," << g_ip->specific_hp_vdd << "," << g_ip->hp_Vdd << std::endl;
       
       alpha_power_law[0]=1.19;
       Lphy[0] = 0.013;
@@ -1818,8 +1818,8 @@ void init_tech_params(double technology, bool is_tag)
     g_tp.sleep_tx.I_g_on_p   += curr_alpha * I_g_on_n[1][g_ip->temp - 300];
     g_tp.sleep_tx.Mobility_n += curr_alpha *mobility_eff[1];
  //   gmp_to_gmn_multiplier_periph_global += curr_alpha * gmp_to_gmn_multiplier[1];
-    //cerr << "curr_alpha: " << curr_alpha << endl;
-    //cerr << "vdd_real[" << ram_cell_tech_type << "] : " << vdd_real[ram_cell_tech_type] << endl;
+    //std::cerr << "curr_alpha: " << curr_alpha << std::endl;
+    //std::cerr << "vdd_real[" << ram_cell_tech_type << "] : " << vdd_real[ram_cell_tech_type] << std::endl;
     g_tp.sram_cell.Vdd       += curr_alpha * vdd_real[ram_cell_tech_type];
     g_tp.sram_cell.Vdd_default       += curr_alpha * vdd[ram_cell_tech_type];
     g_tp.sram_cell.Vth       += curr_alpha * v_th[ram_cell_tech_type];
@@ -1928,10 +1928,10 @@ void init_tech_params(double technology, bool is_tag)
 		  || g_tp.peri_global.Vdd < g_tp.peri_global.Vdd_default*0.75
 		  || g_tp.sram_cell.Vdd < g_tp.sram_cell.Vdd_default*0.75)
     {
-      //cerr << g_tp.sram_cell.Vcc_min << " " << g_tp.sram_cell.Vdd << endl;
-		  //cerr << g_tp.peri_global.Vdd << " " << g_tp.peri_global.Vdd_default*0.75 << endl;
-		  //cerr <<  g_tp.sram_cell.Vdd << " " <<  g_tp.sram_cell.Vdd_default*0.75 << endl;
-      cerr << "User defined Vdd is too low.\n\n"<< endl;
+      //std::cerr << g_tp.sram_cell.Vcc_min << " " << g_tp.sram_cell.Vdd << std::endl;
+		  //std::cerr << g_tp.peri_global.Vdd << " " << g_tp.peri_global.Vdd_default*0.75 << std::endl;
+		  //std::cerr <<  g_tp.sram_cell.Vdd << " " <<  g_tp.sram_cell.Vdd_default*0.75 << std::endl;
+      std::cerr << "User defined Vdd is too low.\n\n"<< std::endl;
       exit(0);
     }
 

@@ -18,14 +18,14 @@ int main(int argc, const char* argv[]) {
       "\\_/\n"
       "                                                                 \n";
 
-  std::cout << logo << endl;
+  std::cout << logo << std::endl;
 
   if (argc < 4) {
     std::cerr << "-------------------------------" << std::endl;
     std::cerr << "Aladdin takes:                 " << std::endl;
     std::cerr
         << "./aladdin <bench> <dynamic trace> <config file> <experiment_name>"
-        << endl;
+        << std::endl;
     std::cerr << "   experiment_name is an optional parameter, only used to \n"
               << "   identify results stored in a local database." << std::endl;
     std::cerr << "   Aladdin supports gzipped dynamic trace files - append \n"

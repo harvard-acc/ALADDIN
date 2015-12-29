@@ -49,7 +49,7 @@ CactiWire::CactiWire(
   in_rise_time   = 0;
   out_rise_time  = 0;
   if (initialized != 1) {
-    cout << "CactiWire not initialized. Initializing it with default values\n";
+    std::cout << "CactiWire not initialized. Initializing it with default values\n";
     CactiWire winit;
   }
   calculate_wire_stats();
@@ -645,7 +645,7 @@ CactiWire::init_wire(/*bool reset_repeater_sizing*/){
         global.area.h = si;
         global.area.w = sp*1e-6; // m
       }
-//      cout << "Repeater size - "<< i <<
+//      std::cout << "Repeater size - "<< i <<
 //        " Repeater spacing - " << j <<
 //        " Delay - " << del <<
 //        " PowerD - " << pow.readOp.dynamic <<
@@ -671,7 +671,7 @@ CactiWire::init_wire(/*bool reset_repeater_sizing*/){
 void CactiWire::update_fullswing()
 {
 
-  list<Component>::iterator citer;
+  std::list<Component>::iterator citer;
   double del[4];
   del[3] = this->global.delay + this->global.delay*.3;
   del[2] = global.delay + global.delay*.2;
@@ -788,6 +788,7 @@ powerDef CactiWire::wire_model (double space, double size, double *delay)
 void
 CactiWire::print_wire()
 {
+  using namespace std;
 
   cout << "\nCactiWire Properties at DVS level 0:\n\n";
   cout << "  Delay Optimal\n\tRepeater size - "<< global.area.h <<
