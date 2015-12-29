@@ -122,6 +122,31 @@ struct summary_data_t {
   int max_reg;
 };
 
+/* Custom graphviz label writer that outputs the micro-op of the vertex.
+ *
+ * Create a map from Vertex to microop and call make_microop_label_writer()
+ * with this map. The micro-op is not a Boost property of the Vertex, which is
+ * why the Boost-supplied label writer class is insufficient.
+ */
+template <class Map>
+class microop_label_writer {
+ public:
+  microop_label_writer(Map _vertexToMicroop)
+      : vertexToMicroop(_vertexToMicroop) {}
+  void operator()(std::ostream& out, const Vertex& v) {
+    out << "[label=" << vertexToMicroop[v] << "]";
+  }
+
+ private:
+  Map vertexToMicroop;
+};
+
+template <class Map>
+inline microop_label_writer<Map>
+make_microop_label_writer(Map map) {
+  return microop_label_writer<Map>(map);
+}
+
 class BaseDatapath {
  public:
   BaseDatapath(std::string bench, std::string trace_file_name,

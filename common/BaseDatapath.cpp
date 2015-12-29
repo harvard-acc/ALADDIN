@@ -1644,10 +1644,11 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
         exec_nodes[get(boost::vertex_index, graph_, v)]->get_microop();
   }
   std::ofstream out(graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
-  write_graphviz(out, graph_, boost::make_label_writer(vertexToMicroop));
+  write_graphviz(out, graph_, make_microop_label_writer(vertexToMicroop));
 }
+
 /*As Late As Possible (ALAP) rescheduling for non-memory, non-control nodes.
-  The first pass of scheduling is as earlyl as possible, whenever a node's
+  The first pass of scheduling is as early as possible, whenever a node's
   parents are ready, the node is executed. This mode of executing potentially
   can lead to values that are produced way earlier than they are needed. For
   such case, we add an ALAP rescheduling pass to reorganize the graph without
