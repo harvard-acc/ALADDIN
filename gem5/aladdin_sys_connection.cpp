@@ -14,10 +14,6 @@
 extern "C" {
 #endif
 
-bool isValidRequestCode(unsigned req) {
-  return !(req == INTEGRATION_TEST || req == DUMP_STATS || req == RESET_STATS);
-}
-
 void invokeAcceleratorAndBlock(unsigned req_code) {
   int volatile finish_flag = NOT_COMPLETED;
   ioctl(ALADDIN_FD, req_code, &finish_flag);

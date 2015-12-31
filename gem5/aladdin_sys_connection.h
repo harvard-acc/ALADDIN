@@ -34,15 +34,6 @@ typedef struct _aladdin_map_t {
 extern "C" {
 #endif
 
-/* Returns true if the request code is not a special value.
- *
- * Note: this does not guarantee that the request code actually belongs to an
- * accelerator nor that an accelerator with that request code has been
- * registered with the system. Those checks are performed at a later stage
- * during simulation.
- */
-bool isValidRequestCode(unsigned req);
-
 /* Schedules the accelerator for execution in gem5 and spin waits until the accelerator returns.
  *
  * Args:
