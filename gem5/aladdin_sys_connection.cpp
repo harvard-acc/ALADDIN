@@ -15,14 +15,7 @@ extern "C" {
 #endif
 
 bool isValidRequestCode(unsigned req) {
-  // Check if it is within the range of request codes specified.
-
-  unsigned shifted = req >> 4;
-  return (shifted >= 0x01 &&
-          shifted <= 0x29)  ||
-          req == INTEGRATION_TEST ||
-          req == DUMP_STATS ||
-          req == RESET_STATS;
+  return !(req == INTEGRATION_TEST || req == DUMP_STATS || req == RESET_STATS);
 }
 
 void invokeAcceleratorAndBlock(unsigned req_code) {
