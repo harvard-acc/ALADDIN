@@ -1,5 +1,5 @@
 bbgemm: bbgemm.c bbgemm.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o bbgemm $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o bbgemm $(SRCS) $(LFLAGS)
 
 hls: bbgemm.c bbgemm.h
 	vivado_hls hls.tcl

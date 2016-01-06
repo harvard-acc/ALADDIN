@@ -1,5 +1,5 @@
 gemm: gemm.c gemm.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o gemm $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o gemm $(SRCS) $(LFLAGS)
 
 hls: gemm.c gemm.h
 	vivado_hls hls.tcl

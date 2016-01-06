@@ -1,5 +1,5 @@
 queue: queue.c queue.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o queue $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o queue $(SRCS) $(LFLAGS)
 
 run: queue input.data check.data
 	./queue input.data check.data

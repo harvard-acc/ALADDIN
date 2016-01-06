@@ -1,5 +1,5 @@
 stencil3d: stencil3d.c stencil3d.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o stencil3d $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o stencil3d $(SRCS) $(LFLAGS)
 
 hls: stencil3d.c stencil3d.h
 	vivado_hls hls.tcl

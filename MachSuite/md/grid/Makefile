@@ -1,5 +1,5 @@
 md: md.c md.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o md $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o md $(SRCS) $(LFLAGS)
 
 run: md input.data check.data
 	./md input.data check.data

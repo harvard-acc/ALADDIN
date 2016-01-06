@@ -1,5 +1,5 @@
 stencil: stencil.c stencil.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o stencil $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o stencil $(SRCS) $(LFLAGS)
 
 hls: stencil.c stencil.h
 	vivado_hls hls.tcl

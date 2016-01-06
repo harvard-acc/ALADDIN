@@ -1,5 +1,5 @@
 ellpack: ellpack.c ellpack.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o ellpack $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o ellpack $(SRCS) $(LFLAGS)
 
 run: ellpack input.data check.data
 	./ellpack input.data check.data

@@ -1,5 +1,5 @@
 net: net.c net.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o net $(SRCS) $(OTHER_SRCS) -lm
+	$(CC) $(CFLAGS) -o net $(SRCS) $(LFLAGS) -lm
 
 run: net input.data check.data
 	./net input.data check.data

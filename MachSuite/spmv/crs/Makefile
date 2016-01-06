@@ -1,5 +1,5 @@
 crs: crs.c crs.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o crs $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o crs $(SRCS) $(LFLAGS)
 
 run: crs input.data check.data
 	./crs input.data check.data

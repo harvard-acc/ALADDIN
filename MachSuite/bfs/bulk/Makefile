@@ -1,5 +1,5 @@
 bulk: bulk.c bulk.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o bulk $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o bulk $(SRCS) $(LFLAGS)
 
 run: bulk input.data check.data
 	./bulk input.data check.data

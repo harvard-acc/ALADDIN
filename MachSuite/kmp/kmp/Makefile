@@ -1,5 +1,5 @@
 kmp: kmp.c kmp.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o kmp $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o kmp $(SRCS) $(LFLAGS)
 
 run: kmp input.data check.data
 	./kmp input.data check.data

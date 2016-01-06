@@ -3,14 +3,11 @@
  *
  * These include ioctl request codes and other command numbers.
  *
- * Each code represents a benchmark. When assigning request codes is that
- * consecutive numbers must be be separated by at least 16, because each
- * benchmark may have multiple kernels.  Dependencies between kernels are
- * expressed via increasing request codes starting from the main benchmark's
- * code.
- *
- * Example: If SHOC_FFT has three kernels, their codes will be 0x00000060,
- * 0x00000061, and 0x00000061.
+ * Each code represents a benchmark. When assigning request codes, separate
+ * adjacent codes by at least 16 (0x10). This is to enable a benchmark to
+ * assign distinct request codes for individual kernels if desired without
+ * colliding into another benchmark.  See the CORTEXSUITE definitions below for
+ * an example of this.
  */
 
 #include "aladdin_sys_constants.h"

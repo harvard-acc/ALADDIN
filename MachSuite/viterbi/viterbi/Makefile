@@ -1,5 +1,5 @@
 viterbi: viterbi.c viterbi.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o viterbi $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o viterbi $(SRCS) $(LFLAGS)
 
 run: viterbi input.data check.data
 	./viterbi input.data check.data

@@ -51,7 +51,7 @@ $(EXEC)-instrumented: full.s
         -o $*.llvm $<
 	opt -S -load=$(TRACER) -fulltrace $*.llvm -o $@
 
-clean:
+clean-trace:
 	rm -rf $(COMMON_TEMP_DIR)
 	rm -f *.llvm
 	rm -f *.o

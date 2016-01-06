@@ -1,5 +1,5 @@
 aes: aes.c aes.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o aes $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o aes $(SRCS) $(LFLAGS)
 
 run: aes input.data check.data
 	./aes input.data check.data

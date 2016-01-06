@@ -1,5 +1,5 @@
 fft: fft.c fft.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o fft $(SRCS) $(OTHER_SRCS) -lm
+	$(CC) $(CFLAGS) -o fft $(SRCS) $(LFLAGS) -lm
 
 run: fft input.data check.data
 	./fft input.data check.data

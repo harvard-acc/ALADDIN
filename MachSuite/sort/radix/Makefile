@@ -1,5 +1,5 @@
 radix: radix.c radix.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o radix $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o radix $(SRCS) $(LFLAGS)
 
 run: radix input.data check.data
 	./radix input.data check.data

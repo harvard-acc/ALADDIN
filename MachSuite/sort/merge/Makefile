@@ -1,5 +1,5 @@
 merge: merge.c merge.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o merge $(SRCS) $(OTHER_SRCS)
+	$(CC) $(CFLAGS) -o merge $(SRCS) $(LFLAGS)
 
 run: merge input.data check.data
 	./merge input.data check.data
