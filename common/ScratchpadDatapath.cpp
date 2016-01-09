@@ -12,9 +12,9 @@ ScratchpadDatapath::ScratchpadDatapath(std::string bench,
                                        std::string config_file,
                                        int num_spad_ports)
     : BaseDatapath(bench, trace_file, config_file) {
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      Setting ScratchPad       " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Setting ScratchPad       " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
   scratchpad = new Scratchpad(num_spad_ports, cycleTime);
   scratchpadCanService = true;
 }
@@ -27,9 +27,9 @@ void ScratchpadDatapath::clearDatapath() {
 }
 
 void ScratchpadDatapath::globalOptimizationPass() {
-  std::cerr << "=============================================" << std::endl;
-  std::cerr << "      Optimizing...            " << benchName << std::endl;
-  std::cerr << "=============================================" << std::endl;
+  std::cout << "=============================================" << std::endl;
+  std::cout << "      Optimizing...            " << benchName << std::endl;
+  std::cout << "=============================================" << std::endl;
   // Node removals must come first.
   removePhiNodes();
   /* memoryAmbiguation() should execute after removeInductionDependence()
@@ -81,9 +81,9 @@ void ScratchpadDatapath::completePartition() {
   if (!partition_config.size())
     return;
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "        Mem to Reg Conv        " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "        Mem to Reg Conv        " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
     std::string p_type = it->second.type;
@@ -104,9 +104,9 @@ void ScratchpadDatapath::scratchpadPartition() {
   if (!partition_config.size())
     return;
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      ScratchPad Partition     " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      ScratchPad Partition     " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
   bool spad_partition = false;

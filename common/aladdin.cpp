@@ -21,22 +21,22 @@ int main(int argc, const char* argv[]) {
   std::cout << logo << std::endl;
 
   if (argc < 4) {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "Aladdin takes:                 " << std::endl;
-    std::cerr
+    std::cout << "-------------------------------" << std::endl;
+    std::cout << "Aladdin takes:                 " << std::endl;
+    std::cout
         << "./aladdin <bench> <dynamic trace> <config file> <experiment_name>"
         << std::endl;
-    std::cerr << "   experiment_name is an optional parameter, only used to \n"
+    std::cout << "   experiment_name is an optional parameter, only used to \n"
               << "   identify results stored in a local database." << std::endl;
-    std::cerr << "   Aladdin supports gzipped dynamic trace files - append \n"
+    std::cout << "   Aladdin supports gzipped dynamic trace files - append \n"
               << "   the \".gz\" extension to the end of the trace file."
               << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
+    std::cout << "-------------------------------" << std::endl;
     exit(0);
   }
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      Starts Aladdin           " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Starts Aladdin           " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   std::string bench(argv[1]);
   std::string trace_file(argv[2]);

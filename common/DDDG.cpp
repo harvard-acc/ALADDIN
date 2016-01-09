@@ -322,9 +322,9 @@ bool DDDG::is_function_returned(std::string line, std::string target_function) {
 
 bool DDDG::build_initial_dddg(gzFile trace_file) {
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      Generating DDDG          " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Generating DDDG          " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   char buffer[256];
   std::string first_function;
@@ -364,13 +364,13 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
 
   output_dddg();
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
-  std::cerr << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
-  std::cerr << "Num of Reg Edges: " << num_of_register_dependency()
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
+  std::cout << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
+  std::cout << "Num of Reg Edges: " << num_of_register_dependency()
             << std::endl;
-  std::cerr << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   return 0;
 }

@@ -41,9 +41,9 @@ void BaseDatapath::buildDddg() {
   /* Build initial DDDG. */
   dddg->build_initial_dddg(trace_file);
   delete dddg;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "    Initializing BaseDatapath      " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "    Initializing BaseDatapath      " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
   numTotalNodes = exec_nodes.size();
 
   BGL_FORALL_VERTICES(v, graph_, Graph) {
@@ -77,9 +77,9 @@ ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
 }
 
 void BaseDatapath::memoryAmbiguation() {
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      Memory Ambiguation       " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Memory Ambiguation       " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   std::unordered_map<std::string, ExecNode*> last_store;
   std::vector<newEdge> to_add_edges;
@@ -116,9 +116,9 @@ void BaseDatapath::memoryAmbiguation() {
  * Modify: graph_
  */
 void BaseDatapath::removePhiNodes() {
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "  Remove PHI and Convert Nodes " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "  Remove PHI and Convert Nodes " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
   std::set<Edge> to_remove_edges;
@@ -202,9 +202,9 @@ void BaseDatapath::removePhiNodes() {
 void BaseDatapath::loopFlatten() {
   if (!unrolling_config.size())
     return;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "         Loop Flatten          " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "         Loop Flatten          " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   std::vector<unsigned> to_remove_nodes;
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
@@ -276,9 +276,9 @@ void BaseDatapath::cleanLeafNodes() {
  */
 void BaseDatapath::removeInductionDependence() {
   // set graph
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "  Remove Induction Dependence  " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "  Remove Induction Dependence  " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
@@ -356,9 +356,9 @@ void BaseDatapath::loopPipelining() {
 
   if (loopBound.size() <= 2)
     return;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "         Loop Pipelining        " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "         Loop Pipelining        " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -481,9 +481,9 @@ void BaseDatapath::loopPipelining() {
  */
 void BaseDatapath::loopUnrolling() {
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "         Loop Unrolling        " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "         Loop Unrolling        " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   std::vector<unsigned> to_remove_nodes;
   std::unordered_map<std::string, unsigned> inst_dynamic_counts;
@@ -605,9 +605,9 @@ void BaseDatapath::removeSharedLoads() {
 
   if (!unrolling_config.size() && loopBound.size() <= 2)
     return;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "          Load Buffer          " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "          Load Buffer          " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -688,9 +688,9 @@ void BaseDatapath::removeSharedLoads() {
 void BaseDatapath::storeBuffer() {
   if (loopBound.size() <= 2)
     return;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "          Store Buffer         " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "          Store Buffer         " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -788,9 +788,9 @@ void BaseDatapath::removeRepeatedStores() {
   if (!unrolling_config.size() && loopBound.size() <= 2)
     return;
 
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "     Remove Repeated Store     " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "     Remove Repeated Store     " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -852,9 +852,9 @@ void BaseDatapath::removeRepeatedStores() {
 void BaseDatapath::treeHeightReduction() {
   if (loopBound.size() <= 2)
     return;
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "     Tree Height Reduction     " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "     Tree Height Reduction     " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
@@ -1499,7 +1499,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary.max_fp_sp_add = max_fp_sp_add;
   summary.max_fp_dp_add = max_fp_dp_add;
 
-  writeSummary(std::cerr, summary);
+  writeSummary(std::cout, summary);
   std::ofstream summary_file;
   file_name = bn + "_summary";
   summary_file.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
@@ -1611,9 +1611,9 @@ void BaseDatapath::writeOtherStats() {
 // stepFunctions
 // multiple function, each function is a separate graph
 void BaseDatapath::prepareForScheduling() {
-  std::cerr << "=============================================" << std::endl;
-  std::cerr << "      Scheduling...            " << benchName << std::endl;
-  std::cerr << "=============================================" << std::endl;
+  std::cout << "=============================================" << std::endl;
+  std::cout << "      Scheduling...            " << benchName << std::endl;
+  std::cout << "=============================================" << std::endl;
 
   edgeToParid = get(boost::edge_name, graph_);
 
@@ -1799,9 +1799,9 @@ void BaseDatapath::updateChildren(ExecNode* node) {
  * Modify: baseAddress
  */
 void BaseDatapath::initBaseAddress() {
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "       Init Base Address       " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "       Init Base Address       " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
