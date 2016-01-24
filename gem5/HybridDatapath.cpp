@@ -341,17 +341,13 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
     //first time see, do access
     markNodeStarted(node);
     bool isLoad = node->is_dma_load();
-    /* TODO: HACK!!! dmaStore sometimes goes out-of-order...schedule it until
-     * the very end, fix this after ISCA. --Sophia */
-    if (isLoad || executedNodes >= totalConnectedNodes-5) {
-      MemAccess* mem_access = node->get_mem_access();
-      unsigned size = mem_access->size;
-      Addr vaddr = mem_access->vaddr;
-      issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
-      inflight_mem_nodes[node_id] = WaitingFromDma;
-      DPRINTF(
-          HybridDatapath, "node:%d is a dma request\n", node->get_node_id());
-    }
+    DPRINTF(
+        HybridDatapath, "node:%d is a dma request\n", node->get_node_id());
+    MemAccess* mem_access = node->get_mem_access();
+    unsigned size = mem_access->size;
+    Addr vaddr = mem_access->vaddr;
+    issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
+    inflight_mem_nodes[node_id] = WaitingFromDma;
     return false; // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
     inflight_mem_nodes.erase(node_id);

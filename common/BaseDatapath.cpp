@@ -73,6 +73,7 @@ void BaseDatapath::addDddgEdge(unsigned int from,
 
 ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   exec_nodes[node_id] = new ExecNode(node_id, microop);
+  add_vertex(VertexProperty(node_id), graph_);
   return exec_nodes[node_id];
 }
 
@@ -509,11 +510,20 @@ void BaseDatapath::loopUnrolling() {
       prev_branch = node;
     }
     assert(prev_branch != nullptr);
-    if (prev_branch != node &&
-        !(prev_branch->is_dma_op() && node->is_dma_op())) {
-      to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
+    if (prev_branch != node ) {
+      if (prev_branch->is_dma_op() && node->is_dma_op()) {
+        /* If there are a group of consecutive DMA operations, we find the last
+         * DMA node of the group. For instructions after the DMA group, we only
+         * need to add dependence between the last DMA node and the following
+         * instructions. */
+        prev_branch = node;
+      } else {
+        to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
+      }
     }
-    if (!node->is_branch_op()) {
+    /* If the current node is not a branch node, or if it is a DMA node, it will
+     * not be a boundary node. */
+    if (node->is_dma_op() || !node->is_branch_op()) {
       nodes_between.push_back(node);
     } else {
       // for the case that the first non-isolated node is also a call node;
@@ -533,18 +543,14 @@ void BaseDatapath::loopUnrolling() {
           nodes_between.push_back(node);
           continue;
         }
-        // Enforce dependences between branch nodes, including call nodes
-        // Except for the case that both two branches are DMA operations.
-        // (Two DMA operations can go in parallel.)
-        if (!doesEdgeExist(prev_branch, node) &&
-            !(prev_branch->is_dma_op() && node->is_dma_op())) {
+        if (!doesEdgeExist(prev_branch, node)) {
+          // Enforce dependences between branch nodes, including call nodes
           to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
         }
         for (auto prev_node_it = nodes_between.begin(), E = nodes_between.end();
              prev_node_it != E;
              prev_node_it++) {
-          if (!doesEdgeExist(*prev_node_it, node) &&
-              !((*prev_node_it)->is_dma_op() && node->is_dma_op())) {
+          if (!doesEdgeExist(*prev_node_it, node)) {
             to_add_edges.push_back({ *prev_node_it, node, CONTROL_EDGE });
           }
         }
