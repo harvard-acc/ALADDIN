@@ -155,7 +155,7 @@ void ScratchpadDatapath::scratchpadPartition() {
       unsigned num_of_elements = part_it->second.array_size;
       MemAccess* mem_access = node->get_mem_access();
       long long int abs_addr = mem_access->vaddr;
-      unsigned data_size = (mem_access->size) / 8;  // in bytes
+      unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
       if (!p_type.compare("block")) {

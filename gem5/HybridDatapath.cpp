@@ -563,7 +563,7 @@ HybridDatapath::issueTLBRequest(Addr addr,
   Request *req = NULL;
   Flags<Packet::FlagsType> flags = 0;
   // Constructor for physical request only
-  req = new Request (addr, size/8, flags, getCacheMasterId());
+  req = new Request (addr, size, flags, getCacheMasterId());
 
   MemCmd command;
   if (isLoad)
@@ -668,7 +668,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
    * node.  */
   std::string unique_id = exec_nodes[node_id]->get_static_node_id();
   Addr pc = static_cast<Addr>(std::hash<std::string>()(unique_id));
-  req = new Request(addr, size / 8, flags, getCacheMasterId(), curTick(), pc);
+  req = new Request(addr, size, flags, getCacheMasterId(), curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
    * gem5, but they aren't actually required for the mechanics of the memory
    * checking itsef. This has to be set outside of the constructor or the
@@ -678,7 +678,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   MemCmd command;
   uint8_t *data;
   /* Convert the current value in double to its original type (int or float). */
-  if (size == 64 ) {
+  if (size == 8 ) {
     data = new uint8_t[8];
     if (!is_float) {
       int true_value = (long long int) value;

@@ -10,13 +10,15 @@
 #include "opcode_func.h"
 #include "boost_typedefs.h"
 
+#define BYTE_SIZE 8
+
 // Stores all information about a memory access.
 struct MemAccess {
   // Address read from the trace.
   uint64_t vaddr;
   // Physical address (used for caches only).
   uint64_t paddr;
-  // Size of the memory access in BITS.
+  // Size of the memory access in bytes.
   size_t size;
   // Is floating-point value or not.
   bool is_float;
@@ -107,11 +109,11 @@ class ExecNode {
   }
   void set_array_label(std::string label) { array_label = label; }
   void set_mem_access(long long int vaddr,
-                      size_t size, bool is_float = false,
+                      size_t size_in_bytes, bool is_float = false,
                       double value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
-    mem_access->size = size;
+    mem_access->size = size_in_bytes;
     mem_access->is_float = is_float;
     mem_access->value = value;
   }
