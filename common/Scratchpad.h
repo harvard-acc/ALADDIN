@@ -53,6 +53,13 @@ class Scratchpad {
   /* Increment the stores counter for the specified partition. */
   void increment_stores(std::string partition);
 
+  /* For accesses that are caused by DMA operations, increment the loads
+     counter by num_accesses for the specified partition. */
+  void increment_dma_loads(std::string partition, unsigned num_accesses);
+  /* For accesses that are caused by DMA operations, increment the stores
+     counter by num_accesses for the specified partition. */
+  void increment_dma_stores(std::string partition, unsigned num_accesses);
+
   void getMemoryBlocks(std::vector<std::string>& names);
 
   void getAveragePower(unsigned int cycles,

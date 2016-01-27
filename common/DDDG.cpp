@@ -227,6 +227,11 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
+    } else if (param_tag == 1 && curr_node->is_dma_op()) {
+      long long int base_address = parameter_value_per_inst.back();
+      std::string base_label = parameter_label_per_inst.back();
+      curr_node->set_array_label(base_label);
+      datapath->addArrayBaseAddress(base_label, base_address);
     }
   }
 }

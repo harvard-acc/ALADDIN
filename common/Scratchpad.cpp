@@ -116,6 +116,16 @@ void Scratchpad::increment_stores(std::string partition) {
   partitions[partition].stores++;
 }
 
+void Scratchpad::increment_dma_loads(std::string partition,
+                                     unsigned num_accesses) {
+  partitions[partition].stores += num_accesses;
+}
+
+void Scratchpad::increment_dma_stores(std::string partition,
+                                      unsigned num_accesses) {
+  partitions[partition].loads += num_accesses;
+}
+
 float Scratchpad::getReadEnergy(std::string baseName) {
   return partitions[baseName].read_energy;
 }
