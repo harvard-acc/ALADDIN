@@ -33,7 +33,7 @@ typedef struct {
   uint8_t deckey[32];
 } aes256_context;
 
-void aes256_encrypt_ecb(aes256_context* ctx, uint8_t k[32], uint8_t buf[16], uint8_t rcon[1]);
+void aes256_encrypt_ecb(aes256_context* ctx, uint8_t k[32], uint8_t buf[16]);
 
 extern const uint8_t sbox[256];
 
@@ -44,7 +44,6 @@ struct bench_args_t {
   aes256_context ctx;
   uint8_t k[32];
   uint8_t buf[16];
-  uint8_t rcon[1];
 };
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
@@ -60,11 +59,9 @@ void run_benchmark(void* vargs) {
       MACHSUITE_AES_AES, "buf", (void*)&(args->buf[0]), sizeof(args->buf));
   mapArrayToAccelerator(
       MACHSUITE_AES_AES, "sbox", (void*)&(sbox[0]), sizeof(sbox));
-  mapArrayToAccelerator(
-      MACHSUITE_AES_AES, "rcon", (void*)&(args->rcon[0]), sizeof(args->rcon));
   invokeAcceleratorAndBlock(MACHSUITE_AES_AES);
 #else
-  aes256_encrypt_ecb(&(args->ctx), args->k, args->buf, args->rcon);
+  aes256_encrypt_ecb(&(args->ctx), args->k, args->buf);
 #endif
 }
 

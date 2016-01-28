@@ -166,15 +166,15 @@ void aes_mixColumns(uint8_t *buf)
 } /* aes_mixColumns */
 
 /* -------------------------------------------------------------------------- */
-void aes_expandEncKey(uint8_t *k, uint8_t *rc)
+uint8_t aes_expandEncKey(uint8_t *k, uint8_t rc)
 {
     register uint8_t i;
 
-    k[0] ^= rj_sbox(k[29]) ^ (*rc);
+    k[0] ^= rj_sbox(k[29]) ^ (rc);
     k[1] ^= rj_sbox(k[30]);
     k[2] ^= rj_sbox(k[31]);
     k[3] ^= rj_sbox(k[28]);
-    *rc = F(*rc);
+    rc = F(rc);
 
     exp1 : for(i = 4; i < 16; i += 4)  k[i] ^= k[i-4],   k[i+1] ^= k[i-3],
         k[i+2] ^= k[i-2], k[i+3] ^= k[i-1];
@@ -186,11 +186,17 @@ void aes_expandEncKey(uint8_t *k, uint8_t *rc)
     exp2 : for(i = 20; i < 32; i += 4) k[i] ^= k[i-4],   k[i+1] ^= k[i-3],
         k[i+2] ^= k[i-2], k[i+3] ^= k[i-1];
 
+    return rc;
 } /* aes_expandEncKey */
 
 /* -------------------------------------------------------------------------- */
-void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16], uint8_t rcon[1])
+void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 {
+#pragma HLS INTERFACE s_axilite bundle=BUS_A port=ctx
+#pragma HLS INTERFACE s_axilite bundle=BUS_A port=k
+#pragma HLS INTERFACE s_axilite bundle=BUS_A port=buf
+#pragma HLS INTERFACE s_axilite bundle=BUS_A port=return
+
 #ifdef DMA_MODE
   dmaLoad(ctx,96*1*8);
   dmaLoad(&k[0],32*1*8);
@@ -198,28 +204,32 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16], uin
 #endif
     //INIT
     uint8_t i;
-    rcon[0] = 1;
+    uint8_t rcon = 1;
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
         ctx->enckey[i] = ctx->deckey[i] = k[i];
     }
     ecb2 : for (i = 8;--i;){
-        aes_expandEncKey(ctx->deckey, rcon);
+        rcon = aes_expandEncKey(ctx->deckey, rcon);
     }
 
     //DEC
     aes_addRoundKey_cpy(buf, ctx->enckey, ctx->key);
-    ecb3 : for(i = 1, rcon[0] = 1; i < 14; ++i)
+    ecb3 : for(i = 1, rcon = 1; i < 14; ++i)
     {
         aes_subBytes(buf);
         aes_shiftRows(buf);
         aes_mixColumns(buf);
-        if( i & 1 ) aes_addRoundKey( buf, &ctx->key[16]);
-        else aes_expandEncKey(ctx->key, rcon), aes_addRoundKey(buf, ctx->key);
+        if (i & 1) {
+          aes_addRoundKey(buf, &ctx->key[16]);
+        } else {
+          rcon = aes_expandEncKey(ctx->key, rcon);
+          aes_addRoundKey(buf, ctx->key);
+        }
     }
     aes_subBytes(buf);
     aes_shiftRows(buf);
-    aes_expandEncKey(ctx->key, rcon);
+    rcon = aes_expandEncKey(ctx->key, rcon);
     aes_addRoundKey(buf, ctx->key);
 #ifdef DMA_MODE
   dmaStore(ctx,96*1*8);
