@@ -191,7 +191,13 @@ int main(){
           for(j = 0; j < 32; ++j)
             neighborList[i*32 + j] = NL[i][j];
   }
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	md(force_x, force_y, force_z, position_x, position_y, position_z, neighborList);
+#ifdef GEM5
+  dumpGem5Stats("md");
+#endif
 	//print positions.. doesn't mean shit though..
 	for(i=0; i<nAtoms; i++){
 		printf("after, X:%i Y:%i Z%i \n", force_x[i], force_y[i], force_z[i]);

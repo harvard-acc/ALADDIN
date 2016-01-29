@@ -72,7 +72,13 @@ int main()
 	print(&bucket[0], 1);
 	printf("\n");
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	pp_scan(bucket, bucket2, sum);
+#ifdef GEM5
+  dumpGem5Stats("pp_scan");
+#endif
 
 	print(&bucket[0], 2);
 	printf("\n");

@@ -110,7 +110,13 @@ int main()
 		}
 	}
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	stencil(&OrigImg[0], &Solution[0], &Filter[0]);
+#ifdef GEM5
+  dumpGem5Stats("stencil");
+#endif
 
 	for(i=0;i<(4);i++)
 		{

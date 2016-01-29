@@ -26,8 +26,13 @@ int main(){
 		a[i] = rand();
 		b[i] = rand();
 	}
-
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	triad(&a[0],&b[0],&c[0],3);
+#ifdef GEM5
+  dumpGem5Stats("triad");
+#endif
   FILE *output;
   output = fopen("output.data", "w");
 	for(i=0; i<NUM; i++)

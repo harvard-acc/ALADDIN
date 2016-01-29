@@ -28,7 +28,13 @@ int main()
     in[i] = (int)(min + rand() * 1.0 * (max - min) / (RAND_MAX ));
   }
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
   int sum = reduction(&in[0]);
+#ifdef GEM5
+  dumpGem5Stats("reduction");
+#endif
   printf("sum: %d\n", sum);
   return 0;
 }

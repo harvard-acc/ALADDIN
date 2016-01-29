@@ -49,7 +49,13 @@ int main()
     z[i] = 0;
   }
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	bb_gemm(x, y, z);
+#ifdef GEM5
+  dumpGem5Stats("bb_gemm");
+#endif
   print(z, N);
 	printf("\n");
 

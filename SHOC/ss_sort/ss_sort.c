@@ -56,11 +56,11 @@ void init(int bucket[BUCKETSIZE])
 
 void hist(int bucket[BUCKETSIZE], int a[N], int exp)
 {
-  int blockID = 0;
+  int blockID = 0, maskID = 0;
 //h
   loop2:for (blockID = 0; blockID < NUMOFBLOCKS; blockID++)
   {
-    loop1: for (int maskID = 0; maskID < 4; maskID++)
+    loop1: for ( maskID = 0; maskID < 4; maskID++)
       bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;
   }
 }
@@ -70,11 +70,11 @@ void hist(int bucket[BUCKETSIZE], int a[N], int exp)
 
 void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
 {
-  int blockID = 0;
+  int blockID = 0, maskID = 0;
   //unroll == h
   loop3:for (blockID = 0; blockID < NUMOFBLOCKS; blockID++)
   {
-    loop1: for (int maskID = 0; maskID < 4; maskID++) {
+    loop1: for (maskID = 0; maskID < 4; maskID++) {
       int a_value =  a[blockID * ELEMENTSPERBLOCK + maskID];
       int bucket_value = bucket[((a_value >> exp)  & 0x3) * NUMOFBLOCKS + blockID];
       b[bucket_value] = a_value;
@@ -147,7 +147,13 @@ int main()
 
 	//print(&arr[0], N);
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	ss_sort(arr, b, bucket, sum);
+#ifdef GEM5
+  dumpGem5Stats("ss_sort");
+#endif
 
 	//printf("\nSORTED : ");
 	print(&arr[0], 1);
