@@ -230,7 +230,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     // DMA access functions.
     void issueDmaRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id);
     void completeDmaRequest(unsigned node_id);
-    void incrementDmaScratchpadAccesses(unsigned size, std::string array_label,
+    void incrementDmaScratchpadAccesses(unsigned size, Addr base_addr,
                                             bool is_dma_load);
 
     // Virtual address translation.

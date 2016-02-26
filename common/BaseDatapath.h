@@ -202,8 +202,11 @@ class BaseDatapath {
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
     auto part_it = partition_config.find(label);
-    if (part_it != partition_config.end())
+    // Add checking for zero to handle DMA operations where we only use
+    // base_addr to find the label name.
+    if (part_it != partition_config.end() && part_it->second.base_addr == 0) {
       part_it->second.base_addr = addr;
+    }
   }
   /*Return true if the func_name is added;
     Return false if the func_name is already added.*/

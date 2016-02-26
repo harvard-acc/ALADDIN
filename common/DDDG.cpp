@@ -231,7 +231,6 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       long long int base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
-      datapath->addArrayBaseAddress(base_label, base_address);
     }
   }
 }

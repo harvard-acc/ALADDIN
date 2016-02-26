@@ -316,7 +316,7 @@ bool
 HybridDatapath::handleSpadMemoryOp(ExecNode* node)
 {
   std::string node_part = node->get_array_label();
-  bool satisfied = scratchpad->addressRequest(node_part);
+  bool satisfied = scratchpad->canServicePartition(node_part);
   if (!satisfied)
     return false;
 
@@ -348,7 +348,7 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
     DPRINTF(
         HybridDatapath, "node:%d is a dma request with label %s\n",
                          node->get_node_id(), array_label.c_str());
-    incrementDmaScratchpadAccesses(size, array_label, isLoad);
+    incrementDmaScratchpadAccesses(size, vaddr, isLoad);
     issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
     inflight_mem_nodes[node_id] = WaitingFromDma;
     return false; // DMA op not completed. Move on to the next node.
@@ -988,8 +988,25 @@ HybridDatapath::getBaseAddress(std::string label)
 
 // Increment the scratchpad load/store counters based on DMA transfer size.
 void HybridDatapath::incrementDmaScratchpadAccesses(
-    unsigned dma_size, std::string array_label, bool is_dma_load) {
-  auto part_it = partition_config.find(array_label);
+    unsigned dma_size, Addr base_addr, bool is_dma_load) {
+void HybridDatapath::incrementScratchpadAccessesFromDma(unsigned size,
+  Addr base_addr, bool is_dma_load) {
+  auto part_it = partition_config.begin();
+  std::string array_label;
+  for (; part_it != partition_config.end(); ++part_it) {
+    if (part_it->second.base_addr == base_addr) {
+      array_label = part_it->first;
+      break;
+    }
+  }
+  // If the array label is not found, abort the simulation.
+  if (array_label.empty()) {
+    std::cerr << "Unknown DMA target with address %x\n" << base_addr
+              << " with size " << dma_size << std::endl;
+    exit(-1);
+  }
+  DPRINTF(HybridDatapath, "DMA Accesses: array label %s\n",
+                           array_label.c_str());
   assert(part_it != partition_config.end());
   unsigned p_factor = part_it->second.part_factor;
   unsigned wordsize = part_it->second.wordsize;
