@@ -5,6 +5,9 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <sys/stat.h>
+#ifdef GEM5
+#include "gem5/dma_interface.h"
+#endif
 extern int INPUT_SIZE;
 void run_benchmark( void *args );
 
@@ -35,7 +38,13 @@ int main(int argc, char **argv)
 
   //run_benchmark( input );
   // Unpack and call
+#ifdef GEM5
+  resetGem5Stats();
+#endif
   run_benchmark( input );
+#ifdef GEM5
+  dumpGem5Stats("bench");
+#endif
   //#if WRITE_OUTPUT
   //FIXME: Maybe remove this.
   int out_fd, i, written=0;

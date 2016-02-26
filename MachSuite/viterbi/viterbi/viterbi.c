@@ -63,7 +63,4 @@ int viterbi(int Obs[numObs], float transMat[numStates*numObs], float obsLik[numS
     }
 
     return finalState;
-#ifdef DMA_MODE
-  dmaStore(&v[0],4096*4*8);
-#endif
 }

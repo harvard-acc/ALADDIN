@@ -18,6 +18,6 @@ ACCEL_NAME = fft-transpose
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD
-  export WORKLOAD=twiddles8,loadx8,loady8,fft1D_512
+  export WORKLOAD=fft1D_512
 endif
 include ../../common/Makefile.tracer

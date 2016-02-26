@@ -29,9 +29,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Implementations based on:
 V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
 */
+
 #include "fft.h"
 
 //////BEGIN TWIDDLES ////////
+
 #define THREADS 64
 #define cmplx_M_x(a_x, a_y, b_x, b_y) (a_x*b_x - a_y *b_y)
 #define cmplx_M_y(a_x, a_y, b_x, b_y) (a_x*b_y + a_y *b_x)
@@ -46,20 +48,18 @@ V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
 #define cm_fl_mul_x(a_x, b) (b*a_x)
 #define cm_fl_mul_y(a_y, b) (b*a_y)
 
-void twiddles8(TYPE a_x[8], TYPE a_y[8], int i, int n, int reversed[8]){
 
-    int j;
-    TYPE phi, tmp, phi_x, phi_y;
-
-    for(j=1; j < 8; j++){
-        phi = ((-2*PI*reversed[j]/n)*i);
-        phi_x = cos(phi);
-        phi_y = sin(phi);
-        tmp = a_x[j];
-        a_x[j] = cmplx_M_x(a_x[j], a_y[j], phi_x, phi_y);
-        a_y[j] = cmplx_M_y(tmp, a_y[j], phi_x, phi_y);
+#define  twiddles8(a_x, a_y, i, n, reversed)    \
+    for(int j=1; j < 8; j++){                   \
+        phi = ((-2*PI*reversed[j]/n)*i);       \
+        phi_x = cos(phi);                       \
+        phi_y = sin(phi);                      \
+        tmp = a_x[j];                          \
+        a_x[j] = cmplx_M_x(a_x[j], a_y[j], phi_x, phi_y); \
+        a_y[j] = cmplx_M_y(tmp, a_y[j], phi_x, phi_y); \
     }
-}
+
+
 ////END TWIDDLES ////
 #define FF2(a0_x, a0_y, a1_x, a1_y){			\
     TYPE c0_x = *a0_x;		\
@@ -122,15 +122,15 @@ void loadx8(TYPE a_x[], TYPE x[], int offset, int sx){
     a_x[7] = x[7*sx+offset];
 }
 
-void loady8(TYPE a_y[], TYPE x[], int offset, int sx){
-    a_y[0] = x[0*sx+offset];
-    a_y[1] = x[1*sx+offset];
-    a_y[2] = x[2*sx+offset];
-    a_y[3] = x[3*sx+offset];
-    a_y[4] = x[4*sx+offset];
-    a_y[5] = x[5*sx+offset];
-    a_y[6] = x[6*sx+offset];
-    a_y[7] = x[7*sx+offset];
+#define loady8(a_y, x, offset, sx){ \
+    a_y[0] = x[0*sx+offset]; \
+    a_y[1] = x[1*sx+offset]; \
+    a_y[2] = x[2*sx+offset]; \
+    a_y[3] = x[3*sx+offset]; \
+    a_y[4] = x[4*sx+offset]; \
+    a_y[5] = x[5*sx+offset]; \
+    a_y[6] = x[6*sx+offset]; \
+    a_y[7] = x[7*sx+offset]; \
 }
 
 void fft1D_512(TYPE work_x[512], TYPE work_y[512]){
@@ -139,10 +139,10 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512]){
   dmaLoad(&work_y[0],512*8*8);
 #endif
     int tid, hi, lo, i, j, stride;
+    TYPE phi, tmp, phi_x, phi_y;
     int reversed[] = {0,4,2,6,1,5,3,7};
     TYPE DATA_x[THREADS*8];
     TYPE DATA_y[THREADS*8];
-
     TYPE data_x[ 8 ];
     TYPE data_y[ 8 ];
 

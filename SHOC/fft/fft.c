@@ -324,8 +324,6 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
 #ifdef DMA_MODE
 	dmaLoad(&work_x[0], 512*4*8);
 	dmaLoad(&work_y[0], 512*4*8);
-	dmaLoad(&DATA_y[0], THREADS*8*4*8);
-	dmaLoad(&DATA_y[0], THREADS*8*4*8);
 #endif
   int tid, hi, lo, i, j, stride;
 	stride = THREADS;
@@ -344,18 +342,18 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
 
 #ifdef DMA_MODE
   dmaStore(&work_x[0], 512*4*8);
-	dmaStore(&work_y[0], 512*4*8);
+  dmaStore(&work_y[0], 512*4*8);
 #endif
 }
 int main(){
-	TYPE a_x[512];
-	TYPE a_y[512];
-	int i;
+  TYPE a_x[512];
+  TYPE a_y[512];
+  int i;
 
-	for( i = 0; i < 512; i++){
-		a_x[i] = i;
-		a_y[i] = 0.0;
-	}
+  for( i = 0; i < 512; i++){
+    a_x[i] = i;
+    a_y[i] = 0.0;
+  }
   float sin_64[448] = {-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,
     -0.382683,	-0.195090,	-0.555570,	-0.098017,	-0.471397,	-0.290285,	-0.634393,
     -0.707107,	-0.382683,	-0.923880,	-0.195090,	-0.831470,	-0.555570,	-0.980785,
@@ -617,23 +615,23 @@ int main(){
     -0.998795,	0.024541,	-0.073565,	0.715731,	-0.749136,	-0.680601,	0.643832};
 
 
-	TYPE DATA_x[THREADS*8];
-	TYPE DATA_y[THREADS*8];
-	TYPE data_x[ 8 ];
-	TYPE data_y[ 8 ];
-	TYPE smem[8*8*9];
+  TYPE DATA_x[THREADS*8];
+  TYPE DATA_y[THREADS*8];
+  TYPE data_x[ 8 ];
+  TYPE data_y[ 8 ];
+  TYPE smem[8*8*9];
   int reversed[8] = {0,4,2,6,1,5,3,7};
 #ifdef GEM5
   resetGem5Stats();
 #endif
-	fft1D_512(a_x, a_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, sin_512, cos_64, cos_512);
+  fft1D_512(a_x, a_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, sin_512, cos_64, cos_512);
 #ifdef GEM5
   dumpGem5Stats("fft");
 #endif
 
-	for( i = 0; i < 2; i++){
-		printf("x = %i y = %i \n", a_x[i], a_y[i]);
-	}
+  for( i = 0; i < 2; i++){
+    printf("x = %i y = %i \n", a_x[i], a_y[i]);
+  }
 
-	return 0;
+  return 0;
 }

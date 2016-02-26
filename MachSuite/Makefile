@@ -19,6 +19,9 @@ BENCHMARKS=\
 	stencil/stencil3d \
 	viterbi/viterbi
 
+gem5-cpu:
+	@( for b in $(BENCHMARKS); do $(MAKE) gem5-cpu CFLAGS="$(CFLAGS)" -C $$b || exit ; done )
+
 gem5:
 	@( for b in $(BENCHMARKS); do $(MAKE) gem5 CFLAGS="$(CFLAGS)" -C $$b || exit ; done )
 

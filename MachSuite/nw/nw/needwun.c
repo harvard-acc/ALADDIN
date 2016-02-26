@@ -122,7 +122,7 @@ void needwun(char SEQA[N], char SEQB[M], char alignedA[sum_size], char alignedB[
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&alignedB[0],256*1*8);
+  dmaStore(&alignedA[0],256*1*8);
   dmaStore(&alignedB[0],256*1*8);
 #endif
 }
