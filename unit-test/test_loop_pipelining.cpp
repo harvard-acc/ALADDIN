@@ -32,7 +32,7 @@ SCENARIO("Test loopPipelining w/ Triad", "[triad]") {
       }
       THEN("Dependences exist between the first instructions and the rest of "
            "instructions in the same loop region.") {
-        REQUIRE(acc->doesEdgeExist(2, 9) == 1);
+        REQUIRE(acc->doesEdgeExist(0, 9) == 1);
         REQUIRE(acc->doesEdgeExist(26, 29) == 1);
         REQUIRE(acc->doesEdgeExist(26, 33) == 1);
         REQUIRE(acc->doesEdgeExist(50, 54) == 1);
@@ -78,7 +78,7 @@ SCENARIO("Test loopPipelining w/ Reduction", "[reduction]") {
       }
       THEN("Dependences exist between the first instructions and the rest of "
            "instructions in the same loop region.") {
-        REQUIRE(acc->doesEdgeExist(3, 11) == 1);
+        REQUIRE(acc->doesEdgeExist(0, 11) == 1);
         REQUIRE(acc->doesEdgeExist(35, 53) == 1);
         REQUIRE(acc->doesEdgeExist(995, 1012) == 1);
       }

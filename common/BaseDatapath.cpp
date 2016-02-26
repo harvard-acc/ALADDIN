@@ -148,29 +148,34 @@ void BaseDatapath::removePhiNodes() {
     if (phi_child.size() == 0 || boost::in_degree(node_vertex, graph_) == 0)
       continue;
     if (node->get_microop() == LLVM_IR_PHI) {
-      // find its parent: phi node can have multiple children, but can only have
-      // one parent.
+      // find its first non-phi ancestor.
+      // phi node can have multiple children, but it can only have one parent.
       assert(boost::in_degree(node_vertex, graph_) == 1);
       in_edge_iter in_edge_it = in_edges(node_vertex, graph_).first;
       Vertex parent_vertex = source(*in_edge_it, graph_);
-      ExecNode* parent_node = getNodeFromVertex(parent_vertex);
-      while (parent_node->get_microop() == LLVM_IR_PHI) {
-        checked_phi_nodes.insert(parent_node);
-        assert(parent_node->has_vertex());
-        Vertex parent_vertex = parent_node->get_vertex();
+      ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
+      // Search for the first non-phi ancestor of the current phi node.
+      while (nonphi_ancestor->get_microop() == LLVM_IR_PHI) {
+        checked_phi_nodes.insert(nonphi_ancestor);
+        assert(nonphi_ancestor->has_vertex());
+        Vertex parent_vertex = nonphi_ancestor->get_vertex();
         if (boost::in_degree(parent_vertex, graph_) == 0)
           break;
         to_remove_edges.insert(*in_edge_it);
         in_edge_it = in_edges(parent_vertex, graph_).first;
         parent_vertex = source(*in_edge_it, graph_);
-        parent_node = getNodeFromVertex(parent_vertex);
+        nonphi_ancestor = getNodeFromVertex(parent_vertex);
       }
       to_remove_edges.insert(*in_edge_it);
-      for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
-           child_it != chil_E;
-           ++child_it) {
-        to_add_edges.push_back(
-            { parent_node, child_it->first, child_it->second });
+      if (nonphi_ancestor->get_microop() != LLVM_IR_PHI) {
+        // Add dependence between the current phi node's children and its first
+        // non-phi ancestor.
+        for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
+             child_it != chil_E;
+             ++child_it) {
+          to_add_edges.push_back(
+              { nonphi_ancestor, child_it->first, child_it->second });
+        }
       }
     } else {
       // convert nodes
@@ -179,13 +184,13 @@ void BaseDatapath::removePhiNodes() {
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         Vertex parent_vertex = source(*in_edge_it, graph_);
-        ExecNode* parent_node = getNodeFromVertex(parent_vertex);
+        ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
         to_remove_edges.insert(*in_edge_it);
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
              child_it != chil_E;
              ++child_it) {
           to_add_edges.push_back(
-              { parent_node, child_it->first, child_it->second });
+              { nonphi_ancestor, child_it->first, child_it->second });
         }
       }
     }
@@ -415,29 +420,50 @@ void BaseDatapath::loopPipelining() {
        ++first_it) {
     ExecNode* br_node = exec_nodes[first_it->first];
     ExecNode* first_node = exec_nodes[first_it->second];
-    if (br_node->is_call_op()) {
-      prev_branch_n = nullptr;
+    bool found = false;
+    char unrolling_id[256];
+    sprintf(unrolling_id,
+            "%s-%d",
+            br_node->get_static_method().c_str(),
+            br_node->get_line_num());
+    auto unroll_it = unrolling_config.find(unrolling_id);
+    /* We only want to pipeline loop iterations that are from the same unrolled
+     * loop. Here we first check the current basic block is part of an unrolled
+     * loop iteration. */
+    if (unroll_it != unrolling_config.end()) {
+      // check whether the previous branch is the same loop or not
+      if (prev_branch_n != nullptr) {
+        if ((br_node->get_line_num() == prev_branch_n->get_line_num()) &&
+                   (br_node->get_static_method().compare(
+                    prev_branch_n->get_static_method()) == 0) &&
+             first_node->get_line_num() == prev_first_n->get_line_num()) {
+          found = true;
+        }
+      }
+    }
+    /* We only pipeline matching loop iterations. */
+    if (!found) {
+      prev_branch_n = br_node;
+      prev_first_n = first_node;
       continue;
     }
-    if (prev_branch_n != nullptr) {
-      // adding dependence between prev_first and first_id
-      if (!doesEdgeExist(prev_first_n, first_node))
-        to_add_edges.push_back({ prev_first_n, first_node, CONTROL_EDGE });
-      // adding dependence between first_id and prev_branch's children
-      assert(prev_branch_n->has_vertex());
-      out_edge_iter out_edge_it, out_edge_end;
-      for (tie(out_edge_it, out_edge_end) =
-               out_edges(prev_branch_n->get_vertex(), graph_);
-           out_edge_it != out_edge_end;
-           ++out_edge_it) {
-        Vertex child_vertex = target(*out_edge_it, graph_);
-        ExecNode* child_node = getNodeFromVertex(child_vertex);
-        if (*child_node < *first_node ||
-            edge_to_parid[*out_edge_it] != CONTROL_EDGE)
-          continue;
-        if (!doesEdgeExist(first_node, child_node))
-          to_add_edges.push_back({ first_node, child_node, 1 });
-      }
+    // adding dependence between prev_first and first_id
+    if (!doesEdgeExist(prev_first_n, first_node))
+      to_add_edges.push_back({ prev_first_n, first_node, CONTROL_EDGE });
+    // adding dependence between first_id and prev_branch's children
+    assert(prev_branch_n->has_vertex());
+    out_edge_iter out_edge_it, out_edge_end;
+    for (tie(out_edge_it, out_edge_end) =
+             out_edges(prev_branch_n->get_vertex(), graph_);
+         out_edge_it != out_edge_end;
+         ++out_edge_it) {
+      Vertex child_vertex = target(*out_edge_it, graph_);
+      ExecNode* child_node = getNodeFromVertex(child_vertex);
+      if (*child_node < *first_node ||
+          edge_to_parid[*out_edge_it] != CONTROL_EDGE)
+        continue;
+      if (!doesEdgeExist(first_node, child_node))
+        to_add_edges.push_back({ first_node, child_node, 1 });
     }
     // update first_id's parents, dependence become strict control dependence
     assert(first_node->has_vertex());
@@ -454,11 +480,10 @@ void BaseDatapath::loopPipelining() {
       to_remove_edges.insert(*in_edge_it);
       to_add_edges.push_back({ parent_node, first_node, CONTROL_EDGE });
     }
-    // remove control dependence between br node to its children
-    assert(br_node->has_vertex());
-    out_edge_iter out_edge_it, out_edge_end;
+    // remove control dependence between prev br node to its children
+    assert(prev_branch_n->has_vertex());
     for (tie(out_edge_it, out_edge_end) =
-             out_edges(br_node->get_vertex(), graph_);
+             out_edges(prev_branch_n->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       if (exec_nodes[vertexToName[target(*out_edge_it, graph_)]]->is_call_op())
@@ -501,7 +526,12 @@ void BaseDatapath::loopUnrolling() {
     if (!node->has_vertex())
       continue;
     Vertex node_vertex = node->get_vertex();
-    if (boost::degree(node_vertex, graph_) == 0 && !node->is_call_op())
+    // We let all the branch nodes proceed to the unrolling handling no matter
+    // whether they are isolated or not. Although most of the branch nodes are
+    // connected anyway, one exception is unconditional branch that is not
+    // dependent on any nodes. The is_branch_op() check can let the
+    // unconditional branch proceed.
+    if (boost::degree(node_vertex, graph_) == 0 && !node->is_branch_op())
       continue;
     unsigned node_id = node->get_node_id();
     if (!first) {
@@ -565,13 +595,15 @@ void BaseDatapath::loopUnrolling() {
             unique_inst_id, "%d-%d", node->get_microop(), node->get_line_num());
         auto it = inst_dynamic_counts.find(unique_inst_id);
         if (it == inst_dynamic_counts.end()) {
-          inst_dynamic_counts[unique_inst_id] = 1;
+          inst_dynamic_counts[unique_inst_id] = 0;
           it = inst_dynamic_counts.find(unique_inst_id);
         } else {
           it->second++;
         }
         if (it->second % factor == 0) {
-          loopBound.push_back(node_id);
+          if (*loopBound.rbegin() != node_id) {
+            loopBound.push_back(node_id);
+          }
           iter_counts++;
           for (auto prev_node_it = nodes_between.begin(),
                     E = nodes_between.end();
@@ -584,8 +616,9 @@ void BaseDatapath::loopUnrolling() {
           nodes_between.clear();
           nodes_between.push_back(node);
           prev_branch = node;
-        } else
+        } else {
           to_remove_nodes.push_back(node_id);
+        }
       }
     }
   }
