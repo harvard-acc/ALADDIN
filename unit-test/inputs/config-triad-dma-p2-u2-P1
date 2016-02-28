@@ -3,5 +3,4 @@ pipelining,1
 partition,cyclic,a,8192,4,2
 partition,cyclic,b,8192,4,2
 partition,cyclic,c,8192,4,2
-unrolling,triad,15,2
-flatten,triad,18
+unrolling,triad,10,2
