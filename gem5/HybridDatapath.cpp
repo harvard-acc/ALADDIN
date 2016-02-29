@@ -929,57 +929,55 @@ Addr HybridDatapath::getBaseAddress(std::string label) {
 void HybridDatapath::incrementDmaScratchpadAccesses(unsigned dma_size,
                                                     Addr base_addr,
                                                     bool is_dma_load) {
-  void HybridDatapath::incrementScratchpadAccessesFromDma(
-      unsigned size, Addr base_addr, bool is_dma_load) {
-    auto part_it = partition_config.begin();
-    std::string array_label;
-    for (; part_it != partition_config.end(); ++part_it) {
-      if (part_it->second.base_addr == base_addr) {
-        array_label = part_it->first;
-        break;
-      }
-    }
-    // If the array label is not found, abort the simulation.
-    if (array_label.empty()) {
-      std::cerr << "Unknown DMA target with address %x\n" << base_addr
-                << " with size " << dma_size << std::endl;
-      exit(-1);
-    }
-    DPRINTF(
-        HybridDatapath, "DMA Accesses: array label %s\n", array_label.c_str());
-    assert(part_it != partition_config.end());
-    unsigned p_factor = part_it->second.part_factor;
-    unsigned wordsize = part_it->second.wordsize;
-    unsigned num_accesses_per_partition = dma_size / p_factor / wordsize;
-    if (is_dma_load) {
-      for (unsigned i = 0; i < p_factor; i++) {
-        std::ostringstream oss;
-        oss << array_label << "-" << i;
-        DPRINTF(HybridDatapath,
-                "Increment the dmaLoad accesses of partition %s by %d. \n",
-                oss.str(),
-                num_accesses_per_partition);
-        scratchpad->increment_dma_loads(oss.str(), num_accesses_per_partition);
-      }
-    } else {
-      for (unsigned i = 0; i < p_factor; i++) {
-        std::ostringstream oss;
-        oss << array_label << "-" << i;
-        DPRINTF(HybridDatapath,
-                "Increment the dmaStore accesses of partition %s by %d. \n",
-                oss.str(),
-                num_accesses_per_partition);
-        scratchpad->increment_dma_stores(oss.str(), num_accesses_per_partition);
-      }
+  auto part_it = partition_config.begin();
+  std::string array_label;
+  for (; part_it != partition_config.end(); ++part_it) {
+    if (part_it->second.base_addr == base_addr) {
+      array_label = part_it->first;
+      break;
     }
   }
-
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  //  The SimObjects we use to get the Datapath information into the simulator
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  HybridDatapath* HybridDatapathParams::create() {
-    return new HybridDatapath(this);
+  // If the array label is not found, abort the simulation.
+  if (array_label.empty()) {
+    std::cerr << "Unknown DMA target with address %x\n" << base_addr
+              << " with size " << dma_size << std::endl;
+    exit(-1);
   }
+  DPRINTF(
+      HybridDatapath, "DMA Accesses: array label %s\n", array_label.c_str());
+  assert(part_it != partition_config.end());
+  unsigned p_factor = part_it->second.part_factor;
+  unsigned wordsize = part_it->second.wordsize;
+  unsigned num_accesses_per_partition = dma_size / p_factor / wordsize;
+  if (is_dma_load) {
+    for (unsigned i = 0; i < p_factor; i++) {
+      std::ostringstream oss;
+      oss << array_label << "-" << i;
+      DPRINTF(HybridDatapath,
+              "Increment the dmaLoad accesses of partition %s by %d. \n",
+              oss.str(),
+              num_accesses_per_partition);
+      scratchpad->increment_dma_loads(oss.str(), num_accesses_per_partition);
+    }
+  } else {
+    for (unsigned i = 0; i < p_factor; i++) {
+      std::ostringstream oss;
+      oss << array_label << "-" << i;
+      DPRINTF(HybridDatapath,
+              "Increment the dmaStore accesses of partition %s by %d. \n",
+              oss.str(),
+              num_accesses_per_partition);
+      scratchpad->increment_dma_stores(oss.str(), num_accesses_per_partition);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////
+//
+//  The SimObjects we use to get the Datapath information into the simulator
+//
+////////////////////////////////////////////////////////////////////////////
+
+HybridDatapath* HybridDatapathParams::create() {
+  return new HybridDatapath(this);
+}
