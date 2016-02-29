@@ -9,13 +9,12 @@
 
 ScratchpadDatapath::ScratchpadDatapath(std::string bench,
                                        std::string trace_file,
-                                       std::string config_file,
-                                       int num_spad_ports)
+                                       std::string config_file)
     : BaseDatapath(bench, trace_file, config_file) {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "      Setting ScratchPad       " << std::endl;
   std::cout << "-------------------------------" << std::endl;
-  scratchpad = new Scratchpad(num_spad_ports, cycleTime);
+  scratchpad = new Scratchpad(num_ports, cycleTime, ready_mode);
   scratchpadCanService = true;
 }
 
@@ -193,7 +192,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
     bool executed = false;
     if (node->is_memory_op()) {
       std::string array_name = node->get_array_label();
-      unsigned node_part_index = node->get_partition_index();
+      unsigned array_name_index = node->get_partition_index();
       if (registers.has(array_name)) {
         markNodeStarted(node);
         if (node->is_load_op())
@@ -203,12 +202,16 @@ void ScratchpadDatapath::stepExecutingQueue() {
         markNodeCompleted(it, index);
         executed = true;
       } else if (scratchpadCanService) {
-        if (scratchpad->canServicePartition(array_name, node_part_index)) {
+        MemAccess* mem_access = node->get_mem_access();
+        uint64_t vaddr = mem_access->vaddr;
+        bool isLoad = node->is_load_op();
+        if (scratchpad->canServicePartition(
+                array_name, array_name_index, vaddr, isLoad)){
           markNodeStarted(node);
-          if (node->is_load_op())
-            scratchpad->increment_loads(array_name, node_part_index);
+          if (isLoad)
+            scratchpad->increment_loads(array_name, array_name_index);
           else
-            scratchpad->increment_stores(array_name, node_part_index);
+            scratchpad->increment_stores(array_name, array_name_index);
           markNodeCompleted(it, index);
           executed = true;
         } else {

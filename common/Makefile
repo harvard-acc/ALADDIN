@@ -7,7 +7,7 @@
 EXE = aladdin
 
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
-                     Registers.o
+                     Registers.o Partition.o LogicalArray.o ReadyPartition.o
 UTILS_OBJS = file_func.o generic_func.o power_func.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)

@@ -28,8 +28,7 @@
 HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
     : ScratchpadDatapath(params->benchName,
                          params->traceFileName,
-                         params->configFileName,
-                         params->spadPorts),
+                         params->configFileName),
       Gem5Datapath(params,
                    params->acceleratorId,
                    params->executeStandalone,
@@ -106,6 +105,7 @@ void HybridDatapath::clearDatapath() { clearDatapath(false); }
 void HybridDatapath::initializeDatapath(int delay) {
   buildDddg();
   globalOptimizationPass();
+  scratchpad->resetReadyBits();
   prepareForScheduling();
   num_cycles = 0;
   isCacheBlocked = false;
@@ -285,12 +285,16 @@ bool HybridDatapath::handleRegisterMemoryOp(ExecNode* node) {
 bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   std::string array_name = node->get_array_label();
   unsigned array_name_index = node->get_partition_index();
-  bool satisfied = scratchpad->canServicePartition(array_name, array_name_index);
+  MemAccess* mem_access = node->get_mem_access();
+  uint64_t vaddr = mem_access->vaddr;
+  bool isLoad = node->is_load_op();
+  bool satisfied = scratchpad->canServicePartition(
+                       array_name, array_name_index, vaddr, isLoad);
   if (!satisfied)
     return false;
 
   markNodeStarted(node);
-  if (node->is_load_op())
+  if (isLoad)
     scratchpad->increment_loads(array_name, array_name_index);
   else
     scratchpad->increment_stores(array_name, array_name_index);
@@ -321,6 +325,10 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     inflight_mem_nodes[node_id] = WaitingFromDma;
     return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
+    std::string array_label = node->get_array_label();
+    if (node->is_dma_load())
+      // TODO: Will be replaced by call backs from dma_device.
+      scratchpad->setReadyBits(array_label);
     inflight_mem_nodes.erase(node_id);
     return true;  // DMA op completed.
   } else {

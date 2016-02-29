@@ -397,6 +397,12 @@ class BaseDatapath {
 
   // Trace file.
   gzFile trace_file;
+
+  // Scratchpad config.
+  /* True if ready-bit Scratchpad is used. */
+  bool ready_mode;
+  /* Num of read/write ports per partition. */
+  unsigned num_ports;
 };
 
 #endif

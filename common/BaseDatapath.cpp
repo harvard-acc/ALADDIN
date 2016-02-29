@@ -531,6 +531,8 @@ void BaseDatapath::loopUnrolling() {
     // unconditional branch proceed.
     if (boost::degree(node_vertex, graph_) == 0 && !node->is_branch_op())
       continue;
+    if (ready_mode && node->is_dma_load())
+      continue;
     unsigned node_id = node->get_node_id();
     if (!first) {
       first = true;
@@ -1936,6 +1938,8 @@ void BaseDatapath::parse_config(std::string bench,
   config_file.open(config_file_name);
   std::string wholeline;
   pipelining = false;
+  ready_mode = false;
+  num_ports = 1;
 
   while (!config_file.eof()) {
     wholeline.clear();
@@ -1998,6 +2002,10 @@ void BaseDatapath::parse_config(std::string bench,
     } else if (!type.compare("cycle_time")) {
       // Update the global cycle time parameter.
       cycleTime = stof(rest_line);
+    } else if (!type.compare("ready_mode")) {
+      ready_mode = atoi(rest_line.c_str());
+    } else if (!type.compare("scratchpad_ports")) {
+      num_ports = atoi(rest_line.c_str());
     } else {
       std::cerr << "Invalid config type: " << wholeline << std::endl;
       exit(1);
