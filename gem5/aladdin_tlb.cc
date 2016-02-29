@@ -9,24 +9,22 @@
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64
 
-AladdinTLB::AladdinTLB(
-    HybridDatapath *_datapath, unsigned _num_entries, unsigned _assoc,
-    Cycles _hit_latency, Cycles _miss_latency, Addr _page_bytes,
-    bool _is_perfect, unsigned _num_walks, unsigned _bandwidth,
-    std::string _cacti_config, std::string _accelerator_name) :
-  datapath(_datapath),
-  numEntries(_num_entries),
-  assoc(_assoc),
-  hitLatency(_hit_latency),
-  missLatency(_miss_latency),
-  pageBytes(_page_bytes),
-  isPerfectTLB(_is_perfect),
-  numOutStandingWalks(_num_walks),
-  numOccupiedMissQueueEntries(0),
-  cacti_cfg(_cacti_config),
-  requests_this_cycle(0),
-  bandwidth(_bandwidth)
-{
+AladdinTLB::AladdinTLB(HybridDatapath* _datapath,
+                       unsigned _num_entries,
+                       unsigned _assoc,
+                       Cycles _hit_latency,
+                       Cycles _miss_latency,
+                       Addr _page_bytes,
+                       bool _is_perfect,
+                       unsigned _num_walks,
+                       unsigned _bandwidth,
+                       std::string _cacti_config,
+                       std::string _accelerator_name)
+    : datapath(_datapath), numEntries(_num_entries), assoc(_assoc),
+      hitLatency(_hit_latency), missLatency(_miss_latency),
+      pageBytes(_page_bytes), isPerfectTLB(_is_perfect),
+      numOutStandingWalks(_num_walks), numOccupiedMissQueueEntries(0),
+      cacti_cfg(_cacti_config), requests_this_cycle(0), bandwidth(_bandwidth) {
   if (numEntries > 0)
     tlbMemory = new TLBMemory(_num_entries, _assoc, _page_bytes);
   else
@@ -34,10 +32,7 @@ AladdinTLB::AladdinTLB(
   regStats(_accelerator_name);
 }
 
-AladdinTLB::~AladdinTLB()
-{
-  delete tlbMemory;
-}
+AladdinTLB::~AladdinTLB() { delete tlbMemory; }
 
 void AladdinTLB::clear() {
   infiniteBackupTLB.clear();
@@ -50,37 +45,28 @@ void AladdinTLB::resetCounters() {
   updates = 0;
 }
 
-AladdinTLB::deHitQueueEvent::deHitQueueEvent(AladdinTLB *_tlb)
-   : Event(Default_Pri, AutoDelete),
-     tlb(_tlb) {}
+AladdinTLB::deHitQueueEvent::deHitQueueEvent(AladdinTLB* _tlb)
+    : Event(Default_Pri, AutoDelete), tlb(_tlb) {}
 
-void
-AladdinTLB::deHitQueueEvent::process()
-{
+void AladdinTLB::deHitQueueEvent::process() {
   assert(!tlb->hitQueue.empty());
   tlb->datapath->completeTLBRequest(tlb->hitQueue.front(), false);
   tlb->hitQueue.pop_front();
 }
 
-const char *
-AladdinTLB::deHitQueueEvent::description() const
-{
+const char* AladdinTLB::deHitQueueEvent::description() const {
   return "TLB Hit";
 }
 
-
-const std::string
-AladdinTLB::deHitQueueEvent::name() const
-{
+const std::string AladdinTLB::deHitQueueEvent::name() const {
   return tlb->name() + ".dehitqueue_event";
 }
 
 AladdinTLB::outStandingWalkReturnEvent::outStandingWalkReturnEvent(
-    AladdinTLB *_tlb) : Event(Default_Pri, AutoDelete), tlb(_tlb) {}
+    AladdinTLB* _tlb)
+    : Event(Default_Pri, AutoDelete), tlb(_tlb) {}
 
-void
-AladdinTLB::outStandingWalkReturnEvent::process()
-{
+void AladdinTLB::outStandingWalkReturnEvent::process() {
   // TLB return events are free because only the CPU's hardware control units
   // can write to the TLB; programs can only read the TLB.
   assert(!tlb->missQueue.empty());
@@ -99,30 +85,24 @@ AladdinTLB::outStandingWalkReturnEvent::process()
   tlb->insert(vpn, ppn);
 
   auto range = tlb->missQueue.equal_range(vpn);
-  for(auto it = range.first; it!= range.second; ++it)
+  for (auto it = range.first; it != range.second; ++it)
     tlb->datapath->completeTLBRequest(it->second, true);
 
-  tlb->numOccupiedMissQueueEntries --;
+  tlb->numOccupiedMissQueueEntries--;
   tlb->missQueue.erase(vpn);
   tlb->outStandingWalks.pop_front();
   tlb->updates++;  // Upon completion, increment TLB
 }
 
-const char *
-AladdinTLB::outStandingWalkReturnEvent::description() const
-{
+const char* AladdinTLB::outStandingWalkReturnEvent::description() const {
   return "TLB Miss";
 }
 
-const std::string
-AladdinTLB::outStandingWalkReturnEvent::name() const
-{
+const std::string AladdinTLB::outStandingWalkReturnEvent::name() const {
   return tlb->name() + ".page_walk_event";
 }
 
-bool
-AladdinTLB::translateTiming(PacketPtr pkt)
-{
+bool AladdinTLB::translateTiming(PacketPtr pkt) {
   /* A somewhat complex translation process.
    *
    * First, we have to determine the simulation environment. If Aladdin is
@@ -164,52 +144,46 @@ AladdinTLB::translateTiming(PacketPtr pkt)
   }
 
   reads++;  // Both TLB hits and misses perform a read.
-  if (isPerfectTLB || tlbMemory->lookup(vpn, ppn))
-  {
-      DPRINTF(HybridDatapath, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
-      hits++;
-      hitQueue.push_back(pkt);
-      deHitQueueEvent *hq = new deHitQueueEvent(this);
-      datapath->schedule(hq, datapath->clockEdge(hitLatency));
+  if (isPerfectTLB || tlbMemory->lookup(vpn, ppn)) {
+    DPRINTF(HybridDatapath, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
+    hits++;
+    hitQueue.push_back(pkt);
+    deHitQueueEvent* hq = new deHitQueueEvent(this);
+    datapath->schedule(hq, datapath->clockEdge(hitLatency));
+    // Due to the complexity of translating trace to virtual address, return
+    // the complete address, not just the page number.
+    if (datapath->isExecuteStandalone()) {
+      *(pkt->getPtr<Addr>()) = ppn;
+    } else {
       // Due to the complexity of translating trace to virtual address, return
       // the complete address, not just the page number.
-      if (datapath->isExecuteStandalone()) {
-        *(pkt->getPtr<Addr>()) = ppn;
-      } else {
-        // Due to the complexity of translating trace to virtual address, return
-        // the complete address, not just the page number.
-        *(pkt->getPtr<Addr>()) = ppn + page_offset;
-      }
-      return true;
-  }
-  else
-  {
-      // TLB miss! Let the TLB handle the walk, etc
-      DPRINTF(HybridDatapath, "TLB miss for addr %#x\n", vaddr);
+      *(pkt->getPtr<Addr>()) = ppn + page_offset;
+    }
+    return true;
+  } else {
+    // TLB miss! Let the TLB handle the walk, etc
+    DPRINTF(HybridDatapath, "TLB miss for addr %#x\n", vaddr);
 
-      if (missQueue.find(vpn) == missQueue.end())
-      {
-        if (numOutStandingWalks != 0 &&
-            outStandingWalks.size() >= numOutStandingWalks)
-          return false;
-        outStandingWalks.push_back(vpn);
-        outStandingWalkReturnEvent *mq = new outStandingWalkReturnEvent(this);
-        datapath->schedule(mq, datapath->clockEdge(missLatency));
-        numOccupiedMissQueueEntries ++;
-        DPRINTF(HybridDatapath,
-                "Allocated TLB miss entry for addr %#x, page %#x\n",
-                vaddr,
-                vpn);
-      }
-      else
-      {
-        DPRINTF(HybridDatapath,
-                "Collapsed into existing miss entry for page %#x\n",
-                vpn);
-      }
-      misses++;
-      missQueue.insert({vpn, pkt});
-      return true;
+    if (missQueue.find(vpn) == missQueue.end()) {
+      if (numOutStandingWalks != 0 &&
+          outStandingWalks.size() >= numOutStandingWalks)
+        return false;
+      outStandingWalks.push_back(vpn);
+      outStandingWalkReturnEvent* mq = new outStandingWalkReturnEvent(this);
+      datapath->schedule(mq, datapath->clockEdge(missLatency));
+      numOccupiedMissQueueEntries++;
+      DPRINTF(HybridDatapath,
+              "Allocated TLB miss entry for addr %#x, page %#x\n",
+              vaddr,
+              vpn);
+    } else {
+      DPRINTF(HybridDatapath,
+              "Collapsed into existing miss entry for page %#x\n",
+              vpn);
+    }
+    misses++;
+    missQueue.insert({ vpn, pkt });
+    return true;
   }
 }
 
@@ -222,117 +196,104 @@ void AladdinTLB::insertBackupTLB(Addr vpn, Addr ppn) {
   infiniteBackupTLB[vpn] = ppn;
 }
 
-bool
-AladdinTLB::canRequestTranslation()
-{
+bool AladdinTLB::canRequestTranslation() {
   return (requests_this_cycle < bandwidth &&
           numOccupiedMissQueueEntries < numOutStandingWalks);
 }
 
-void
-AladdinTLB::regStats(std::string accelerator_name)
-{
+void AladdinTLB::regStats(std::string accelerator_name) {
   using namespace Stats;
-  hits.name("system." + accelerator_name + ".tlb.hits")
-      .desc("TLB hits")
-      .flags(total | nonan);
+  hits.name("system." + accelerator_name + ".tlb.hits").desc("TLB hits").flags(
+      total | nonan);
   misses.name("system." + accelerator_name + ".tlb.misses")
-        .desc("TLB misses")
-        .flags(total | nonan);
+      .desc("TLB misses")
+      .flags(total | nonan);
   hitRate.name("system." + accelerator_name + ".tlb.hitRate")
-         .desc("TLB hit rate")
-         .flags(total | nonan);
+      .desc("TLB hit rate")
+      .flags(total | nonan);
   hitRate = hits / (hits + misses);
   reads.name("system." + accelerator_name + ".tlb.reads")
-       .desc("TLB reads")
-       .flags(total | nonan);
+      .desc("TLB reads")
+      .flags(total | nonan);
   updates.name("system." + accelerator_name + ".tlb.updates")
-         .desc("TLB updates")
-         .flags(total | nonan);
+      .desc("TLB updates")
+      .flags(total | nonan);
 }
 
-void
-AladdinTLB::computeCactiResults()
-{
+void AladdinTLB::computeCactiResults() {
   DPRINTF(HybridDatapath, "Invoking CACTI for TLB power and area estimates.\n");
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
-  if (numEntries >= MIN_CACTI_SIZE)
-  {
+  if (numEntries >= MIN_CACTI_SIZE) {
     readEnergy = cacti_result.power.readOp.dynamic * 1e12;
     writeEnergy = cacti_result.power.writeOp.dynamic * 1e12;
     leakagePower = cacti_result.power.readOp.leakage * 1000;
     area = cacti_result.area;
-  }
-  else
-  {
+  } else {
     /*Assuming it scales linearly with cache size*/
-    readEnergy = cacti_result.power.readOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
-    writeEnergy = cacti_result.power.writeOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
-    leakagePower = cacti_result.power.readOp.leakage * 1000 * numEntries / MIN_CACTI_SIZE;
+    readEnergy =
+        cacti_result.power.readOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
+    writeEnergy =
+        cacti_result.power.writeOp.dynamic * 1e12 * numEntries / MIN_CACTI_SIZE;
+    leakagePower =
+        cacti_result.power.readOp.leakage * 1000 * numEntries / MIN_CACTI_SIZE;
     area = cacti_result.area * numEntries / MIN_CACTI_SIZE;
   }
 }
 
-void
-AladdinTLB::getAveragePower(
-    unsigned int cycles, unsigned int cycleTime,
-    float* avg_power, float* avg_dynamic, float* avg_leak)
-{
+void AladdinTLB::getAveragePower(unsigned int cycles,
+                                 unsigned int cycleTime,
+                                 float* avg_power,
+                                 float* avg_dynamic,
+                                 float* avg_leak) {
   *avg_dynamic = (reads.value() * readEnergy + updates.value() * writeEnergy) /
                  (cycles * cycleTime);
   *avg_leak = leakagePower;
   *avg_power = *avg_dynamic + *avg_leak;
 }
 
-std::string
-AladdinTLB::name() const
-{
-  return datapath->name() + ".tlb";
-}
+std::string AladdinTLB::name() const { return datapath->name() + ".tlb"; }
 
-bool
-TLBMemory::lookup(Addr vpn, Addr& ppn, bool set_mru)
-{
-    int way = (vpn / pageBytes) % ways;
-    for (int i=0; i < sets; i++) {
-        if (entries[way][i].vpn == vpn && !entries[way][i].free) {
-            ppn = entries[way][i].ppn;
-            assert(entries[way][i].mruTick > 0);
-            if (set_mru) {
-                entries[way][i].setMRU();
-            }
-            entries[way][i].hits++;
-            return true;
-        }
+bool TLBMemory::lookup(Addr vpn, Addr& ppn, bool set_mru) {
+  int way = (vpn / pageBytes) % ways;
+  for (int i = 0; i < sets; i++) {
+    if (entries[way][i].vpn == vpn && !entries[way][i].free) {
+      ppn = entries[way][i].ppn;
+      assert(entries[way][i].mruTick > 0);
+      if (set_mru) {
+        entries[way][i].setMRU();
+      }
+      entries[way][i].hits++;
+      return true;
     }
-    return false;
+  }
+  return false;
 }
 
 void TLBMemory::insert(Addr vpn, Addr ppn) {
 
-    Addr a;
-    if (lookup(vpn, a)) {
-        return;
+  Addr a;
+  if (lookup(vpn, a)) {
+    return;
+  }
+  int way = (vpn / pageBytes) % ways;
+  AladdinTLBEntry* entry = nullptr;
+  Tick minTick = curTick();
+  for (int i = 0; i < sets; i++) {
+    if (entries[way][i].free) {
+      entry = &entries[way][i];
+      break;
+    } else if (entries[way][i].mruTick <= minTick) {
+      minTick = entries[way][i].mruTick;
+      entry = &entries[way][i];
     }
-    int way = (vpn / pageBytes) % ways;
-    AladdinTLBEntry* entry = nullptr;
-    Tick minTick = curTick();
-    for (int i=0; i < sets; i++) {
-        if (entries[way][i].free) {
-            entry = &entries[way][i];
-            break;
-        } else if (entries[way][i].mruTick <= minTick) {
-            minTick = entries[way][i].mruTick;
-            entry = &entries[way][i];
-        }
-    }
-    assert(entry);
-    if (!entry->free) {
-        DPRINTF(HybridDatapath, "Evicting entry for vpn %#x\n", entry->vpn);
-    }
+  }
+  assert(entry);
+  if (!entry->free) {
+    DPRINTF(HybridDatapath, "Evicting entry for vpn %#x\n", entry->vpn);
+  }
 
-    entry->vpn = vpn;
-    entry->ppn = ppn;
-    entry->free = false;
-    entry->setMRU();
+  entry->vpn = vpn;
+  entry->ppn = ppn;
+  entry->free = false;
+  entry->setMRU();
 }

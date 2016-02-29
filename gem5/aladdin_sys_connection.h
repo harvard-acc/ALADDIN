@@ -34,7 +34,8 @@ typedef struct _aladdin_map_t {
 extern "C" {
 #endif
 
-/* Schedules the accelerator for execution in gem5 and spin waits until the accelerator returns.
+/* Schedules the accelerator for execution in gem5 and spin waits until the
+ *accelerator returns.
  *
  * Args:
  *   req_code: Accelerator request code.
@@ -91,8 +92,10 @@ void resetGem5Stats();
  * Returns:
  *   Nothing.
  */
-void mapArrayToAccelerator(
-    unsigned req_code, const char* array_name, void* addr, size_t size);
+void mapArrayToAccelerator(unsigned req_code,
+                           const char* array_name,
+                           void* addr,
+                           size_t size);
 
 #ifdef __cplusplus
 }  // extern "C"

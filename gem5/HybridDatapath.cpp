@@ -25,53 +25,44 @@
 #include "aladdin_tlb.hh"
 #include "HybridDatapath.h"
 
-HybridDatapath::HybridDatapath(
-    const HybridDatapathParams* params) :
-    ScratchpadDatapath(params->benchName,
-                       params->traceFileName,
-                       params->configFileName,
-                       params->spadPorts),
-    Gem5Datapath(params,
-                 params->acceleratorId,
-                 params->executeStandalone,
-                 params->system),
-    dmaSetupLatency(params->dmaSetupLatency),
-    spadPort(this, params->system, params->maxDmaRequests),
-    spadMasterId(params->system->getMasterId(name() + ".spad")),
-    cachePort(this),
-    cacheMasterId(params->system->getMasterId(name() + ".cache")),
-    load_queue(params->loadQueueSize,
-               params->loadBandwidth,
-               params->acceleratorName + ".load_queue",
-               params->loadQueueCacheConfig),
-    store_queue(params->storeQueueSize,
-                params->storeBandwidth,
-                params->acceleratorName + ".store_queue",
-                params->storeQueueCacheConfig),
-    enable_stats_dump(params->enableStatsDump),
-    cacheSize(params->cacheSize),
-    cacti_cfg(params->cactiCacheConfig),
-    cacheLineSize(params->cacheLineSize),
-    cacheHitLatency(params->cacheHitLatency),
-    cacheAssoc(params->cacheAssoc),
-    cache_readEnergy(0),
-    cache_writeEnergy(0),
-    cache_leakagePower(0),
-    cache_area(0),
-    dtb(this,
-        params->tlbEntries,
-        params->tlbAssoc,
-        params->tlbHitLatency,
-        params->tlbMissLatency,
-        params->tlbPageBytes,
-        params->isPerfectTLB,
-        params->numOutStandingWalks,
-        params->tlbBandwidth,
-        params->tlbCactiConfig,
-        params->acceleratorName),
-    tickEvent(this),
-    executedNodesLastTrigger(0)
-{
+HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
+    : ScratchpadDatapath(params->benchName,
+                         params->traceFileName,
+                         params->configFileName,
+                         params->spadPorts),
+      Gem5Datapath(params,
+                   params->acceleratorId,
+                   params->executeStandalone,
+                   params->system),
+      dmaSetupLatency(params->dmaSetupLatency),
+      spadPort(this, params->system, params->maxDmaRequests),
+      spadMasterId(params->system->getMasterId(name() + ".spad")),
+      cachePort(this),
+      cacheMasterId(params->system->getMasterId(name() + ".cache")),
+      load_queue(params->loadQueueSize,
+                 params->loadBandwidth,
+                 params->acceleratorName + ".load_queue",
+                 params->loadQueueCacheConfig),
+      store_queue(params->storeQueueSize,
+                  params->storeBandwidth,
+                  params->acceleratorName + ".store_queue",
+                  params->storeQueueCacheConfig),
+      enable_stats_dump(params->enableStatsDump), cacheSize(params->cacheSize),
+      cacti_cfg(params->cactiCacheConfig), cacheLineSize(params->cacheLineSize),
+      cacheHitLatency(params->cacheHitLatency), cacheAssoc(params->cacheAssoc),
+      cache_readEnergy(0), cache_writeEnergy(0), cache_leakagePower(0),
+      cache_area(0), dtb(this,
+                         params->tlbEntries,
+                         params->tlbAssoc,
+                         params->tlbHitLatency,
+                         params->tlbMissLatency,
+                         params->tlbPageBytes,
+                         params->isPerfectTLB,
+                         params->numOutStandingWalks,
+                         params->tlbBandwidth,
+                         params->tlbCactiConfig,
+                         params->acceleratorName),
+      tickEvent(this), executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
 #ifdef USE_DB
@@ -110,10 +101,7 @@ void HybridDatapath::resetCounters(bool flush_tlb) {
     dtb.clear();
 }
 
-void HybridDatapath::clearDatapath() {
-  clearDatapath(false);
-}
-
+void HybridDatapath::clearDatapath() { clearDatapath(false); }
 
 void HybridDatapath::initializeDatapath(int delay) {
   buildDddg();
@@ -129,9 +117,8 @@ void HybridDatapath::startDatapathScheduling(int delay) {
   scheduleOnEventQueue(delay);
 }
 
-BaseMasterPort&
-HybridDatapath::getMasterPort(const std::string &if_name, PortID idx)
-{
+BaseMasterPort& HybridDatapath::getMasterPort(const std::string& if_name,
+                                              PortID idx) {
   // Get the right port based on name. This applies to all the
   // subclasses of the base CPU and relies on their implementation
   // of getDataPort and getInstPort. In all cases there methods
@@ -144,13 +131,8 @@ HybridDatapath::getMasterPort(const std::string &if_name, PortID idx)
     return MemObject::getMasterPort(if_name);
 }
 
-void
-HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
-{
-  DPRINTF(HybridDatapath,
-          "Mapping vaddr 0x%x -> paddr 0x%x.\n",
-          vaddr,
-          paddr);
+void HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr) {
+  DPRINTF(HybridDatapath, "Mapping vaddr 0x%x -> paddr 0x%x.\n", vaddr, paddr);
   Addr vpn = vaddr & ~(dtb.pageMask());
   Addr ppn = paddr & ~(dtb.pageMask());
   DPRINTF(
@@ -158,27 +140,23 @@ HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr)
   dtb.insertBackupTLB(vpn, ppn);
 }
 
-void
-HybridDatapath::insertArrayLabelToVirtual(std::string array_label, Addr vaddr)
-{
-  DPRINTF(
-      HybridDatapath, "Inserting array label mapping %s -> vpn 0x%x.\n",
-      array_label.c_str(), vaddr);
+void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
+                                               Addr vaddr) {
+  DPRINTF(HybridDatapath,
+          "Inserting array label mapping %s -> vpn 0x%x.\n",
+          array_label.c_str(),
+          vaddr);
   dtb.insertArrayLabelToVirtual(array_label, vaddr);
 }
 
-void
-HybridDatapath::event_step()
-{
+void HybridDatapath::event_step() {
   step();
   scratchpad->step();
   printf_guards.write_buffered_output();
   printf_guards.reset();
 }
 
-void
-HybridDatapath::stepExecutingQueue()
-{
+void HybridDatapath::stepExecutingQueue() {
   auto it = executingQueue.begin();
   int index = 0;
   while (it != executingQueue.end()) {
@@ -205,8 +183,8 @@ HybridDatapath::stepExecutingQueue()
       }
     } else if (node->is_multicycle_op()) {
       unsigned node_id = node->get_node_id();
-      if (inflight_multicycle_nodes.find(node_id)
-            == inflight_multicycle_nodes.end()) {
+      if (inflight_multicycle_nodes.find(node_id) ==
+          inflight_multicycle_nodes.end()) {
         inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
         markNodeStarted(node);
       } else {
@@ -226,22 +204,18 @@ HybridDatapath::stepExecutingQueue()
       op_satisfied = true;
     }
     if (!op_satisfied) {
-        ++it;
-        ++index;
+      ++it;
+      ++index;
     }
   }
 }
 
-void
-HybridDatapath::retireReturnedLSQEntries()
-{
+void HybridDatapath::retireReturnedLSQEntries() {
   load_queue.retireReturnedEntries();
   store_queue.retireReturnedEntries();
 }
 
-bool
-HybridDatapath::step()
-{
+bool HybridDatapath::step() {
   executedNodesLastTrigger = executedNodes;
   resetCacheCounters();
   stepExecutingQueue();
@@ -276,7 +250,7 @@ HybridDatapath::step()
     } else {
       if (enable_stats_dump) {
         std::string exit_reason =
-          DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
+            DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
         exitSimLoop(exit_reason);
       }
       sendFinishedSignal();
@@ -286,9 +260,7 @@ HybridDatapath::step()
   return false;
 }
 
-HybridDatapath::MemoryOpType
-HybridDatapath::getMemoryOpType(ExecNode* node)
-{
+HybridDatapath::MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
   std::string array_label = node->get_array_label();
   if (node->is_dma_op())
     return Dma;
@@ -300,9 +272,7 @@ HybridDatapath::getMemoryOpType(ExecNode* node)
     return Cache;
 }
 
-bool
-HybridDatapath::handleRegisterMemoryOp(ExecNode* node)
-{
+bool HybridDatapath::handleRegisterMemoryOp(ExecNode* node) {
   markNodeStarted(node);
   std::string reg = node->get_array_label();
   if (node->is_load_op())
@@ -312,9 +282,7 @@ HybridDatapath::handleRegisterMemoryOp(ExecNode* node)
   return true;
 }
 
-bool
-HybridDatapath::handleSpadMemoryOp(ExecNode* node)
-{
+bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   std::string node_part = node->get_array_label();
   bool satisfied = scratchpad->canServicePartition(node_part);
   if (!satisfied)
@@ -328,9 +296,7 @@ HybridDatapath::handleSpadMemoryOp(ExecNode* node)
   return true;
 }
 
-bool
-HybridDatapath::handleDmaMemoryOp(ExecNode* node)
-{
+bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
   MemAccessStatus status = Ready;
   unsigned node_id = node->get_node_id();
   if (inflight_mem_nodes.find(node_id) == inflight_mem_nodes.end())
@@ -338,20 +304,21 @@ HybridDatapath::handleDmaMemoryOp(ExecNode* node)
   else
     status = inflight_mem_nodes[node_id];
   if (status == Ready && inflight_mem_nodes.size() < MAX_INFLIGHT_NODES) {
-    //first time see, do access
+    // first time see, do access
     markNodeStarted(node);
     bool isLoad = node->is_dma_load();
     MemAccess* mem_access = node->get_mem_access();
-    unsigned size = mem_access->size; // mem_access->size is in bytes
+    unsigned size = mem_access->size;  // mem_access->size is in bytes
     Addr vaddr = mem_access->vaddr;
     std::string array_label = node->get_array_label();
-    DPRINTF(
-        HybridDatapath, "node:%d is a dma request with label %s\n",
-                         node->get_node_id(), array_label.c_str());
+    DPRINTF(HybridDatapath,
+            "node:%d is a dma request with label %s\n",
+            node->get_node_id(),
+            array_label.c_str());
     incrementDmaScratchpadAccesses(size, vaddr, isLoad);
     issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
     inflight_mem_nodes[node_id] = WaitingFromDma;
-    return false; // DMA op not completed. Move on to the next node.
+    return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
     inflight_mem_nodes.erase(node_id);
     return true;  // DMA op completed.
@@ -390,15 +357,18 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
       if (printf_guards.lsq_merge_count < printf_guards.threshold)
         DPRINTF(HybridDatapath,
                 "node:%d %s was merged into an existing entry.\n",
-                node_id, isLoad ? "load" : "store");
+                node_id,
+                isLoad ? "load" : "store");
       printf_guards.lsq_merge_count++;
     } else if (!queue.is_full()) {
       queue.enqueue(vaddr);
       mem_stat++;
     } else {
       if (printf_guards.lsq_full_count < printf_guards.threshold)
-        DPRINTF(HybridDatapath, "node:%d %s queue is full\n",
-                node_id, isLoad ?  "load" : "store");
+        DPRINTF(HybridDatapath,
+                "node:%d %s queue is full\n",
+                node_id,
+                isLoad ? "load" : "store");
       printf_guards.lsq_full_count++;
       return false;
     }
@@ -409,8 +379,10 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
       markNodeStarted(node);
       dtb.incrementRequestCounter();
       queue.setStatus(vaddr, Translating);
-      DPRINTF(HybridDatapath, "node:%d, vaddr = %x, is translating\n", node_id,
-      vaddr);
+      DPRINTF(HybridDatapath,
+              "node:%d, vaddr = %x, is translating\n",
+              node_id,
+              vaddr);
     } else if (!dtb.canRequestTranslation()) {
       if (printf_guards.tlb_bw_count < printf_guards.threshold)
         DPRINTF(HybridDatapath,
@@ -427,9 +399,11 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
     if (issueCacheRequest(paddr, size, isLoad, node_id, is_float, value)) {
       queue.setStatus(vaddr, WaitingFromCache);
-      DPRINTF(
-          HybridDatapath, "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
-                           node_id, vaddr, paddr);
+      DPRINTF(HybridDatapath,
+              "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
+              node_id,
+              vaddr,
+              paddr);
     }
     return false;
   } else if (inflight_mem_op == Returned) {
@@ -442,9 +416,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 }
 
 /* Mark the DMA request node as having completed. */
-void
-HybridDatapath::completeDmaRequest(unsigned node_id)
-{
+void HybridDatapath::completeDmaRequest(unsigned node_id) {
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
           exec_nodes[node_id]->get_mem_access()->vaddr);
@@ -452,87 +424,74 @@ HybridDatapath::completeDmaRequest(unsigned node_id)
 }
 
 // Issue a DMA request for memory.
-void
-HybridDatapath::issueDmaRequest(
-    Addr addr, unsigned size, bool isLoad, unsigned node_id)
-{
+void HybridDatapath::issueDmaRequest(Addr addr,
+                                     unsigned size,
+                                     bool isLoad,
+                                     unsigned node_id) {
   DPRINTF(
       HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", addr, size);
   addr &= ADDR_MASK;
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
-  uint8_t *data = new uint8_t[size];
+  uint8_t* data = new uint8_t[size];
   dmaQueue.push_back(node_id);
-  DmaEvent *dma_event = new DmaEvent(this);
+  DmaEvent* dma_event = new DmaEvent(this);
   spadPort.dmaAction(
       cmd, addr, size, dma_event, data, Cycles(dmaSetupLatency), flag);
 }
 
-void
-HybridDatapath::sendFinishedSignal()
-{
+void HybridDatapath::sendFinishedSignal() {
   Flags<Packet::FlagsType> flags = 0;
   size_t size = 4;  // 32 bit integer.
-  uint8_t *data = new uint8_t[size];
+  uint8_t* data = new uint8_t[size];
   // Set some sentinel value.
   for (int i = 0; i < size; i++)
     data[i] = 0x01;
-  Request *req = new Request(finish_flag, size, flags, getCacheMasterId());
+  Request* req = new Request(finish_flag, size, flags, getCacheMasterId());
   req->setThreadContext(context_id, thread_id);  // Only needed for prefetching.
   MemCmd::Command cmd = MemCmd::WriteReq;
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);
-  DatapathSenderState *state = new DatapathSenderState(-1, true);
+  DatapathSenderState* state = new DatapathSenderState(-1, true);
   pkt->senderState = state;
 
-  if (!cachePort.sendTimingReq(pkt))
-  {
+  if (!cachePort.sendTimingReq(pkt)) {
     assert(retryPkt == NULL);
     retryPkt = pkt;
     isCacheBlocked = true;
-    DPRINTF(HybridDatapath,
-            "Sending finished signal failed, retrying.\n");
-  }
-  else
-  {
+    DPRINTF(HybridDatapath, "Sending finished signal failed, retrying.\n");
+  } else {
     DPRINTF(HybridDatapath, "Sent finished signal.\n");
   }
 }
 
-void
-HybridDatapath::CachePort::recvRetry()
-{
+void HybridDatapath::CachePort::recvRetry() {
   DPRINTF(HybridDatapath, "recvRetry for addr:");
   assert(datapath->isCacheBlocked && datapath->retryPkt != NULL);
 
-  DatapathSenderState *state = dynamic_cast<DatapathSenderState*>(
-      datapath->retryPkt->senderState);
-  if (!state->is_ctrl_signal)
-  {
+  DatapathSenderState* state =
+      dynamic_cast<DatapathSenderState*>(datapath->retryPkt->senderState);
+  if (!state->is_ctrl_signal) {
     /* A retry constitutes a read of the load/store queues. This code must be
      * executed first, before the retryPkt is nullified. However, this only
      * applies if the access was not a control signal access.
      */
     if (datapath->retryPkt->cmd == MemCmd::ReadReq)
-      datapath->load_queue.readStats ++;
+      datapath->load_queue.readStats++;
     else if (datapath->retryPkt->cmd == MemCmd::WriteReq)
-      datapath->store_queue.readStats ++;
+      datapath->store_queue.readStats++;
   }
 
   DPRINTF(HybridDatapath, "%#x \n", datapath->retryPkt->getAddr());
-  if (datapath->cachePort.sendTimingReq(datapath->retryPkt))
-  {
+  if (datapath->cachePort.sendTimingReq(datapath->retryPkt)) {
     DPRINTF(HybridDatapath, "Retry pass!\n");
     datapath->retryPkt = NULL;
     datapath->isCacheBlocked = false;
-  }
-  else
+  } else
     DPRINTF(HybridDatapath, "Still blocked!\n");
 }
 
-bool
-HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt)
-{
+bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath,
           "recvTimingResp for address: %#x %s\n",
           pkt->getAddr(),
@@ -557,16 +516,15 @@ HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt)
   return true;
 }
 
-bool
-HybridDatapath::issueTLBRequest(Addr addr,
-                                unsigned size,
-                                bool isLoad,
-                                unsigned node_id) {
+bool HybridDatapath::issueTLBRequest(Addr addr,
+                                     unsigned size,
+                                     bool isLoad,
+                                     unsigned node_id) {
   DPRINTF(HybridDatapath, "issueTLBRequest for trace addr:%#x\n", addr);
-  Request *req = NULL;
+  Request* req = NULL;
   Flags<Packet::FlagsType> flags = 0;
   // Constructor for physical request only
-  req = new Request (addr, size, flags, getCacheMasterId());
+  req = new Request(addr, size, flags, getCacheMasterId());
 
   MemCmd command;
   if (isLoad)
@@ -579,14 +537,13 @@ HybridDatapath::issueTLBRequest(Addr addr,
   *translation = 0x0;  // Signifies no translation.
   data_pkt->dataStatic<Addr>(translation);
 
-  AladdinTLB::TLBSenderState *state = new AladdinTLB::TLBSenderState(node_id);
+  AladdinTLB::TLBSenderState* state = new AladdinTLB::TLBSenderState(node_id);
   data_pkt->senderState = state;
 
-  //TLB access
+  // TLB access
   if (dtb.translateTiming(data_pkt))
     return true;
-  else
-  {
+  else {
     data_pkt->deleteData();
     delete state;
     delete data_pkt->req;
@@ -595,10 +552,8 @@ HybridDatapath::issueTLBRequest(Addr addr,
   }
 }
 
-void
-HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
-{
-  AladdinTLB::TLBSenderState *state =
+void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
+  AladdinTLB::TLBSenderState* state =
       dynamic_cast<AladdinTLB::TLBSenderState*>(pkt->senderState);
   DPRINTF(HybridDatapath,
           "completeTLBRequest for addr:%#x %s\n",
@@ -607,9 +562,8 @@ HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
   Addr vaddr = pkt->getAddr();
   unsigned node_id = state->node_id;
   ExecNode* node = exec_nodes[node_id];
-  MemoryQueue& queue = node->is_load_op() ? load_queue: store_queue;
-  assert(queue.contains(vaddr) &&
-         queue.getStatus(vaddr) == Translating);
+  MemoryQueue& queue = node->is_load_op() ? load_queue : store_queue;
+  assert(queue.contains(vaddr) && queue.getStatus(vaddr) == Translating);
 
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
    * state may have changed during the waiting time, so we go back to Ready
@@ -625,8 +579,11 @@ HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss)
     mem_access->paddr = paddr;
     queue.setStatus(vaddr, Translated);
     queue.setPhysicalAddress(vaddr, paddr);
-    DPRINTF(HybridDatapath, "node:%d was translated, vaddr = %x, paddr = %x\n",
-                             node_id, vaddr, paddr);
+    DPRINTF(HybridDatapath,
+            "node:%d was translated, vaddr = %x, paddr = %x\n",
+            node_id,
+            vaddr,
+            paddr);
   }
   delete state;
   delete pkt->req;
@@ -644,8 +601,8 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
                           (!isLoad && store_queue.can_issue());
   if (!queues_available) {
     if (printf_guards.lsq_ports_count < printf_guards.threshold)
-      DPRINTF(HybridDatapath,
-              "Load/store queues have no more ports available.\n");
+      DPRINTF(
+          HybridDatapath, "Load/store queues have no more ports available.\n");
     printf_guards.lsq_ports_count++;
     return false;
   }
@@ -679,12 +636,12 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   req->setThreadContext(context_id, thread_id);
 
   MemCmd command;
-  uint8_t *data;
+  uint8_t* data;
   /* Convert the current value in double to its original type (int or float). */
-  if (size == 8 ) {
+  if (size == 8) {
     data = new uint8_t[8];
     if (!is_float) {
-      int true_value = (long long int) value;
+      int true_value = (long long int)value;
       memcpy(data, &true_value, 8);
     } else {
       memcpy(data, &value, 8);
@@ -692,10 +649,10 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   } else {
     data = new uint8_t[4];
     if (!is_float) {
-      int true_value = (int) value;
+      int true_value = (int)value;
       memcpy(data, &true_value, 4);
     } else {
-      float tmp_value = (float) value;
+      float tmp_value = (float)value;
       memcpy(data, &tmp_value, 4);
     }
   }
@@ -707,7 +664,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
   PacketPtr data_pkt = new Packet(req, command);
   data_pkt->dataStatic(data);
 
-  DatapathSenderState *state = new DatapathSenderState(node_id);
+  DatapathSenderState* state = new DatapathSenderState(node_id);
   data_pkt->senderState = state;
 
   if (!cachePort.sendTimingReq(data_pkt)) {
@@ -741,9 +698,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
  * care about the dynamic data returned by a load. We only care that a store
  * successfully writes the value into the cache.
  */
-void
-HybridDatapath::completeCacheRequest(PacketPtr pkt)
-{
+void HybridDatapath::completeCacheRequest(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
@@ -776,58 +731,46 @@ HybridDatapath::completeCacheRequest(PacketPtr pkt)
   delete pkt;
 }
 
-bool
-HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt)
-{
+bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   return DmaPort::recvTimingResp(pkt);
 }
 
-HybridDatapath::DmaEvent::DmaEvent(HybridDatapath *_dpath)
-  : Event(Default_Pri, AutoDelete), datapath(_dpath) {}
+HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath)
+    : Event(Default_Pri, AutoDelete), datapath(_dpath) {}
 
-void
-HybridDatapath::DmaEvent::process()
-{
+void HybridDatapath::DmaEvent::process() {
   assert(!datapath->dmaQueue.empty());
   datapath->completeDmaRequest(datapath->dmaQueue.front());
   datapath->dmaQueue.pop_front();
 }
 
-const char*
-HybridDatapath::DmaEvent::description() const
-{
+const char* HybridDatapath::DmaEvent::description() const {
   return "Hybrid DMA datapath receving request event";
 }
 
-void
-HybridDatapath::resetCacheCounters()
-{
+void HybridDatapath::resetCacheCounters() {
   load_queue.issued_this_cycle = 0;
   store_queue.issued_this_cycle = 0;
   dtb.resetRequestCounter();
 }
 
-void
-HybridDatapath::registerStats()
-{
+void HybridDatapath::registerStats() {
   using namespace Stats;
   loads.name(datapath_name + "_total_loads")
-       .desc("Total number of dcache loads")
-       .flags(total | nonan);
+      .desc("Total number of dcache loads")
+      .flags(total | nonan);
   stores.name(datapath_name + "_total_stores")
-        .desc("Total number of dcache stores.")
-        .flags(total | nonan);
+      .desc("Total number of dcache stores.")
+      .flags(total | nonan);
 }
 
 #ifdef USE_DB
-int
-HybridDatapath::writeConfiguration(sql::Connection *con)
-{
+int HybridDatapath::writeConfiguration(sql::Connection* con) {
   int unrolling_factor, partition_factor;
   bool pipelining;
   getCommonConfigParameters(unrolling_factor, pipelining, partition_factor);
 
-  sql::Statement *stmt = con->createStatement();
+  sql::Statement* stmt = con->createStatement();
   stringstream query;
   query << "insert into configs (id, memory_type, trace_file, "
            "config_file, pipelining, unrolling, partitioning, "
@@ -858,13 +801,12 @@ HybridDatapath::writeConfiguration(sql::Connection *con)
 }
 #endif
 
-void HybridDatapath::computeCactiResults()
-{
+void HybridDatapath::computeCactiResults() {
   // If no caches wer used, then we don't need to invoke CACTI.
   if (cacti_cfg.empty())
     return;
-  DPRINTF(HybridDatapath,
-          "Invoking CACTI for cache power and area estimates.\n");
+  DPRINTF(
+      HybridDatapath, "Invoking CACTI for cache power and area estimates.\n");
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
   // power in mW, energy in pJ, area in mm2
   cache_readEnergy = cacti_result.power.readOp.dynamic * 1e12;
@@ -878,10 +820,10 @@ void HybridDatapath::computeCactiResults()
   cacti_result.cleanup();
 }
 
-void
-HybridDatapath::getAverageMemPower(
-    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
-{
+void HybridDatapath::getAverageMemPower(unsigned int cycles,
+                                        float* avg_power,
+                                        float* avg_dynamic,
+                                        float* avg_leak) {
   float cache_avg_power = 0, cache_avg_dynamic = 0, cache_avg_leak = 0;
   float spad_avg_power = 0, spad_avg_dynamic = 0, spad_avg_leak = 0;
   computeCactiResults();
@@ -894,10 +836,10 @@ HybridDatapath::getAverageMemPower(
   *avg_leak = cache_avg_leak + spad_avg_leak;
 }
 
-void
-HybridDatapath::getAverageCachePower(
-    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
-{
+void HybridDatapath::getAverageCachePower(unsigned int cycles,
+                                          float* avg_power,
+                                          float* avg_dynamic,
+                                          float* avg_leak) {
   float avg_cache_pwr, avg_cache_leak, avg_cache_ac_pwr;
   float avg_lq_pwr, avg_lq_leak, avg_lq_ac_pwr;
   float avg_sq_pwr, avg_sq_leak, avg_sq_ac_pwr;
@@ -939,8 +881,8 @@ HybridDatapath::getAverageCachePower(
              << " # Average tlb dynamic power." << std::endl;
   power_file << "system.datapath.tlb.leakage_pwr " << avg_tlb_leak
              << " # Average tlb leakage power." << std::endl;
-  power_file << "system.datapath.tlb.area " << dtb.getArea()
-             << " # tlb area." << std::endl;
+  power_file << "system.datapath.tlb.area " << dtb.getArea() << " # tlb area."
+             << std::endl;
 
   power_file << "system.datapath.load_queue.average_pwr " << avg_lq_pwr
              << " # Average load queue dynamic and leakage power." << std::endl;
@@ -952,7 +894,8 @@ HybridDatapath::getAverageCachePower(
              << " # load_queue area." << std::endl;
 
   power_file << "system.datapath.store_queue.average_pwr " << avg_sq_pwr
-             << " # Average store queue dynamic and leakage power." << std::endl;
+             << " # Average store queue dynamic and leakage power."
+             << std::endl;
   power_file << "system.datapath.store_queue.dynamic_pwr " << avg_sq_ac_pwr
              << " # Average store queue dynamic power." << std::endl;
   power_file << "system.datapath.store_queue.leakage_pwr " << avg_sq_leak
@@ -963,16 +906,14 @@ HybridDatapath::getAverageCachePower(
   power_file.close();
 }
 
-void
-HybridDatapath::getAverageSpadPower(
-    unsigned int cycles, float *avg_power, float *avg_dynamic, float *avg_leak)
-{
+void HybridDatapath::getAverageSpadPower(unsigned int cycles,
+                                         float* avg_power,
+                                         float* avg_dynamic,
+                                         float* avg_leak) {
   scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
 }
 
-double
-HybridDatapath::getTotalMemArea()
-{
+double HybridDatapath::getTotalMemArea() {
   return scratchpad->getTotalArea() + cache_area;
 }
 
@@ -980,66 +921,65 @@ void HybridDatapath::getMemoryBlocks(std::vector<std::string>& names) {}
 
 void HybridDatapath::getRegisterBlocks(std::vector<std::string>& names) {}
 
-Addr
-HybridDatapath::getBaseAddress(std::string label)
-{
-  return (Addr) BaseDatapath::getBaseAddress(label);
+Addr HybridDatapath::getBaseAddress(std::string label) {
+  return (Addr)BaseDatapath::getBaseAddress(label);
 }
 
 // Increment the scratchpad load/store counters based on DMA transfer size.
-void HybridDatapath::incrementDmaScratchpadAccesses(
-    unsigned dma_size, Addr base_addr, bool is_dma_load) {
-void HybridDatapath::incrementScratchpadAccessesFromDma(unsigned size,
-  Addr base_addr, bool is_dma_load) {
-  auto part_it = partition_config.begin();
-  std::string array_label;
-  for (; part_it != partition_config.end(); ++part_it) {
-    if (part_it->second.base_addr == base_addr) {
-      array_label = part_it->first;
-      break;
+void HybridDatapath::incrementDmaScratchpadAccesses(unsigned dma_size,
+                                                    Addr base_addr,
+                                                    bool is_dma_load) {
+  void HybridDatapath::incrementScratchpadAccessesFromDma(
+      unsigned size, Addr base_addr, bool is_dma_load) {
+    auto part_it = partition_config.begin();
+    std::string array_label;
+    for (; part_it != partition_config.end(); ++part_it) {
+      if (part_it->second.base_addr == base_addr) {
+        array_label = part_it->first;
+        break;
+      }
+    }
+    // If the array label is not found, abort the simulation.
+    if (array_label.empty()) {
+      std::cerr << "Unknown DMA target with address %x\n" << base_addr
+                << " with size " << dma_size << std::endl;
+      exit(-1);
+    }
+    DPRINTF(
+        HybridDatapath, "DMA Accesses: array label %s\n", array_label.c_str());
+    assert(part_it != partition_config.end());
+    unsigned p_factor = part_it->second.part_factor;
+    unsigned wordsize = part_it->second.wordsize;
+    unsigned num_accesses_per_partition = dma_size / p_factor / wordsize;
+    if (is_dma_load) {
+      for (unsigned i = 0; i < p_factor; i++) {
+        std::ostringstream oss;
+        oss << array_label << "-" << i;
+        DPRINTF(HybridDatapath,
+                "Increment the dmaLoad accesses of partition %s by %d. \n",
+                oss.str(),
+                num_accesses_per_partition);
+        scratchpad->increment_dma_loads(oss.str(), num_accesses_per_partition);
+      }
+    } else {
+      for (unsigned i = 0; i < p_factor; i++) {
+        std::ostringstream oss;
+        oss << array_label << "-" << i;
+        DPRINTF(HybridDatapath,
+                "Increment the dmaStore accesses of partition %s by %d. \n",
+                oss.str(),
+                num_accesses_per_partition);
+        scratchpad->increment_dma_stores(oss.str(), num_accesses_per_partition);
+      }
     }
   }
-  // If the array label is not found, abort the simulation.
-  if (array_label.empty()) {
-    std::cerr << "Unknown DMA target with address %x\n" << base_addr
-              << " with size " << dma_size << std::endl;
-    exit(-1);
-  }
-  DPRINTF(HybridDatapath, "DMA Accesses: array label %s\n",
-                           array_label.c_str());
-  assert(part_it != partition_config.end());
-  unsigned p_factor = part_it->second.part_factor;
-  unsigned wordsize = part_it->second.wordsize;
-  unsigned num_accesses_per_partition = dma_size / p_factor / wordsize;
-  if (is_dma_load) {
-    for (unsigned i = 0; i < p_factor; i++) {
-      std::ostringstream oss;
-      oss << array_label << "-" << i;
-      DPRINTF(HybridDatapath,
-              "Increment the dmaLoad accesses of partition %s by %d. \n",
-              oss.str(), num_accesses_per_partition);
-      scratchpad->increment_dma_loads(oss.str(), num_accesses_per_partition);
-    }
-  } else {
-    for (unsigned i = 0; i < p_factor; i++) {
-      std::ostringstream oss;
-      oss << array_label << "-" << i;
-      DPRINTF(HybridDatapath,
-              "Increment the dmaStore accesses of partition %s by %d. \n",
-              oss.str(), num_accesses_per_partition);
-      scratchpad->increment_dma_stores(oss.str(), num_accesses_per_partition);
-    }
-  }
-}
 
-////////////////////////////////////////////////////////////////////////////
-//
-//  The SimObjects we use to get the Datapath information into the simulator
-//
-////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  //  The SimObjects we use to get the Datapath information into the simulator
+  //
+  ////////////////////////////////////////////////////////////////////////////
 
-HybridDatapath*
-HybridDatapathParams::create()
-{
-  return new HybridDatapath(this);
-}
+  HybridDatapath* HybridDatapathParams::create() {
+    return new HybridDatapath(this);
+  }

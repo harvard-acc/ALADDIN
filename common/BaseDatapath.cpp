@@ -31,9 +31,7 @@ BaseDatapath::BaseDatapath(std::string bench,
     perror("Failed to delete the old summary file");
 }
 
-BaseDatapath::~BaseDatapath() {
-  gzclose(trace_file);
-}
+BaseDatapath::~BaseDatapath() { gzclose(trace_file); }
 
 void BaseDatapath::buildDddg() {
   DDDG* dddg;
@@ -434,9 +432,9 @@ void BaseDatapath::loopPipelining() {
       // check whether the previous branch is the same loop or not
       if (prev_branch_n != nullptr) {
         if ((br_node->get_line_num() == prev_branch_n->get_line_num()) &&
-                   (br_node->get_static_method().compare(
-                    prev_branch_n->get_static_method()) == 0) &&
-             first_node->get_line_num() == prev_first_n->get_line_num()) {
+            (br_node->get_static_method().compare(
+                 prev_branch_n->get_static_method()) == 0) &&
+            first_node->get_line_num() == prev_first_n->get_line_num()) {
           found = true;
         }
       }
@@ -540,7 +538,7 @@ void BaseDatapath::loopUnrolling() {
       prev_branch = node;
     }
     assert(prev_branch != nullptr);
-    if (prev_branch != node ) {
+    if (prev_branch != node) {
       if (prev_branch->is_dma_op() && node->is_dma_op()) {
         /* If there are a group of consecutive DMA operations, we find the last
          * DMA node of the group. For instructions after the DMA group, we only
@@ -1195,7 +1193,8 @@ void BaseDatapath::updatePerCycleActivity(
       for (unsigned stage = 0;
            node_level + stage < node->get_complete_execution_cycle();
            stage++) {
-        funcActivity& fp_fu_activity = func_activity[func_id].at(node_level + stage);
+        funcActivity& fp_fu_activity =
+            func_activity[func_id].at(node_level + stage);
         /* Activity for floating point functional units includes all their
          * stages.*/
         if (node->is_fp_add_op()) {
@@ -1682,7 +1681,8 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
     vertexToMicroop[v] =
         exec_nodes[get(boost::vertex_index, graph_, v)]->get_microop();
   }
-  std::ofstream out(graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
+  std::ofstream out(
+      graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
   write_graphviz(out, graph_, make_microop_label_writer(vertexToMicroop));
 }
 

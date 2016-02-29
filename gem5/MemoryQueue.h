@@ -24,7 +24,7 @@ enum MemAccessStatus {
 
 struct MemoryQueueEntry {
   MemAccessStatus status;  // Current status of the request.
-  Addr paddr;  // Physical address, returned by the TLB.
+  Addr paddr;              // Physical address, returned by the TLB.
 
   MemoryQueueEntry() {
     status = Ready;
@@ -41,8 +41,8 @@ class MemoryQueue {
               int _bandwidth,
               std::string _name,
               std::string _cacti_config)
-      : size(_size), bandwidth(_bandwidth), issued_this_cycle(0),
-        name(_name), cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
+      : size(_size), bandwidth(_bandwidth), issued_this_cycle(0), name(_name),
+        cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
         leakagePower(0), area(0) {
     readStats.name(name + "_reads")
         .desc("Number of reads to the " + name)
@@ -54,18 +54,12 @@ class MemoryQueue {
 
   /* Returns true if we have not exceeded the cache's bandwidth.
    */
-  bool can_issue() {
-    return (issued_this_cycle < bandwidth);
-  }
+  bool can_issue() { return (issued_this_cycle < bandwidth); }
 
   /* Returns true if the queue already contains an entry for this address. */
-  bool contains(Addr vaddr) {
-    return (queue.find(vaddr) != queue.end());
-  }
+  bool contains(Addr vaddr) { return (queue.find(vaddr) != queue.end()); }
 
-  bool is_full() {
-    return (queue.size() == size);
-  }
+  bool is_full() { return (queue.size() == size); }
 
   bool enqueue(Addr vaddr) {
     if (!contains(vaddr) && !is_full()) {
@@ -75,18 +69,14 @@ class MemoryQueue {
     return false;
   }
 
-  void dequeue(Addr vaddr) {
-    queue.erase(vaddr);
-  }
+  void dequeue(Addr vaddr) { queue.erase(vaddr); }
 
   void setStatus(Addr vaddr, MemAccessStatus status) {
     assert(contains(vaddr));
     queue[vaddr].status = status;
   }
 
-  MemAccessStatus getStatus(Addr vaddr) {
-    return queue[vaddr].status;
-  }
+  MemAccessStatus getStatus(Addr vaddr) { return queue[vaddr].status; }
 
   void setPhysicalAddress(Addr vaddr, Addr paddr) {
     queue[vaddr].paddr = paddr;

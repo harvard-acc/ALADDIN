@@ -128,8 +128,7 @@ struct summary_data_t {
  * with this map. The micro-op is not a Boost property of the Vertex, which is
  * why the Boost-supplied label writer class is insufficient.
  */
-template <class Map>
-class microop_label_writer {
+template <class Map> class microop_label_writer {
  public:
   microop_label_writer(Map _vertexToMicroop)
       : vertexToMicroop(_vertexToMicroop) {}
@@ -142,14 +141,14 @@ class microop_label_writer {
 };
 
 template <class Map>
-inline microop_label_writer<Map>
-make_microop_label_writer(Map map) {
+inline microop_label_writer<Map> make_microop_label_writer(Map map) {
   return microop_label_writer<Map>(map);
 }
 
 class BaseDatapath {
  public:
-  BaseDatapath(std::string bench, std::string trace_file_name,
+  BaseDatapath(std::string bench,
+               std::string trace_file_name,
                std::string config_file);
   virtual ~BaseDatapath();
 
@@ -228,12 +227,12 @@ class BaseDatapath {
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
     for (auto part_it = partition_config.begin();
-              part_it != partition_config.end(); ++part_it)
+         part_it != partition_config.end();
+         ++part_it)
       part_it->second.base_addr = 0;
   }
   void clearLoopBound() { loopBound.clear(); }
   void clearRegStats() { regStats.clear(); }
-
 
   // Graph optimizations.
   void removeInductionDependence();

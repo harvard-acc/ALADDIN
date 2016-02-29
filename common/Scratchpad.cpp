@@ -103,7 +103,7 @@ float Scratchpad::getTotalArea() {
 
 void Scratchpad::getMemoryBlocks(std::vector<std::string>& names) {
   for (auto it = partitions.begin(); it != partitions.end(); ++it) {
-      names.push_back(it->first);
+    names.push_back(it->first);
   }
 }
 void Scratchpad::increment_loads(std::string partition) {

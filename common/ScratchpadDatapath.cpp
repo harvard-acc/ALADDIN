@@ -219,8 +219,8 @@ void ScratchpadDatapath::stepExecutingQueue() {
       }
     } else if (node->is_multicycle_op()) {
       unsigned node_id = node->get_node_id();
-      if (inflight_multicycle_nodes.find(node_id)
-            == inflight_multicycle_nodes.end()) {
+      if (inflight_multicycle_nodes.find(node_id) ==
+          inflight_multicycle_nodes.end()) {
         inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
         markNodeStarted(node);
       } else {

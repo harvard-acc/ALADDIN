@@ -109,7 +109,8 @@ class ExecNode {
   }
   void set_array_label(std::string label) { array_label = label; }
   void set_mem_access(long long int vaddr,
-                      size_t size_in_bytes, bool is_float = false,
+                      size_t size_in_bytes,
+                      bool is_float = false,
                       double value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
@@ -370,9 +371,7 @@ class ExecNode {
     }
   }
 
-  bool is_multicycle_op() {
-    return is_fp_op();
-  }
+  bool is_multicycle_op() { return is_fp_op(); }
 
   bool is_fp_op() {
     switch (microop) {

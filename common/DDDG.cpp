@@ -1,8 +1,7 @@
 #include "DDDG.h"
 #include "BaseDatapath.h"
 
-DDDG::DDDG(BaseDatapath* _datapath)
-    : datapath(_datapath) {
+DDDG::DDDG(BaseDatapath* _datapath) : datapath(_datapath) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_instructions = -1;
@@ -126,7 +125,12 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       return;
     }
   } else {
-    sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
+    sscanf(line.c_str(),
+           "%d,%[^,],%d,%[^,],\n",
+           &size,
+           char_value,
+           &is_reg,
+           label);
   }
   bool is_float = false;
   std::string tmp_value(char_value);
@@ -176,7 +180,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     parameter_label_per_inst.push_back(label);
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
-      long long int mem_address = (long long int) parameter_value_per_inst.back();
+      long long int mem_address =
+          (long long int)parameter_value_per_inst.back();
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
         unsigned source_inst = addr_it->second;
@@ -199,7 +204,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
           num_of_mem_dep++;
         }
       }
-      long long int base_address = (long long int) parameter_value_per_inst.back();
+      long long int base_address =
+          (long long int)parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
@@ -257,10 +263,11 @@ void DDDG::parse_result(std::string line) {
     datapath->addArrayBaseAddress(label, (long long int)value);
   } else if (curr_microop == LLVM_IR_Load) {
     long long int mem_address = parameter_value_per_inst.back();
-    curr_node->set_mem_access(mem_address, size / BYTE_SIZE, (long long int)value);
+    curr_node->set_mem_access(
+        mem_address, size / BYTE_SIZE, (long long int)value);
   } else if (curr_node->is_dma_op()) {
     long long int mem_address = parameter_value_per_inst[1];
-    unsigned mem_size = (unsigned) parameter_value_per_inst[2] / BYTE_SIZE;
+    unsigned mem_size = (unsigned)parameter_value_per_inst[2] / BYTE_SIZE;
     curr_node->set_mem_access(mem_address, mem_size);
   }
 }
@@ -319,8 +326,8 @@ bool DDDG::is_function_returned(std::string line, std::string target_function) {
          &microop,
          &dyn_inst_count);
   if (microop == LLVM_IR_Ret &&
-      (!target_function.compare(curr_static_function)) )
-      return true;
+      (!target_function.compare(curr_static_function)))
+    return true;
   return false;
 }
 
@@ -353,8 +360,7 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
         seen_first_line = true;
         first_function = parse_function_name(line_left);
       }
-      first_function_returned =
-        is_function_returned(line_left, first_function);
+      first_function_returned = is_function_returned(line_left, first_function);
       parse_instruction_line(line_left);
     } else if (tag.compare("r") == 0) {
       parse_result(line_left);
@@ -364,7 +370,6 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
       parse_parameter(line_left, atoi(tag.c_str()));
     }
   }
-
 
   output_dddg();
 

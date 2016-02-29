@@ -22,7 +22,7 @@ void invokeAcceleratorAndBlock(unsigned req_code) {
 }
 
 int* invokeAcceleratorAndReturn(unsigned req_code) {
-  int* finish_flag = (int*) malloc(sizeof(int));
+  int* finish_flag = (int*)malloc(sizeof(int));
   *finish_flag = NOT_COMPLETED;
   ioctl(ALADDIN_FD, req_code, finish_flag);
   return finish_flag;
@@ -32,12 +32,12 @@ void dumpGem5Stats(char* stats_desc) {
   ioctl(ALADDIN_FD, DUMP_STATS, stats_desc);
 }
 
-void resetGem5Stats() {
-  ioctl(ALADDIN_FD, RESET_STATS, NULL);
-}
+void resetGem5Stats() { ioctl(ALADDIN_FD, RESET_STATS, NULL); }
 
-void mapArrayToAccelerator(
-    unsigned req_code, const char* array_name, void* addr, size_t size) {
+void mapArrayToAccelerator(unsigned req_code,
+                           const char* array_name,
+                           void* addr,
+                           size_t size) {
   // Create the mapping struct to pass to the simulator.
   aladdin_map_t mapping;
   mapping.array_name = array_name;
