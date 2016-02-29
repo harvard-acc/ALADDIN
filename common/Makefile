@@ -6,7 +6,8 @@
 .PHONY: all clean
 EXE = aladdin
 
-MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o Registers.o
+MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
+                     Registers.o
 UTILS_OBJS = file_func.o generic_func.o power_func.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)

@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <iostream>
+#include "cacti-p/io.h"
+#include "cacti-p/cacti_interface.h"
 
 #define SINGLE_PORT_SPAD 1
 
@@ -500,4 +502,6 @@ void getDoublePrecisionFloatingPointMultiplierPowerArea(float cycle_time,
                                                         float* switch_power,
                                                         float* leakage_power,
                                                         float* area);
+/* Access cacti_interface() to calculate power/area. */
+uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 #endif

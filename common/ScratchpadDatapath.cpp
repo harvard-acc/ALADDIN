@@ -119,16 +119,16 @@ void ScratchpadDatapath::scratchpadPartition() {
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
+    uint64_t base_addr = getBaseAddress(array_label);
     unsigned size = part_it->second.array_size;  // num of bytes
     unsigned p_factor = part_it->second.part_factor;
     unsigned wordsize = part_it->second.wordsize;  // in bytes
-    unsigned per_size = ceil(((float)size) / p_factor);
 
-    for (unsigned i = 0; i < p_factor; i++) {
-      std::ostringstream oss;
-      oss << array_label << "-" << i;
-      scratchpad->setScratchpad(oss.str(), per_size, wordsize);
-    }
+    PartitionType part_type = cyclic;
+    if (!p_type.compare("block"))
+      part_type = block;
+    scratchpad->setScratchpad(
+        array_label, base_addr, part_type, p_factor, size, wordsize);
   }
   if (!spad_partition)
     return;
@@ -141,7 +141,7 @@ void ScratchpadDatapath::scratchpadPartition() {
     if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
     std::string base_label = node->get_array_label();
-    long long int base_addr = getBaseAddress(base_label);
+    uint64_t base_addr = getBaseAddress(base_label);
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
@@ -158,19 +158,16 @@ void ScratchpadDatapath::scratchpadPartition() {
       unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
+      unsigned part_index = 0;
       if (!p_type.compare("block")) {
         /* block partition */
-        std::ostringstream oss;
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
-        oss << base_label << "-"
-            << (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
-        node->set_array_label(oss.str());
+        part_index = (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
       } else {
         /* cyclic partition */
-        std::ostringstream oss;
-        oss << base_label << "-" << (rel_addr) % p_factor;
-        node->set_array_label(oss.str());
+        part_index = (rel_addr) % p_factor;
       }
+      node->set_partition_index(part_index);
     }
   }
 #ifdef DEBUG
@@ -195,22 +192,23 @@ void ScratchpadDatapath::stepExecutingQueue() {
     ExecNode* node = *it;
     bool executed = false;
     if (node->is_memory_op()) {
-      std::string node_part = node->get_array_label();
-      if (registers.has(node_part)) {
+      std::string array_name = node->get_array_label();
+      unsigned node_part_index = node->get_partition_index();
+      if (registers.has(array_name)) {
         markNodeStarted(node);
         if (node->is_load_op())
-          registers.getRegister(node_part)->increment_loads();
+          registers.getRegister(array_name)->increment_loads();
         else
-          registers.getRegister(node_part)->increment_stores();
+          registers.getRegister(array_name)->increment_stores();
         markNodeCompleted(it, index);
         executed = true;
       } else if (scratchpadCanService) {
-        if (scratchpad->canServicePartition(node_part)) {
+        if (scratchpad->canServicePartition(array_name, node_part_index)) {
           markNodeStarted(node);
           if (node->is_load_op())
-            scratchpad->increment_loads(node_part);
+            scratchpad->increment_loads(array_name, node_part_index);
           else
-            scratchpad->increment_stores(node_part);
+            scratchpad->increment_stores(array_name, node_part_index);
           markNodeCompleted(it, index);
           executed = true;
         } else {

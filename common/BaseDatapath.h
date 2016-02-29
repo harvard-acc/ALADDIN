@@ -178,6 +178,9 @@ class BaseDatapath {
   std::string getBaseAddressLabel(unsigned int node_id) {
     return exec_nodes[node_id]->get_array_label();
   }
+  unsigned getPartitionIndex(unsigned int node_id) {
+    return exec_nodes[node_id]->get_partition_index();
+  }
   long long int getBaseAddress(std::string label) {
     return partition_config[label].base_addr;
   }

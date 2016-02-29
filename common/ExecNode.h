@@ -42,8 +42,8 @@ class ExecNode {
         basic_block_id(""), inst_id(""), line_num(-1), start_execution_cycle(0),
         complete_execution_cycle(0), num_parents(0), isolated(true),
         inductive(false), dynamic_mem_op(false), double_precision(false),
-        array_label(""), time_before_execution(0.0), mem_access(nullptr),
-        vertex_assigned(false) {}
+        array_label(""), partition_index(0), time_before_execution(0.0),
+        mem_access(nullptr), vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -79,6 +79,7 @@ class ExecNode {
   bool is_double_precision() { return double_precision; }
   bool has_vertex() { return vertex_assigned; }
   std::string get_array_label() { return array_label; }
+  unsigned get_partition_index() { return partition_index; }
   bool has_array_label() { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }
   float get_time_before_execution() { return time_before_execution; }
@@ -108,6 +109,7 @@ class ExecNode {
     this->double_precision = double_precision;
   }
   void set_array_label(std::string label) { array_label = label; }
+  void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(long long int vaddr,
                       size_t size_in_bytes,
                       bool is_float = false,
@@ -450,6 +452,8 @@ class ExecNode {
   bool double_precision;
   /* Name of the array being accessed if this is a memory operation. */
   std::string array_label;
+  /* Index of the partitioned scratchpad being accessed. */
+  unsigned partition_index;
   /* Elapsed time before this node executes. Can be a fraction of a cycle.
    * TODO: Maybe refactor this so it's only part of ScratchpadDatapath
    * specifically. Something like a member class that can be extended.

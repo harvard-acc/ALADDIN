@@ -283,16 +283,17 @@ bool HybridDatapath::handleRegisterMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
-  std::string node_part = node->get_array_label();
-  bool satisfied = scratchpad->canServicePartition(node_part);
+  std::string array_name = node->get_array_label();
+  unsigned array_name_index = node->get_partition_index();
+  bool satisfied = scratchpad->canServicePartition(array_name, array_name_index);
   if (!satisfied)
     return false;
 
   markNodeStarted(node);
   if (node->is_load_op())
-    scratchpad->increment_loads(node_part);
+    scratchpad->increment_loads(array_name, array_name_index);
   else
-    scratchpad->increment_stores(node_part);
+    scratchpad->increment_stores(array_name, array_name_index);
   return true;
 }
 
@@ -946,29 +947,18 @@ void HybridDatapath::incrementDmaScratchpadAccesses(unsigned dma_size,
   DPRINTF(
       HybridDatapath, "DMA Accesses: array label %s\n", array_label.c_str());
   assert(part_it != partition_config.end());
-  unsigned p_factor = part_it->second.part_factor;
-  unsigned wordsize = part_it->second.wordsize;
-  unsigned num_accesses_per_partition = dma_size / p_factor / wordsize;
   if (is_dma_load) {
-    for (unsigned i = 0; i < p_factor; i++) {
-      std::ostringstream oss;
-      oss << array_label << "-" << i;
-      DPRINTF(HybridDatapath,
-              "Increment the dmaLoad accesses of partition %s by %d. \n",
-              oss.str(),
-              num_accesses_per_partition);
-      scratchpad->increment_dma_loads(oss.str(), num_accesses_per_partition);
-    }
+    scratchpad->increment_dma_loads(array_label, dma_size);
+    DPRINTF(HybridDatapath,
+            "Increment the dmaLoad accesses of partition %s with size %d. \n",
+            array_label,
+            dma_size);
   } else {
-    for (unsigned i = 0; i < p_factor; i++) {
-      std::ostringstream oss;
-      oss << array_label << "-" << i;
-      DPRINTF(HybridDatapath,
-              "Increment the dmaStore accesses of partition %s by %d. \n",
-              oss.str(),
-              num_accesses_per_partition);
-      scratchpad->increment_dma_stores(oss.str(), num_accesses_per_partition);
-    }
+    scratchpad->increment_dma_stores(array_label, dma_size);
+    DPRINTF(HybridDatapath,
+            "Increment the dmaStore accesses of partition %s with size %d. \n",
+            array_label,
+            dma_size);
   }
 }
 
