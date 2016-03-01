@@ -262,7 +262,7 @@ class ExecNode {
   bool is_int_mul_op() {
     switch (microop) {
       case LLVM_IR_Mul:
-      case LLVM_IR_UDiv:
+      case LLVM_IR_UDiv:  // TODO: Divides need special treatment.
       case LLVM_IR_SDiv:
       case LLVM_IR_URem:
       case LLVM_IR_SRem:
@@ -391,8 +391,17 @@ class ExecNode {
   bool is_fp_mul_op() {
     switch (microop) {
       case LLVM_IR_FMul:
-      case LLVM_IR_FDiv:
+      case LLVM_IR_FDiv:  // TODO: Remove once we have a divider model.
       case LLVM_IR_FRem:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool is_fp_div_op() {
+    switch (microop) {
+      case LLVM_IR_FDiv:
         return true;
       default:
         return false;
@@ -414,7 +423,14 @@ class ExecNode {
     return 1;
   }
 
-  unsigned fp_node_latency_in_cycles() { return FP_LATENCY_IN_CYCLES; }
+  unsigned fp_node_latency_in_cycles() {
+    if (is_fp_div_op())
+      return FP_DIV_LATENCY_IN_CYCLES;
+    else if (is_fp_mul_op())
+      return FP_MUL_LATENCY_IN_CYCLES;
+    else
+      return FP_ADD_LATENCY_IN_CYCLES;
+  }
 
  protected:
   /* Unique dynamic node id. */

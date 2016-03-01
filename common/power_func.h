@@ -273,7 +273,9 @@
  * (SP) and double precision (DP) floating point functional units, including
  * adder/subtractor, multiplier/divider. */
 
-#define FP_LATENCY_IN_CYCLES 3
+#define FP_MUL_LATENCY_IN_CYCLES 4
+#define FP_ADD_LATENCY_IN_CYCLES 5
+#define FP_DIV_LATENCY_IN_CYCLES 16
 
 #define FP_SP_3STAGE_ADD_1ns_int_power 1.827800e+00
 #define FP_SP_3STAGE_ADD_1ns_switch_power 2.177600e+00
