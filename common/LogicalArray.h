@@ -11,7 +11,7 @@
 class LogicalArray {
  public:
   LogicalArray(std::string _base_name,
-                uint64_t _base_addr,
+                Addr _base_addr,
                 PartitionType _partition_type,
                 unsigned _partition_factor,
                 unsigned _total_size,
@@ -23,7 +23,7 @@ class LogicalArray {
   /* Return true if any Partition can service. */
   bool canService();
   /* Return true if the partition with index part_index can service. */
-  bool canService(unsigned part_index, uint64_t addr, bool isLoad);
+  bool canService(unsigned part_index, Addr addr, bool isLoad);
 
   /* Setters. */
   void setWordSize(unsigned _word_size) { word_size = _word_size; }
@@ -36,7 +36,8 @@ class LogicalArray {
   /* Accessors. */
   /* Find the data block index for address addr in partition part_index. */
   std::string getBaseName() { return base_name; }
-  unsigned getBlockIndex(unsigned part_index, uint64_t addr);
+  unsigned getBlockIndex(unsigned part_index, Addr addr);
+  unsigned getPartitionIndex(Addr addr);
 
   unsigned getTotalLoads();
   unsigned getTotalStores();
@@ -58,8 +59,10 @@ class LogicalArray {
   void increment_streaming_stores(unsigned streaming_size);
 
   /* Ready bit handling. */
-  void setReadyBit(unsigned part_index, uint64_t addr);
-  void resetReadyBit(unsigned part_index, uint64_t addr);
+  void setReadyBit(unsigned part_index, Addr addr);
+  void resetReadyBit(unsigned part_index, Addr addr);
+  void setReadyBitRange(Addr addr, unsigned size);
+  void resetReadyBitRange(Addr addr, unsigned size);
   void setReadyBits(unsigned part_index) {
     partitions[part_index]->setAllReadyBits();
   }
@@ -78,7 +81,7 @@ class LogicalArray {
   /* Array label for the LogicalArray. */
   std::string base_name;
   /* Base address for the LogicalArray. */
-  uint64_t base_addr;
+  Addr base_addr;
   /* Partition types: block or cyclic. */
   PartitionType partition_type;
   /* Num of partitions inside this LogicalArray. */

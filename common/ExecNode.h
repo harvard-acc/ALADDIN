@@ -5,19 +5,17 @@
 #include <sstream>
 #include <string>
 
-#include <boost/graph/graph_traits.hpp>
-
 #include "opcode_func.h"
-#include "boost_typedefs.h"
+#include "typedefs.h"
 
 #define BYTE_SIZE 8
 
 // Stores all information about a memory access.
 struct MemAccess {
   // Address read from the trace.
-  uint64_t vaddr;
+  Addr vaddr;
   // Physical address (used for caches only).
-  uint64_t paddr;
+  Addr paddr;
   // Size of the memory access in bytes.
   size_t size;
   // Is floating-point value or not.

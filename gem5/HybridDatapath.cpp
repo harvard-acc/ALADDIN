@@ -315,12 +315,15 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     MemAccess* mem_access = node->get_mem_access();
     unsigned size = mem_access->size;  // mem_access->size is in bytes
     Addr vaddr = mem_access->vaddr;
-    std::string array_label = node->get_array_label();
+    /* Alternatively this can be done in the optimization pass, instead of the
+     * scheduling pass. */
+    std::string array_label = getArrayLabelFromAddr(vaddr);
+    node->set_array_label(array_label);
     DPRINTF(HybridDatapath,
             "node:%d is a dma request with label %s\n",
             node->get_node_id(),
             array_label.c_str());
-    incrementDmaScratchpadAccesses(size, vaddr, isLoad);
+    incrementDmaScratchpadAccesses(array_label, size, isLoad);
     issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
     inflight_mem_nodes[node_id] = WaitingFromDma;
     return false;  // DMA op not completed. Move on to the next node.
@@ -740,7 +743,19 @@ void HybridDatapath::completeCacheRequest(PacketPtr pkt) {
   delete pkt;
 }
 
+/* Receiving response from DMA. */
 bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
+
+  Addr paddr = pkt->getAddr();  // Packet address is physical.
+  unsigned size = pkt->req->getSize(); // in bytes
+  DPRINTF(HybridDatapath,
+          "Receiving DMA response for address %#x with size %d.\n",
+          paddr, size);
+  unsigned node_id = datapath->dmaQueue.front();
+  ExecNode * node = datapath->getNodeFromNodeId(node_id);
+  assert(node!=nullptr);
+  std::string array_label = node->get_array_label();
+  datapath->scratchpad->setReadyBitSize(array_label, paddr, size);
   return DmaPort::recvTimingResp(pkt);
 }
 
@@ -935,26 +950,11 @@ Addr HybridDatapath::getBaseAddress(std::string label) {
 }
 
 // Increment the scratchpad load/store counters based on DMA transfer size.
-void HybridDatapath::incrementDmaScratchpadAccesses(unsigned dma_size,
-                                                    Addr base_addr,
+void HybridDatapath::incrementDmaScratchpadAccesses(std::string array_label,
+                                                    unsigned dma_size,
                                                     bool is_dma_load) {
-  auto part_it = partition_config.begin();
-  std::string array_label;
-  for (; part_it != partition_config.end(); ++part_it) {
-    if (part_it->second.base_addr == base_addr) {
-      array_label = part_it->first;
-      break;
-    }
-  }
-  // If the array label is not found, abort the simulation.
-  if (array_label.empty()) {
-    std::cerr << "Unknown DMA target with address %x\n" << base_addr
-              << " with size " << dma_size << std::endl;
-    exit(-1);
-  }
   DPRINTF(
       HybridDatapath, "DMA Accesses: array label %s\n", array_label.c_str());
-  assert(part_it != partition_config.end());
   if (is_dma_load) {
     scratchpad->increment_dma_loads(array_label, dma_size);
     DPRINTF(HybridDatapath,

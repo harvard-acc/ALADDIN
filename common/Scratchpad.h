@@ -23,7 +23,7 @@ class Scratchpad {
   void clear();
   void step();
   void setScratchpad(std::string baseName,
-                     uint64_t base_addr,
+                     Addr base_addr,
                      PartitionType part_type,
                      unsigned part_factor,
                      unsigned num_of_bytes,
@@ -31,19 +31,30 @@ class Scratchpad {
   bool canService();
   bool canServicePartition(std::string baseName,
                            unsigned index,
-                           uint64_t addr,
+                           Addr addr,
                            bool isLoad);
   bool partitionExist(std::string baseName);
 
   /* Set the ready bit for a specific addr. */
   void setReadyBit(
-           std::string baseName, unsigned part_index, uint64_t addr) {
+           std::string baseName, unsigned part_index, Addr addr) {
     logical_arrays[baseName]->setReadyBit(part_index, addr);
   }
   /* Reset the ready bit for a specific addr. */
   void resetReadyBit(
-           std::string baseName, unsigned part_index, uint64_t addr) {
+           std::string baseName, unsigned part_index, Addr addr) {
     logical_arrays[baseName]->resetReadyBit(part_index, addr);
+  }
+
+  /* Set/reset multiple ready bits given then address and the data length. */
+  void setReadyBitRange(
+           std::string baseName, Addr addr, unsigned size) {
+    logical_arrays[baseName]->setReadyBitRange(addr, size);
+  }
+
+  void resetReadyBitRange(
+           std::string baseName, Addr addr, unsigned size) {
+    logical_arrays[baseName]->resetReadyBitRange(addr, size);
   }
 
   /* Set all the ready bits for the baseName array. */

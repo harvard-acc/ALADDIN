@@ -1,7 +1,7 @@
 #include "LogicalArray.h"
 
 LogicalArray::LogicalArray(std::string _base_name,
-                             uint64_t _base_addr,
+                             Addr _base_addr,
                              PartitionType _partition_type,
                              unsigned _partition_factor,
                              unsigned _total_size,
@@ -43,16 +43,28 @@ LogicalArray::~LogicalArray() {
     delete part;
 }
 
-unsigned LogicalArray::getBlockIndex(unsigned part_index, uint64_t addr) {
+unsigned LogicalArray::getPartitionIndex(Addr addr) {
+  Addr rel_addr = addr - base_addr;
   if (partition_type == cyclic) {
     /* cyclic partition. */
-    uint64_t rel_addr = addr - base_addr;
+    return (rel_addr / word_size ) % num_partitions;
+  } else {
+    /* block partition. */
+    unsigned partition_size = ceil(((float)total_size) / num_partitions);
+    return (int)(rel_addr / word_size / partition_size );
+  }
+}
+
+unsigned LogicalArray::getBlockIndex(unsigned part_index, Addr addr) {
+  if (partition_type == cyclic) {
+    /* cyclic partition. */
+    Addr rel_addr = addr - base_addr;
     return rel_addr / word_size / num_partitions;
   } else {
     /* block partition. */
     unsigned partition_size = ceil(((float)total_size) / num_partitions);
-    uint64_t part_base = base_addr + part_index * partition_size;
-    uint64_t rel_addr = addr - part_base;
+    Addr part_base = base_addr + part_index * partition_size;
+    Addr rel_addr = addr - part_base;
     return rel_addr / word_size;
   }
 }
@@ -71,7 +83,7 @@ bool LogicalArray::canService() {
 }
 
 bool LogicalArray::canService(unsigned part_index,
-                              uint64_t addr,
+                              Addr addr,
                               bool isLoad) {
   unsigned blk_index = getBlockIndex(part_index, addr);
   return partitions[part_index]->canService(blk_index, isLoad);
@@ -124,14 +136,33 @@ void LogicalArray::increment_streaming_stores(unsigned streaming_size) {
 }
 
 
-void LogicalArray::setReadyBit(unsigned part_index, uint64_t addr) {
+void LogicalArray::setReadyBit(unsigned part_index, Addr addr) {
   unsigned blk_index = getBlockIndex(part_index, addr);
   partitions[part_index]->setReadyBit(blk_index);
 
 }
 
-void LogicalArray::resetReadyBit(unsigned part_index, uint64_t addr) {
+void LogicalArray::resetReadyBit(unsigned part_index, Addr addr) {
   unsigned blk_index = getBlockIndex(part_index, addr);
   partitions[part_index]->resetReadyBit(blk_index);
 }
 
+void LogicalArray::setReadyBitRange(Addr addr, unsigned size) {
+
+  for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
+    Addr curr_addr = addr + curr_size;
+    unsigned part_index = getPartitionIndex(curr_addr);
+    unsigned blk_index = getBlockIndex(part_index, curr_addr);
+    partitions[part_index]->setReadyBit(blk_index);
+  }
+}
+
+void LogicalArray::resetReadyBitRange(Addr addr, unsigned size) {
+
+  for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
+    Addr curr_addr = addr + curr_size;
+    unsigned part_index = getPartitionIndex(curr_addr);
+    unsigned blk_index = getBlockIndex(part_index, curr_addr);
+    partitions[part_index]->resetReadyBit(blk_index);
+  }
+}

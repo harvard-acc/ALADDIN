@@ -1,5 +1,5 @@
-#ifndef __BOOST_TYPEDEFS_H__
-#define __BOOST_TYPEDEFS_H__
+#ifndef __TYPEDEFS_H__
+#define __TYPEDEFS_H__
 
 #include <boost/config.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -8,6 +8,8 @@
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
+
+typedef uint64_t Addr;
 
 // Typedefs for Boost::Graph.
 

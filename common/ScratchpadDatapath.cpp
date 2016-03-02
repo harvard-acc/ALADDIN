@@ -118,7 +118,7 @@ void ScratchpadDatapath::scratchpadPartition() {
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
-    uint64_t base_addr = getBaseAddress(array_label);
+    Addr base_addr = getBaseAddress(array_label);
     unsigned size = part_it->second.array_size;  // num of bytes
     unsigned p_factor = part_it->second.part_factor;
     unsigned wordsize = part_it->second.wordsize;  // in bytes
@@ -140,7 +140,7 @@ void ScratchpadDatapath::scratchpadPartition() {
     if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
     std::string base_label = node->get_array_label();
-    uint64_t base_addr = getBaseAddress(base_label);
+    Addr base_addr = getBaseAddress(base_label);
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
@@ -203,7 +203,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
         executed = true;
       } else if (scratchpadCanService) {
         MemAccess* mem_access = node->get_mem_access();
-        uint64_t vaddr = mem_access->vaddr;
+        Addr vaddr = mem_access->vaddr;
         bool isLoad = node->is_load_op();
         if (scratchpad->canServicePartition(
                 array_name, array_name_index, vaddr, isLoad)){

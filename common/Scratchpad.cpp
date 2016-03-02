@@ -17,7 +17,7 @@ void Scratchpad::clear() {
 }
 // wordsize in bytes
 void Scratchpad::setScratchpad(std::string baseName,
-                               uint64_t base_addr,
+                               Addr base_addr,
                                PartitionType part_type,
                                unsigned part_factor,
                                unsigned num_of_bytes,
@@ -52,7 +52,7 @@ bool Scratchpad::canService() {
 
 bool Scratchpad::canServicePartition(std::string baseName,
                                      unsigned part_index,
-                                     uint64_t addr,
+                                     Addr addr,
                                      bool isLoad) {
   return logical_arrays[baseName]->canService(part_index, addr, isLoad);
 }

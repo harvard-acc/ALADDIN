@@ -25,7 +25,7 @@
 #include "DatabaseDeps.h"
 
 #include "ExecNode.h"
-#include "boost_typedefs.h"
+#include "typedefs.h"
 #include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
@@ -198,6 +198,7 @@ class BaseDatapath {
     return exec_nodes[node_id];
   }
   ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
+  std::string getArrayLabelFromAddr(Addr base_addr);
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
 

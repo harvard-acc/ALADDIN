@@ -8,6 +8,7 @@
 #include <vector>
 #include "power_func.h"
 #include "generic_func.h"
+#include "typedefs.h"
 
 enum PartitionType { block, cyclic };
 

@@ -237,8 +237,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // DMA access functions.
   void issueDmaRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id);
   void completeDmaRequest(unsigned node_id);
-  void incrementDmaScratchpadAccesses(unsigned size,
-                                      Addr base_addr,
+  void incrementDmaScratchpadAccesses(std::string array_label,
+                                      unsigned dma_size,
                                       bool is_dma_load);
 
   // Virtual address translation.
@@ -259,7 +259,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   class SpadPort : public DmaPort {
    public:
     SpadPort(HybridDatapath* dev, System* s, unsigned _max_req)
-        : DmaPort(dev, s, _max_req), max_req(_max_req), _datapath(dev) {}
+        : DmaPort(dev, s, _max_req), max_req(_max_req), datapath(dev) {}
     // Maximum DMA requests that can be queued.
     const unsigned max_req;
 
@@ -268,7 +268,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     virtual void recvTimingSnoopReq(PacketPtr pkt) {}
     virtual void recvFunctionalSnoop(PacketPtr pkt) {}
     virtual bool isSnooping() const { return true; }
-    HybridDatapath* _datapath;
+    HybridDatapath* datapath;
   };
 
   // Port for cache coherent memory accesses. This implementation does not
@@ -325,7 +325,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   std::map<unsigned, MemAccessStatus> inflight_mem_nodes;
 
   // FIFO queue for DMA accesses.
-  std::deque<Addr> dmaQueue;
+  std::deque<unsigned> dmaQueue;
 
   // Number of cycles required for the CPU to initiate a DMA transfer.
   unsigned dmaSetupLatency;
