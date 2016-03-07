@@ -45,9 +45,12 @@ class ReadyPartition : public Partition {
   /* Return true if the data at blk_index is ready and the partition can service. */
   virtual bool canService(unsigned blk_index, bool isLoad) {
     if (Partition::canService()) {
-      if (!isLoad)
-        // We do not consider ready bit for store for now.
+      if (!isLoad) {
+        // We do not check ready bit for store for now.
+        // We mark data is ready after the store.
+        setReadyBit(blk_index);
         return true;
+      }
       return dataBlocks[blk_index].ready;
     }
     return false;

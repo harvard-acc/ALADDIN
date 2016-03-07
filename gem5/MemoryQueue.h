@@ -54,7 +54,7 @@ class MemoryQueue {
 
   /* Returns true if we have not exceeded the cache's bandwidth.
    */
-  bool can_issue() { return (issued_this_cycle < bandwidth); }
+  bool can_issue() { return bandwidth == 0 ? true : (issued_this_cycle < bandwidth); }
 
   /* Returns true if the queue already contains an entry for this address. */
   bool contains(Addr vaddr) { return (queue.find(vaddr) != queue.end()); }

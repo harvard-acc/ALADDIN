@@ -9,6 +9,11 @@
 #include "typedefs.h"
 
 #define BYTE_SIZE 8
+// Bitmask to ensure that we don't attempt to access above the 32-bit address
+// space assuming a 4GB memory. In accelerator simulation with memory system,
+// the mem_bus address range is the same as memory size, in stead of the 48-bit
+// address space in the X86_64 implementation.
+#define ADDR_MASK 0xffffffff
 
 // Stores all information about a memory access.
 struct MemAccess {

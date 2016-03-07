@@ -755,7 +755,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node!=nullptr);
   std::string array_label = node->get_array_label();
-  datapath->scratchpad->setReadyBitSize(array_label, paddr, size);
+  datapath->scratchpad->setReadyBitRange(array_label, paddr, size);
   return DmaPort::recvTimingResp(pkt);
 }
 

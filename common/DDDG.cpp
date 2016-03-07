@@ -175,7 +175,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
       curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op()) {
-    parameter_value_per_inst.push_back((long long int)value);
+    parameter_value_per_inst.push_back((long long int)value & ADDR_MASK);
     parameter_size_per_inst.push_back(size);
     parameter_label_per_inst.push_back(label);
     // last parameter
