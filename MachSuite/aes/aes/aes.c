@@ -197,8 +197,8 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 #pragma HLS INTERFACE s_axilite bundle=BUS_A port=buf
 #pragma HLS INTERFACE s_axilite bundle=BUS_A port=return
 
+
 #ifdef DMA_MODE
-  dmaLoad(ctx,96*1*8);
   dmaLoad(&k[0],32*1*8);
   dmaLoad(&buf[0],16*1*8);
 #endif
@@ -207,7 +207,7 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     uint8_t rcon = 1;
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
-        ctx->enckey[i] = ctx->deckey[i] = k[i];
+        ctx->enckey[i] = ctx->deckey[i] = k[i]; ctx->key[i] = 0;
     }
     ecb2 : for (i = 8;--i;){
         rcon = aes_expandEncKey(ctx->deckey, rcon);

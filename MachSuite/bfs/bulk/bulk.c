@@ -38,9 +38,9 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
+  dmaLoad(&level[0],256*1*8);
   dmaLoad(&nodes[0],512*8*8);
   dmaLoad(&edges[0],4096*8*8);
-  dmaLoad(&level[0],256*1*8);
 #endif
   node_index_t n;
   edge_index_t e;

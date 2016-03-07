@@ -35,10 +35,10 @@ http://www.cs.berkeley.edu/~mhoemmen/matrix-seminar/slides/UCB_sparse_tutorial_1
 
 void spmv(TYPE val[NNZ], int cols[NNZ], int rowDelimiters[N+1], TYPE vec[N], TYPE out[N]){
 #ifdef DMA_MODE
-  dmaLoad(&val[0],1666*8*8);
-  dmaLoad(&cols[0],1666*4*8);
   dmaLoad(&rowDelimiters[0],495*4*8);
   dmaLoad(&vec[0],494*8*8);
+  dmaLoad(&val[0],1666*8*8);
+  dmaLoad(&cols[0],1666*4*8);
 #endif
     int i, j;
     TYPE sum, Si;

@@ -28,7 +28,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "md.h"
-
 #define MIN(x,y) ( (x)<(y) ? (x) : (y) )
 #define MAX(x,y) ( (x)>(y) ? (x) : (y) )
 void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockSide][blockSide][blockSide][densityFactor],
@@ -37,6 +36,7 @@ void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockS
 #ifdef DMA_MODE
   dmaLoad(&n_points[0],64*4*8);
   dmaLoad(&position[0],1920*8*8);
+  dmaLoad(&d_force[0],1920*8*8);
 #endif
   ivector_t b0, b1; // b0 is the current block, b1 is b0 or a neighboring block
   dvector_t p, q; // p is a point in b0, q is a point in either b0 or b1

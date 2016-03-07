@@ -37,15 +37,14 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 #define Q_PEEK() (queue[q_out])
 #define Q_POP() { q_out = (q_out+1)%N_NODES; }
 #define Q_EMPTY() (q_in>q_out ? q_in==q_out+1 : (q_in==0)&&(q_out==N_NODES-1))
-
 void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
             node_index_t starting_node, level_t level[N_NODES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
-  dmaLoad(&nodes[0],512*8*8);
-  dmaLoad(&edges[0],4096*8*8);
-  dmaLoad(&level[0],256*1*8);
+  dmaLoad(&level[0],N_NODES*1*8);
+  dmaLoad(&nodes[0],N_NODES*2*8*8);
+  dmaLoad(&edges[0],N_EDGES*8*8);
 #endif
   node_index_t queue[N_NODES];
   node_index_t q_in, q_out;
@@ -53,13 +52,14 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   node_index_t n;
   edge_index_t e;
   int i;
-
   q_in = 1;
   q_out = 0;
   level[starting_node] = 0;
   level_counts[0] = 1;
   Q_PUSH(starting_node);
 
+  for ( i = 1; i < N_LEVELS; i++)
+    level_counts[i] = 0;
   loop_queue: for( dummy=0; dummy<N_NODES; dummy++ ) { // Typically while(not_empty(queue)){
     if( Q_EMPTY() )
       break;

@@ -40,7 +40,7 @@ void md_kernel(TYPE d_force_x[nAtoms],  TYPE d_force_y[nAtoms], TYPE d_force_z[n
 #ifdef DMA_MODE
   dmaLoad(&position_x[0],256*8*8);
   dmaLoad(&position_y[0],256*8*8);
-  dmaLoad(&position_y[0],256*8*8);
+  dmaLoad(&position_z[0],256*8*8);
   dmaLoad(&NL[0],4096*8*8);
 #endif
 

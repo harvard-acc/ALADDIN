@@ -33,8 +33,8 @@ void gemm( TYPE m1[row_size * col_size],
            TYPE m2[row_size * col_size],
            TYPE prod[row_size * col_size]){
 #ifdef DMA_MODE
-  dmaLoad(&m1[0],4096*4*8);
   dmaLoad(&m2[0],4096*4*8);
+  dmaLoad(&m1[0],4096*4*8);
 #endif
     int i, j, k;
     TYPE mult, k_col, i_col;
