@@ -39,17 +39,17 @@ void needwun(char SEQA[N], char SEQB[M], char alignedA[sum_size], char alignedB[
         choice1, choice2, choice3, max,
         i, j, i_t, j_t,
         Mul1, Mul2, Mul3;
+
     match       = 1;
     mismatch    = -1;
     gap         = -1;
-    /*init_row : for(i = 0; i < N1; i++){*/
-    /*A[i]   = i * mismatch;*/
-    /*}*/
-
-    /*init_col : for(i = 0; i <M1; i++){*/
-    /*A[i * N1] = i * mismatch;*/
-    /*}*/
-
+init_row : for(i = 0; i < N1; i++){
+             A[i]   = i * mismatch; ptr[i]   = 0;
+           }
+init_col : for(i = 0; i <M1; i++){
+             A[i * N1] = i * mismatch;
+             ptr[i*N1]   = 0;
+           }
     //matrix Filling Loop
     fill_out : for(i = 1; i < M1; i++){
         fill_in : for(j = 1; j < N1; j++){
