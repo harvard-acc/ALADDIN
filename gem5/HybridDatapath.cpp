@@ -254,8 +254,8 @@ bool HybridDatapath::step() {
         exitSimLoop(exit_reason);
       }
       sendFinishedSignal();
+      clearDatapath(false);
     }
-    clearDatapath(false);
   }
   return false;
 }
