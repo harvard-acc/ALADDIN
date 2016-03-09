@@ -291,7 +291,7 @@ class BaseDatapath {
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
-  void markNodeStarted(ExecNode* node);
+  virtual void markNodeStarted(ExecNode* node);
   void markNodeCompleted(std::list<ExecNode*>::iterator& executingQueuePos,
                          int& advance_to);
 

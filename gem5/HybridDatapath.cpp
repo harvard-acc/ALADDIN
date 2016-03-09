@@ -96,6 +96,7 @@ void HybridDatapath::clearDatapath(bool flush_tlb) {
 void HybridDatapath::resetCounters(bool flush_tlb) {
   loads = 0;
   stores = 0;
+  nodes_issued_per_cycle.reset();
   if (flush_tlb)
     dtb.clear();
 }
@@ -215,7 +216,13 @@ void HybridDatapath::retireReturnedLSQEntries() {
   store_queue.retireReturnedEntries();
 }
 
+void HybridDatapath::markNodeStarted(ExecNode* node) {
+  BaseDatapath::markNodeStarted(node);
+  nodes_issued_this_cycle++;
+}
+
 bool HybridDatapath::step() {
+  nodes_issued_this_cycle = 0;
   executedNodesLastTrigger = executedNodes;
   resetCacheCounters();
   stepExecutingQueue();
@@ -235,6 +242,7 @@ bool HybridDatapath::step() {
     return false;
   }
 
+  nodes_issued_per_cycle.sample(nodes_issued_this_cycle);
   num_cycles++;
   if (executedNodes < totalConnectedNodes) {
     schedule(tickEvent, clockEdge(Cycles(1)));
@@ -778,14 +786,19 @@ void HybridDatapath::resetCacheCounters() {
   dtb.resetRequestCounter();
 }
 
-void HybridDatapath::registerStats() {
+void HybridDatapath::regStats() {
   using namespace Stats;
-  loads.name(datapath_name + "_total_loads")
+  DPRINTF(HybridDatapath, "Registering stats.\n");
+  loads.name("system." + datapath_name + ".total_loads")
       .desc("Total number of dcache loads")
       .flags(total | nonan);
-  stores.name(datapath_name + "_total_stores")
+  stores.name("system." + datapath_name + ".total_stores")
       .desc("Total number of dcache stores.")
       .flags(total | nonan);
+  nodes_issued_per_cycle.name("system." + datapath_name + ".nodes_issued_per_cycle")
+      .init(500)  // 500 buckets.
+      .desc("Distribution of nodes issued per cycle")
+      .flags(total | nozero | pdf | nonan);
 }
 
 #ifdef USE_DB

@@ -125,7 +125,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   void stepExecutingQueue();
 
   // Register simulation statistics.
-  void registerStats();
+  void regStats();
 
   // Reset cache counters.
   void resetCacheCounters();
@@ -253,6 +253,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                          double value);
   void completeCacheRequest(PacketPtr pkt);
 
+  // Marks a node as started and increments a stats counter.
+  virtual void markNodeStarted(ExecNode* node);
+
   /* This port has to accept snoops but it doesn't need to do anything. See
    * arch/arm/table_walker.hh
    */
@@ -351,6 +354,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   Stats::Scalar loads;
   Stats::Scalar stores;
+
+  Stats::Histogram nodes_issued_per_cycle;
+  unsigned nodes_issued_this_cycle;
 
   // True if the cache's MSHRs are full.
   bool isCacheBlocked;

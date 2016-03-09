@@ -44,10 +44,10 @@ class MemoryQueue {
       : size(_size), bandwidth(_bandwidth), issued_this_cycle(0), name(_name),
         cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
         leakagePower(0), area(0) {
-    readStats.name(name + "_reads")
+    readStats.name("system." + name + "_reads")
         .desc("Number of reads to the " + name)
         .flags(Stats::total | Stats::nonan);
-    writeStats.name(name + "_writes")
+    writeStats.name("system." + name + "_writes")
         .desc("Number of writes to the " + name)
         .flags(Stats::total | Stats::nonan);
   }
