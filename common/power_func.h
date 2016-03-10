@@ -61,6 +61,13 @@
 #define REG_6ns_leakage_power 5.3278e-05
 #define REG_6ns_area 4.309200
 
+#define REG_10ns_int_power 3.9878e-04
+#define REG_10ns_switch_power 0.0000e+00
+#define REG_10ns_dynamic_power 3.9878e-04
+#define REG_10ns_dynamic_energy 3.9878e-03
+#define REG_10ns_leakage_power 5.3016e-05
+#define REG_10ns_area 4.309200
+
 #define ADD_0_5ns_int_power         6.7465e-02
 #define ADD_0_5ns_switch_power      1.3690e-01
 #define ADD_0_5ns_dynamic_power     2.0436e-01
@@ -117,6 +124,14 @@
 #define ADD_6ns_area 129.275995
 #define ADD_6ns_critical_path_delay 1.75
 
+#define ADD_10ns_int_power 3.4813e-03
+#define ADD_10ns_switch_power 2.6669e-03
+#define ADD_10ns_dynamic_power 6.1482e-03
+#define ADD_10ns_dynamic_energy 6.1482e-02
+#define ADD_10ns_leakage_power 1.7152e-03
+#define ADD_10ns_area 129.275995
+#define ADD_10ns_critical_path_delay 1.75
+
 #define MUL_3STAGE_0_5ns_int_power       5.403900e+00
 #define MUL_3STAGE_0_5ns_switch_power    3.693900e+00
 #define MUL_3STAGE_0_5ns_dynamic_power   9.097900e+00
@@ -172,6 +187,14 @@
 #define MUL_6ns_area 3310.372779
 #define MUL_6ns_critical_path_delay 4.17
 
+#define MUL_10ns_int_power 2.4920e-01
+#define MUL_10ns_switch_power 3.8450e-01
+#define MUL_10ns_dynamic_power 6.3370e-01
+#define MUL_10ns_dynamic_energy 6.3370e+00
+#define MUL_10ns_leakage_power 3.4708e-02
+#define MUL_10ns_area 3310.372779
+#define MUL_10ns_critical_path_delay 4.90
+
 #define BIT_1ns_int_power 7.2807e-03
 #define BIT_1ns_switch_power 5.7277e-03
 #define BIT_1ns_dynamic_power 1.3008e-02
@@ -220,6 +243,14 @@
 #define BIT_6ns_area 36.287998
 #define BIT_6ns_critical_path_delay 0.06
 
+#define BIT_10ns_int_power 7.2872e-04
+#define BIT_10ns_switch_power 5.7329e-04
+#define BIT_10ns_dynamic_power 1.3020e-03
+#define BIT_10ns_dynamic_energy 1.3020e-02
+#define BIT_10ns_leakage_power 4.4030e-04
+#define BIT_10ns_area 36.287998
+#define BIT_10ns_critical_path_delay 0.06
+
 #define SHIFTER_1ns_int_power         5.8804e-02
 #define SHIFTER_1ns_switch_power      2.4180e-01
 #define SHIFTER_1ns_dynamic_power     3.0060e-01
@@ -267,6 +298,14 @@
 #define SHIFTER_6ns_leakage_power     1.2217e-03
 #define SHIFTER_6ns_area              179.852394
 #define SHIFTER_6ns_critical_path_delay 0.70
+
+#define SHIFTER_10ns_int_power         5.8499e-03
+#define SHIFTER_10ns_switch_power      2.4052e-02
+#define SHIFTER_10ns_dynamic_power     2.9902e-02
+#define SHIFTER_10ns_dynamic_energy    2.9902e-01
+#define SHIFTER_10ns_leakage_power     1.2212e-03
+#define SHIFTER_10ns_area              179.852394
+#define SHIFTER_10ns_critical_path_delay 0.70
 
 /* Floating Point Power/Area/Energy Models.
  * We use Synopsys DesignWare IP library to model 3-stage both single-precision
@@ -319,6 +358,13 @@
 #define FP_SP_3STAGE_ADD_6ns_leakage_power 1.091510e-02
 #define FP_SP_3STAGE_ADD_6ns_area 1.486674e+03
 
+#define FP_SP_3STAGE_ADD_10ns_int_power 8.442900e-01
+#define FP_SP_3STAGE_ADD_10ns_switch_power 1.005139e-01
+#define FP_SP_3STAGE_ADD_10ns_dynamic_power 1.849429e-01
+#define FP_SP_3STAGE_ADD_10ns_dynamic_energy 5.548287e+00
+#define FP_SP_3STAGE_ADD_10ns_leakage_power 1.098990e-02
+#define FP_SP_3STAGE_ADD_10ns_area 1.486674e+03
+
 #define FP_DP_3STAGE_ADD_0_5ns_int_power       6.496800e+00
 #define FP_DP_3STAGE_ADD_0_5ns_switch_power    3.373900e+00
 #define FP_DP_3STAGE_ADD_0_5ns_dynamic_power   9.870800e+00
@@ -368,6 +414,13 @@
 #define FP_DP_3STAGE_ADD_6ns_leakage_power 2.756320e-02
 #define FP_DP_3STAGE_ADD_6ns_area 3.690263e+03
 
+#define FP_DP_3STAGE_ADD_10ns_int_power 1.738436e-01
+#define FP_DP_3STAGE_ADD_10ns_switch_power 2.531103e-01
+#define FP_DP_3STAGE_ADD_10ns_dynamic_power 4.269539e-01
+#define FP_DP_3STAGE_ADD_10ns_dynamic_energy 1.280862e+01
+#define FP_DP_3STAGE_ADD_10ns_leakage_power 2.174190e-02
+#define FP_DP_3STAGE_ADD_10ns_area 2.874236e+03
+
 #define FP_SP_3STAGE_MUL_1ns_int_power 3.638300e+00
 #define FP_SP_3STAGE_MUL_1ns_switch_power 4.843600e+00
 #define FP_SP_3STAGE_MUL_1ns_dynamic_power 8.481900e+00
@@ -409,6 +462,13 @@
 #define FP_SP_3STAGE_MUL_6ns_dynamic_energy 1.746269e+01
 #define FP_SP_3STAGE_MUL_6ns_leakage_power 3.024680e-02
 #define FP_SP_3STAGE_MUL_6ns_area 3.522431e+03
+
+#define FP_SP_3STAGE_MUL_10ns_int_power 2.095296e-01
+#define FP_SP_3STAGE_MUL_10ns_switch_power 4.291416e-01
+#define FP_SP_3STAGE_MUL_10ns_dynamic_power 6.386711e-01
+#define FP_SP_3STAGE_MUL_10ns_dynamic_energy 1.916013e+01
+#define FP_SP_3STAGE_MUL_10ns_leakage_power 3.225050e-02
+#define FP_SP_3STAGE_MUL_10ns_area 3.905950e+03
 
 #define FP_DP_3STAGE_MUL_0_5ns_int_power       2.006710e+01
 #define FP_DP_3STAGE_MUL_0_5ns_switch_power    1.344190e+01
@@ -458,6 +518,13 @@
 #define FP_DP_3STAGE_MUL_6ns_dynamic_energy 6.526800e+01
 #define FP_DP_3STAGE_MUL_6ns_leakage_power 9.714680e-02
 #define FP_DP_3STAGE_MUL_6ns_area 1.106716e+04
+
+#define FP_DP_3STAGE_MUL_10ns_int_power 6.524425e-01
+#define FP_DP_3STAGE_MUL_10ns_switch_power 1.426400e+00
+#define FP_DP_3STAGE_MUL_10ns_dynamic_power 2.078800e+00
+#define FP_DP_3STAGE_MUL_10ns_dynamic_energy 6.236400e+01
+#define FP_DP_3STAGE_MUL_10ns_leakage_power 8.877240e-02
+#define FP_DP_3STAGE_MUL_10ns_area 1.004633e+04
 
 void getRegisterPowerArea(float cycle_time,
                           float* internal_power_per_bit,
