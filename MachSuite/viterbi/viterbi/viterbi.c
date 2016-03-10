@@ -34,11 +34,11 @@ int viterbi(int Obs[numObs], float transMat[numStates*numObs], float obsLik[numS
   dmaLoad(&Obs[0],128*4*8);
   dmaLoad(&transMat[0],4096*4*8);
   dmaLoad(&obsLik[0],4096*4*8);
+  dmaLoad(&v[0],4096*4*8);
 #endif
     int i, j, k, finalState;
     float maxProb, temp;
     finalState = 0;
-
     v[0] = 1.0;
 
     v1 : for(i=0; i<numObs;i++){  //for each observation
