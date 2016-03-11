@@ -57,7 +57,7 @@ void ScratchpadDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
 
   vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
+  for (boost::tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
     if (boost::degree(*vi, graph_) == 0)
       continue;
     Vertex curr_vertex = *vi;
@@ -278,7 +278,8 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
     }
 
     in_edge_iter in_i, in_end;
-    for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
+    for (boost::tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end;
+         ++in_i) {
       int parent_id = vertexToName[source(*in_i, graph_)];
       if (alap_finish_time.at(parent_id) > alap_start_execution_time)
         alap_finish_time.at(parent_id) = alap_start_execution_time;
@@ -317,7 +318,7 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   }
   Vertex curr_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (tie(out_edge_it, out_edge_end) = out_edges(curr_vertex, graph_);
+  for (boost::tie(out_edge_it, out_edge_end) = out_edges(curr_vertex, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     Vertex child_vertex = target(*out_edge_it, graph_);

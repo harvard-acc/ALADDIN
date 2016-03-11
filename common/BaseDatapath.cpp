@@ -88,7 +88,8 @@ void BaseDatapath::memoryAmbiguation() {
     if (!node->is_memory_op() || !node->has_vertex())
       continue;
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) = in_edges(node->get_vertex(), graph_);
+    for (boost::tie(in_edge_it, in_edge_end) =
+             in_edges(node->get_vertex(), graph_);
          in_edge_it != in_edge_end;
          ++in_edge_it) {
       Vertex parent_vertex = source(*in_edge_it, graph_);
@@ -134,7 +135,7 @@ void BaseDatapath::removePhiNodes() {
     // find its children
     std::vector<std::pair<ExecNode*, int>> phi_child;
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+    for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       checked_phi_nodes.insert(node);
@@ -178,7 +179,7 @@ void BaseDatapath::removePhiNodes() {
     } else {
       // convert nodes
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
+      for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         Vertex parent_vertex = source(*in_edge_it, graph_);
@@ -254,7 +255,7 @@ void BaseDatapath::cleanLeafNodes() {
       to_remove_nodes.push_back(node_id);
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
+      for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         int parent_id = vertexToName[source(*in_edge_it, graph_)];
@@ -263,7 +264,7 @@ void BaseDatapath::cleanLeafNodes() {
     } else if (node->is_branch_op()) {
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
+      for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         if (edge_to_parid[*in_edge_it] == CONTROL_EDGE) {
@@ -307,7 +308,8 @@ void BaseDatapath::removeInductionDependence() {
        * do strength reduction that converts the mul/div to a shifter.*/
       bool any_inductive = false;
       in_edge_iter in_edge_it, in_edge_end;
-      for (tie(in_edge_it, in_edge_end) = in_edges(node->get_vertex(), graph_);
+      for (boost::tie(in_edge_it, in_edge_end) =
+               in_edges(node->get_vertex(), graph_);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
@@ -451,7 +453,7 @@ void BaseDatapath::loopPipelining() {
     // adding dependence between first_id and prev_branch's children
     assert(prev_branch_n->has_vertex());
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) =
+    for (boost::tie(out_edge_it, out_edge_end) =
              out_edges(prev_branch_n->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
@@ -466,7 +468,7 @@ void BaseDatapath::loopPipelining() {
     // update first_id's parents, dependence become strict control dependence
     assert(first_node->has_vertex());
     in_edge_iter in_edge_it, in_edge_end;
-    for (tie(in_edge_it, in_edge_end) =
+    for (boost::tie(in_edge_it, in_edge_end) =
              in_edges(first_node->get_vertex(), graph_);
          in_edge_it != in_edge_end;
          ++in_edge_it) {
@@ -480,7 +482,7 @@ void BaseDatapath::loopPipelining() {
     }
     // remove control dependence between prev br node to its children
     assert(prev_branch_n->has_vertex());
-    for (tie(out_edge_it, out_edge_end) =
+    for (boost::tie(out_edge_it, out_edge_end) =
              out_edges(prev_branch_n->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
@@ -688,7 +690,8 @@ void BaseDatapath::removeSharedLoads() {
           // iterate through its children
           Vertex load_node = node->get_vertex();
           out_edge_iter out_edge_it, out_edge_end;
-          for (tie(out_edge_it, out_edge_end) = out_edges(load_node, graph_);
+          for (boost::tie(out_edge_it, out_edge_end) =
+                   out_edges(load_node, graph_);
                out_edge_it != out_edge_end;
                ++out_edge_it) {
             Edge curr_edge = *out_edge_it;
@@ -703,7 +706,8 @@ void BaseDatapath::removeSharedLoads() {
             to_remove_edges.insert(*out_edge_it);
           }
           in_edge_iter in_edge_it, in_edge_end;
-          for (tie(in_edge_it, in_edge_end) = in_edges(load_node, graph_);
+          for (boost::tie(in_edge_it, in_edge_end) =
+                   in_edges(load_node, graph_);
                in_edge_it != in_edge_end;
                ++in_edge_it)
             to_remove_edges.insert(*in_edge_it);
@@ -758,7 +762,8 @@ void BaseDatapath::storeBuffer() {
         out_edge_iter out_edge_it, out_edge_end;
 
         std::vector<Vertex> store_child;
-        for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+        for (boost::tie(out_edge_it, out_edge_end) =
+                 out_edges(node_vertex, graph_);
              out_edge_it != out_edge_end;
              ++out_edge_it) {
           Vertex child_vertex = target(*out_edge_it, graph_);
@@ -776,7 +781,8 @@ void BaseDatapath::storeBuffer() {
           bool parent_found = false;
           Vertex store_parent;
           in_edge_iter in_edge_it, in_edge_end;
-          for (tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
+          for (boost::tie(in_edge_it, in_edge_end) =
+                   in_edges(node_vertex, graph_);
                in_edge_it != in_edge_end;
                ++in_edge_it) {
             // parent node that generates value
@@ -795,7 +801,7 @@ void BaseDatapath::storeBuffer() {
               to_remove_nodes.push_back(vertexToName[load_node]);
 
               out_edge_iter out_edge_it, out_edge_end;
-              for (tie(out_edge_it, out_edge_end) =
+              for (boost::tie(out_edge_it, out_edge_end) =
                        out_edges(load_node, graph_);
                    out_edge_it != out_edge_end;
                    ++out_edge_it) {
@@ -862,7 +868,7 @@ void BaseDatapath::removeRepeatedStores() {
           } else {
             int num_of_real_children = 0;
             out_edge_iter out_edge_it, out_edge_end;
-            for (tie(out_edge_it, out_edge_end) =
+            for (boost::tie(out_edge_it, out_edge_end) =
                      out_edges(node->get_vertex(), graph_);
                  out_edge_it != out_edge_end;
                  ++out_edge_it) {
@@ -940,7 +946,7 @@ void BaseDatapath::treeHeightReduction() {
         updated.at(chain_node->get_node_id()) = 1;
         int num_of_chain_parents = 0;
         in_edge_iter in_edge_it, in_edge_end;
-        for (tie(in_edge_it, in_edge_end) =
+        for (boost::tie(in_edge_it, in_edge_end) =
                  in_edges(chain_node->get_vertex(), graph_);
              in_edge_it != in_edge_end;
              ++in_edge_it) {
@@ -950,7 +956,7 @@ void BaseDatapath::treeHeightReduction() {
         }
         if (num_of_chain_parents == 2) {
           nodes.push_front(chain_node);
-          for (tie(in_edge_it, in_edge_end) =
+          for (boost::tie(in_edge_it, in_edge_end) =
                    in_edges(chain_node->get_vertex(), graph_);
                in_edge_it != in_edge_end;
                ++in_edge_it) {
@@ -971,7 +977,7 @@ void BaseDatapath::treeHeightReduction() {
               else {
                 out_edge_iter out_edge_it, out_edge_end;
                 int num_of_children = 0;
-                for (tie(out_edge_it, out_edge_end) =
+                for (boost::tie(out_edge_it, out_edge_end) =
                          out_edges(parent_vertex, graph_);
                      out_edge_it != out_edge_end;
                      ++out_edge_it) {
@@ -1719,7 +1725,8 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
     }
 
     in_edge_iter in_i, in_end;
-    for (tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end; ++in_i) {
+    for (boost::tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end;
+         ++in_i) {
       int parent_id = vertexToName[source(*in_i, graph_)];
       if (earliest_child.at(parent_id) > node->get_start_execution_cycle())
         earliest_child.at(parent_id) = node->get_start_execution_cycle();
@@ -1741,7 +1748,7 @@ void BaseDatapath::updateRegStats() {
     Vertex node_vertex = node->get_vertex();
     out_edge_iter out_edge_it, out_edge_end;
     std::set<int> children_levels;
-    for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+    for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       int child_id = vertexToName[target(*out_edge_it, graph_)];
@@ -1804,7 +1811,7 @@ void BaseDatapath::updateChildren(ExecNode* node) {
     return;
   Vertex node_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+  for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
     Vertex child_vertex = target(*out_edge_it, graph_);
@@ -1847,7 +1854,7 @@ void BaseDatapath::initBaseAddress() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
   vertex_iter vi, vi_end;
-  for (tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
+  for (boost::tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
     if (boost::degree(*vi, graph_) == 0)
       continue;
     Vertex curr_vertex = *vi;
@@ -1860,7 +1867,7 @@ void BaseDatapath::initBaseAddress() {
       bool found_parent = false;
       in_edge_iter in_edge_it, in_edge_end;
 
-      for (tie(in_edge_it, in_edge_end) = in_edges(curr_vertex, graph_);
+      for (boost::tie(in_edge_it, in_edge_end) = in_edges(curr_vertex, graph_);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         int edge_parid = edge_to_parid[*in_edge_it];
@@ -1915,7 +1922,7 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
     unsigned int curr_node = queue.front().first;
     unsigned int curr_dist = queue.front().second;
     out_edge_iter out_edge_it, out_edge_end;
-    for (tie(out_edge_it, out_edge_end) =
+    for (boost::tie(out_edge_it, out_edge_end) =
              out_edges(exec_nodes[curr_node]->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
