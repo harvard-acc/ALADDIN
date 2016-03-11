@@ -17,7 +17,7 @@ struct edge_node_info {
 
 // data structure used to track dependency
 typedef std::unordered_map<std::string, unsigned int> string_to_uint;
-typedef std::unordered_map<long long int, unsigned int> uint_to_uint;
+typedef std::unordered_map<Addr, unsigned int> uint_to_uint;
 typedef std::unordered_multimap<unsigned int, edge_node_info>
     multi_uint_to_node_info;
 
@@ -63,7 +63,7 @@ class DDDG {
   int last_call_source;
 
   std::string curr_instid;
-  std::vector<long long int> parameter_value_per_inst;
+  std::vector<Addr> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
   int num_of_instructions;

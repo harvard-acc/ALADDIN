@@ -175,13 +175,13 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
       curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op()) {
-    parameter_value_per_inst.push_back((long long int)value & ADDR_MASK);
+    parameter_value_per_inst.push_back(((Addr)value) & ADDR_MASK);
     parameter_size_per_inst.push_back(size);
     parameter_label_per_inst.push_back(label);
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
-      long long int mem_address =
-          (long long int)parameter_value_per_inst.back();
+      Addr mem_address =
+          parameter_value_per_inst.back();
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
         unsigned source_inst = addr_it->second;
@@ -204,14 +204,14 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
           num_of_mem_dep++;
         }
       }
-      long long int base_address =
-          (long long int)parameter_value_per_inst.back();
+      Addr base_address =
+          parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
       // 1st arg of store is the value, 2nd arg is the pointer.
-      long long int mem_address = parameter_value_per_inst[0];
+      Addr mem_address = parameter_value_per_inst[0];
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end())
         addr_it->second = num_of_instructions;
@@ -219,22 +219,21 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         address_last_written.insert(
             std::make_pair(mem_address, num_of_instructions));
 
-      long long int base_address = parameter_value_per_inst[0];
+      Addr base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
-      long long int mem_address = parameter_value_per_inst[0];
+      Addr mem_address = parameter_value_per_inst[0];
       unsigned mem_size = parameter_size_per_inst.back() / BYTE_SIZE;
       double store_value = value;
       curr_node->set_mem_access(mem_address, mem_size, is_float, store_value);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
-      long long int base_address = parameter_value_per_inst.back();
+      Addr base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
-      long long int base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
     }
@@ -260,13 +259,13 @@ void DDDG::parse_result(std::string line) {
 
   if (curr_microop == LLVM_IR_Alloca) {
     curr_node->set_array_label(label);
-    datapath->addArrayBaseAddress(label, (long long int)value);
+    datapath->addArrayBaseAddress(label, ((Addr)value) & ADDR_MASK);
   } else if (curr_microop == LLVM_IR_Load) {
-    long long int mem_address = parameter_value_per_inst.back();
+    Addr mem_address = parameter_value_per_inst.back();
     curr_node->set_mem_access(
-        mem_address, size / BYTE_SIZE, (long long int)value);
+        mem_address, size / BYTE_SIZE, value);
   } else if (curr_node->is_dma_op()) {
-    long long int mem_address = parameter_value_per_inst[1];
+    Addr mem_address = parameter_value_per_inst[1];
     unsigned mem_size = (unsigned)parameter_value_per_inst[2] / BYTE_SIZE;
     curr_node->set_mem_access(mem_address, mem_size);
   }
