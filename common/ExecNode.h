@@ -376,7 +376,7 @@ class ExecNode {
     }
   }
 
-  bool is_multicycle_op() { return is_fp_op(); }
+  bool is_multicycle_op() { return is_fp_op() || is_trig_op(); }
 
   bool is_fp_op() {
     switch (microop) {
@@ -420,9 +420,22 @@ class ExecNode {
         return false;
     }
   }
+
+  bool is_trig_op() {
+    switch (microop) {
+      case LLVM_IR_Sine:
+      case LLVM_IR_Cosine:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   unsigned get_multicycle_latency() {
     if (is_fp_op())
       return fp_node_latency_in_cycles();
+    else if (is_trig_op())
+      return trig_node_latency_in_cycles();
     return 1;
   }
 
@@ -433,6 +446,10 @@ class ExecNode {
       return FP_MUL_LATENCY_IN_CYCLES;
     else
       return FP_ADD_LATENCY_IN_CYCLES;
+  }
+
+  unsigned trig_node_latency_in_cycles() {
+    return TRIG_SINE_LATENCY_IN_CYCLES;
   }
 
  protected:

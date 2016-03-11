@@ -281,7 +281,7 @@ void DDDG::parse_forward(std::string line) {
   assert(is_reg);
 
   char unique_reg_id[256];
-  assert(curr_node->is_call_op() || curr_node->is_dma_op());
+  assert(curr_node->is_call_op() || curr_node->is_dma_op() || curr_node->is_trig_op());
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
 
   auto reg_it = register_last_written.find(unique_reg_id);
