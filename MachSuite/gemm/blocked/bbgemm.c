@@ -35,12 +35,12 @@ ASPLOS 1991
 #include "bbgemm.h"
 
 void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
-    int i, k, j, jj, kk, temp_x;
-    int i_row, k_row;
+    int i, k, j, jj, kk, temp_x, i_row, k_row;
     TYPE mul;
 #ifdef DMA_MODE
   dmaLoad(&m1[0],4096*4*8);
   dmaLoad(&m2[0],4096*4*8);
+  dmaLoad(&prod[0],4096*4*8);
 #endif
     loopjj:for (jj = 0; jj < row_size; jj += block_size){
         loopkk:for (kk = 0; kk < row_size; kk += block_size){
