@@ -74,6 +74,9 @@ class LogicalArray {
       part->setAllReadyBits();
   }
   void resetReadyBits() {
+    /*HACK FOR AES SBOX*/
+    if (base_name.compare("sbox") == 0)
+      return;
     for ( Partition* part : partitions)
       part->resetAllReadyBits();
   }

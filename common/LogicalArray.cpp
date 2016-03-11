@@ -36,6 +36,10 @@ LogicalArray::LogicalArray(std::string _base_name,
       partitions.push_back(curr_part);
     }
   }
+  /* HACK for machsuite aes. */
+  if (base_name.compare("sbox") == 0) {
+    setReadyBits();
+  }
 }
 
 LogicalArray::~LogicalArray() {
