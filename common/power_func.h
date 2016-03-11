@@ -526,6 +526,13 @@
 #define FP_DP_3STAGE_MUL_10ns_leakage_power 8.877240e-02
 #define FP_DP_3STAGE_MUL_10ns_area 1.004633e+04
 
+#define FP_3STAGE_TRIG_10ns_int_power 1.258166e-01
+#define FP_3STAGE_TRIG_10ns_switch_power 2.555132e-01
+#define FP_3STAGE_TRIG_10ns_dynamic_power 3.813298e-01
+#define FP_3STAGE_TRIG_10ns_dynamic_energy 1.143989e+01
+#define FP_3STAGE_TRIG_10ns_leakage_power 7.473540e-02
+#define FP_3STAGE_TRIG_10ns_area 7.627057e+03
+
 void getRegisterPowerArea(float cycle_time,
                           float* internal_power_per_bit,
                           float* switch_power_per_bit,
@@ -571,6 +578,12 @@ void getDoublePrecisionFloatingPointMultiplierPowerArea(float cycle_time,
                                                         float* switch_power,
                                                         float* leakage_power,
                                                         float* area);
+/* Power and area cost for a floating-point sin/cos functional unit.*/
+void getTrigonometricFunctionPowerArea(float cycle_time,
+                                      float* internal_power,
+                                      float* switch_power,
+                                      float* leakage_power,
+                                      float* area);
 /* Access cacti_interface() to calculate power/area. */
 uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
 #endif

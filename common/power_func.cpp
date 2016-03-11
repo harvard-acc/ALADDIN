@@ -541,6 +541,31 @@ void getDoublePrecisionFloatingPointMultiplierPowerArea(float cycle_time,
   }
 }
 
+void getTrigonometricFunctionPowerArea(float cycle_time,
+                                      float* internal_power,
+                                      float* switch_power,
+                                      float* leakage_power,
+                                      float* area) {
+  switch ((int)cycle_time) {  // cycle_time in ns
+    case 10:
+      *internal_power = FP_3STAGE_TRIG_10ns_int_power;
+      *switch_power   = FP_3STAGE_TRIG_10ns_switch_power;
+      *leakage_power  = FP_3STAGE_TRIG_10ns_leakage_power;
+      *area           = FP_3STAGE_TRIG_10ns_area;
+      break;
+    default:
+      std::cerr << " Current power model supports trig functions running"
+                << " at 10 ns. " << std::endl;
+      std::cerr << " Cycle time: " << cycle_time << " is not supported yet."
+                << " Use 10ns power model instead." << std::endl;
+      *internal_power = FP_3STAGE_TRIG_10ns_int_power;
+      *switch_power   = FP_3STAGE_TRIG_10ns_switch_power;
+      *leakage_power  = FP_3STAGE_TRIG_10ns_leakage_power;
+      *area           = FP_3STAGE_TRIG_10ns_area;
+      break;
+  }
+}
+
 uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
   int cache_size = num_of_bytes;
   int line_size = wordsize;  // in bytes
