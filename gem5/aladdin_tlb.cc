@@ -15,14 +15,13 @@ AladdinTLB::AladdinTLB(HybridDatapath* _datapath,
                        Cycles _hit_latency,
                        Cycles _miss_latency,
                        Addr _page_bytes,
-                       bool _is_perfect,
                        unsigned _num_walks,
                        unsigned _bandwidth,
                        std::string _cacti_config,
                        std::string _accelerator_name)
     : datapath(_datapath), numEntries(_num_entries), assoc(_assoc),
       hitLatency(_hit_latency), missLatency(_miss_latency),
-      pageBytes(_page_bytes), isPerfectTLB(_is_perfect),
+      pageBytes(_page_bytes),
       numOutStandingWalks(_num_walks), numOccupiedMissQueueEntries(0),
       cacti_cfg(_cacti_config), requests_this_cycle(0), bandwidth(_bandwidth) {
   if (numEntries > 0)
@@ -144,7 +143,7 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
   }
 
   reads++;  // Both TLB hits and misses perform a read.
-  if (isPerfectTLB || tlbMemory->lookup(vpn, ppn)) {
+  if (tlbMemory->lookup(vpn, ppn)) {
     DPRINTF(HybridDatapath, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
     hits++;
     hitQueue.push_back(pkt);
@@ -195,8 +194,12 @@ void AladdinTLB::insert(Addr vpn, Addr ppn) {
 void AladdinTLB::insertBackupTLB(Addr vpn, Addr ppn) {
   infiniteBackupTLB[vpn] = ppn;
 }
-
+/*Always return true if TLB has unlimited bandwidth (bandwidth == 0). Otherwise,
+ * we check how many requests have been served so far and how many outstanding
+ * page table lookups. */
 bool AladdinTLB::canRequestTranslation() {
+  if (bandwidth == 0)
+    return true;
   return (requests_this_cycle < bandwidth &&
           numOccupiedMissQueueEntries < numOutStandingWalks);
 }

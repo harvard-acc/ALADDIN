@@ -36,7 +36,6 @@ class HybridDatapath(MemObject):
   tlbMissLatency = Param.Cycles(10, "number of cycles for a miss")
   tlbPageBytes = Param.Int(4096, "Page Size")
   tlbCactiConfig = Param.String("", "TLB CACTI configuration file.")
-  isPerfectTLB = Param.Bool(False, "Is this TLB perfect (e.g. always hit)")
   numOutStandingWalks = Param.Int(4, "num of outstanding page walks")
   loadQueueSize = Param.Int(16, "Size of the load queue.")
   loadBandwidth = Param.Int(

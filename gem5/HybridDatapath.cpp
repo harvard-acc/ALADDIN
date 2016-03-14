@@ -56,7 +56,6 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->tlbHitLatency,
                          params->tlbMissLatency,
                          params->tlbPageBytes,
-                         params->isPerfectTLB,
                          params->numOutStandingWalks,
                          params->tlbBandwidth,
                          params->tlbCactiConfig,
@@ -813,7 +812,7 @@ int HybridDatapath::writeConfiguration(sql::Connection* con) {
            "config_file, pipelining, unrolling, partitioning, "
            "max_dma_requests, dma_setup_latency, cache_size, cache_line_sz, "
            "cache_assoc, cache_hit_latency, "
-           "is_perfect_tlb, tlb_page_size, tlb_assoc, tlb_miss_latency, "
+           "tlb_page_size, tlb_assoc, tlb_miss_latency, "
            "tlb_hit_latency, tlb_max_outstanding_walks, tlb_bandwidth, "
            "tlb_entries, load_queue_size, store_queue_size, load_bandwidth, "
            "store_bandwidth) values (";
@@ -825,7 +824,7 @@ int HybridDatapath::writeConfiguration(sql::Connection* con) {
         << unrolling_factor << "," << partition_factor << ","
         << spadPort.max_req << "," << dmaSetupLatency << ",\"" << cacheSize
         << "\"," << cacheLineSize << "," << cacheAssoc << "," << cacheHitLatency
-        << "," << dtb.getIsPerfectTLB() << "," << dtb.getPageBytes() << ","
+        << "," << dtb.getPageBytes() << ","
         << dtb.getAssoc() << "," << dtb.getMissLatency() << ","
         << dtb.getHitLatency() << "," << dtb.getNumOutStandingWalks() << ","
         << dtb.bandwidth << "," << dtb.getNumEntries() << "," << load_queue.size

@@ -121,7 +121,6 @@ class AladdinTLB {
   Cycles hitLatency;
   Cycles missLatency;
   Addr pageBytes;
-  bool isPerfectTLB;
   unsigned numOutStandingWalks;
   unsigned numOccupiedMissQueueEntries;
   std::string cacti_cfg;  // CACTI 6.5+ config file.
@@ -190,7 +189,6 @@ class AladdinTLB {
              Cycles _hit_latency,
              Cycles _miss_latency,
              Addr pageBytes,
-             bool _is_perfect,
              unsigned _num_walks,
              unsigned _bandwidth,
              std::string _cacti_config,
@@ -210,7 +208,8 @@ class AladdinTLB {
   Addr pageMask() {
     return pageBytes - 1;
   };
-  bool getIsPerfectTLB() { return isPerfectTLB; }
+  /* A TLB is perfect is its missLatency is zero. */
+  bool getIsPerfectTLB() { return missLatency == 0 ? true : false; }
   unsigned getNumOutStandingWalks() { return numOutStandingWalks; }
 
   /* Inserts a translation between simulated virtual and physical pages.
@@ -270,7 +269,8 @@ class AladdinTLB {
 
   /* Number of TLB translation requests in the current cycle. */
   unsigned requests_this_cycle;
-  /* Maximum translation requests per cycle. */
+  /* Maximum translation requests per cycle. Zero if there is unlimited
+   * bandwidth. */
   unsigned bandwidth;
 
   Stats::Scalar hits;
