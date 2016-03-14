@@ -151,13 +151,7 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
     datapath->schedule(hq, datapath->clockEdge(hitLatency));
     // Due to the complexity of translating trace to virtual address, return
     // the complete address, not just the page number.
-    if (datapath->isExecuteStandalone()) {
-      *(pkt->getPtr<Addr>()) = ppn;
-    } else {
-      // Due to the complexity of translating trace to virtual address, return
-      // the complete address, not just the page number.
-      *(pkt->getPtr<Addr>()) = ppn + page_offset;
-    }
+    *(pkt->getPtr<Addr>()) = ppn + page_offset;
     return true;
   } else {
     // TLB miss! Let the TLB handle the walk, etc
