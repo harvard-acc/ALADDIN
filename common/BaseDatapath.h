@@ -49,6 +49,7 @@ struct funcActivity {
   unsigned fp_dp_mul;
   unsigned fp_sp_add;
   unsigned fp_dp_add;
+  unsigned trig;
   funcActivity() {
     mul = 0;
     add = 0;
@@ -58,6 +59,7 @@ struct funcActivity {
     fp_dp_mul = 0;
     fp_sp_add = 0;
     fp_dp_add = 0;
+    trig = 0;
   }
 };
 
@@ -115,6 +117,7 @@ struct summary_data_t {
   int max_fp_dp_mul;
   int max_fp_sp_add;
   int max_fp_dp_add;
+  int max_trig;
   int max_mul;
   int max_add;
   int max_bit;

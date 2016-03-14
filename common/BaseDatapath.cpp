@@ -1197,7 +1197,7 @@ void BaseDatapath::updatePerCycleActivity(
     int node_level = node->get_start_execution_cycle();
     funcActivity& curr_fu_activity = func_activity[func_id].at(node_level);
 
-    if (node->is_fp_op()) {
+    if (node->is_multicycle_op()) {
       for (unsigned stage = 0;
            node_level + stage < node->get_complete_execution_cycle();
            stage++) {
@@ -1215,6 +1215,8 @@ void BaseDatapath::updatePerCycleActivity(
             fp_fu_activity.fp_dp_mul += 1;
           else
             fp_fu_activity.fp_sp_mul += 1;
+        } else if (node->is_trig_op()) {
+          fp_fu_activity.trig += 1;
         }
       }
     } else if (node->is_int_mul_op())
@@ -1272,6 +1274,12 @@ void BaseDatapath::updatePerCycleActivity(
                          [](const funcActivity& a, const funcActivity& b) {
                            return (a.fp_dp_add < b.fp_dp_add);
                          })->fp_dp_add;
+    max_it->second.trig =
+        std::max_element(cycle_activity.begin(),
+                         cycle_activity.end(),
+                         [](const funcActivity& a, const funcActivity& b) {
+                           return (a.trig < b.trig);
+                         })->trig;
   }
 }
 
@@ -1292,6 +1300,7 @@ void BaseDatapath::outputPerCycleActivity(
       fp_sp_add_area;
   float fp_dp_add_int_power, fp_dp_add_switch_power, fp_dp_add_leak_power,
       fp_dp_add_area;
+  float trig_int_power, trig_switch_power, trig_leak_power, trig_area;
   float reg_int_power_per_bit, reg_switch_power_per_bit;
   float reg_leak_power_per_bit, reg_area_per_bit;
   float bit_int_power, bit_switch_power, bit_leak_power, bit_area;
@@ -1334,6 +1343,11 @@ void BaseDatapath::outputPerCycleActivity(
                                                 &fp_dp_add_switch_power,
                                                 &fp_dp_add_leak_power,
                                                 &fp_dp_add_area);
+  getTrigonometricFunctionPowerArea(cycleTime,
+                                    &trig_int_power,
+                                    &trig_switch_power,
+                                    &trig_leak_power,
+                                    &trig_area);
 
   std::string bn(benchName);
   std::string file_name;
@@ -1354,11 +1368,14 @@ void BaseDatapath::outputPerCycleActivity(
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
     stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
           << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul," << *it
-          << "-add," << *it << "-bit," << *it << "-shifter,";
+          << "-add," << *it << "-bit," << *it << "-shifter," << *it << "-trig,";
     power_stats << *it << "-fp-sp-mul," << *it << "-fp-dp-mul," << *it
                 << "-fp-sp-add," << *it << "-fp-dp-add," << *it << "-mul,"
-                << *it << "-add," << *it << "-bit," << *it << "-shifter,";
+                << *it << "-add," << *it << "-bit," << *it << "-shifter," << *it
+                << "-trig,";
   }
+  // TODO: mem_partition_names contains logical arrays, not completely
+  // partitioned arrays.
   stats << "reg,";
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
        ++it) {
@@ -1382,6 +1399,7 @@ void BaseDatapath::outputPerCycleActivity(
   int max_add = 0, max_mul = 0, max_bit = 0, max_shifter = 0;
   int max_fp_sp_mul = 0, max_fp_dp_mul = 0;
   int max_fp_sp_add = 0, max_fp_dp_add = 0;
+  int max_trig = 0;
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
     auto max_it = func_max_activity.find(*it);
     assert(max_it != func_max_activity.end());
@@ -1393,6 +1411,7 @@ void BaseDatapath::outputPerCycleActivity(
     max_fp_dp_mul += max_it->second.fp_dp_mul;
     max_fp_sp_add += max_it->second.fp_sp_add;
     max_fp_dp_add += max_it->second.fp_dp_add;
+    max_trig += max_it->second.trig;
   }
 
   float add_leakage_power = add_leak_power * max_add;
@@ -1405,11 +1424,12 @@ void BaseDatapath::outputPerCycleActivity(
   float fp_dp_mul_leakage_power = fp_dp_mul_leak_power * max_fp_dp_mul;
   float fp_sp_add_leakage_power = fp_sp_add_leak_power * max_fp_sp_add;
   float fp_dp_add_leakage_power = fp_dp_add_leak_power * max_fp_dp_add;
+  float trig_leakage_power = trig_leak_power * max_trig;
   float fu_leakage_power = mul_leakage_power + add_leakage_power +
                            reg_leakage_power + bit_leakage_power +
                            shifter_leakage_power + fp_sp_mul_leakage_power +
                            fp_dp_mul_leakage_power + fp_sp_add_leakage_power +
-                           fp_dp_add_leakage_power;
+                           fp_dp_add_leakage_power + trig_leakage_power;
   /*Finish caculating the number of FUs and leakage power*/
 
   float fu_dynamic_energy = 0;
@@ -1430,7 +1450,8 @@ void BaseDatapath::outputPerCycleActivity(
             << func_activity[*it].at(curr_level).mul << ","
             << func_activity[*it].at(curr_level).add << ","
             << func_activity[*it].at(curr_level).bit << ","
-            << func_activity[*it].at(curr_level).shifter << ",";
+            << func_activity[*it].at(curr_level).shifter << ","
+            << func_activity[*it].at(curr_level).trig << ",";
 #endif
 
       float curr_fp_sp_mul_dynamic_power =
@@ -1445,6 +1466,9 @@ void BaseDatapath::outputPerCycleActivity(
       float curr_fp_dp_add_dynamic_power =
           (fp_dp_add_switch_power + fp_dp_add_int_power) *
           func_activity[*it].at(curr_level).fp_dp_add;
+      float curr_trig_dynamic_power =
+          (trig_switch_power + trig_int_power) *
+          func_activity[*it].at(curr_level).trig;
       float curr_mul_dynamic_power = (mul_switch_power + mul_int_power) *
                                      func_activity[*it].at(curr_level).mul;
       float curr_add_dynamic_power = (add_switch_power + add_int_power) *
@@ -1457,14 +1481,16 @@ void BaseDatapath::outputPerCycleActivity(
       fu_dynamic_energy +=
           (curr_fp_sp_mul_dynamic_power + curr_fp_dp_mul_dynamic_power +
            curr_fp_sp_add_dynamic_power + curr_fp_dp_add_dynamic_power +
-           curr_mul_dynamic_power + curr_add_dynamic_power +
-           curr_bit_dynamic_power + curr_shifter_dynamic_power) *
+           curr_trig_dynamic_power + curr_mul_dynamic_power +
+           curr_add_dynamic_power + curr_bit_dynamic_power +
+           curr_shifter_dynamic_power) *
           cycleTime;
 #ifdef DEBUG
       power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
                   << curr_add_dynamic_power + add_leakage_power << ","
                   << curr_bit_dynamic_power + bit_leakage_power << ","
-                  << curr_shifter_dynamic_power + shifter_leakage_power << ",";
+                  << curr_shifter_dynamic_power + shifter_leakage_power << ","
+                  << curr_trig_dynamic_power << ",";
 #endif
     }
     // For regs
@@ -1518,7 +1544,7 @@ void BaseDatapath::outputPerCycleActivity(
       reg_area_per_bit * 32 * max_reg + bit_area * max_bit +
       shifter_area * max_shifter + fp_sp_mul_area * max_fp_sp_mul +
       fp_dp_mul_area * max_fp_dp_mul + fp_sp_add_area * max_fp_sp_add +
-      fp_dp_add_area * max_fp_dp_add;
+      fp_dp_add_area * max_fp_dp_add + trig_area * max_trig;
   float total_area = mem_area + fu_area;
 
   // Summary output.
@@ -1544,6 +1570,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary.max_fp_dp_mul = max_fp_dp_mul;
   summary.max_fp_sp_add = max_fp_sp_add;
   summary.max_fp_dp_add = max_fp_dp_add;
+  summary.max_trig = max_trig;
 
   writeSummary(std::cout, summary);
   std::ofstream summary_file;
@@ -1591,6 +1618,8 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   if (summary.max_fp_dp_add != 0)
     outfile << "Num of Double Precision FP Adders: " << summary.max_fp_dp_add
             << std::endl;
+  if (summary.max_trig != 0)
+    outfile << "Num of Trigonometric Units: " << summary.max_trig << std::endl;
   if (summary.max_mul != 0)
     outfile << "Num of Multipliers (32-bit): " << summary.max_mul << std::endl;
   if (summary.max_add != 0)
@@ -1900,7 +1929,11 @@ void BaseDatapath::initBaseAddress() {
         break;
     }
   }
-#ifdef DEBUG
+#if 0
+  // TODO: writing the base addresses can cause simulation to freeze when no
+  // partitioning is applied to arrays due to how writeBaseAddress() parses the
+  // partition number from an array's label. So this is going to be disabled
+  // for the time being, until we find a chance to fix this.
   writeBaseAddress();
 #endif
 }
