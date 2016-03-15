@@ -1306,6 +1306,7 @@ void BaseDatapath::outputPerCycleActivity(
   float bit_int_power, bit_switch_power, bit_leak_power, bit_area;
   float shifter_int_power, shifter_switch_power, shifter_leak_power,
       shifter_area;
+  unsigned idle_fu_cycles = 0;
 
   getAdderPowerArea(
       cycleTime, &add_int_power, &add_switch_power, &add_leak_power, &add_area);
@@ -1430,7 +1431,7 @@ void BaseDatapath::outputPerCycleActivity(
                            shifter_leakage_power + fp_sp_mul_leakage_power +
                            fp_dp_mul_leakage_power + fp_sp_add_leakage_power +
                            fp_dp_add_leakage_power + trig_leakage_power;
-  /*Finish caculating the number of FUs and leakage power*/
+  /*Finish calculating the number of FUs and leakage power*/
 
   float fu_dynamic_energy = 0;
 
@@ -1440,44 +1441,46 @@ void BaseDatapath::outputPerCycleActivity(
     stats << curr_level << ",";
     power_stats << curr_level << ",";
 #endif
+    bool is_fu_idle = true;
     // For FUs
     for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
+      funcActivity& curr_activity = func_activity[*it].at(curr_level);
+      is_fu_idle &= curr_activity.is_idle();
 #ifdef DEBUG
-      stats << func_activity[*it].at(curr_level).fp_sp_mul << ","
-            << func_activity[*it].at(curr_level).fp_dp_mul << ","
-            << func_activity[*it].at(curr_level).fp_sp_add << ","
-            << func_activity[*it].at(curr_level).fp_dp_add << ","
-            << func_activity[*it].at(curr_level).mul << ","
-            << func_activity[*it].at(curr_level).add << ","
-            << func_activity[*it].at(curr_level).bit << ","
-            << func_activity[*it].at(curr_level).shifter << ","
-            << func_activity[*it].at(curr_level).trig << ",";
+      stats << curr_activity.fp_sp_mul << ","
+            << curr_activity.fp_dp_mul << ","
+            << curr_activity.fp_sp_add << ","
+            << curr_activity.fp_dp_add << ","
+            << curr_activity.mul << ","
+            << curr_activity.add << ","
+            << curr_activity.bit << ","
+            << curr_activity.shifter << ","
+            << curr_activity.trig << ",";
 #endif
-
       float curr_fp_sp_mul_dynamic_power =
           (fp_sp_mul_switch_power + fp_sp_mul_int_power) *
-          func_activity[*it].at(curr_level).fp_sp_mul;
+          curr_activity.fp_sp_mul;
       float curr_fp_dp_mul_dynamic_power =
           (fp_dp_mul_switch_power + fp_dp_mul_int_power) *
-          func_activity[*it].at(curr_level).fp_dp_mul;
+          curr_activity.fp_dp_mul;
       float curr_fp_sp_add_dynamic_power =
           (fp_sp_add_switch_power + fp_sp_add_int_power) *
-          func_activity[*it].at(curr_level).fp_sp_add;
+          curr_activity.fp_sp_add;
       float curr_fp_dp_add_dynamic_power =
           (fp_dp_add_switch_power + fp_dp_add_int_power) *
-          func_activity[*it].at(curr_level).fp_dp_add;
+          curr_activity.fp_dp_add;
       float curr_trig_dynamic_power =
           (trig_switch_power + trig_int_power) *
-          func_activity[*it].at(curr_level).trig;
+          curr_activity.trig;
       float curr_mul_dynamic_power = (mul_switch_power + mul_int_power) *
-                                     func_activity[*it].at(curr_level).mul;
+                                     curr_activity.mul;
       float curr_add_dynamic_power = (add_switch_power + add_int_power) *
-                                     func_activity[*it].at(curr_level).add;
+                                     curr_activity.add;
       float curr_bit_dynamic_power = (bit_switch_power + bit_int_power) *
-                                     func_activity[*it].at(curr_level).bit;
+                                     curr_activity.bit;
       float curr_shifter_dynamic_power =
           (shifter_switch_power + shifter_int_power) *
-          func_activity[*it].at(curr_level).shifter;
+          curr_activity.shifter;
       fu_dynamic_energy +=
           (curr_fp_sp_mul_dynamic_power + curr_fp_dp_mul_dynamic_power +
            curr_fp_sp_add_dynamic_power + curr_fp_dp_add_dynamic_power +
@@ -1523,6 +1526,8 @@ void BaseDatapath::outputPerCycleActivity(
     power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
     power_stats << std::endl;
 #endif
+    if (is_fu_idle)
+      idle_fu_cycles++;
   }
 #ifdef DEBUG
   stats.close();
@@ -1551,6 +1556,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary_data_t summary;
   summary.benchName = benchName;
   summary.num_cycles = num_cycles;
+  summary.idle_fu_cycles = idle_fu_cycles;
   summary.avg_power = avg_power;
   summary.avg_fu_power = avg_fu_power;
   summary.avg_fu_dynamic_power = avg_fu_dynamic_power;
@@ -1593,6 +1599,7 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   outfile << "Running : " << summary.benchName << std::endl;
   outfile << "Cycle : " << summary.num_cycles << " cycles" << std::endl;
   outfile << "Avg Power: " << summary.avg_power << " mW" << std::endl;
+  outfile << "Idle FU Cycles: " << summary.idle_fu_cycles << " cycles" << std::endl;
   outfile << "Avg FU Power: " << summary.avg_fu_power << " mW" << std::endl;
   outfile << "Avg FU Dynamic Power: " << summary.avg_fu_dynamic_power << " mW"
           << std::endl;

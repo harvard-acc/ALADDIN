@@ -61,6 +61,11 @@ struct funcActivity {
     fp_dp_add = 0;
     trig = 0;
   }
+
+  bool is_idle() {
+    return (mul == 0 && add == 0 && bit == 0 && shifter == 0 &&
+            fp_sp_mul == 0 && fp_dp_mul == 0 && fp_dp_add == 0 && trig == 0);
+  }
 };
 
 class Scratchpad;
@@ -103,6 +108,7 @@ struct RQEntryComp {
 struct summary_data_t {
   std::string benchName;
   int num_cycles;
+  int idle_fu_cycles;
   float avg_power;
   float avg_mem_power;
   float avg_fu_power;
