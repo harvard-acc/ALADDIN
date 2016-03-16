@@ -19,6 +19,7 @@ enum MemAccessStatus {
   Translated,
   WaitingFromCache,
   WaitingFromDma,
+  WaitingForDmaSetup,
   Returned
 };
 

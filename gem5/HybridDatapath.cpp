@@ -26,9 +26,8 @@
 #include "HybridDatapath.h"
 
 HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
-    : ScratchpadDatapath(params->benchName,
-                         params->traceFileName,
-                         params->configFileName),
+    : ScratchpadDatapath(
+          params->benchName, params->traceFileName, params->configFileName),
       Gem5Datapath(params,
                    params->acceleratorId,
                    params->executeStandalone,
@@ -64,7 +63,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->tlbBandwidth,
                          params->tlbCactiConfig,
                          params->acceleratorName),
-      tickEvent(this), executedNodesLastTrigger(0) {
+      issueDmaOpsASAP(params->issueDmaOpsASAP),
+      tickEvent(this), delayedDmaEvent(this), executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
 #ifdef USE_DB
@@ -79,8 +79,23 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   isCacheBlocked = false;
   retryPkt = nullptr;
+
+  /* In standalone mode, we charge the constant cost of a DMA setup operation
+   * up front, instead of per dmaLoad call, or we'll overestimate the setup
+   * latency.
+   */
   if (execute_standalone)
-    initializeDatapath();
+    initializeDatapath(dmaSetupLatency);
+
+  /* For the DMA model, compute the cost of a CPU cache flush in terms of
+   * accelerator cycles.  Yeah, this is backwards -- we should be doing this
+   * from the CPU itself -- but in standalone mode where we don't have a CPU,
+   * this is the next best option.
+   *
+   * Latencies were characterized from Zynq Zedboard running at 666MHz.
+   */
+  cacheLineFlushLatency = ceil((56.0 * 1.5)/BaseDatapath::cycleTime);
+  cacheLineInvalidateLatency = ceil((47.0 * 1.5)/BaseDatapath::cycleTime);
 }
 
 HybridDatapath::~HybridDatapath() {
@@ -99,6 +114,7 @@ void HybridDatapath::clearDatapath(bool flush_tlb) {
 void HybridDatapath::resetCounters(bool flush_tlb) {
   loads = 0;
   stores = 0;
+  dma_setup_cycles = 0;
   nodes_issued_per_cycle.reset();
   if (flush_tlb)
     dtb.clear();
@@ -153,11 +169,48 @@ void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
   dtb.insertArrayLabelToVirtual(array_label, vaddr);
 }
 
-void HybridDatapath::event_step() {
+void HybridDatapath::eventStep() {
   step();
   scratchpad->step();
   printf_guards.write_buffered_output();
   printf_guards.reset();
+}
+
+void HybridDatapath::delayedDmaIssue() {
+  // Pop off the front entry, which is the one that this event is being
+  // triggered for, and push it onto the issue queue.
+  auto waiting_entry = dmaWaitingQueue.front();
+  dmaWaitingQueue.pop_front();
+  unsigned node_id = waiting_entry.first;
+  addDmaNodeToIssueQueue(node_id);
+
+  // "DMA setup latency" in this model means the time required to flush ALL the
+  // cache lines being transmitted and invalidate ALL the cache lines for the
+  // receiving buffer. Typically, DMA transfer only starts after this process
+  // is completely finished. This optimization lets us issue DMA nodes as soon
+  // as they have finished their own setup, rather than waiting for everyone's
+  // setup to finish.
+  if (issueDmaOpsASAP) {
+    issueDmaRequest(node_id);
+  }
+
+  // Schedule the next delayed DMA event.
+  if (!dmaWaitingQueue.empty() && !delayedDmaEvent.scheduled()) {
+    auto next_entry = dmaWaitingQueue.front();
+    node_id = next_entry.first;
+    Tick delay = next_entry.second;
+    schedule(delayedDmaEvent, delay + curTick());
+    DPRINTF(HybridDatapath,
+            "Next setup latency for DMA operation with id %d: %d ticks.\n",
+            node_id, delay);
+  }
+
+  // In the typical case, after all DMA nodes have exited the waiting queue, we
+  // can issue them all at once. No need to wait anymore.
+  if (!issueDmaOpsASAP && dmaWaitingQueue.empty()) {
+    for (auto it = dmaIssueQueue.begin(); it != dmaIssueQueue.end(); it++)
+      issueDmaRequest(it->second);
+  }
 }
 
 void HybridDatapath::stepExecutingQueue() {
@@ -320,23 +373,30 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
   else
     status = inflight_mem_nodes[node_id];
   if (status == Ready && inflight_mem_nodes.size() < MAX_INFLIGHT_NODES) {
-    // first time see, do access
-    markNodeStarted(node);
+    /* A DMA load needs to be preceded by a cache flush of the buffer being sent,
+     * while a DMA store needs to be preceded by a cache invalidate of the
+     * receiving buffer. In CPU mode, this should be handled by the CPU; in standalone
+     * mode, we add extra latency to the DMA operation here.
+     */
+    size_t size = node->get_mem_access()->size;
     bool isLoad = node->is_dma_load();
-    MemAccess* mem_access = node->get_mem_access();
-    unsigned size = mem_access->size;  // mem_access->size is in bytes
-    Addr vaddr = mem_access->vaddr;
-    /* Alternatively this can be done in the optimization pass, instead of the
-     * scheduling pass. */
-    std::string array_label = getArrayLabelFromAddr(vaddr);
-    node->set_array_label(array_label);
-    DPRINTF(HybridDatapath,
-            "node:%d is a dma request with label %s\n",
-            node->get_node_id(),
-            array_label.c_str());
-    incrementDmaScratchpadAccesses(array_label, size, isLoad);
-    issueDmaRequest(vaddr, size, isLoad, node->get_node_id());
-    inflight_mem_nodes[node_id] = WaitingFromDma;
+    unsigned cache_delay_cycles = 0;
+    unsigned cache_lines_affected =
+        ceil(((float)size) / system->cacheLineSize());
+    if (isLoad)
+      cache_delay_cycles = cache_lines_affected * cacheLineFlushLatency;
+    else
+      cache_delay_cycles = cache_lines_affected * cacheLineInvalidateLatency;
+    dma_setup_cycles += cache_delay_cycles;
+    Tick delay = clockPeriod() * cache_delay_cycles;
+    if (!delayedDmaEvent.scheduled()) {
+      DPRINTF(HybridDatapath,
+              "Scheduling DMA %s operation with node id %d with delay %lu\n",
+              isLoad ? "load" : "store", node_id, delay);
+      schedule(delayedDmaEvent, curTick() + delay);
+    }
+    inflight_mem_nodes[node_id] = WaitingForDmaSetup;
+    dmaWaitingQueue.push_back(std::make_pair(node_id, delay));
     return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
     std::string array_label = node->get_array_label();
@@ -346,7 +406,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     inflight_mem_nodes.erase(node_id);
     return true;  // DMA op completed.
   } else {
-    // Still waiting from the cache. Move on to the next node.
+    // Still waiting from the cache or for DMA setup to finish. Move on to the next node.
     return false;
   }
 }
@@ -438,31 +498,46 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   }
 }
 
+// Issue a DMA request for memory.
+void HybridDatapath::issueDmaRequest(unsigned node_id) {
+  ExecNode *node = exec_nodes[node_id];
+  markNodeStarted(node);
+  bool isLoad = node->is_dma_load();
+  MemAccess* mem_access = node->get_mem_access();
+  size_t size = mem_access->size;  // In bytes.
+  Addr vaddr = mem_access->vaddr;
+  DPRINTF(
+      HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", vaddr, size);
+  /* Assigning the array label can (and probably should) be done in the
+   * optimization pass instead of the scheduling pass. */
+  std::string array_label = getArrayLabelFromAddr(vaddr);
+  node->set_array_label(array_label);
+  incrementDmaScratchpadAccesses(array_label, size, isLoad);
+  inflight_mem_nodes[node_id] = WaitingFromDma;
+  vaddr &= ADDR_MASK;
+  MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
+  Request::Flags flag = 0;
+  uint8_t* data = new uint8_t[size];
+  DmaEvent* dma_event = new DmaEvent(this, node_id);
+  spadPort.dmaAction(
+      cmd, vaddr, size, dma_event, data, 0, flag);
+}
+
 /* Mark the DMA request node as having completed. */
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
   Addr base_addr = exec_nodes[node_id]->get_mem_access()->vaddr;
-  dmaQueue.erase(base_addr);
+  dmaIssueQueue.erase(base_addr);
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
           base_addr);
   inflight_mem_nodes[node_id] = Returned;
 }
 
-// Issue a DMA request for memory.
-void HybridDatapath::issueDmaRequest(Addr addr,
-                                     unsigned size,
-                                     bool isLoad,
-                                     unsigned node_id) {
-  DPRINTF(
-      HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", addr, size);
-  addr &= ADDR_MASK;
-  MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
-  Request::Flags flag = 0;
-  uint8_t* data = new uint8_t[size];
-  dmaQueue[addr] = node_id;
-  DmaEvent* dma_event = new DmaEvent(this, node_id);
-  spadPort.dmaAction(
-      cmd, addr, size, dma_event, data, Cycles(dmaSetupLatency), flag);
+void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
+  DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
+  ExecNode *node = exec_nodes[node_id];
+  Addr vaddr = node->get_mem_access()->vaddr;
+  dmaIssueQueue[vaddr] = node_id;
 }
 
 void HybridDatapath::sendFinishedSignal() {
@@ -766,7 +841,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath,
           "Receiving DMA response for address %#x of base %#x with size %d.\n",
           paddr, base_addr, size);
-  unsigned node_id = datapath->dmaQueue[base_addr];
+  unsigned node_id = datapath->dmaIssueQueue[base_addr];
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node!=nullptr);
   std::string array_label = node->get_array_label();
@@ -778,12 +853,12 @@ HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id
     : Event(Default_Pri, AutoDelete), datapath(_dpath), dma_node_id(_dma_node_id) {}
 
 void HybridDatapath::DmaEvent::process() {
-  assert(!datapath->dmaQueue.empty());
+  assert(!datapath->dmaIssueQueue.empty());
   datapath->completeDmaRequest(dma_node_id);
 }
 
 const char* HybridDatapath::DmaEvent::description() const {
-  return "Hybrid DMA datapath receving request event";
+  return "Hybrid DMA datapath receiving request event";
 }
 
 void HybridDatapath::resetCacheCounters() {
@@ -801,8 +876,11 @@ void HybridDatapath::regStats() {
   stores.name("system." + datapath_name + ".total_stores")
       .desc("Total number of dcache stores.")
       .flags(total | nonan);
+  dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
+      .desc("Total number of cycles spent on setting up DMA transfers.")
+      .flags(total | nonan);
   nodes_issued_per_cycle.name("system." + datapath_name + ".nodes_issued_per_cycle")
-      .init(500)  // 500 buckets.
+      .init(100)  // 100 buckets.
       .desc("Distribution of nodes issued per cycle")
       .flags(total | nozero | pdf | nonan);
 }

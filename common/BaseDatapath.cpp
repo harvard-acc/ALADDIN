@@ -1979,9 +1979,10 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
 }
 
 std::string BaseDatapath::getArrayLabelFromAddr(Addr base_addr) {
-  auto part_it = partition_config.begin();
   std::string array_label;
-  for (; part_it != partition_config.end(); ++part_it) {
+  for (auto part_it = partition_config.begin();
+       part_it != partition_config.end();
+       ++part_it) {
     if (part_it->second.base_addr == base_addr) {
       array_label = part_it->first;
       break;
