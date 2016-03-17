@@ -21,6 +21,8 @@ class HybridDatapath(MemObject):
   # Scratchpad/DMA parameters.
   dmaSetupLatency = Param.Unsigned(1000, "DMA Setup Latency")
   maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
+  multiChannelDMA = Param.Bool(False, "Use multi-channel DMA.")
+  dmaChunkSize = Param.Unsigned("64", "DMA transaction chunk size.")
   spadPorts = Param.Unsigned(1, "Scratchpad ports per partition")
 
   # Cache parameters.

@@ -261,8 +261,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   class SpadPort : public DmaPort {
    public:
-    SpadPort(HybridDatapath* dev, System* s, unsigned _max_req)
-        : DmaPort(dev, s, _max_req), max_req(_max_req), datapath(dev) {}
+    SpadPort(HybridDatapath* dev, System* s, unsigned _max_req,
+             unsigned _chunk_size, bool _interleave)
+        : DmaPort(dev, s, _max_req, _chunk_size, _interleave), max_req(_max_req), datapath(dev) {}
     // Maximum DMA requests that can be queued.
     const unsigned max_req;
 
@@ -309,10 +310,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   class DmaEvent : public Event {
    private:
     HybridDatapath* datapath;
+    /* To track which DMA request is returned. */
+    unsigned dma_node_id;
 
    public:
     /** Constructor */
-    DmaEvent(HybridDatapath* _dpath);
+    DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id);
     /** Process a dma event */
     void process();
     /** Returns the description of the tick event. */
@@ -327,8 +330,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   std::map<unsigned, MemAccessStatus> inflight_mem_nodes;
 
-  // FIFO queue for DMA accesses.
-  std::deque<unsigned> dmaQueue;
+  /* Hash table to track DMA accesses. Indexed by the base address of DMA
+   * accesses, and mapped to the corresponding node id for that DMA request. */
+  std::unordered_map<Addr, unsigned> dmaQueue;
 
   // Number of cycles required for the CPU to initiate a DMA transfer.
   unsigned dmaSetupLatency;

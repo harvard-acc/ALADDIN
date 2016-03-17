@@ -34,7 +34,11 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                    params->executeStandalone,
                    params->system),
       dmaSetupLatency(params->dmaSetupLatency),
-      spadPort(this, params->system, params->maxDmaRequests),
+      spadPort(this,
+               params->system,
+               params->maxDmaRequests,
+               params->dmaChunkSize,
+               params->multiChannelDMA),
       spadMasterId(params->system->getMasterId(name() + ".spad")),
       cachePort(this),
       cacheMasterId(params->system->getMasterId(name() + ".cache")),
@@ -436,9 +440,11 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
 /* Mark the DMA request node as having completed. */
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
+  Addr base_addr = exec_nodes[node_id]->get_mem_access()->vaddr;
+  dmaQueue.erase(base_addr);
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
-          exec_nodes[node_id]->get_mem_access()->vaddr);
+          base_addr);
   inflight_mem_nodes[node_id] = Returned;
 }
 
@@ -453,8 +459,8 @@ void HybridDatapath::issueDmaRequest(Addr addr,
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
   uint8_t* data = new uint8_t[size];
-  dmaQueue.push_back(node_id);
-  DmaEvent* dma_event = new DmaEvent(this);
+  dmaQueue[addr] = node_id;
+  DmaEvent* dma_event = new DmaEvent(this, node_id);
   spadPort.dmaAction(
       cmd, addr, size, dma_event, data, Cycles(dmaSetupLatency), flag);
 }
@@ -755,10 +761,12 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
 
   Addr paddr = pkt->getAddr();  // Packet address is physical.
   unsigned size = pkt->req->getSize(); // in bytes
+  // get the DMA sender state
+  Addr base_addr = getPacketBaseAddr(pkt);
   DPRINTF(HybridDatapath,
-          "Receiving DMA response for address %#x with size %d.\n",
-          paddr, size);
-  unsigned node_id = datapath->dmaQueue.front();
+          "Receiving DMA response for address %#x of base %#x with size %d.\n",
+          paddr, base_addr, size);
+  unsigned node_id = datapath->dmaQueue[base_addr];
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node!=nullptr);
   std::string array_label = node->get_array_label();
@@ -766,13 +774,12 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   return DmaPort::recvTimingResp(pkt);
 }
 
-HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath)
-    : Event(Default_Pri, AutoDelete), datapath(_dpath) {}
+HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id)
+    : Event(Default_Pri, AutoDelete), datapath(_dpath), dma_node_id(_dma_node_id) {}
 
 void HybridDatapath::DmaEvent::process() {
   assert(!datapath->dmaQueue.empty());
-  datapath->completeDmaRequest(datapath->dmaQueue.front());
-  datapath->dmaQueue.pop_front();
+  datapath->completeDmaRequest(dma_node_id);
 }
 
 const char* HybridDatapath::DmaEvent::description() const {
