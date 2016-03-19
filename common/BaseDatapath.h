@@ -167,6 +167,10 @@ class BaseDatapath {
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
+  void addCallArgumentMapping(std::string callee_reg_id,
+                              std::string caller_reg_id);
+  std::string getCallerRegID(std::string callee_func,
+                             std::string reg_id);
   virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
@@ -375,6 +379,10 @@ class BaseDatapath {
   std::unordered_map<std::string, int> unrolling_config;
   /* complete, block, cyclic, and cache partition share partition_config */
   std::unordered_map<std::string, partitionEntry> partition_config;
+
+  /* Stores the register name mapping between caller and callee functions. */
+  std::unordered_map<std::string, std::string> call_argument_map;
+
   /* True if the summarized results should be stored to a database, false
    * otherwise */
   bool use_db;

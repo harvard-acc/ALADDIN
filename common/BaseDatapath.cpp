@@ -60,6 +60,7 @@ void BaseDatapath::clearDatapath() {
   clearRegStats();
   graph_.clear();
   registers.clear();
+  call_argument_map.clear();
 }
 
 void BaseDatapath::addDddgEdge(unsigned int from,
@@ -75,6 +76,24 @@ ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   return exec_nodes[node_id];
 }
 
+void BaseDatapath::addCallArgumentMapping(std::string callee_reg_id,
+                                          std::string caller_reg_id) {
+  call_argument_map[callee_reg_id] = caller_reg_id;
+}
+
+std::string BaseDatapath::getCallerRegID(std::string callee_func,
+                                         std::string reg_id) {
+  std::string tmp_reg_id = callee_func;
+  tmp_reg_id += "-";
+  tmp_reg_id += reg_id;
+  auto it = call_argument_map.find(tmp_reg_id);
+  while ( it != call_argument_map.end()) {
+    tmp_reg_id = it->second;
+    it = call_argument_map.find(tmp_reg_id);
+  }
+  std::size_t reg_index = tmp_reg_id.find_last_of("-");
+  return tmp_reg_id.substr(reg_index+1);
+}
 void BaseDatapath::memoryAmbiguation() {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "      Memory Ambiguation       " << std::endl;
@@ -1916,11 +1935,14 @@ void BaseDatapath::initBaseAddress() {
           continue;
 
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
-        int parent_microop = exec_nodes[parent_id]->get_microop();
+        ExecNode* parent_node = exec_nodes[parent_id];
+        int parent_microop = parent_node->get_microop();
         if (parent_microop == LLVM_IR_GetElementPtr ||
             parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
           std::string label = getBaseAddressLabel(parent_id);
+          std::string method_id = parent_node->get_dynamic_method();
+          label = getCallerRegID(method_id, label);
           node->set_array_label(label);
           curr_vertex = source(*in_edge_it, graph_);
           node_microop = parent_microop;

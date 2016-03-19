@@ -61,6 +61,9 @@ class DDDG {
   int num_of_parameters;
   // Used to track the instruction that initialize call function parameters
   int last_call_source;
+  /* Unique register ID in the caller function. Used to create a mapping between
+   * register IDs in caller and callee functions. */
+  std::string unique_reg_in_caller_func;
 
   std::string curr_instid;
   std::vector<Addr> parameter_value_per_inst;

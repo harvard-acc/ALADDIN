@@ -155,6 +155,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   if (is_reg) {
     char unique_reg_id[256];
     sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
+    if (curr_microop == LLVM_IR_Call) {
+      unique_reg_in_caller_func = unique_reg_id;
+    }
     // Find the instruction that writes the register
     auto reg_it = register_last_written.find(unique_reg_id);
     if (reg_it != register_last_written.end()) {
@@ -164,8 +167,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       tmp_edge.par_id = param_tag;
       register_edge_table.insert(std::make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
-      if (curr_microop == LLVM_IR_Call)
+      if (curr_microop == LLVM_IR_Call) {
         last_call_source = reg_it->second;
+      }
     } else if ((curr_microop == LLVM_IR_Store && param_tag == 2) ||
                (curr_microop == LLVM_IR_Load && param_tag == 1)) {
       /*For the load/store op without a gep instruction before, assuming the
@@ -282,11 +286,16 @@ void DDDG::parse_forward(std::string line) {
   char unique_reg_id[256];
   assert(curr_node->is_call_op() || curr_node->is_dma_op() || curr_node->is_trig_op());
   sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
-
+  // Create a mapping between registers in caller and callee functions.
+  if (!unique_reg_in_caller_func.empty()) {
+    datapath->addCallArgumentMapping(unique_reg_id, unique_reg_in_caller_func);
+    unique_reg_in_caller_func.clear();
+  }
   auto reg_it = register_last_written.find(unique_reg_id);
   int tmp_written_inst = num_of_instructions;
-  if (last_call_source != -1)
+  if (last_call_source != -1) {
     tmp_written_inst = last_call_source;
+  }
   if (reg_it != register_last_written.end())
     reg_it->second = tmp_written_inst;
   else
