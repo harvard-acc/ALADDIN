@@ -189,15 +189,16 @@ uint8_t aes_expandEncKey(uint8_t *k, uint8_t rc)
     return rc;
 } /* aes_expandEncKey */
 
+/* This wrapper function prevents dmaStore from issuing until all previous
+ * nodes are completed.
+ */
+int __attribute__((nonline)) dma_store_wrapper(int* addr, int size) {
+  return dmaStore(addr, size);
+}
+
 /* -------------------------------------------------------------------------- */
 void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 {
-#pragma HLS INTERFACE s_axilite bundle=BUS_A port=ctx
-#pragma HLS INTERFACE s_axilite bundle=BUS_A port=k
-#pragma HLS INTERFACE s_axilite bundle=BUS_A port=buf
-#pragma HLS INTERFACE s_axilite bundle=BUS_A port=return
-
-
 #ifdef DMA_MODE
   dmaLoad(&k[0],32*1*8);
   dmaLoad(&buf[0],16*1*8);
@@ -232,6 +233,6 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     rcon = aes_expandEncKey(ctx->key, rcon);
     aes_addRoundKey(buf, ctx->key);
 #ifdef DMA_MODE
-  dmaStore(ctx,96*1*8);
+    dma_store_wrapper(&buf[0], 16*1*8);
 #endif
 } /* aes256_encrypt */
