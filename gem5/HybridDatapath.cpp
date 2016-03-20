@@ -84,8 +84,9 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    * up front, instead of per dmaLoad call, or we'll overestimate the setup
    * latency.
    */
-  if (execute_standalone)
+  if (execute_standalone) {
     initializeDatapath(dmaSetupLatency);
+  }
 
   /* For the DMA model, compute the cost of a CPU cache flush in terms of
    * accelerator cycles.  Yeah, this is backwards -- we should be doing this
@@ -127,7 +128,7 @@ void HybridDatapath::initializeDatapath(int delay) {
   globalOptimizationPass();
   scratchpad->resetReadyBits();
   prepareForScheduling();
-  num_cycles = 0;
+  num_cycles = delay;
   isCacheBlocked = false;
   retryPkt = NULL;
   startDatapathScheduling(delay);
@@ -307,6 +308,12 @@ bool HybridDatapath::step() {
     dumpStats();
     DPRINTF(Aladdin, "Accelerator completed.\n");
     if (execute_standalone) {
+      // If in standalone mode, we wait dmaSetupLatency before the datapath
+      // starts, but this cost must be added to this stat. For some reason,
+      // this cannot be done until we have started simulation of events,
+      // because all stats get cleared before that happens.  So until I figure
+      // out how to get around that, it's going to be accounted for at the end.
+      dma_setup_cycles += dmaSetupLatency;
       system->deregisterAccelerator(accelerator_id);
       if (system->numRunningAccelerators() == 0) {
         exitSimLoop("Aladdin called exit()");
