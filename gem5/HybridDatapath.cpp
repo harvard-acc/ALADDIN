@@ -291,7 +291,7 @@ bool HybridDatapath::step() {
           num_cycles,
           executedNodes,
           totalConnectedNodes);
-  if (executedNodesLastTrigger != executedNodes)
+  if (executedNodesLastTrigger == executedNodes)
     cycles_since_last_node++;
   else
     cycles_since_last_node = 0;
