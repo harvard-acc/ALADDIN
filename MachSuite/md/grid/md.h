@@ -85,13 +85,13 @@ void run_benchmark( void *vargs ) {
 
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "n_points", (void*)&args->n_points,
+      MACHSUITE_MD_GRID, "n_points", (void*)&args->n_points,
       sizeof(args->n_points));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "d_force", (void*)&args->d_force,
+      MACHSUITE_MD_GRID, "d_force", (void*)&args->d_force,
       sizeof(args->d_force));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "position", (void*)&args->position,
+      MACHSUITE_MD_GRID, "position", (void*)&args->position,
       sizeof(args->position));
   invokeAcceleratorAndBlock(MACHSUITE_MD_GRID);
 #else

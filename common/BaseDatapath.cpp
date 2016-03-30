@@ -2012,7 +2012,7 @@ std::string BaseDatapath::getArrayLabelFromAddr(Addr base_addr) {
   }
   // If the array label is not found, abort the simulation.
   if (array_label.empty()) {
-    std::cerr << "Unknown address %x\n" << base_addr
+    std::cerr << "Unknown address " << base_addr
               << std::endl;
     exit(-1);
   }

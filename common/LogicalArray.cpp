@@ -16,7 +16,7 @@ LogicalArray::LogicalArray(std::string _base_name,
   word_size = _word_size;
   num_ports = _num_ports;
   unsigned partition_size = ceil(((float)total_size) / num_partitions);
-  uca_org_t cacti_result = cactiWrapper(partition_size, word_size);
+  uca_org_t cacti_result = cactiWrapper(partition_size, word_size, num_ports);
   // set read/write/leak/area per partition
   // power in mW, energy in pJ, area in mm2
   part_read_energy = cacti_result.power.readOp.dynamic * 1e+12;

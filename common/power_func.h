@@ -586,5 +586,6 @@ void getTrigonometricFunctionPowerArea(float cycle_time,
                                       float* leakage_power,
                                       float* area);
 /* Access cacti_interface() to calculate power/area. */
-uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize);
+uca_org_t cactiWrapper(
+  unsigned num_of_bytes, unsigned wordsize, unsigned num_ports);
 #endif

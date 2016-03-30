@@ -566,7 +566,7 @@ void getTrigonometricFunctionPowerArea(float cycle_time,
   }
 }
 
-uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
+uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize, unsigned num_ports) {
   int cache_size = num_of_bytes;
   int line_size = wordsize;  // in bytes
   if (wordsize < 4)          // minimum line size in cacti is 32-bit/4-byte
@@ -574,7 +574,9 @@ uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
   if (cache_size / line_size < 64)
     cache_size = line_size * 64;  // minimum scratchpad size: 64 words
   int associativity = 1;
-  int rw_ports = SINGLE_PORT_SPAD;
+  int rw_ports = num_ports;
+  if (rw_ports == 0)
+    rw_ports = 1;
   int excl_read_ports = 0;
   int excl_write_ports = 0;
   int single_ended_read_ports = 0;
@@ -597,15 +599,15 @@ uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
   // assign weights for CACTI optimizations
   int obj_func_delay = 0;
   int obj_func_dynamic_power = 0;
-  int obj_func_leakage_power = 1000000;
+  int obj_func_leakage_power = 100;
   int obj_func_area = 0;
   int obj_func_cycle_time = 0;
   // from CACTI example config...
-  int dev_func_delay = 100;
-  int dev_func_dynamic_power = 1000;
-  int dev_func_leakage_power = 10;
-  int dev_func_area = 100;
-  int dev_func_cycle_time = 100;
+  int dev_func_delay = 20;
+  int dev_func_dynamic_power = 100000;
+  int dev_func_leakage_power = 100000;
+  int dev_func_area = 1000000;
+  int dev_func_cycle_time = 1000000;
 
   int ed_ed2_none = 2;  // 0 - ED, 1 - ED^2, 2 - use weight and deviate
   int temp = 300;
@@ -614,11 +616,11 @@ uca_org_t cactiWrapper(unsigned num_of_bytes, unsigned wordsize) {
   int data_arr_ram_cell_tech_flavor_in =
       0;  // 0(itrs-hp) 1-itrs-lstp(low standby power)
   int data_arr_peri_global_tech_flavor_in = 0;  // 0(itrs-hp)
-  int tag_arr_ram_cell_tech_flavor_in = 2;      // itrs-hp
-  int tag_arr_peri_global_tech_flavor_in = 2;   // itrs-hp
+  int tag_arr_ram_cell_tech_flavor_in = 0;      // itrs-hp
+  int tag_arr_peri_global_tech_flavor_in = 0;   // itrs-hp
   int interconnect_projection_type_in = 1;      // 0 - aggressive, 1 - normal
-  int wire_inside_mat_type_in = 2;   // 2 - global, 0 - local, 1 - semi-global
-  int wire_outside_mat_type_in = 2;  // 2 - global
+  int wire_inside_mat_type_in = 1;   // 2 - global, 0 - local, 1 - semi-global
+  int wire_outside_mat_type_in = 1;  // 2 - global
   int REPEATERS_IN_HTREE_SEGMENTS_in =
       1;  // TODO for now only wires with repeaters are supported
   int VERTICAL_HTREE_WIRES_OVER_THE_ARRAY_in = 0;

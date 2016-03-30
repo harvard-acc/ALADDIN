@@ -188,14 +188,14 @@ uint8_t aes_expandEncKey(uint8_t *k, uint8_t rc)
 
     return rc;
 } /* aes_expandEncKey */
-
 /* This wrapper function prevents dmaStore from issuing until all previous
  * nodes are completed.
  */
 int __attribute__((nonline)) dma_store_wrapper(int* addr, int size) {
+#ifdef DMA_MODE
   return dmaStore(addr, size);
+#endif
 }
-
 /* -------------------------------------------------------------------------- */
 void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 {
@@ -232,7 +232,5 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     aes_shiftRows(buf);
     rcon = aes_expandEncKey(ctx->key, rcon);
     aes_addRoundKey(buf, ctx->key);
-#ifdef DMA_MODE
     dma_store_wrapper(&buf[0], 16*1*8);
-#endif
 } /* aes256_encrypt */

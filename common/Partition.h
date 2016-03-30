@@ -36,7 +36,7 @@ class Partition {
   unsigned getStores() { return stores; }
 
   /* Return true if there is available bandwidth. */
-  bool canService() { return occupied_bw < num_ports; }
+  bool canService() { return (num_ports != 0) ? occupied_bw < num_ports : true; }
   /* Return true if there is available bandwidth. */
   virtual bool canService(unsigned blk_index,
                           bool isLoad){
