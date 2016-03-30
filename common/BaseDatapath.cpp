@@ -197,13 +197,22 @@ void BaseDatapath::removePhiNodes() {
       }
     } else {
       // convert nodes
-      in_edge_iter in_edge_it, in_edge_end;
-      for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph_);
-           in_edge_it != in_edge_end;
-           ++in_edge_it) {
-        Vertex parent_vertex = source(*in_edge_it, graph_);
-        ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
+      assert(boost::in_degree(node_vertex, graph_) == 1);
+      in_edge_iter in_edge_it = in_edges(node_vertex, graph_).first;
+      Vertex parent_vertex = source(*in_edge_it, graph_);
+      ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
+      while (nonphi_ancestor->is_convert_op()) {
+        checked_phi_nodes.insert(nonphi_ancestor);
+        Vertex parent_vertex = nonphi_ancestor->get_vertex();
+        if (boost::in_degree(parent_vertex, graph_) == 0)
+          break;
         to_remove_edges.insert(*in_edge_it);
+        in_edge_it = in_edges(parent_vertex, graph_).first;
+        parent_vertex = source(*in_edge_it, graph_);
+        nonphi_ancestor = getNodeFromVertex(parent_vertex);
+      }
+      to_remove_edges.insert(*in_edge_it);
+      if (!nonphi_ancestor->is_convert_op()) {
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
              child_it != chil_E;
              ++child_it) {
