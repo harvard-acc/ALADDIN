@@ -64,6 +64,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->tlbCactiConfig,
                          params->acceleratorName),
       issueDmaOpsASAP(params->issueDmaOpsASAP),
+      ignoreCacheFlush(params->ignoreCacheFlush),
       tickEvent(this), delayedDmaEvent(this), executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
@@ -390,10 +391,12 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     unsigned cache_delay_cycles = 0;
     unsigned cache_lines_affected =
         ceil(((float)size) / system->cacheLineSize());
-    if (isLoad)
-      cache_delay_cycles = cache_lines_affected * cacheLineFlushLatency;
-    else
-      cache_delay_cycles = cache_lines_affected * cacheLineInvalidateLatency;
+    if (!ignoreCacheFlush) {
+      if (isLoad)
+        cache_delay_cycles = cache_lines_affected * cacheLineFlushLatency;
+      else
+        cache_delay_cycles = cache_lines_affected * cacheLineInvalidateLatency;
+    }
     dma_setup_cycles += cache_delay_cycles;
     Tick delay = clockPeriod() * cache_delay_cycles;
     if (!delayedDmaEvent.scheduled()) {
@@ -845,13 +848,13 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   unsigned size = pkt->req->getSize(); // in bytes
   // get the DMA sender state
   Addr base_addr = getPacketBaseAddr(pkt);
-  DPRINTF(HybridDatapath,
-          "Receiving DMA response for address %#x of base %#x with size %d.\n",
-          paddr, base_addr, size);
   unsigned node_id = datapath->dmaIssueQueue[base_addr];
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node!=nullptr);
   std::string array_label = node->get_array_label();
+  DPRINTF(HybridDatapath,
+          "Receiving DMA response for address %#x of base %#x with label %s and size %d.\n",
+          paddr, base_addr, array_label.c_str(), size);
   datapath->scratchpad->setReadyBitRange(array_label, paddr, size);
   return DmaPort::recvTimingResp(pkt);
 }

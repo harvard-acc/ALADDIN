@@ -413,6 +413,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // latencies are accounted for before even the first DMA op issues.
   bool issueDmaOpsASAP;
 
+  bool ignoreCacheFlush;
+
   // gem5 tick
   EventWrapper<HybridDatapath, &HybridDatapath::eventStep> tickEvent;
   // Delayed DMA issue

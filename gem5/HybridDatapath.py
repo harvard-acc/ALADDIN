@@ -27,6 +27,7 @@ class HybridDatapath(MemObject):
   issueDmaOpsASAP = Param.Bool(False, "Issue DMA ops as soon as they have "
       "incurred their own wating setup, without waiting for other DMA ops "
       "to finish first.")
+  ignoreCacheFlush = Param.Bool(False, "Ignore Cache Flush latency.")
 
   # Cache parameters.
   cacheSize = Param.String("16kB", "Private cache size")
