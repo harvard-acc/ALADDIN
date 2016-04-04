@@ -31,10 +31,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 int viterbi(int Obs[numObs], float transMat[numStates*numObs], float obsLik[numStates*numObs], float v[numStates*numObs]){
 #ifdef DMA_MODE
-  dmaLoad(&Obs[0],128*4*8);
-  dmaLoad(&transMat[0],4096*4*8);
-  dmaLoad(&obsLik[0],4096*4*8);
-  dmaLoad(&v[0],4096*4*8);
+  dmaLoad(&Obs[0],0,128*4*8);
+  dmaLoad(&transMat[0],0*1024*4,1024*4*8);
+  dmaLoad(&transMat[0],1*1024*4,1024*4*8);
+  dmaLoad(&transMat[0],2*1024*4,1024*4*8);
+  dmaLoad(&transMat[0],3*1024*4,1024*4*8);
+  dmaLoad(&obsLik[0],0*1024*4,1024*4*8);
+  dmaLoad(&obsLik[0],1*1024*4,1024*4*8);
+  dmaLoad(&obsLik[0],2*1024*4,1024*4*8);
+  dmaLoad(&obsLik[0],3*1024*4,1024*4*8);
+  dmaLoad(&v[0],0*1024*4,1024*4*8);
+  dmaLoad(&v[0],1*1024*4,1024*4*8);
+  dmaLoad(&v[0],2*1024*4,1024*4*8);
+  dmaLoad(&v[0],3*1024*4,1024*4*8);
 #endif
     int i, j, k, finalState;
     float maxProb, temp;

@@ -38,9 +38,16 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
-  dmaLoad(&level[0],256*1*8);
-  dmaLoad(&nodes[0],512*8*8);
-  dmaLoad(&edges[0],4096*8*8);
+  dmaLoad(&level[0],0,256*1*8);
+  dmaLoad(&nodes[0],0,512*8*8);
+  dmaLoad(&edges[0],0*512*8,4096*8);
+  dmaLoad(&edges[0],1*512*8,4096*8);
+  dmaLoad(&edges[0],2*512*8,4096*8);
+  dmaLoad(&edges[0],3*512*8,4096*8);
+  dmaLoad(&edges[0],4*512*8,4096*8);
+  dmaLoad(&edges[0],5*512*8,4096*8);
+  dmaLoad(&edges[0],6*512*8,4096*8);
+  dmaLoad(&edges[0],7*512*8,4096*8);
 #endif
   node_index_t n;
   edge_index_t e;
@@ -72,6 +79,6 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
       break;
   }
 #ifdef DMA_MODE
-  dmaStore(&level[0],256*1*8);
+  dmaStore(&level[0],0,256*1*8);
 #endif
 }

@@ -34,9 +34,18 @@ void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockS
          dvector_t position[blockSide][blockSide][blockSide][densityFactor] )
 {
 #ifdef DMA_MODE
-  dmaLoad(&n_points[0],64*4*8);
-  dmaLoad(&position[0],1920*8*8);
-  dmaLoad(&d_force[0],1920*8*8);
+  dmaLoad(&n_points[0],0,64*4*8);
+  // dmaLoad(&position[0],1920*8*8);
+  // position is three doubles -> 24 bytes -> 4096/24 = 170 -> 170*24 = 4080.
+  dmaLoad(&position[0],0*4080,4080*8);
+  dmaLoad(&position[0],1*4080,4080*8);
+  dmaLoad(&position[0],2*4080,4080*8);
+  dmaLoad(&position[0],3*4080,3120*8);
+  // dmaLoad(&d_force[0],1920*8*8);
+  dmaLoad(&d_force[0],0*4080,4080*8);
+  dmaLoad(&d_force[0],1*4080,4080*8);
+  dmaLoad(&d_force[0],2*4080,4080*8);
+  dmaLoad(&d_force[0],3*4080,3120*8);
 #endif
   ivector_t b0, b1; // b0 is the current block, b1 is b0 or a neighboring block
   dvector_t p, q; // p is a point in b0, q is a point in either b0 or b1
@@ -85,7 +94,10 @@ void md( int n_points[blockSide][blockSide][blockSide], dvector_t d_force[blockS
   }}} // loop_grid1_*
   }}} // loop_grid0_*
 #ifdef DMA_MODE
-  dmaStore(&d_force[0],1920*8*8);
+  dmaStore(&d_force[0],0*4080,4080*8);
+  dmaStore(&d_force[0],1*4080,4080*8);
+  dmaStore(&d_force[0],2*4080,4080*8);
+  dmaStore(&d_force[0],3*4080,3120*8);
 #endif
 }
 

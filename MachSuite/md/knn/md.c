@@ -38,10 +38,17 @@ void md_kernel(TYPE d_force_x[nAtoms],  TYPE d_force_y[nAtoms], TYPE d_force_z[n
                TYPE NL[nAtoms*maxNeighbors])
 {
 #ifdef DMA_MODE
-  dmaLoad(&position_x[0],256*8*8);
-  dmaLoad(&position_y[0],256*8*8);
-  dmaLoad(&position_z[0],256*8*8);
-  dmaLoad(&NL[0],4096*8*8);
+  dmaLoad(&position_x[0],0,256*8*8);
+  dmaLoad(&position_y[0],0,256*8*8);
+  dmaLoad(&position_z[0],0,256*8*8);
+  dmaLoad(&NL[0],0*512*8,512*8*8);
+  dmaLoad(&NL[0],1*512*8,512*8*8);
+  dmaLoad(&NL[0],2*512*8,512*8*8);
+  dmaLoad(&NL[0],3*512*8,512*8*8);
+  dmaLoad(&NL[0],4*512*8,512*8*8);
+  dmaLoad(&NL[0],5*512*8,512*8*8);
+  dmaLoad(&NL[0],6*512*8,512*8*8);
+  dmaLoad(&NL[0],7*512*8,512*8*8);
 #endif
 
     TYPE delx, dely, delz, r2inv;
@@ -83,8 +90,8 @@ loop_j : for( j = 0; j < maxNeighbors; j++){
          //printf("dF=%lf,%lf,%lf\n", fx, fy, fz);
          }
 #ifdef DMA_MODE
-  dmaStore(&d_force_x[0],256*8*8);
-  dmaStore(&d_force_y[0],256*8*8);
-  dmaStore(&d_force_z[0],256*8*8);
+  dmaStore(&d_force_x[0],0,256*8*8);
+  dmaStore(&d_force_y[0],0,256*8*8);
+  dmaStore(&d_force_z[0],0,256*8*8);
 #endif
 }

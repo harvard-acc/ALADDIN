@@ -31,7 +31,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void stencil (TYPE orig[row_size * col_size], TYPE sol[row_size * col_size], TYPE filter[f_size]){
 #ifdef DMA_MODE
-  dmaLoad(&orig[0],8580*4*8);
+  dmaLoad(&orig[0],0*1024*4,1024*4*8);
+  dmaLoad(&orig[0],1*1024*4,1024*4*8);
+  dmaLoad(&orig[0],2*1024*4,1024*4*8);
+  dmaLoad(&orig[0],3*1024*4,1024*4*8);
+  dmaLoad(&orig[0],4*1024*4,1024*4*8);
+  dmaLoad(&orig[0],5*1024*4,1024*4*8);
+  dmaLoad(&orig[0],6*1024*4,1024*4*8);
+  dmaLoad(&orig[0],7*1024*4,1024*4*8);
+  dmaLoad(&orig[0],8*1024*4,388*4*8);
 #endif
     int i, j, k1, k2;
     TYPE temp, mul;
@@ -50,6 +58,14 @@ void stencil (TYPE orig[row_size * col_size], TYPE sol[row_size * col_size], TYP
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&sol[0],8580*4*8);
+  dmaStore(&sol[0],0*1024*4,1024*4*8);
+  dmaStore(&sol[0],1*1024*4,1024*4*8);
+  dmaStore(&sol[0],2*1024*4,1024*4*8);
+  dmaStore(&sol[0],3*1024*4,1024*4*8);
+  dmaStore(&sol[0],4*1024*4,1024*4*8);
+  dmaStore(&sol[0],5*1024*4,1024*4*8);
+  dmaStore(&sol[0],6*1024*4,1024*4*8);
+  dmaStore(&sol[0],7*1024*4,1024*4*8);
+  dmaStore(&sol[0],8*1024*4,388*4*8);
 #endif
 }

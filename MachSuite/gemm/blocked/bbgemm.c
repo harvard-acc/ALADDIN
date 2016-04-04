@@ -38,9 +38,18 @@ void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
     int i, k, j, jj, kk, temp_x, i_row, k_row;
     TYPE mul;
 #ifdef DMA_MODE
-  dmaLoad(&m1[0],4096*4*8);
-  dmaLoad(&m2[0],4096*4*8);
-  dmaLoad(&prod[0],4096*4*8);
+  dmaLoad(&m1[0],0*1024*4,1024*4*8);
+  dmaLoad(&m1[0],1*1024*4,1024*4*8);
+  dmaLoad(&m1[0],2*1024*4,1024*4*8);
+  dmaLoad(&m1[0],3*1024*4,1024*4*8);
+  dmaLoad(&m2[0],0*1024*4,1024*4*8);
+  dmaLoad(&m2[0],1*1024*4,1024*4*8);
+  dmaLoad(&m2[0],2*1024*4,1024*4*8);
+  dmaLoad(&m2[0],3*1024*4,1024*4*8);
+  dmaLoad(&prod[0],0*1024*4,1024*4*8);
+  dmaLoad(&prod[0],1*1024*4,1024*4*8);
+  dmaLoad(&prod[0],2*1024*4,1024*4*8);
+  dmaLoad(&prod[0],3*1024*4,1024*4*8);
 #endif
     loopjj:for (jj = 0; jj < row_size; jj += block_size){
         loopkk:for (kk = 0; kk < row_size; kk += block_size){
@@ -58,6 +67,9 @@ void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&prod[0],4096*4*8);
+  dmaStore(&prod[0],0*1024*4,1024*4*8);
+  dmaStore(&prod[0],1*1024*4,1024*4*8);
+  dmaStore(&prod[0],2*1024*4,1024*4*8);
+  dmaStore(&prod[0],3*1024*4,1024*4*8);
 #endif
 }

@@ -34,10 +34,23 @@ http://www.cs.berkeley.edu/~mhoemmen/matrix-seminar/slides/UCB_sparse_tutorial_1
 void ellpack(TYPE nzval[N*L], int cols[N*L], TYPE vec[N], TYPE out[N])
 {
 #ifdef DMA_MODE
-  dmaLoad(&nzval[0],4940*8*8);
-  dmaLoad(&cols[0],4940*4*8);
-  dmaLoad(&vec[0],494*8*8);
-  dmaLoad(&out[0],494*8*8);
+  dmaLoad(&nzval[0],0*512*8,512*8*8);
+  dmaLoad(&nzval[0],1*512*8,512*8*8);
+  dmaLoad(&nzval[0],2*512*8,512*8*8);
+  dmaLoad(&nzval[0],3*512*8,512*8*8);
+  dmaLoad(&nzval[0],4*512*8,512*8*8);
+  dmaLoad(&nzval[0],5*512*8,512*8*8);
+  dmaLoad(&nzval[0],6*512*8,512*8*8);
+  dmaLoad(&nzval[0],7*512*8,512*8*8);
+  dmaLoad(&nzval[0],8*512*8,512*8*8);
+  dmaLoad(&nzval[0],9*512*8,332*8*8);
+  dmaLoad(&cols[0],0*1024*4,1024*4*8);
+  dmaLoad(&cols[0],1*1024*4,1024*4*8);
+  dmaLoad(&cols[0],2*1024*4,1024*4*8);
+  dmaLoad(&cols[0],3*1024*4,1024*4*8);
+  dmaLoad(&cols[0],4*1024*4,844*4*8);
+  dmaLoad(&vec[0],0,494*8*8);
+  dmaLoad(&out[0],0,494*8*8);
 #endif
     int i, j;
     TYPE Si;
@@ -51,6 +64,6 @@ void ellpack(TYPE nzval[N*L], int cols[N*L], TYPE vec[N], TYPE out[N])
         out[i] = sum;
     }
 #ifdef DMA_MODE
-  dmaStore(&out[0],494*8*8);
+  dmaStore(&out[0],0,494*8*8);
 #endif
 }

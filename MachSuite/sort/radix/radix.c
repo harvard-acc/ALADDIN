@@ -106,7 +106,8 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
     int i, exp, flag;
     i = 0; exp = 0; flag = 0;
 #ifdef DMA_MODE
-  dmaLoad(&a[0],2048*4*8);
+  dmaLoad(&a[0],0*1024*4,1024*4*8);
+  dmaLoad(&a[0],1*1024*4,1024*4*8);
 #endif
 
     sort_1 : for (exp = 0; exp < 32; exp+=2){
@@ -132,6 +133,7 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&a[0],2048*4*8);
+  dmaStore(&a[0],0*1024*4,1024*4*8);
+  dmaStore(&a[0],1*1024*4,1024*4*8);
 #endif
 }

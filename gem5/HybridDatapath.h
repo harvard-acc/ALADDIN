@@ -367,9 +367,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Total cycles spent on DMA setup.
   Stats::Scalar dma_setup_cycles;
-  // Distribution of number of nodes issued in a cycle.
-  Stats::Histogram nodes_issued_per_cycle;
-  unsigned nodes_issued_this_cycle;
 
   // True if the cache's MSHRs are full.
   bool isCacheBlocked;

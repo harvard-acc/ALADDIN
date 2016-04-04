@@ -60,7 +60,10 @@ void merge(int a[NUM], int start, int m, int stop){
 }
 void mergesort(int a[NUM]){
 #ifdef DMA_MODE
-  dmaLoad(&a[0],4096*4*8);
+  dmaLoad(&a[0],0*1024*4,1024*4*8);
+  dmaLoad(&a[0],1*1024*4,1024*4*8);
+  dmaLoad(&a[0],2*1024*4,1024*4*8);
+  dmaLoad(&a[0],3*1024*4,1024*4*8);
 #endif
     int start, stop;
     int i, m, from, mid, to;
@@ -80,6 +83,9 @@ void mergesort(int a[NUM]){
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&a[0],4096*4*8);
+  dmaStore(&a[0],0*1024*4,1024*4*8);
+  dmaStore(&a[0],1*1024*4,1024*4*8);
+  dmaStore(&a[0],2*1024*4,1024*4*8);
+  dmaStore(&a[0],3*1024*4,1024*4*8);
 #endif
 }

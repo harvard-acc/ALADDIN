@@ -152,12 +152,18 @@ void LogicalArray::resetReadyBit(unsigned part_index, Addr addr) {
 }
 
 void LogicalArray::setReadyBitRange(Addr addr, unsigned size) {
-
   for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
     Addr curr_addr = addr + curr_size;
+    assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
     unsigned part_index = getPartitionIndex(curr_addr);
+    assert(part_index < num_partitions);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->setReadyBit(blk_index);
+#if 0
+    std::cout << "[LogicalArray]: setting array " << base_name << " partition "
+              << part_index << " block " << blk_index << " ready bits for addr."
+              << std::hex << curr_addr << std::dec << std::endl;
+#endif
   }
 }
 
@@ -165,7 +171,9 @@ void LogicalArray::resetReadyBitRange(Addr addr, unsigned size) {
 
   for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
     Addr curr_addr = addr + curr_size;
+    assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
     unsigned part_index = getPartitionIndex(curr_addr);
+    assert(part_index < num_partitions);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->resetReadyBit(blk_index);
   }

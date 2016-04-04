@@ -32,8 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void needwun(char SEQA[N], char SEQB[M], char alignedA[sum_size], char alignedB[sum_size],
              int A[dyn_size], char ptr[dyn_size]){
 #ifdef DMA_MODE
-  dmaLoad(&SEQA[0],128*1*8);
-  dmaLoad(&SEQB[0],128*1*8);
+  dmaLoad(&SEQA[0],0,128*1*8);
+  dmaLoad(&SEQB[0],0,128*1*8);
 #endif
     int score, match, mismatch, gap,
         choice1, choice2, choice3, max,
@@ -122,7 +122,7 @@ init_col : for(i = 0; i <M1; i++){
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&alignedA[0],256*1*8);
-  dmaStore(&alignedB[0],256*1*8);
+  dmaStore(&alignedA[0],0,256*1*8);
+  dmaStore(&alignedB[0],0,256*1*8);
 #endif
 }

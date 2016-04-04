@@ -48,11 +48,27 @@ void CPF(char pattern[PATTERN_SIZE], int kmpNext[PATTERN_SIZE]) {
     }
 }
 int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int kmpNext[PATTERN_SIZE]) {
+  int i, q;
+  int outs;
+
 #ifdef DMA_MODE
-  dmaLoad(&input[0],32411*1*8);
+  /*
+  const size_t num_it = STRING_SIZE/4096;
+  const size_t remainder = STRING_SIZE % 4096;
+  for (i = 0; i < num_it; i++) {
+    dmaLoad(&input[i*4096], 4096*8);
+  }
+  */
+  dmaLoad(&input[0], 0*4096, 4096*8);
+  dmaLoad(&input[0], 1*4096, 4096*8);
+  dmaLoad(&input[0], 2*4096, 4096*8);
+  dmaLoad(&input[0], 3*4096, 4096*8);
+  dmaLoad(&input[0], 4*4096, 4096*8);
+  dmaLoad(&input[0], 5*4096, 4096*8);
+  dmaLoad(&input[0], 6*4096, 4096*8);
+  dmaLoad(&input[0], 7*4096, 3739*8);
+  // dmaLoad(&input[0],32411*1*8);
 #endif
-    int i, q;
-    int outs;
     outs = 0;
 
     CPF(pattern, kmpNext);

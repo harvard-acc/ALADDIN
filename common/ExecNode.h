@@ -23,6 +23,9 @@ struct MemAccess {
   Addr paddr;
   // Size of the memory access in bytes.
   size_t size;
+  // HACK: Additional offset from vaddr/paddr, used to work around dependence
+  // analysis bugs when dmaLoading from non-base addresses.
+  size_t offset;
   // Is floating-point value or not.
   bool is_float;
   // If this is not a store, then this value is meaningless.
@@ -31,6 +34,7 @@ struct MemAccess {
   MemAccess() {
     vaddr = 0x0;
     paddr = 0x0;
+    offset = 0x0;
     size = 0;
     is_float = false;
     value = 0;
@@ -114,11 +118,13 @@ class ExecNode {
   void set_array_label(std::string label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(long long int vaddr,
+                      size_t offset,
                       size_t size_in_bytes,
                       bool is_float = false,
                       double value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
+    mem_access->offset = offset;
     mem_access->size = size_in_bytes;
     mem_access->is_float = is_float;
     mem_access->value = value;

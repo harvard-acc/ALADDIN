@@ -36,7 +36,22 @@ SC 2008
 
 void stencil3d(TYPE C0, TYPE C1, TYPE orig[NUM], TYPE sol[NUM]) {
 #ifdef DMA_MODE
-  dmaLoad(&orig[0],16384*4*8);
+  dmaLoad(&orig[0],0*1024*4,1024*4*8);
+  dmaLoad(&orig[0],1*1024*4,1024*4*8);
+  dmaLoad(&orig[0],2*1024*4,1024*4*8);
+  dmaLoad(&orig[0],3*1024*4,1024*4*8);
+  dmaLoad(&orig[0],4*1024*4,1024*4*8);
+  dmaLoad(&orig[0],5*1024*4,1024*4*8);
+  dmaLoad(&orig[0],6*1024*4,1024*4*8);
+  dmaLoad(&orig[0],7*1024*4,1024*4*8);
+  dmaLoad(&orig[0],8*1024*4,1024*4*8);
+  dmaLoad(&orig[0],9*1024*4,1024*4*8);
+  dmaLoad(&orig[0],10*1024*4,1024*4*8);
+  dmaLoad(&orig[0],11*1024*4,1024*4*8);
+  dmaLoad(&orig[0],12*1024*4,1024*4*8);
+  dmaLoad(&orig[0],13*1024*4,1024*4*8);
+  dmaLoad(&orig[0],14*1024*4,1024*4*8);
+  dmaLoad(&orig[0],15*1024*4,1024*4*8);
 #endif
     int i, j, k;
     TYPE sum1, sum2, mul1, mul2, diff;
@@ -62,6 +77,22 @@ void stencil3d(TYPE C0, TYPE C1, TYPE orig[NUM], TYPE sol[NUM]) {
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&sol[0],16384*4*8);
+  // dmaStore(&sol[0],16384*4*8);
+  dmaStore(&sol[0],0*1024*4,1024*4*8);
+  dmaStore(&sol[0],1*1024*4,1024*4*8);
+  dmaStore(&sol[0],2*1024*4,1024*4*8);
+  dmaStore(&sol[0],3*1024*4,1024*4*8);
+  dmaStore(&sol[0],4*1024*4,1024*4*8);
+  dmaStore(&sol[0],5*1024*4,1024*4*8);
+  dmaStore(&sol[0],6*1024*4,1024*4*8);
+  dmaStore(&sol[0],7*1024*4,1024*4*8);
+  dmaStore(&sol[0],8*1024*4,1024*4*8);
+  dmaStore(&sol[0],9*1024*4,1024*4*8);
+  dmaStore(&sol[0],10*1024*4,1024*4*8);
+  dmaStore(&sol[0],11*1024*4,1024*4*8);
+  dmaStore(&sol[0],12*1024*4,1024*4*8);
+  dmaStore(&sol[0],13*1024*4,1024*4*8);
+  dmaStore(&sol[0],14*1024*4,1024*4*8);
+  dmaStore(&sol[0],15*1024*4,1024*4*8);
 #endif
 }

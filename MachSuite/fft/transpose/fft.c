@@ -135,8 +135,8 @@ void loadx8(TYPE a_x[], TYPE x[], int offset, int sx){
 
 void fft1D_512(TYPE work_x[512], TYPE work_y[512]){
 #ifdef DMA_MODE
-  dmaLoad(&work_x[0],512*8*8);
-  dmaLoad(&work_y[0],512*8*8);
+  dmaLoad(&work_x[0],0,512*8*8);
+  dmaLoad(&work_y[0],0,512*8*8);
 #endif
     int tid, hi, lo, i, j, stride;
     TYPE phi, tmp, phi_x, phi_y;
@@ -432,7 +432,7 @@ loop11 : for(tid = 0; tid < 64; tid++){
              work_y[7*stride+tid] = data_y[reversed[7]];
          }
 #ifdef DMA_MODE
-  dmaStore(&work_x[0],512*8*8);
-  dmaStore(&work_y[0],512*8*8);
+  dmaStore(&work_x[0],0,512*8*8);
+  dmaStore(&work_y[0],0,512*8*8);
 #endif
 }

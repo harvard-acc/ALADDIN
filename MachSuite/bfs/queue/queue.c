@@ -42,9 +42,25 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
             edge_index_t level_counts[N_LEVELS])
 {
 #ifdef DMA_MODE
-  dmaLoad(&level[0],N_NODES*1*8);
-  dmaLoad(&nodes[0],N_NODES*2*8*8);
-  dmaLoad(&edges[0],N_EDGES*8*8);
+  dmaLoad(&level[0],0,N_NODES*1*8);
+  dmaLoad(&nodes[0],0*N_NODES,N_NODES*8*8);
+  dmaLoad(&nodes[0],1*N_NODES,N_NODES*8*8);
+  dmaLoad(&edges[0],0*512*8,4096*8);
+  dmaLoad(&edges[0],1*512*8,4096*8);
+  dmaLoad(&edges[0],2*512*8,4096*8);
+  dmaLoad(&edges[0],3*512*8,4096*8);
+  dmaLoad(&edges[0],4*512*8,4096*8);
+  dmaLoad(&edges[0],5*512*8,4096*8);
+  dmaLoad(&edges[0],6*512*8,4096*8);
+  dmaLoad(&edges[0],7*512*8,4096*8);
+  dmaLoad(&edges[0],8*512*8,4096*8);
+  dmaLoad(&edges[0],9*512*8,4096*8);
+  dmaLoad(&edges[0],10*512*8,4096*8);
+  dmaLoad(&edges[0],11*512*8,4096*8);
+  dmaLoad(&edges[0],12*512*8,4096*8);
+  dmaLoad(&edges[0],13*512*8,4096*8);
+  dmaLoad(&edges[0],14*512*8,4096*8);
+  dmaLoad(&edges[0],15*512*8,4096*8);
 #endif
   node_index_t queue[N_NODES];
   node_index_t q_in, q_out;
@@ -87,6 +103,6 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   printf("\n");
   */
 #ifdef DMA_MODE
-  dmaStore(&level[0],256*1*8);
+  dmaStore(&level[0],0,256*1*8);
 #endif
 }

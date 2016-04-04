@@ -2,10 +2,14 @@
 
 void fft(double real[NUM], double img[NUM], double real_twid[NUM], double img_twid[NUM]){
 #ifdef DMA_MODE
-  dmaLoad(&real[0],1024*8*8);
-  dmaLoad(&img[0],1024*8*8);
-  dmaLoad(&real_twid[0],1024*8*8);
-  dmaLoad(&img_twid[0],1024*8*8);
+  dmaLoad(&real[0],0*512*8,512*8*8);
+  dmaLoad(&real[0],1*512*8,512*8*8);
+  dmaLoad(&img[0],0*512*8,512*8*8);
+  dmaLoad(&img[0],1*512*8,512*8*8);
+  dmaLoad(&real_twid[0],0*512*8,512*8*8);
+  dmaLoad(&real_twid[0],1*512*8,512*8*8);
+  dmaLoad(&img_twid[0],0*512*8,512*8*8);
+  dmaLoad(&img_twid[0],1*512*8,512*8*8);
 #endif
     int even, odd, span, log, rootindex;
     double temp;
@@ -35,7 +39,9 @@ void fft(double real[NUM], double img[NUM], double real_twid[NUM], double img_tw
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&real[0],1024*8*8);
-  dmaStore(&img[0],1024*8*8);
+  dmaStore(&real[0],0*512*8,512*8*8);
+  dmaStore(&real[0],1*512*8,512*8*8);
+  dmaStore(&img[0],0*512*8,512*8*8);
+  dmaStore(&img[0],1*512*8,512*8*8);
 #endif
 }

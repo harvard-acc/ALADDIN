@@ -117,7 +117,6 @@ void HybridDatapath::resetCounters(bool flush_tlb) {
   loads = 0;
   stores = 0;
   dma_setup_cycles = 0;
-  nodes_issued_per_cycle.reset();
   if (flush_tlb)
     dtb.clear();
 }
@@ -276,11 +275,9 @@ void HybridDatapath::retireReturnedLSQEntries() {
 
 void HybridDatapath::markNodeStarted(ExecNode* node) {
   BaseDatapath::markNodeStarted(node);
-  nodes_issued_this_cycle++;
 }
 
 bool HybridDatapath::step() {
-  nodes_issued_this_cycle = 0;
   executedNodesLastTrigger = executedNodes;
   resetCacheCounters();
   stepExecutingQueue();
@@ -300,7 +297,6 @@ bool HybridDatapath::step() {
     return false;
   }
 
-  nodes_issued_per_cycle.sample(nodes_issued_this_cycle);
   num_cycles++;
   if (executedNodes < totalConnectedNodes) {
     schedule(tickEvent, clockEdge(Cycles(1)));
@@ -514,17 +510,18 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
   MemAccess* mem_access = node->get_mem_access();
+  Addr base_addr = mem_access->vaddr;
+  size_t offset = mem_access->offset;
   size_t size = mem_access->size;  // In bytes.
-  Addr vaddr = mem_access->vaddr;
   DPRINTF(
-      HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", vaddr, size);
+      HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", base_addr+offset, size);
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
-  std::string array_label = getArrayLabelFromAddr(vaddr);
+  std::string array_label = getArrayLabelFromAddr(base_addr);
   node->set_array_label(array_label);
   incrementDmaScratchpadAccesses(array_label, size, isLoad);
   inflight_mem_nodes[node_id] = WaitingFromDma;
-  vaddr &= ADDR_MASK;
+  Addr vaddr = (base_addr + offset) & ADDR_MASK;
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   Request::Flags flag = 0;
   uint8_t* data = new uint8_t[size];
@@ -535,18 +532,19 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 
 /* Mark the DMA request node as having completed. */
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
-  Addr base_addr = exec_nodes[node_id]->get_mem_access()->vaddr;
-  dmaIssueQueue.erase(base_addr);
+  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
+  Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
+  dmaIssueQueue.erase(vaddr);
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
-          base_addr);
+          vaddr);
   inflight_mem_nodes[node_id] = Returned;
 }
 
 void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
-  ExecNode *node = exec_nodes[node_id];
-  Addr vaddr = node->get_mem_access()->vaddr;
+  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
+  Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
   dmaIssueQueue[vaddr] = node_id;
 }
 
@@ -556,7 +554,7 @@ void HybridDatapath::sendFinishedSignal() {
   uint8_t* data = new uint8_t[size];
   // Set some sentinel value.
   for (int i = 0; i < size; i++)
-    data[i] = 0x01;
+    data[i] = 0x13;
   Request* req = new Request(finish_flag, size, flags, getCacheMasterId());
   req->setThreadContext(context_id, thread_id);  // Only needed for prefetching.
   MemCmd::Command cmd = MemCmd::WriteReq;
@@ -848,13 +846,15 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   unsigned size = pkt->req->getSize(); // in bytes
   // get the DMA sender state
   Addr base_addr = getPacketBaseAddr(pkt);
-  unsigned node_id = datapath->dmaIssueQueue[base_addr];
+  size_t offset = getPacketOffset(pkt);
+  Addr addr = (base_addr + offset) & ADDR_MASK;
+  unsigned node_id = datapath->dmaIssueQueue[addr];
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node!=nullptr);
   std::string array_label = node->get_array_label();
   DPRINTF(HybridDatapath,
           "Receiving DMA response for address %#x of base %#x with label %s and size %d.\n",
-          paddr, base_addr, array_label.c_str(), size);
+          paddr, addr, array_label.c_str(), size);
   datapath->scratchpad->setReadyBitRange(array_label, paddr, size);
   return DmaPort::recvTimingResp(pkt);
 }
@@ -889,10 +889,6 @@ void HybridDatapath::regStats() {
   dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
       .desc("Total number of cycles spent on setting up DMA transfers.")
       .flags(total | nonan);
-  nodes_issued_per_cycle.name("system." + datapath_name + ".nodes_issued_per_cycle")
-      .init(100)  // 100 buckets.
-      .desc("Distribution of nodes issued per cycle")
-      .flags(total | nozero | pdf | nonan);
 }
 
 #ifdef USE_DB

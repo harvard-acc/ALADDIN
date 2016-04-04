@@ -33,8 +33,14 @@ void gemm( TYPE m1[row_size * col_size],
            TYPE m2[row_size * col_size],
            TYPE prod[row_size * col_size]){
 #ifdef DMA_MODE
-  dmaLoad(&m2[0],4096*4*8);
-  dmaLoad(&m1[0],4096*4*8);
+  dmaLoad(&m2[0],0*1024*4,1024*4*8);
+  dmaLoad(&m2[0],1*1024*4,1024*4*8);
+  dmaLoad(&m2[0],2*1024*4,1024*4*8);
+  dmaLoad(&m2[0],3*1024*4,1024*4*8);
+  dmaLoad(&m1[0],0*1024*4,1024*4*8);
+  dmaLoad(&m1[0],1*1024*4,1024*4*8);
+  dmaLoad(&m1[0],2*1024*4,1024*4*8);
+  dmaLoad(&m1[0],3*1024*4,1024*4*8);
 #endif
     int i, j, k;
     TYPE mult, k_col, i_col;
@@ -54,6 +60,9 @@ void gemm( TYPE m1[row_size * col_size],
         }
     }
 #ifdef DMA_MODE
-  dmaStore(&prod[0],4096*4*8);
+  dmaStore(&prod[0],0*1024*4,1024*4*8);
+  dmaStore(&prod[0],1*1024*4,1024*4*8);
+  dmaStore(&prod[0],2*1024*4,1024*4*8);
+  dmaStore(&prod[0],3*1024*4,1024*4*8);
 #endif
 }
