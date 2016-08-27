@@ -573,8 +573,8 @@ void HybridDatapath::sendFinishedSignal() {
   }
 }
 
-void HybridDatapath::CachePort::recvRetry() {
-  DPRINTF(HybridDatapath, "recvRetry for addr:");
+void HybridDatapath::CachePort::recvReqRetry() {
+  DPRINTF(HybridDatapath, "recvReqRetry for addr:");
   assert(datapath->isCacheBlocked && datapath->retryPkt != NULL);
 
   DatapathSenderState* state =

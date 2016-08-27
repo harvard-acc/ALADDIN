@@ -289,7 +289,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     virtual void recvTimingSnoopReq(PacketPtr pkt) {}
     virtual void recvFunctionalSnoop(PacketPtr pkt) {}
     virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
-    virtual void recvRetry();
+    virtual void recvReqRetry();
+    virtual void recvRespRetry() {}
     virtual bool isSnooping() const { return true; }
     HybridDatapath* datapath;
   };
