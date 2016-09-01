@@ -1,12 +1,11 @@
 #include "dma_interface.h"
 
-int dmaLoad ( int *addr, int offset, int size)
-{
+void* dmaLoad(void* addr, size_t offset, size_t size) {
   asm("");
-  return addr[0]+size+offset;
+  return addr + size + offset;
 }
-int dmaStore ( int *addr, int offset, int size)
-{
+
+void* dmaStore(void* addr, size_t offset, size_t size) {
   asm("");
-  return addr[0]+size+offset;
+  return addr + size + offset;
 }
