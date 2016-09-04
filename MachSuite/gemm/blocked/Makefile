@@ -1,19 +1,27 @@
-bbgemm: bbgemm.c bbgemm.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o bbgemm $(SRCS) $(LFLAGS)
+KERN=gemm
+ALG=blocked
 
-hls: bbgemm.c bbgemm.h
+CFLAGS?=-O3 -Wall -Wno-unused-label
+
+SRCS=$(KERN).c local_support.c ../../common/support.c
+FILES=$(SRCS) $(KERN).h ../../common/support.h
+
+$(KERN): $(FILES) ../../common/harness.c
+	$(CC) $(CFLAGS) -I../../common -o $(KERN) $(SRCS) ../../common/harness.c
+
+run: $(KERN) input.data check.data
+	./$(KERN) input.data check.data
+
+generate: $(FILES) generate.c
+	$(CC) $(CFLAGS) -I../../common -o generate $(SRCS) generate.c
+	./generate
+
+hls: $(KERN).c $(KERN).h
 	vivado_hls hls.tcl
 
-run: bbgemm input.data check.data
-	./bbgemm input.data check.data
-
 clean:
-	rm -f bbgemm
+	rm -f $(KERN) generate output.data
 
-include ../../common/Makefile.gem5
-
-# For the tracer makefile
-SRCS = bbgemm.c ../../common/harness.c
 ACCEL_NAME = gemm-blocked
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)

@@ -1,6 +1,5 @@
 BENCHMARKS=\
 	aes/aes \
-	backprop/backprop \
 	bfs/bulk \
 	bfs/queue \
 	fft/strided \
@@ -18,18 +17,30 @@ BENCHMARKS=\
 	stencil/stencil2d \
 	stencil/stencil3d \
 	viterbi/viterbi
+#FIXME\
+	backprop/backprop \
 
-gem5-cpu:
-	@( for b in $(BENCHMARKS); do $(MAKE) gem5-cpu CFLAGS="$(CFLAGS)" -C $$b || exit ; done )
+CFLAGS=-O3 -Wall -Wno-unused-label
 
-gem5:
-	@( for b in $(BENCHMARKS); do $(MAKE) gem5 CFLAGS="$(CFLAGS)" -C $$b || exit ; done )
+.PHONY: build run generate all test clean
 
 build:
-	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b || exit ; done )
+	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b; done )
 
 run:
-	@( for b in $(BENCHMARKS); do $(MAKE) -C $$b run || exit ; done )
+	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b run; done )
+
+generate:
+	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b generate; done )
+
+
+### For regression tests
+all: clean build generate run
+
+test:
+	$(MAKE) -C common/test
+	$(MAKE) all CFLAGS="-O3 -Wall -Wno-unused-label -Werror"
+	$(MAKE) all CFLAGS="-O3 -Wall -Wno-unused-label -Werror -std=c99"
 
 clean:
 	@( for b in $(BENCHMARKS); do $(MAKE) -C $$b clean || exit ; done )

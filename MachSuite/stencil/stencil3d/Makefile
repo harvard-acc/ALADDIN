@@ -1,19 +1,27 @@
-stencil3d: stencil3d.c stencil3d.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o stencil3d $(SRCS) $(LFLAGS)
+KERN=stencil
+ALG=stencil3d
 
-hls: stencil3d.c stencil3d.h
+CFLAGS?=-O3 -Wall -Wno-unused-label
+
+SRCS=$(KERN).c local_support.c ../../common/support.c
+FILES=$(SRCS) $(KERN).h ../../common/support.h
+
+$(KERN): $(FILES) ../../common/harness.c
+	$(CC) $(CFLAGS) -I../../common -o $(KERN) $(SRCS) ../../common/harness.c
+
+run: $(KERN) input.data check.data
+	./$(KERN) input.data check.data
+
+generate: $(FILES) generate.c
+	$(CC) $(CFLAGS) -I../../common -o generate $(SRCS) generate.c
+	./generate
+
+hls: $(KERN).c $(KERN).h
 	vivado_hls hls.tcl
 
-run: stencil3d input.data check.data
-	./stencil3d input.data check.data
-
 clean:
-	rm -f stencil3d
+	rm -f $(KERN) generate output.data
 
-include ../../common/Makefile.gem5
-
-# For the tracer makefile
-SRCS = stencil3d.c ../../common/harness.c
 ACCEL_NAME = stencil-stencil3d
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)

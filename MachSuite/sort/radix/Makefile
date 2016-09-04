@@ -1,23 +1,31 @@
-radix: radix.c radix.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o radix $(SRCS) $(LFLAGS)
+KERN=sort
+ALG=radix
 
-run: radix input.data check.data
-	./radix input.data check.data
+CFLAGS?=-O3 -Wall -Wno-unused-label
 
-hls: radix.c radix.h
+SRCS=$(KERN).c local_support.c ../../common/support.c
+FILES=$(SRCS) $(KERN).h ../../common/support.h
+
+$(KERN): $(FILES) ../../common/harness.c
+	$(CC) $(CFLAGS) -I../../common -o $(KERN) $(SRCS) ../../common/harness.c
+
+run: $(KERN) input.data check.data
+	./$(KERN) input.data check.data
+
+generate: $(FILES) generate.c
+	$(CC) $(CFLAGS) -I../../common -o generate $(SRCS) generate.c
+	./generate
+
+hls: $(KERN).c $(KERN).h
 	vivado_hls hls.tcl
 
 clean:
-	rm -f radix
+	rm -f $(KERN) generate output.data
 
-include ../../common/Makefile.gem5
-
-# For the tracer makefile
-SRCS = radix.c ../../common/harness.c
 ACCEL_NAME = sort-radix
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
-ifdef
+ifndef WORKLOAD
   export WORKLOAD=local_scan,sum_scan,last_step_scan,init,hist,update,ss_sort
 endif
 include ../../common/Makefile.tracer

@@ -1,19 +1,27 @@
-fft: fft.c fft.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o fft $(SRCS) $(LFLAGS) -lm
+KERN=fft
+ALG=strided
 
-run: fft input.data check.data
-	./fft input.data check.data
+CFLAGS?=-O3 -Wall -Wno-unused-label
 
-hls: fft.c fft.h
+SRCS=$(KERN).c local_support.c ../../common/support.c
+FILES=$(SRCS) $(KERN).h ../../common/support.h
+
+$(KERN): $(FILES) ../../common/harness.c
+	$(CC) $(CFLAGS) -I../../common -o $(KERN) $(SRCS) ../../common/harness.c -lm
+
+run: $(KERN) input.data check.data
+	./$(KERN) input.data check.data
+
+generate: $(FILES) generate.c
+	$(CC) $(CFLAGS) -I../../common -o generate $(SRCS) generate.c -lm
+	./generate
+
+hls: $(KERN).c $(KERN).h
 	vivado_hls hls.tcl
 
 clean:
-	rm -f fft
+	rm -f $(KERN) generate output.data
 
-include ../../common/Makefile.gem5
-
-# For the tracer makefile
-SRCS = fft.c ../../common/harness.c
 ACCEL_NAME = fft-strided
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)

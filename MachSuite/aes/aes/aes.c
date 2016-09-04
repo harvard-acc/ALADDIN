@@ -1,31 +1,19 @@
 /*
 *   Byte-oriented AES-256 implementation.
 *   All lookup tables replaced with 'on the fly' calculations.
-*
-*   Copyright (c) 2007-2009 Ilya O. Levin, http://www.literatecode.com
-*   Other contributors: Hal Finney
-*   Copyright (c) 2014, the President and Fellows of Harvard College
-*
-*   Permission to use, copy, modify, and distribute this software for any
-*   purpose with or without fee is hereby granted, provided that the above
-*   copyright notice and this permission notice appear in all copies.
-*
-*   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-*   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-*   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-*   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-*   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-*   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-*   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 #include "aes.h"
+
 #ifdef DMA_MODE
 #include "gem5/dma_interface.h"
 #endif
+
 #define F(x)   (((x)<<1) ^ ((((x)>>7) & 1) * 0x1b))
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
+
 #define BACK_TO_TABLES
 #ifdef BACK_TO_TABLES
+
 const uint8_t sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5,
     0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -174,7 +162,7 @@ uint8_t aes_expandEncKey(uint8_t *k, uint8_t rc)
     k[1] ^= rj_sbox(k[30]);
     k[2] ^= rj_sbox(k[31]);
     k[3] ^= rj_sbox(k[28]);
-    rc = F(rc);
+    rc = F( rc);
 
     exp1 : for(i = 4; i < 16; i += 4)  k[i] ^= k[i-4],   k[i+1] ^= k[i-3],
         k[i+2] ^= k[i-2], k[i+3] ^= k[i-1];
@@ -188,27 +176,21 @@ uint8_t aes_expandEncKey(uint8_t *k, uint8_t rc)
 
     return rc;
 } /* aes_expandEncKey */
-/* This wrapper function prevents dmaStore from issuing until all previous
- * nodes are completed.
- */
-int __attribute__((nonline)) dma_store_wrapper(int* addr, int size) {
-#ifdef DMA_MODE
-  return dmaStore(addr, 0, size);
-#endif
-}
+
 /* -------------------------------------------------------------------------- */
 void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
 {
-#ifdef DMA_MODE
-  dmaLoad(&k[0],0,32*1*8);
-  dmaLoad(&buf[0],0,16*1*8);
-#endif
     //INIT
-    uint8_t i;
     uint8_t rcon = 1;
+    uint8_t i;
+
+#ifdef DMA_MODE
+    dmaLoad(&k[0], 0, 32 * sizeof(uint8_t));
+    dmaLoad(&buf[0], 0, 16 * sizeof(uint8_t));
+#endif
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
-        ctx->enckey[i] = ctx->deckey[i] = k[i]; ctx->key[i] = 0;
+        ctx->enckey[i] = ctx->deckey[i] = k[i];
     }
     ecb2 : for (i = 8;--i;){
         rcon = aes_expandEncKey(ctx->deckey, rcon);
@@ -221,8 +203,8 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
         aes_subBytes(buf);
         aes_shiftRows(buf);
         aes_mixColumns(buf);
-        if (i & 1) {
-          aes_addRoundKey(buf, &ctx->key[16]);
+        if( i & 1 ) {
+          aes_addRoundKey( buf, &ctx->key[16]);
         } else {
           rcon = aes_expandEncKey(ctx->key, rcon);
           aes_addRoundKey(buf, ctx->key);
@@ -232,5 +214,8 @@ void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16])
     aes_shiftRows(buf);
     rcon = aes_expandEncKey(ctx->key, rcon);
     aes_addRoundKey(buf, ctx->key);
-    dma_store_wrapper(&buf[0], 16*1*8);
+#ifdef DMA_MODE
+    dmaStore(&buf[0], 0, 16 * sizeof(uint8_t));
+#endif
 } /* aes256_encrypt */
+

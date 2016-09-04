@@ -1,80 +1,36 @@
 /*
-Copyright (c) 2014, the President and Fellows of Harvard College.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-* Neither the name of Harvard University nor the names of its contributors may
-  be used to endorse or promote products derived from this software without
-  specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Based on:
+Lawrence Rabiner. "A Tutorial on Hidden Markov Models and Selected Applications in Speech Recognition." Proc. IEEE, v77, #2. 1989.
 */
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <fcntl.h>
+#include "support.h"
 
-#define numStates 32
-#define numObs 128
+#define TYPE double
+typedef uint8_t tok_t;
+typedef TYPE prob_t;
+typedef uint8_t state_t;
+typedef int32_t step_t;
 
-#ifdef GEM5_HARNESS
-#include "gem5/aladdin_sys_connection.h"
-#include "gem5/aladdin_sys_constants.h"
-#endif
+//#define N_STATES 5
+//#define N_OBS 32
+//#define N_TOKENS 9
+#define N_STATES  64
+#define N_OBS     140
+#define N_TOKENS  64
 
-#ifdef DMA_MODE
-#include "gem5/dma_interface.h"
-#endif
-
-
-int viterbi(int Obs[numObs], float transMat[numStates*numObs], float obsLik[numStates*numObs], float v[numStates*numObs]);
+int viterbi( tok_t obs[N_OBS], prob_t init[N_STATES], prob_t transition[N_STATES*N_STATES], prob_t emission[N_STATES*N_TOKENS], state_t path[N_OBS] );
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 
 struct bench_args_t {
-        int Obs[numObs];
-        float transMat[numStates*numObs];
-        float obsLik[numStates*numObs];
-        float v[numStates*numObs];
+  tok_t obs[N_OBS];
+  prob_t init[N_STATES];
+  prob_t transition[N_STATES*N_STATES];
+  prob_t emission[N_STATES*N_TOKENS];
+  state_t path[N_OBS];
 };
-int INPUT_SIZE = sizeof(struct bench_args_t);
-
-void run_benchmark( void *vargs ) {
-  struct bench_args_t *args = (struct bench_args_t *)vargs;
-
-#ifdef GEM5_HARNESS
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "Obs", (void*)&args->Obs, sizeof(args->Obs));
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "transMat", (void*)&args->transMat,
-      sizeof(args->transMat));
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "obsLik", (void*)&args->obsLik,
-      sizeof(args->obsLik));
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "v", (void*)&args->v, sizeof(args->v));
-  invokeAcceleratorAndBlock(MACHSUITE_VITERBI_VITERBI);
-#else
-  viterbi( args->Obs, args->transMat, args->obsLik, args->v);
-#endif
-}
-////////////////////////////////////////////////////////////////////////////////

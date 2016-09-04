@@ -8,36 +8,24 @@
 #include <assert.h>
 
 #include "fft.h"
-// Fake benchmark function to satisfy the extern
-void fft1D_512(double data_x[512], double data_y[512]){ }
 
-void generate_binary()
+int main(int argc, char **argv)
 {
   struct bench_args_t data;
-  char *ptr;
-  int status, i, fd, written=0;
+  int i, fd;
+  struct prng_rand_t state;
 
   // Fill data structure
-  srandom(1);
+  prng_srand(1,&state);
   for(i=0; i<512; i++){
-    data.work_x[i] = (double)random();
-    data.work_y[i] = (double)random();
+    data.work_x[i] = ((TYPE)prng_rand(&state))/((TYPE)PRNG_RAND_MAX);
+    data.work_y[i] = ((TYPE)prng_rand(&state))/((TYPE)PRNG_RAND_MAX);
   }
 
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
+  data_to_input(fd, (void *)(&data));
 
-int main(int argc, char **argv)
-{
-  generate_binary();
   return 0;
 }

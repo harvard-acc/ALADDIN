@@ -7,55 +7,47 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "net.h"
-// Fake benchmark function to satisfy the extern
-void backprop(TYPE weights[NUM_LAYERS - 1][MAX_ROWS][MAX_COLS],
-        TYPE inputs[NUM_TRAIN][SIZE_IN],
-        TYPE targets[NUM_TRAIN][SIZE_OUT]) { }
+//#include "sol.h"
+//#include "train.h"
+#include "backprop.h"
 
-void generate_binary()
-{
+int main( int argc, const char* argv[] ){
+    int i, j, fd;
+    
     struct bench_args_t data;
-    char *ptr;
-    int status, i, j, k, fd, written=0;
+    struct prng_rand_t state;
 
-    // Fill data structure
-    srandom(1);
-
-    for(i=0; i < NUM_LAYERS - 1; i++){
-        for(j=0; j < MAX_ROWS; j++){
-            for(k=k; k < MAX_COLS; k++){
-                data.weights[i][j][k] = (((double)random())/((double)RAND_MAX)) - 0.5;
-            }
+    prng_srand(1, &state);
+    for( i = 0; i < input_dimension; i++){
+        for( j = 0; j < nodes_per_layer; j++){
+            data.weights1[i*nodes_per_layer + j] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
         }
     }
-
-    //Random input/outputs for now...
-    for(i=0; i<NUM_TRAIN; i++){
-        for(j=0; j<SIZE_IN - 1; j++){
-            data.inputs[i][j] = (((double)random())/((double)RAND_MAX));
-        }
-        //biases included in weights...
-        data.inputs[i][SIZE_IN] = 1.0;
-        for(j=0; j < SIZE_OUT; j++){
-            data.targets[i][j] = (((double)random())/((double)RAND_MAX));
+    for( i = 0; i < nodes_per_layer; i++){
+        data.biases1[i] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
+        data.biases2[i] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
+        for( j = 0; j < nodes_per_layer; j++){
+            data.weights2[i*nodes_per_layer + j] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
         }
     }
+    for( i = 0; i < nodes_per_layer; i++){
+        data.biases3[i] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
+        for( j = 0; j < possible_outputs; j++){
+            data.weights3[i*possible_outputs + j] = (((TYPE)prng_rand(&state)/((TYPE)(PRNG_RAND_MAX))) * max) - offset;
+        }
+    }
+    for( i = 0; i < training_sets; i++){
+        for( j = 0; j < input_dimension; j++)
+            data.training_data[i*input_dimension + j] = (TYPE)training_data[i][j];
+        for( j = 0; j < possible_outputs; j++)
+            data.training_targets[i*possible_outputs + j] = (TYPE)0;
+        data.training_targets[i*possible_outputs + (training_targets[i] - 1)] = 1.0;
+    }
 
-    // Open and write
     fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-    assert( fd>0 && "Couldn't open input data file" );
+    assert( fd>0 && "Couldn't open input data file");
 
-    ptr = (char *) &data;
-    while( written<sizeof(data) ) {
-        status = write( fd, ptr, sizeof(data)-written );
-        assert( status>=0 && "Couldn't write input data file" );
-        written += status;
-    }
-}
+    data_to_input(fd, (void *)(&data));
 
-int main(int argc, char **argv)
-{
-    generate_binary();
     return 0;
 }

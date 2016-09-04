@@ -3,75 +3,71 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <sys/stat.h>
-#ifdef GEM5
-#include "gem5/dma_interface.h"
-#endif
-extern int INPUT_SIZE;
-void run_benchmark( void *args );
+#include <assert.h>
+
+#define WRITE_OUTPUT
+#define CHECK_OUTPUT
+
+#include "support.h"
 
 int main(int argc, char **argv)
 {
-  int status;
-  char *in_file, *check_file;
-  int in_fd, check_fd;
-  char *input, *check;
-  int n;
-
-  //assert( argc==3 && "Usage: ./benchmark <input_file> <check_file>" );
-  in_file = argv[1];
-  check_file = argv[2];
+  // Parse command line.
+  char *in_file;
+  #ifdef CHECK_OUTPUT
+  char *check_file;
+  #endif
+  assert( argc<4 && "Usage: ./benchmark <input_file> <check_file>" );
+  in_file = "input.data";
+  #ifdef CHECK_OUTPUT
+  check_file = "check.data";
+  #endif
+  if( argc>1 )
+    in_file = argv[1];
+  #ifdef CHECK_OUTPUT
+  if( argc>2 )
+    check_file = argv[2];
+  #endif
 
   // Load input data
-  input = malloc(INPUT_SIZE);
-  assert( input!=NULL && "Out of memory" );
+  int in_fd;
+  char *data;
+  data = malloc(INPUT_SIZE);
+  assert( data!=NULL && "Out of memory" );
   in_fd = open( in_file, O_RDONLY );
-
-  n = 0;
-  while(n<INPUT_SIZE) {
-    status = read(in_fd, &input[n], INPUT_SIZE-n);
-    assert( status>=0 && "Failed to read input" );
-    n += status;
-  }
-  close(in_fd);
-
-  //run_benchmark( input );
+  assert( in_fd>0 && "Couldn't open input data file");
+  input_to_data(in_fd, data);
+  
   // Unpack and call
-#ifdef GEM5
-  resetGem5Stats();
-#endif
-  run_benchmark( input );
-#ifdef GEM5
-  dumpGem5Stats("bench");
-#endif
-  //#if WRITE_OUTPUT
-  //FIXME: Maybe remove this.
-  int out_fd, i, written=0;
-  char *ptr = input;
+  run_benchmark( data );
+
+  #ifdef WRITE_OUTPUT
+  int out_fd;
   out_fd = open("output.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( out_fd>0 && "Couldn't open output data file" );
-  while( written<INPUT_SIZE ) {
-    status = write( out_fd, ptr, INPUT_SIZE-written );
-    assert( status>=0 && "Couldn't write output data file" );
-    written += status;
-  }
-  //#endif
+  data_to_output(out_fd, data);
+  close(out_fd);
+  #endif
 
   // Load check data
-  check = malloc(INPUT_SIZE);
-  assert( check!=NULL && "Out of memory" );
+  #ifdef CHECK_OUTPUT
+  int check_fd;
+  char *ref;
+  ref = malloc(INPUT_SIZE);
+  assert( ref!=NULL && "Out of memory" );
   check_fd = open( check_file, O_RDONLY );
-  n = 0;
-  while(n<INPUT_SIZE) {
-    status = read(check_fd, &check[n], INPUT_SIZE-n);
-    assert( status>=0 && "Failed to read input" );
-    n += status;
-  }
-  close(check_fd);
+  assert( check_fd>0 && "Couldn't open check data file");
+  output_to_data(check_fd, ref);
+  #endif
 
   // Validate benchmark results
-  //assert( !memcmp(input,check,INPUT_SIZE) && "Benchmark results are incorrect" );
+  #ifdef CHECK_OUTPUT
+  if( !check_data(data, ref) ) {
+    fprintf(stderr, "Benchmark results are incorrect\n");
+    return -1;
+  }
+  #endif
 
   printf("Success.\n");
   return 0;

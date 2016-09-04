@@ -273,7 +273,7 @@ void DDDG::parse_result(std::string line) {
   } else if (curr_node->is_dma_op()) {
     Addr mem_address = parameter_value_per_inst[1];
     unsigned mem_offset = (unsigned)parameter_value_per_inst[2];
-    unsigned mem_size = (unsigned)parameter_value_per_inst[3] / BYTE_SIZE;
+    unsigned mem_size = (unsigned)parameter_value_per_inst[3];
     curr_node->set_mem_access(mem_address, mem_offset, mem_size);
   }
 }

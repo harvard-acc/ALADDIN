@@ -1,11 +1,11 @@
 open_project nw_syn
 
-add_files needwun.c
+add_files nw.c
 add_files input.data
 add_files check.data
 add_files -tb ../../common/harness.c
 
-#add_files -tb needwun_test.c
+#add_files -tb nw_test.c
 
 set_top needwun
 

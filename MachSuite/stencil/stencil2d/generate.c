@@ -8,39 +8,24 @@
 #include <assert.h>
 
 #include "stencil.h"
-// Fake benchmark function to satisfy the extern
-void stencil( TYPE orig[row_size * col_size], 
-              TYPE sol[row_size * col_size], 
-              TYPE filter[f_size] ) { }
 
-void generate_binary()
+int main(int argc, char **argv)
 {
   struct bench_args_t data;
-  char *ptr;
-  int status, i, fd, written=0;
+  int i, fd;
+  struct prng_rand_t state;
 
   // Fill data structure
-  srandom(1);
+  prng_srand(1,&state);
   for(i=0; i<row_size*col_size; i++)
-    data.orig[i] = random();
-  memset(data.sol, 0, row_size*col_size*sizeof(int));
+    data.orig[i] = prng_rand(&state)%(MAX-MIN) + MIN;
   for(i=0; i<f_size; i++)
-    data.filter[i] = random();
+    data.filter[i] = prng_rand(&state)%(MAX-MIN) + MIN;
 
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
+  data_to_input(fd, (void *)(&data));
 
-int main(int argc, char **argv)
-{
-  generate_binary();
   return 0;
 }

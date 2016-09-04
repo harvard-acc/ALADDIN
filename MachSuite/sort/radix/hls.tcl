@@ -1,8 +1,8 @@
-open_project radix_syn
+open_project sort_syn
 
 set_top ss_sort
 
-add_files radix.c
+add_files sort.c
 add_files input.data
 add_files check.data
 add_files -tb ../../common/harness.c

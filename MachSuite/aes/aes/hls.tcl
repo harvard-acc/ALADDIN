@@ -10,13 +10,11 @@ add_files -tb ../../common/harness.c
 set_top aes256_encrypt_ecb
 
 open_solution -reset solution
-# set_part virtex7
-set_part {xc7z020clg484-1}
+set_part virtex7
 create_clock -period 10
 source ./aes_dir
 #config_rtl -reset all -reset_level low
 csynth_design
-cosim_design -rtl verilog -tool modelsim -trace_level all -argv "input.data check.data"
-export_design -format ip_catalog
+cosim_design -rtl verilog -tool modelsim -trace_level all
 
 exit

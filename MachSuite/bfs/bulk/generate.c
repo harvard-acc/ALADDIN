@@ -23,33 +23,30 @@
 #define D 25
 #endif
 
-#include "bulk.h"
-// Fake benchmark function to satisfy the extern
+#include "bfs.h"
 
-void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES], node_index_t starting_node, level_t level[N_NODES], edge_index_t level_counts[N_LEVELS]) { }
-
-void generate_binary()
+int main(int argc, char **argv)
 {
   struct bench_args_t data;
-  char *ptr;
-  int status, i, fd, written=0;
+  int fd;
   node_index_t adjmat[N_NODES][N_NODES]; // This is small enough to be fine.
   node_index_t r,c,s,temp;
   edge_index_t e;
   int scale;
   long int rint;
+  struct prng_rand_t state;
 
   // Generate dense R-MAT matrix
   memset(adjmat, 0, N_NODES*N_NODES*sizeof(node_index_t));
-  srandom(1);
-  
+  prng_srand(1, &state);
+
   e = 0;
   while( e<N_EDGES/2 ) { // generate N_EDGES/2 undirected edges (N_EDGES directed)
     r = 0;
     c = 0;
     // Pick a random edge according to R-MAT parameters
     for( scale=SCALE; scale>0; scale-- ) { // each level of the quadtree
-      rint = random()%100;
+      rint = prng_rand(&state)%100;
       if( rint>=(A+B) ) // C or D (bottom half)
         r += 1<<(scale-1);
       if( (rint>=A && rint<A+B) || (rint>=A+B+C) ) // B or D (right half)
@@ -65,7 +62,7 @@ void generate_binary()
 
   // Shuffle matrix (to eliminate degree locality)
   for( s=0; s<N_NODES; s++ ) {
-    rint = random()%N_NODES;
+    rint = prng_rand(&state)%N_NODES;
     // Swap row s with row rint
     for( r=0; r<N_NODES; r++ ) {
       for( c=0; c<N_NODES; c++ ) {
@@ -93,7 +90,7 @@ void generate_binary()
       if( adjmat[r][c] ) {
         ++data.nodes[r].edge_end;
         data.edges[e].dst = c;
-        //data.edges[e].weight = random()%(MAX_WEIGHT-MIN_WEIGHT)+MIN_WEIGHT;
+        //data.edges[e].weight = prng_rand(&state)%(MAX_WEIGHT-MIN_WEIGHT)+MIN_WEIGHT;
         ++e;
       }
     }
@@ -106,28 +103,14 @@ void generate_binary()
 
   // Pick starting node
   do {
-    rint = random()%N_NODES;
+    rint = prng_rand(&state)%N_NODES;
   } while( (data.nodes[rint].edge_end-data.nodes[rint].edge_begin)<2 );
   data.starting_node = rint;
-
-  // Fill data structure
-  memset(data.level, MAX_LEVEL, N_NODES*sizeof(level_t));
-  memset(data.level_counts, 0, N_LEVELS*sizeof(edge_index_t));
 
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
+  data_to_input(fd, &data);
 
-int main(int argc, char **argv)
-{
-  generate_binary();
   return 0;
 }

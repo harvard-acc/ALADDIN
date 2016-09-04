@@ -8,21 +8,13 @@
 #include <assert.h>
 
 #include "md.h"
-// Fake benchmark function to satisfy the extern
-void md_kernel(TYPE d_force_x[nAtoms],
-               TYPE d_force_y[nAtoms],
-               TYPE d_force_z[nAtoms],
-               TYPE position_x[nAtoms],
-               TYPE position_y[nAtoms],
-               TYPE position_z[nAtoms],
-               TYPE NL[nAtoms*maxNeighbors]) { }
 
 #define domainEdge 20.0
 // LJ1=4e(s^12), LJ2=4e(s^6) -> s=1.049
 #define van_der_Waals_thresh (1.049*1.049)
 
-static inline double dist_sq(double x1, double y1, double z1, double x2, double y2, double z2) {
-  double dx, dy, dz;
+static inline TYPE dist_sq(TYPE x1, TYPE y1, TYPE z1, TYPE x2, TYPE y2, TYPE z2) {
+  TYPE dx, dy, dz;
   dx=x2-x1;
   dy=y2-y1;
   dz=z2-z1;
@@ -31,7 +23,7 @@ static inline double dist_sq(double x1, double y1, double z1, double x2, double 
 
 typedef struct {
   int index;
-  double dist_sq;
+  TYPE dist_sq;
 } neighbor_t;
 
 int neighbor_compar(const void *v_lhs, const void *v_rhs) {
@@ -40,23 +32,23 @@ int neighbor_compar(const void *v_lhs, const void *v_rhs) {
   return lhs.dist_sq==rhs.dist_sq ? 0 : ( lhs.dist_sq<rhs.dist_sq ? -1 : 1 );
 }
 
-void generate_binary()
+int main(int argc, char **argv)
 {
   struct bench_args_t data;
-  char *ptr;
-  int status, i, j, reject, fd, written=0;
+  int i, j, reject, fd;
   neighbor_t neighbor_list[nAtoms];
-  double x, y, z;
-  const double infinity = (domainEdge*domainEdge*3.)*1000;//(max length)^2 * 1000
+  TYPE x, y, z;
+  const TYPE infinity = (domainEdge*domainEdge*3.)*1000;//(max length)^2 * 1000
+  struct prng_rand_t state;
 
   // Create random positions in the box [0,domainEdge]^3
-  srandom(1);
+  prng_srand(1,&state);
   i=0;
   while( i<nAtoms ) {
     // Generate a new point
-    x = domainEdge*(((double)random())/((double)RAND_MAX));
-    y = domainEdge*(((double)random())/((double)RAND_MAX));
-    z = domainEdge*(((double)random())/((double)RAND_MAX));
+    x = domainEdge*(((TYPE)prng_rand(&state))/((TYPE)PRNG_RAND_MAX));
+    y = domainEdge*(((TYPE)prng_rand(&state))/((TYPE)PRNG_RAND_MAX));
+    z = domainEdge*(((TYPE)prng_rand(&state))/((TYPE)PRNG_RAND_MAX));
     // Assure that it's not directly on top of another atom
     reject = 0;
     for( j=0; j<i; j++ ) {
@@ -75,6 +67,7 @@ void generate_binary()
   }
 
   // Compute k-nearest neighbors
+  memset(data.NL, 0, nAtoms*maxNeighbors*sizeof(int32_t));
   for( i=0; i<nAtoms; i++ ) {
     for( j=0; j<nAtoms; j++ ) {
       neighbor_list[j].index = j;
@@ -92,25 +85,10 @@ void generate_binary()
     //printf("\n\n");
   }
 
-  // Fill remaining data structure
-  memset(data.d_force_x, 0, nAtoms*sizeof(double));
-  memset(data.d_force_y, 0, nAtoms*sizeof(double));
-  memset(data.d_force_z, 0, nAtoms*sizeof(double));
-
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
+  data_to_input(fd, (void *)(&data));
 
-int main(int argc, char **argv)
-{
-  generate_binary();
   return 0;
 }

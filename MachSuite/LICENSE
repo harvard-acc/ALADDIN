@@ -26,33 +26,27 @@ aes/aes            | ISC     | Ilya O. Levin, Hal Finney, Harvard University
 backprop/backprop  | BSD-3   | University of Virginia, Harvard University
 bfs/bulk           | BSD-3   | Harvard University
 bfs/queue          | BSD-3   | Harvard University
-des/des            | BSD-3   | Harvard University*
-fft/simple         | BSD-3   | Harvard University
+fft/strided        | BSD-3   | Harvard University
 fft/transpose      | BSD-3   | UT-Battelle, Harvard University
-gemm/simple        | BSD-3   | Harvard University
+gemm/ncubed        | BSD-3   | Harvard University
 gemm/blocked       | BSD-3   | Harvard University 
 kmp/kmp            | BSD-3   | Harvard University
 md/grid            | BSD-3   | Harvard University
 md/knn             | BSD-3   | UT-Battelle, Harvard University
 nw/nw              | BSD-3   | Harvard University
-sha/sha            | BSD-3   | Harvard University**
 sort/merge         | BSD-3   | Harvard University
 sort/radix         | BSD-3   | Harvard University
 spmv/crs           | BSD-3   | Harvard University
 spmv/ellpack       | BSD-3   | Harvard University
-stencil/simple     | BSD-3   | Harvard University
+stencil/stencil2d  | BSD-3   | Harvard University
 stencil/stencil3d  | BSD-3   | Harvard University
 viterbi/viterbi    | BSD-3   | Harvard University
-
-Notes:
-*Our DES code is derived from public domain code written by Richard Outerbridge.
-**Our SHA code is derived from public domain code written by Steve Reid et al.
 
 ----
 
 MachSuite (BSD-3) License
 
-Copyright (c) 2014, the President and Fellows of Harvard College.
+Copyright (c) 2014-2015, the President and Fellows of Harvard College.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -86,7 +80,7 @@ ISC License (aes implementation)
 
 Copyright (c) 2007-2009 Ilya O. Levin, http://www.literatecode.com
 Other contributors: Hal Finney
-Copyright (c) 2014, President and Fellows of Harvard College
+Copyright (c) 2014-2015, President and Fellows of Harvard College
 
 Permission to use, copy, modify, and distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -105,7 +99,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 BSD-3 License (backprop implementation)
 
 Copyright (c)2008-2011 University of Virginia
-Copyright (c) 2014, the President and Fellows of Harvard College
+Copyright (c) 2014-2015, the President and Fellows of Harvard College
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -137,7 +131,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 BSD-3 License (fft/transpose and md/knn implementation)
 
 Copyright (c) 2011, UT-Battelle, LLC
-Copyright (c) 2014, the President and Fellows of Harvard College
+Copyright (c) 2014-2015, the President and Fellows of Harvard College
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

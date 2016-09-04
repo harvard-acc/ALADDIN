@@ -1,31 +1,4 @@
 /*
-Copyright (c) 2011, UT-Battelle, LLC
-Copyright (c) 2014, the President and Fellows of Harvard College
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-* Neither the name of Oak Ridge National Laboratory, nor UT-Battelle, LLC, nor
-  the names of its contributors may be used to endorse or promote products
-  derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 Implemenataion based on:
 A. Danalis, G. Marin, C. McCurdy, J. S. Meredith, P. C. Roth, K. Spafford, V. Tipparaju, and J. S. Vetter.
 The scalable heterogeneous computing (shoc) benchmark suite.
@@ -34,6 +7,7 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "support.h"
 
 #define TYPE double
 
@@ -44,67 +18,22 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 #define lj1           1.5
 #define lj2           2.0
 
-#ifdef GEM5_HARNESS
-#include "gem5/aladdin_sys_connection.h"
-#include "gem5/aladdin_sys_constants.h"
-#endif
-
-#ifdef DMA_MODE
-#include "gem5/dma_interface.h"
-#endif
-
+void md_kernel(TYPE force_x[nAtoms],
+               TYPE force_y[nAtoms],
+               TYPE force_z[nAtoms],
+               TYPE position_x[nAtoms],
+               TYPE position_y[nAtoms],
+               TYPE position_z[nAtoms],
+               int32_t NL[nAtoms*maxNeighbors]);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 
 struct bench_args_t {
-  TYPE d_force_x[nAtoms];
-  TYPE d_force_y[nAtoms];
-  TYPE d_force_z[nAtoms];
+  TYPE force_x[nAtoms];
+  TYPE force_y[nAtoms];
+  TYPE force_z[nAtoms];
   TYPE position_x[nAtoms];
   TYPE position_y[nAtoms];
   TYPE position_z[nAtoms];
-  TYPE NL[nAtoms*maxNeighbors];
+  int32_t NL[nAtoms*maxNeighbors];
 };
-int INPUT_SIZE = sizeof(struct bench_args_t);
-
-void md_kernel(TYPE d_force_x[nAtoms],
-               TYPE d_force_y[nAtoms],
-               TYPE d_force_z[nAtoms],
-               TYPE position_x[nAtoms],
-               TYPE position_y[nAtoms],
-               TYPE position_z[nAtoms],
-               TYPE NL[nAtoms*maxNeighbors]);
-
-void run_benchmark( void *vargs ) {
-  struct bench_args_t *args = (struct bench_args_t *)vargs;
-
-#ifdef GEM5_HARNESS
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "d_force_x", (void*)&args->d_force_x,
-      sizeof(args->d_force_x));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "d_force_y", (void*)&args->d_force_y,
-      sizeof(args->d_force_y));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "d_force_z", (void*)&args->d_force_z,
-      sizeof(args->d_force_z));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_x", (void*)&args->position_x,
-      sizeof(args->position_x));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_y", (void*)&args->position_y,
-      sizeof(args->position_y));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_z", (void*)&args->position_z,
-      sizeof(args->position_z));
-  mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "NL", (void*)&args->NL, sizeof(args->NL));
-  invokeAcceleratorAndBlock(MACHSUITE_MD_KNN);
-#else
-  md_kernel( args->d_force_x, args->d_force_y, args->d_force_z,
-             args->position_x, args->position_y, args->position_z,
-             args->NL );
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////

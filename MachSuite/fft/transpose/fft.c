@@ -1,39 +1,15 @@
 /*
-Copyright (c) 2011, UT-Battelle, LLC
-Copyright (c) 2014, the President and Fellows of Harvard College
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-* Neither the name of Oak Ridge National Laboratory, nor UT-Battelle, LLC, nor
-  the names of its contributors may be used to endorse or promote products
-  derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 Implementations based on:
 V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
 */
 
 #include "fft.h"
 
-//////BEGIN TWIDDLES ////////
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
 
+//////BEGIN TWIDDLES ////////
 #define THREADS 64
 #define cmplx_M_x(a_x, a_y, b_x, b_y) (a_x*b_x - a_y *b_y)
 #define cmplx_M_y(a_x, a_y, b_x, b_y) (a_x*b_y + a_y *b_x)
@@ -48,19 +24,22 @@ V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
 #define cm_fl_mul_x(a_x, b) (b*a_x)
 #define cm_fl_mul_y(a_y, b) (b*a_y)
 
+void twiddles8(TYPE a_x[8], TYPE a_y[8], int i, int n){
+    int reversed8[8] = {0,4,2,6,1,5,3,7};
+    int j;
+    TYPE phi, tmp, phi_x, phi_y;
 
-#define  twiddles8(a_x, a_y, i, n, reversed)    \
-    for(int j=1; j < 8; j++){                   \
-        phi = ((-2*PI*reversed[j]/n)*i);       \
-        phi_x = cos(phi);                       \
-        phi_y = sin(phi);                      \
-        tmp = a_x[j];                          \
-        a_x[j] = cmplx_M_x(a_x[j], a_y[j], phi_x, phi_y); \
-        a_y[j] = cmplx_M_y(tmp, a_y[j], phi_x, phi_y); \
+    for(j=1; j < 8; j++){
+        phi = ((-2*PI*reversed8[j]/n)*i);
+        phi_x = cos(phi);
+        phi_y = sin(phi);
+        tmp = a_x[j];
+        a_x[j] = cmplx_M_x(a_x[j], a_y[j], phi_x, phi_y);
+        a_y[j] = cmplx_M_y(tmp, a_y[j], phi_x, phi_y);
     }
-
-
+}
 ////END TWIDDLES ////
+
 #define FF2(a0_x, a0_y, a1_x, a1_y){			\
     TYPE c0_x = *a0_x;		\
     TYPE c0_y = *a0_y;		\
@@ -69,6 +48,7 @@ V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
     *a1_x = cmplx_sub_x(c0_x, *a1_x);	\
     *a1_y = cmplx_sub_y(c0_y, *a1_y);	\
 }
+
 #define FFT4(a0_x, a0_y, a1_x, a1_y, a2_x, a2_y, a3_x, a3_y){           \
     TYPE exp_1_44_x;		\
     TYPE exp_1_44_y;		\
@@ -83,11 +63,12 @@ V. Volkov and B. Kazian. Fitting fft onto the g80 architecture. 2008.
     FF2( a0_x, a0_y, a1_x, a1_y );                  \
     FF2( a2_x, a2_y, a3_x, a3_y );                  \
 }
+
 #define FFT8(a_x, a_y)			\
 {                                               \
     TYPE exp_1_8_x, exp_1_4_x, exp_3_8_x;	\
     TYPE exp_1_8_y, exp_1_4_y, exp_3_8_y;	\
-    TYPE tmp_1, tmp_2;			\
+    TYPE tmp_1;			\
     exp_1_8_x =  1;				\
     exp_1_8_y = -1;				\
     exp_1_4_x =  0;				\
@@ -122,31 +103,32 @@ void loadx8(TYPE a_x[], TYPE x[], int offset, int sx){
     a_x[7] = x[7*sx+offset];
 }
 
-#define loady8(a_y, x, offset, sx){ \
-    a_y[0] = x[0*sx+offset]; \
-    a_y[1] = x[1*sx+offset]; \
-    a_y[2] = x[2*sx+offset]; \
-    a_y[3] = x[3*sx+offset]; \
-    a_y[4] = x[4*sx+offset]; \
-    a_y[5] = x[5*sx+offset]; \
-    a_y[6] = x[6*sx+offset]; \
-    a_y[7] = x[7*sx+offset]; \
+void loady8(TYPE a_y[], TYPE x[], int offset, int sx){
+    a_y[0] = x[0*sx+offset];
+    a_y[1] = x[1*sx+offset];
+    a_y[2] = x[2*sx+offset];
+    a_y[3] = x[3*sx+offset];
+    a_y[4] = x[4*sx+offset];
+    a_y[5] = x[5*sx+offset];
+    a_y[6] = x[6*sx+offset];
+    a_y[7] = x[7*sx+offset];
 }
 
 void fft1D_512(TYPE work_x[512], TYPE work_y[512]){
-#ifdef DMA_MODE
-  dmaLoad(&work_x[0],0,512*8*8);
-  dmaLoad(&work_y[0],0,512*8*8);
-#endif
-    int tid, hi, lo, i, j, stride;
-    TYPE phi, tmp, phi_x, phi_y;
+    int tid, hi, lo, stride;
     int reversed[] = {0,4,2,6,1,5,3,7};
     TYPE DATA_x[THREADS*8];
     TYPE DATA_y[THREADS*8];
+
     TYPE data_x[ 8 ];
     TYPE data_y[ 8 ];
 
     TYPE smem[8*8*9];
+
+#ifdef DMA_MODE
+    dmaLoad(&work_x[0], 0, 512 * sizeof(TYPE));
+    dmaLoad(&work_y[0], 0, 512 * sizeof(TYPE));
+#endif
 
     stride = THREADS;
 
@@ -175,7 +157,7 @@ loop1 : for(tid = 0; tid < THREADS; tid++){
             FFT8(data_x, data_y);
 
             //First Twiddle
-            twiddles8(data_x, data_y, tid, 512, reversed);
+            twiddles8(data_x, data_y, tid, 512);
 
             //save for fence
             DATA_x[tid*8]     = data_x[0];
@@ -294,7 +276,7 @@ loop6 : for(tid = 0; tid < 64; tid++){
             hi = tid>>3;
 
             //Second twiddles calc, use hi and 64 stride version as defined in G80/SHOC...
-            twiddles8(data_x, data_y, hi, 64, reversed);
+            twiddles8(data_x, data_y, hi, 64);
 
             //Save for final transpose...
             DATA_x[tid*8]     = data_x[0];
@@ -432,7 +414,7 @@ loop11 : for(tid = 0; tid < 64; tid++){
              work_y[7*stride+tid] = data_y[reversed[7]];
          }
 #ifdef DMA_MODE
-  dmaStore(&work_x[0],0,512*8*8);
-  dmaStore(&work_y[0],0,512*8*8);
+         dmaStore(&work_x[0], 0, 512 * sizeof(TYPE));
+         dmaStore(&work_y[0], 0, 512 * sizeof(TYPE));
 #endif
 }

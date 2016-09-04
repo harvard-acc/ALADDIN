@@ -1,75 +1,94 @@
-/*
-Copyright (c) 2014, the President and Fellows of Harvard College.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-* Neither the name of Harvard University nor the names of its contributors may
-  be used to endorse or promote products derived from this software without
-  specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 #include "viterbi.h"
 
-int viterbi(int Obs[numObs], float transMat[numStates*numObs], float obsLik[numStates*numObs], float v[numStates*numObs]){
 #ifdef DMA_MODE
-  dmaLoad(&Obs[0],0,128*4*8);
-  dmaLoad(&transMat[0],0*1024*4,1024*4*8);
-  dmaLoad(&transMat[0],1*1024*4,1024*4*8);
-  dmaLoad(&transMat[0],2*1024*4,1024*4*8);
-  dmaLoad(&transMat[0],3*1024*4,1024*4*8);
-  dmaLoad(&obsLik[0],0*1024*4,1024*4*8);
-  dmaLoad(&obsLik[0],1*1024*4,1024*4*8);
-  dmaLoad(&obsLik[0],2*1024*4,1024*4*8);
-  dmaLoad(&obsLik[0],3*1024*4,1024*4*8);
-  dmaLoad(&v[0],0*1024*4,1024*4*8);
-  dmaLoad(&v[0],1*1024*4,1024*4*8);
-  dmaLoad(&v[0],2*1024*4,1024*4*8);
-  dmaLoad(&v[0],3*1024*4,1024*4*8);
+#include "gem5/dma_interface.h"
 #endif
-    int i, j, k, finalState;
-    float maxProb, temp;
-    finalState = 0;
-    v[0] = 1.0;
 
-    v1 : for(i=0; i<numObs;i++){  //for each observation
-       int baseObs =  Obs[i];
-        v2 : for(j=0; j<numStates; j++){    //for each possible state
-            v3 : for(k=0; k<numStates; k++){    //for each
-                temp = v[j*numObs + i] * transMat[j*numObs + k] * obsLik[k*numObs + baseObs];
-                if(temp > v[k*numObs + i+1]){
-                    v[k*numObs + i+1] = temp;
-                }
-            }
+int viterbi( tok_t obs[N_OBS], prob_t init[N_STATES], prob_t transition[N_STATES*N_STATES], prob_t emission[N_STATES*N_TOKENS], state_t path[N_OBS] )
+{
+  prob_t llike[N_OBS][N_STATES];
+  step_t t;
+  state_t prev, curr;
+  prob_t min_p, p;
+  state_t min_s, s;
+  // All probabilities are in -log space. (i.e.: P(x) => -log(P(x)) )
+
+#ifdef DMA_MODE
+  dmaLoad(&obs[0], 0, N_OBS * sizeof(tok_t));
+  dmaLoad(&init[0], 0, N_STATES * sizeof(prob_t));
+  dmaLoad(&transition[0], 0 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 1 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 2 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 3 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 4 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 5 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 6 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&transition[0], 7 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 0 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 1 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 2 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 3 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 4 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 5 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 6 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(&emission[0], 7 * 512 * sizeof(prob_t), PAGE_SIZE);
+#endif
+
+  // Initialize with first observation and initial probabilities
+  L_init: for( s=0; s<N_STATES; s++ ) {
+    llike[0][s] = init[s] + emission[s*N_TOKENS+obs[0]];
+  }
+
+  // Iteratively compute the probabilities over time
+  L_timestep: for( t=1; t<N_OBS; t++ ) {
+    L_curr_state: for( curr=0; curr<N_STATES; curr++ ) {
+      // Compute likelihood HMM is in current state and where it came from.
+      prev = 0;
+      min_p = llike[t-1][prev] +
+              transition[prev*N_STATES+curr] +
+              emission[curr*N_TOKENS+obs[t]];
+      L_prev_state: for( prev=1; prev<N_STATES; prev++ ) {
+        p = llike[t-1][prev] +
+            transition[prev*N_STATES+curr] +
+            emission[curr*N_TOKENS+obs[t]];
+        if( p<min_p ) {
+          min_p = p;
         }
+      }
+      llike[t][curr] = min_p;
     }
+  }
 
-    maxProb = (float)0.0;
-
-    v4 : for(i=1;i<numStates+1;i++){
-        if(v[i*numObs-1] > maxProb){
-            finalState = i - 1;
-            maxProb = v[i*numObs-1];
-        }
+  // Identify end state
+  min_s = 0;
+  min_p = llike[N_OBS-1][min_s];
+  L_end: for( s=1; s<N_STATES; s++ ) {
+    p = llike[N_OBS-1][s];
+    if( p<min_p ) {
+      min_p = p;
+      min_s = s;
     }
+  }
+  path[N_OBS-1] = min_s;
 
-    return finalState;
+  // Backtrack to recover full path
+  L_backtrack: for( t=N_OBS-2; t>=0; t-- ) {
+    min_s = 0;
+    min_p = llike[t][min_s] + transition[min_s*N_STATES+path[t+1]];
+    L_state: for( s=1; s<N_STATES; s++ ) {
+      p = llike[t][s] + transition[s*N_STATES+path[t+1]];
+      if( p<min_p ) {
+        min_p = p;
+        min_s = s;
+      }
+    }
+    path[t] = min_s;
+  }
+
+#ifdef DMA_MODE
+  dmaStore(&path[0], 0, N_OBS * sizeof(state_t));
+#endif
+
+  return 0;
 }
+

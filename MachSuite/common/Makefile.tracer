@@ -2,8 +2,10 @@
 # Define ACCEL_NAME, TRACER_HOME, ALADDIN_HOME, WORKLOAD, SRCS before including
 # this.
 ###############
+CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+COMMON_DIR := $(CURRENT_DIR)
 
-.PHONY: trace clean run autotrace check-env
+.PHONY: trace dma-trace clean run autotrace check-env
 
 EXEC = $(ACCEL_NAME)
 
@@ -11,9 +13,18 @@ TRACER = $(TRACER_HOME)/full-trace/full_trace.so
 LOGGER = $(TRACER_HOME)/profile-func/trace_logger.llvm
 MODE = LLVM_TRACE
 
-LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(SRCS))
+ALL_SRCS = $(SRCS) $(COMMON_DIR)/harness.c
+CPPFLAGS = -I$(ALADDIN_HOME) -I$(COMMON_DIR) -D$(MODE)
 
+ifneq ($(DMA_MODE),)
+	ALL_SRCS += $(ALADDIN_HOME)/gem5/dma_interface.c
+	CPPFLAGS += -DDMA_MODE -I$(ALADDIN_HOME)/gem5
+endif
+
+LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
 trace: $(EXEC)-instrumented
+dma-trace:
+	$(MAKE) -C . DMA_MODE=1 trace
 
 # To have traces generated automatically, set the environment variable
 # TRACE_OUTPUT_DIR to a directory where you want the traces to eventually go,
@@ -38,15 +49,12 @@ full.s: full.llvm
 	llc -O0 -disable-fp-elim -filetype=asm -o $@ $<
 
 $(EXEC)-instrumented: full.s
-	$(CXX) -static -O0 -fno-inline -o $@ $< -lm -lz
+	$(CXX) -O0 -fno-inline -o $@ $< -lm -lz
 
 %-opt.llvm: %.c
-#	mkdir -p $(COMMON_TEMP_DIR)
-	echo $(WORKLOAD)
 	clang -g -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops \
         -fno-inline -fno-builtin -emit-llvm \
-        -I$(ALADDIN_HOME) \
-        -D$(MODE) \
+				$(CPPFLAGS) \
         $(BMARK_SPECIFIC_CFLAGS) \
         -o $*.llvm $<
 	opt -S -load=$(TRACER) -fulltrace $*.llvm -o $@

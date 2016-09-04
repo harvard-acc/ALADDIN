@@ -1,23 +1,23 @@
-net: net.c net.h ../../common/harness.c
-	$(CC) $(CFLAGS) -o net $(SRCS) $(LFLAGS) -lm
+KERN=backprop
+ALG=backprop
 
-run: net input.data check.data
-	./net input.data check.data
+CFLAGS?=-O3 -Wall -Wno-unused-label
 
-hls: net.c net.h
+SRCS=$(KERN).c local_support.c ../../common/support.c
+FILES=$(SRCS) $(KERN).h ../../common/support.h
+
+$(KERN): $(FILES) ../../common/harness.c
+	$(CC) $(CFLAGS) -I../../common -o $(KERN) $(SRCS) ../../common/harness.c -lm
+
+run: $(KERN) input.data check.data
+	./$(KERN) input.data check.data
+
+generate: $(FILES) generate.c
+	$(CC) $(CFLAGS) -I../../common -o generate $(SRCS) generate.c -lm
+	./generate
+
+hls: $(KERN).c $(KERN).h
 	vivado_hls hls.tcl
 
 clean:
-	rm -f net
-
-include ../../common/Makefile.gem5
-
-# For the tracer makefile
-SRCS = net.c ../../common/harness.c
-ACCEL_NAME = backprop-backprop
-TEST_BIN = $(ACCEL_NAME)
-export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
-ifndef WORKLOAD
-  export WORKLOAD=sigmoid,update_layer,update,propagate_error_out,propagate_error_layer,update_weights,propagate_errors,comp_error,backprop
-endif
-include ../../common/Makefile.tracer
+	rm -f $(KERN) generate output.data

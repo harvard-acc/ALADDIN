@@ -7,13 +7,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define FROM_FILE
-//#define FROM_RANDOM
-
-#include "crs.h"
-// Fake benchmark function to satisfy the extern
-void spmv(TYPE val[NNZ], int cols[NNZ], int rowDelimiters[N + 1],
-          TYPE vec[N], TYPE out[N]) { }
+#include "spmv.h"
 
 #define ROW 0
 #define COL 1
@@ -40,72 +34,14 @@ int compar(const void *v_lhs, const void *v_rhs)
   }
 }
 
-#ifdef FROM_RANDOM
-void generate_binary()
-{
-  struct bench_args_t data;
-  char *ptr;
-  int status, nnz, i, pos, unique, fd, written=0;
-  int linear_positions[NNZ];
-
-  srandom(1);
-
-  // Find NNZ unique positions
-  memset(linear_positions, 0, NNZ*sizeof(int));
-  nnz = 0;
-  while(nnz<NNZ) {
-    pos = random() % (N*N); // Slightly biased low
-    unique = 1;
-    for( i=0; i<nnz; i++ )
-      if( linear_positions[i]==pos ) {
-        unique = 0;
-        break;
-      }
-    if( unique ) {
-      linear_positions[nnz] = pos;
-      ++nnz;
-    }
-  }
-
-  // Sort positions
-  qsort(linear_positions, NNZ, sizeof(int), &compar);
-
-  // Now convert to array indices and fill
-  memset(data.rowDelimiters, 0, (N+1)*sizeof(int));
-  for( i=0; i<NNZ; i++ ) {
-    data.val[i] = -100 + 200*((double)random()/RAND_MAX);
-    data.cols[i] = linear_positions[i] % N;
-    ++data.rowDelimiters[linear_positions[i]/N+1]; // just counts
-    // (+1 because it's counting cells before it)
-  }
-  for( i=1; i<N+1; i++ ) { // prefix sum to get boundaries
-    data.rowDelimiters[i] += data.rowDelimiters[i-1];
-  }
-  for( i=0; i<N; i++ )
-    data.vec[i] = 1.0;
-  memset(data.out, 0, N*sizeof(TYPE));
-
-  // Open and write
-  fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-  assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
-#endif
-
-#ifdef FROM_FILE
-void generate_binary()
+int main(int argc, char **argv)
 {
   struct bench_args_t data;
   struct stat file_info;
-  char *ptr, *current, *next, *buffer;
-  int status, i, fd, nbytes, written=0;
+  char *current, *next, *buffer;
+  int status, i, fd, nbytes;
   int coords[NNZ][2]; // row, col
+  struct prng_rand_t state;
 
   // Load matrix file
   fd = open("494_bus_full.mtx", O_RDONLY);
@@ -137,7 +73,7 @@ void generate_binary()
 
   // Sort by row
   qsort(coords, NNZ, 2*sizeof(int), &compar);
-  
+
   // Fill data structure
   for(i=0; i<NNZ; i++)
     data.cols[i] = coords[i][COL]-1;
@@ -147,30 +83,16 @@ void generate_binary()
     // (-1 because matrix is 1-indexed, +1 because it's counting cells before it)
   for(i=1; i<N+1; i++)
     data.rowDelimiters[i] += data.rowDelimiters[i-1]; // scan
-  for(i=0; i<N; i++)
-    data.vec[i] = 1;
-  memset(data.out, 0, N*sizeof(int));
+
+  // Set vector
+  prng_srand(1,&state);
+  for( i=0; i<N; i++ )
+    data.vec[i] = ((double)prng_rand(&state))/((double)PRNG_RAND_MAX);
 
   // Open and write
   fd = open("input.data", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   assert( fd>0 && "Couldn't open input data file" );
-  
-  ptr = (char *) &data;
-  while( written<sizeof(data) ) {
-    status = write( fd, ptr, sizeof(data)-written );
-    assert( status>=0 && "Couldn't write input data file" );
-    written += status;
-  }
-}
-#endif
+  data_to_input(fd, (void *)(&data));
 
-int main(int argc, char **argv)
-{
-#ifdef FROM_RANDOM
-  generate_binary();
-#endif
-#ifdef FROM_FILE
-  generate_binary();
-#endif
   return 0;
 }
