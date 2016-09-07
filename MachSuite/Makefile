@@ -33,6 +33,8 @@ run:
 generate:
 	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b generate; done )
 
+trace:
+	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b trace; done )
 
 ### For regression tests
 all: clean build generate run
