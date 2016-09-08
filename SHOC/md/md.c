@@ -1,16 +1,20 @@
 #include "md.h"
+
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
+
 void md(TYPE d_force_x[nAtoms], TYPE d_force_y[nAtoms], TYPE d_force_z[nAtoms],
       TYPE position_x[nAtoms], TYPE position_y[nAtoms], TYPE position_z[nAtoms],
       TYPE NL[32*32]) {
 #ifdef DMA_MODE
-	dmaLoad(&d_force_x[0], nAtoms*4*8);
-	dmaLoad(&d_force_y[0], nAtoms*4*8);
-	dmaLoad(&d_force_z[0], nAtoms*4*8);
-	dmaLoad(&position_x[0], nAtoms*4*8);
-	dmaLoad(&position_y[0], nAtoms*4*8);
-	dmaLoad(&position_z[0], nAtoms*4*8);
-	dmaLoad(&NL[0], 32*32*4*8);
+	dmaLoad(&d_force_x[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&d_force_y[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&d_force_z[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&position_x[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&position_y[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&position_z[0], 0, nAtoms*sizeof(TYPE));
+	dmaLoad(&NL[0], 0, 32*32*sizeof(TYPE));
 #endif
 	int i, j, jidx;
 	TYPE delx, dely, delz, r2inv, r2invTEMP, r2invTEMP2, r2invTEMP3, t1, t2, t3;
@@ -48,9 +52,9 @@ void md(TYPE d_force_x[nAtoms], TYPE d_force_y[nAtoms], TYPE d_force_z[nAtoms],
     d_force_z[i] = fz;
   }
 #ifdef DMA_MODE
-	dmaStore(&d_force_x[0], nAtoms*4*8);
-	dmaStore(&d_force_y[0], nAtoms*4*8);
-	dmaStore(&d_force_z[0], nAtoms*4*8);
+	dmaStore(&d_force_x[0], 0, nAtoms*sizeof(TYPE));
+	dmaStore(&d_force_y[0], 0, nAtoms*sizeof(TYPE));
+	dmaStore(&d_force_z[0], 0, nAtoms*sizeof(TYPE));
 #endif
 }
 

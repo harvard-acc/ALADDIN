@@ -1,5 +1,8 @@
 #include "pp_scan.h"
+
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
 
 void print(int *a, int size)
 {
@@ -12,7 +15,7 @@ typedef enum { false, true } bool;
 void local_scan(int bucket[BUCKETSIZE])
 {
   int radixID, i;
-  loop1_outter:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
+  loop1_outer:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
     loop1_inner:for (i = 1; i < SCAN_BLOCK; ++i)
     {
       bucket[radixID * SCAN_BLOCK + i] += bucket[radixID * SCAN_BLOCK + i - 1];
@@ -30,7 +33,7 @@ void sum_scan(int sum[SCAN_RADIX], int bucket[BUCKETSIZE])
 void last_step_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE], int sum[SCAN_RADIX])
 {
   int radixID, i;
-  loop3_outter:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
+  loop3_outer:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
     loop3_inner:for (i = 0; i < SCAN_BLOCK; ++i)
     {
       bucket2[radixID * SCAN_BLOCK + i] =
@@ -42,13 +45,15 @@ void pp_scan(int bucket[BUCKETSIZE], int bucket2[BUCKETSIZE],
   int sum[SCAN_RADIX])
 {
 #ifdef DMA_MODE
-	dmaLoad(&bucket[0], BUCKETSIZE*4*8);
+	dmaLoad(&bucket[0], 0 * 1024 * sizeof(int), PAGE_SIZE);
+  dmaLoad(&bucket[0], 1 * 1024 * sizeof(int), PAGE_SIZE);
 #endif
   local_scan(bucket);
   sum_scan(sum, bucket);
   last_step_scan(bucket, bucket2, sum);
 #ifdef DMA_MODE
-	dmaStore(&bucket2[0], BUCKETSIZE*4*8);
+	dmaLoad(&bucket2[0], 0 * 1024 * sizeof(int), PAGE_SIZE);
+  dmaLoad(&bucket2[0], 1 * 1024 * sizeof(int), PAGE_SIZE);
 #endif
 }
 

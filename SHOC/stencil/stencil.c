@@ -1,15 +1,18 @@
 #include "stencil.h"
+
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
 
 void stencil (int *orig, int *sol, int const *filter)
 {
 #ifdef DMA_MODE
-	dmaLoad(&orig[0], N*4*8); 
+	dmaLoad(&orig[0], 0, N*sizeof(int));
 #endif
 	int i, j,k1, k2, sidx, didx, fidx;
 	int tmp, Si, SI, Di, Ti;
-	for (i=0; i<N-2; i++) {
-		for (j=0; j<N-2; j++) {
+  outer:for (i=0; i<N-2; i++) {
+    inner:for (j=0; j<N-2; j++) {
 			Si = 0;
 			SI = 0;
 			tmp = 0;
@@ -70,7 +73,7 @@ void stencil (int *orig, int *sol, int const *filter)
 		}
 	}
 #ifdef DMA_MODE
-  dmaStore(&sol[0], N*4*8);
+  dmaStore(&sol[0], 0, N*sizeof(int));
 #endif
 }
 

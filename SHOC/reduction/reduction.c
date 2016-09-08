@@ -1,13 +1,16 @@
 #include "reduction.h"
+
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
 
 int reduction(int *in)
 {
   int i = 0; int sum = 0;
 #ifdef DMA_MODE
-	dmaLoad(&in[0], NUM*4*8);
+	dmaLoad(&in[0], 0, NUM*sizeof(int));
 #endif
-  for (i = 0; i < NUM; i++)
+  sum:for (i = 0; i < NUM; i++)
     sum += in[i];
 
   return sum;

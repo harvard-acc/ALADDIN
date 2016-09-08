@@ -1,11 +1,14 @@
 #include "bb_gemm.h"
+
+#ifdef DMA_MODE
 #include "gem5/dma_interface.h"
+#endif
 
 void bb_gemm(int x[N], int y[N], int z[N]){
 #ifdef DMA_MODE
-	dmaLoad(&x[0], ROWSIZE*BLOCKSIZE*4*8);
-  dmaLoad(&y[0], BLOCKSIZE*BLOCKSIZE*4*8);
-  dmaLoad(&z[0], ROWSIZE*BLOCKSIZE*4*8);
+  dmaLoad(&x[0], 0, ROWSIZE*BLOCKSIZE*sizeof(int));
+  dmaLoad(&y[0], 0, BLOCKSIZE*BLOCKSIZE*sizeof(int));
+  dmaLoad(&z[0], 0, ROWSIZE*BLOCKSIZE*sizeof(int));
 #endif
   int i, k, j, temp_x;
 	loopi:for ( i = 0; i < ROWSIZE; ++i){
@@ -18,7 +21,7 @@ void bb_gemm(int x[N], int y[N], int z[N]){
       		}
 	}
 #ifdef DMA_MODE
-	dmaStore(&z[0], ROWSIZE*BLOCKSIZE*4*8);
+	dmaStore(&z[0], 0, ROWSIZE*BLOCKSIZE*sizeof(int));
 #endif
 }
 void print(int *a, int size)
