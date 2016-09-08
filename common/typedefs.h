@@ -29,4 +29,7 @@ typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
 typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 
+// Other convenience typedefs.
+typedef std::unordered_map<std::string, unsigned> unrolling_config_t;
+
 #endif

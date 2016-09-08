@@ -167,6 +167,9 @@ class BaseDatapath {
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
+  void setLabelMap(std::map<unsigned, std::string>& _labelmap) {
+    labelmap = _labelmap;
+  }
   void addCallArgumentMapping(std::string callee_reg_id,
                               std::string caller_reg_id);
   std::string getCallerRegID(std::string callee_func,
@@ -286,6 +289,9 @@ class BaseDatapath {
   // Configuration parsing and handling.
   void parse_config(std::string bench, std::string config_file);
 
+  // Returns the unrolling factor for the loop bounded at this node.
+  unrolling_config_t::iterator getUnrollFactor(ExecNode* node);
+
   // State initialization.
   virtual void initBaseAddress();
   void initMethodID(std::vector<int>& methodid);
@@ -375,8 +381,8 @@ class BaseDatapath {
   bool pipelining;
   /* Unrolling and flattening share unrolling_config;
    * flatten if factor is zero.
-   * it maps static-method-linenumber to unrolling factor. */
-  std::unordered_map<std::string, int> unrolling_config;
+   * it maps loop labels to unrolling factor. */
+  unrolling_config_t unrolling_config;
   /* complete, block, cyclic, and cache partition share partition_config */
   std::unordered_map<std::string, partitionEntry> partition_config;
 
@@ -404,6 +410,8 @@ class BaseDatapath {
   // Complete list of all execution nodes and their properties.
   std::map<unsigned int, ExecNode*> exec_nodes;
 
+  // Maps line numbers to labels.
+  std::map<unsigned, std::string> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;

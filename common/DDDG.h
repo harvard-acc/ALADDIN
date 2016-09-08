@@ -43,6 +43,7 @@ class DDDG {
   void parse_result(std::string line);
   void parse_forward(std::string line);
   void parse_call_parameter(std::string line, int param_tag);
+  void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
 
@@ -78,6 +79,8 @@ class DDDG {
   // edge multimap
   multi_uint_to_node_info register_edge_table;
   multi_uint_to_node_info memory_edge_table;
+  // Stores mappings of line numbers to labeled statement names.
+  std::map<unsigned, std::string> labelmap;
   // keep track of currently executed methods
   std::stack<std::string> active_method;
   // manage methods

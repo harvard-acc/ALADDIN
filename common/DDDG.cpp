@@ -29,7 +29,19 @@ void DDDG::output_dddg() {
        ++it) {
     datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
   }
+
+  datapath->setLabelMap(labelmap);
 }
+
+// Parse line from the labelmap section.
+void DDDG::parse_labelmap_line(std::string line) {
+  char label[256];
+  int line_number;
+  sscanf(line.c_str(), "%s %d", label, &line_number);
+  label[255] = '\0';  // Just in case...
+  labelmap[line_number] = label;
+}
+
 void DDDG::parse_instruction_line(std::string line) {
   char curr_static_function[256];
   char instid[256], bblockid[256];
@@ -352,11 +364,30 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
   std::string first_function;
   bool seen_first_line = false;
   bool first_function_returned = false;
+  bool in_labelmap_section = false;
+  bool labelmap_parsed_or_not_present = false;
   while (trace_file && !gzeof(trace_file)) {
     if (gzgets(trace_file, buffer, sizeof(buffer)) == NULL) {
       continue;
     }
     std::string wholeline(buffer);
+
+    /* Scan for labelmap section if it has not yet been parsed. */
+    if (!labelmap_parsed_or_not_present) {
+      if (!in_labelmap_section) {
+        if (wholeline.find("%%%% LABEL MAP START %%%%") != std::string::npos) {
+          in_labelmap_section = true;
+          continue;
+        }
+      } else {
+        if (wholeline.find("%%%% LABEL MAP END %%%%") != std::string::npos) {
+          labelmap_parsed_or_not_present = true;
+          in_labelmap_section = false;
+          continue;
+        }
+        parse_labelmap_line(wholeline);
+      }
+    }
     size_t pos_end_tag = wholeline.find(",");
 
     if (pos_end_tag == std::string::npos) {
@@ -364,6 +395,8 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
         break;
       continue;
     }
+    // So that we skip that check if we don't have a labelmap.
+    labelmap_parsed_or_not_present = true;
     std::string tag = wholeline.substr(0, pos_end_tag);
     std::string line_left = wholeline.substr(pos_end_tag + 1);
     if (tag.compare("0") == 0) {

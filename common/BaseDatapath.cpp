@@ -243,12 +243,7 @@ void BaseDatapath::loopFlatten() {
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
-    char unrolling_id[256];
-    sprintf(unrolling_id,
-            "%s-%d",
-            node->get_static_method().c_str(),
-            node->get_line_num());
-    auto config_it = unrolling_config.find(unrolling_id);
+    auto config_it = getUnrollFactor(node);
     if (config_it == unrolling_config.end() || config_it->second != 0)
       continue;
     if (node->is_compute_op())
@@ -449,12 +444,7 @@ void BaseDatapath::loopPipelining() {
     ExecNode* br_node = exec_nodes[first_it->first];
     ExecNode* first_node = exec_nodes[first_it->second];
     bool found = false;
-    char unrolling_id[256];
-    sprintf(unrolling_id,
-            "%s-%d",
-            br_node->get_static_method().c_str(),
-            br_node->get_line_num());
-    auto unroll_it = unrolling_config.find(unrolling_id);
+    auto unroll_it = getUnrollFactor(br_node);
     /* We only want to pipeline loop iterations that are from the same unrolled
      * loop. Here we first check the current basic block is part of an unrolled
      * loop iteration. */
@@ -534,7 +524,10 @@ void BaseDatapath::loopPipelining() {
  * Write: loop_bound
  */
 void BaseDatapath::loopUnrolling() {
-
+  if (!unrolling_config.size()) {
+    std::cerr << "No loop unrolling configs found." << std::endl;
+    return;
+  }
   std::cout << "-------------------------------" << std::endl;
   std::cout << "         Loop Unrolling        " << std::endl;
   std::cout << "-------------------------------" << std::endl;
@@ -591,12 +584,7 @@ void BaseDatapath::loopUnrolling() {
         loopBound.push_back(node_id);
         prev_branch = node;
       }
-      char unrolling_id[256];
-      sprintf(unrolling_id,
-              "%s-%d",
-              node->get_static_method().c_str(),
-              node->get_line_num());
-      auto unroll_it = unrolling_config.find(unrolling_id);
+      auto unroll_it = getUnrollFactor(node);
       if (unroll_it == unrolling_config.end() || unroll_it->second == 0) {
         // not unrolling branch
         if (!node->is_call_op()) {
@@ -655,12 +643,11 @@ void BaseDatapath::loopUnrolling() {
   loopBound.push_back(numTotalNodes);
 
   if (iter_counts == 0 && unrolling_config.size() != 0) {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "Loop Unrolling Factor is Larger than the Loop Trip Count."
-              << std::endl;
-    std::cerr << "Loop Unrolling is NOT applied. Please choose a smaller "
-              << "unrolling factor." << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
+    std::cerr << "-------------------------------\n"
+              << "Loop Unrolling was NOT applied.\n"
+              << "Either loop labels or line numbers are incorrect, or the\n"
+              << "loop unrolling factor is larger than the loop trip count.\n"
+              << "-------------------------------" << std::endl;
   }
   updateGraphWithNewEdges(to_add_edges);
   updateGraphWithIsolatedNodes(to_remove_nodes);
@@ -2028,6 +2015,22 @@ std::string BaseDatapath::getArrayLabelFromAddr(Addr base_addr) {
   return array_label;
 }
 
+unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
+  // We'll only find a label if the labelmap is present in the dynamic trace,
+  // but if the configuration file doesn't use labels (it's an older config
+  // file), we have to fallback on using line numbers.
+  auto label_it = labelmap.find(node->get_line_num());
+  if (label_it != labelmap.end()) {
+    auto config_it = unrolling_config.find(label_it->second);
+    if (config_it != unrolling_config.end())
+      return config_it;
+  }
+  char unrolling_id[320];
+  snprintf(unrolling_id, 320, "%s/%d", node->get_static_method().c_str(),
+           node->get_line_num());
+  return unrolling_config.find(unrolling_id);
+}
+
 // readConfigs
 void BaseDatapath::parse_config(std::string bench,
                                 std::string config_file_name) {
@@ -2050,16 +2053,16 @@ void BaseDatapath::parse_config(std::string bench,
     type = wholeline.substr(0, pos_end_tag);
     rest_line = wholeline.substr(pos_end_tag + 1);
     if (!type.compare("flatten")) {
-      char func[256], unrolling_id[256];
-      int line_num;
-      sscanf(rest_line.c_str(), "%[^,],%d\n", func, &line_num);
-      sprintf(unrolling_id, "%s-%d", func, line_num);
+      char func[256], label_or_line_num[64], unrolling_id[320];
+      sscanf(rest_line.c_str(), "%[^,],%[^,]\n", func, label_or_line_num);
+      sprintf(unrolling_id, "%s/%s", func, label_or_line_num);
       unrolling_config[unrolling_id] = 0;
     } else if (!type.compare("unrolling")) {
-      char func[256], unrolling_id[256];
-      int line_num, factor;
-      sscanf(rest_line.c_str(), "%[^,],%d,%d\n", func, &line_num, &factor);
-      sprintf(unrolling_id, "%s-%d", func, line_num);
+      char func[256], label_or_line_num[64], unrolling_id[320];
+      int factor;
+      sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", func, label_or_line_num,
+             &factor);
+      sprintf(unrolling_id, "%s/%s", func, label_or_line_num);
       unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
       unsigned size = 0, p_factor = 0, wordsize = 0;
