@@ -57,5 +57,5 @@ int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int32_t kmpNext[PAT
             q = kmpNext[q - 1];
         }
     }
-    return n_matches[0];
+    return 0;
 }
