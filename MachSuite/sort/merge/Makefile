@@ -26,6 +26,6 @@ ACCEL_NAME = sort-merge
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD
-  export WORKLOAD=merge,mergesort
+  export WORKLOAD=ms_mergesort
 endif
 include ../../common/Makefile.tracer

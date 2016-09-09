@@ -2,12 +2,33 @@
 # Define ACCEL_NAME, TRACER_HOME, ALADDIN_HOME, WORKLOAD, SRCS before including
 # this.
 ###############
+
 CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 COMMON_DIR := $(CURRENT_DIR)
-
-.PHONY: trace dma-trace clean run autotrace check-env
-
 EXEC = $(ACCEL_NAME)
+
+.PHONY: trace-binary dma-trace-binary run-trace clean check-env
+
+##################################
+#         TOP LEVEL RULES        #
+##################################
+
+trace-binary: $(EXEC)-instrumented
+
+dma-trace-binary:
+	$(MAKE) -C . DMA_MODE=1 trace-binary
+
+run-trace: trace-binary
+	./$(EXEC)-instrumented
+
+check-env:
+ifeq ($(TRACE_OUTPUT_DIR),)
+	$(error TRACE_OUTPUT_DIR is not set!)
+endif
+
+##################################
+#      COMPILATION FLAGS         #
+##################################
 
 TRACER = $(TRACER_HOME)/lib/full_trace.so
 LOGGER = $(TRACER_HOME)/lib/trace_logger.llvm
@@ -24,21 +45,6 @@ ifneq ($(DMA_MODE),)
 endif
 
 LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
-trace: $(EXEC)-instrumented labelmap
-dma-trace:
-	$(MAKE) -C . DMA_MODE=1 trace
-
-# To have traces generated automatically, set the environment variable
-# TRACE_OUTPUT_DIR to a directory where you want the traces to eventually go,
-# then build this target. The trace will get split into separate traces per
-# function, and all files ending in _trace will get copied there.
-autotrace: trace check-env
-	./$(EXEC)-instrumented input.data check.data
-
-check-env:
-ifeq ($(TRACE_OUTPUT_DIR),)
-	$(error TRACE_OUTPUT_DIR is not set!)
-endif
 
 #########################################################
 #        INSTRUMENTATION AND TRACE FILE GENERATION      #

@@ -27,6 +27,6 @@ ACCEL_NAME = aes
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD
-  export WORKLOAD=gf_alog,gf_log,gf_mulinv,rj_sbox,rj_xtime,aes_subBytes,aes_addRoundKey,aes_addRoundKey_cpy,aes_shiftRows,aes_mixColumns,aes_expandEncKey,aes256_encrypt_ecb
+  export WORKLOAD=aes256_encrypt_ecb
 endif
 include ../../common/Makefile.tracer
