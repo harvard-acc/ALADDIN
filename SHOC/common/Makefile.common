@@ -1,0 +1,12 @@
+.PHONY: all clean run
+
+all: $(ACCEL_NAME)
+
+$(ACCEL_NAME): $(SRCS)
+	$(CC) $(CFLAGS) -o $(ACCEL_NAME) $(SRCS)
+
+run: $(ACCEL_NAME)
+	./$(ACCEL_NAME)
+
+clean:
+	rm -rf $(ACCEL_NAME)
