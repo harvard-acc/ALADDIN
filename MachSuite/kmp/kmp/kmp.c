@@ -31,7 +31,7 @@ int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int32_t kmpNext[PAT
 #ifdef DMA_MODE
     dmaLoad(&pattern[0], 0, PATTERN_SIZE*sizeof(char));
     dmaLoad(&kmpNext[0], 0, PATTERN_SIZE*sizeof(int32_t));
-    dmaload(&input[0], 0*4096, PAGE_SIZE);
+    dmaLoad(&input[0], 0*4096, PAGE_SIZE);
     dmaLoad(&input[0], 1*4096, PAGE_SIZE);
     dmaLoad(&input[0], 2*4096, PAGE_SIZE);
     dmaLoad(&input[0], 3*4096, PAGE_SIZE);
