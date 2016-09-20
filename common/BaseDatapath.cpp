@@ -1119,7 +1119,6 @@ void BaseDatapath::updateGraphWithIsolatedEdges(
  * activity for each partitioned array.
  */
 void BaseDatapath::writePerCycleActivity() {
-  std::string bn(benchName);
   /* Activity per function in the code. Indexed by function names.  */
   std::unordered_map<std::string, std::vector<funcActivity>> func_activity;
   std::unordered_map<std::string, funcActivity> func_max_activity;
@@ -1365,10 +1364,9 @@ void BaseDatapath::outputPerCycleActivity(
                                     &trig_leak_power,
                                     &trig_area);
 
-  std::string bn(benchName);
   std::string file_name;
 #ifdef DEBUG
-  file_name = bn + "_stats";
+  file_name = benchName + "_stats";
   std::ofstream stats;
   stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
@@ -1595,7 +1593,7 @@ void BaseDatapath::outputPerCycleActivity(
 
   writeSummary(std::cout, summary);
   std::ofstream summary_file;
-  file_name = bn + "_summary";
+  file_name = benchName + "_summary";
   summary_file.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   writeSummary(summary_file, summary);
   summary_file.close();

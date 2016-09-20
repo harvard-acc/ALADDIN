@@ -373,7 +373,7 @@ class BaseDatapath {
   virtual void stepExecutingQueue() = 0;
   virtual void globalOptimizationPass() = 0;
 
-  char* benchName;
+  std::string benchName;
   int num_cycles;
   float cycleTime;
   std::string config_file;
