@@ -33,45 +33,6 @@
 /* hack, to fix. */
 #define MIN_CACTI_SIZE 64
 
-class PrintfGuards {
- public:
-  PrintfGuards() { reset(); }
-
-  void reset() {
-    lsq_full_count = 0;
-    lsq_ports_count = 0;
-    tlb_bw_count = 0;
-    lsq_merge_count = 0;
-  }
-
-  void write_buffered_output() {
-    if (lsq_full_count > threshold)
-      DPRINTF(HybridDatapath,
-              "Load/store queues were full, blocking %d total nodes.\n",
-              lsq_full_count);
-    if (lsq_ports_count > threshold)
-      DPRINTF(HybridDatapath,
-              "Load/store queue ports all taken, blocking %d total nodes.\n",
-              lsq_ports_count);
-    if (tlb_bw_count > threshold)
-      DPRINTF(
-          HybridDatapath,
-          "TLB could not accept any more requests, blocking %d total nodes.\n",
-          tlb_bw_count);
-    if (lsq_merge_count > threshold)
-      DPRINTF(HybridDatapath,
-              "%d total nodes were merged into an existing LSQ entry.\n",
-              lsq_merge_count);
-  }
-
-  int lsq_full_count;
-  int lsq_ports_count;
-  int tlb_bw_count;
-  int lsq_merge_count;
-
-  const int threshold = 2;
-};
-
 class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
  public:
@@ -371,9 +332,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // True if the cache's MSHRs are full.
   bool isCacheBlocked;
-
-  // Tracks the debug output optimization.
-  PrintfGuards printf_guards;
 
   // If True, this exits the sim loop at the end of each accelerator
   // invocation so that stats can be dumped. The simulation script will
