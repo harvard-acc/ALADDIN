@@ -43,14 +43,6 @@ class HybridDatapath(MemObject):
   tlbPageBytes = Param.Int(4096, "Page Size")
   tlbCactiConfig = Param.String("", "TLB CACTI configuration file.")
   numOutStandingWalks = Param.Int(4, "num of outstanding page walks")
-  loadQueueSize = Param.Int(16, "Size of the load queue.")
-  loadBandwidth = Param.Int(
-      1, "Number of loads that can be issued per cycle.")
-  loadQueueCacheConfig = Param.String("", "Load queue CACTI config file.")
-  storeQueueSize = Param.Int(16, "Size of the store queue.")
-  storeBandwidth = Param.Int(
-      1, "Number of stores that can be issued per cycle.")
-  storeQueueCacheConfig = Param.String("", "Store queue CACTI config file.")
   tlbBandwidth = Param.Int(
       1, "Number of translations that can be requested per cycle.")
 

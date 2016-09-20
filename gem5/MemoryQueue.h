@@ -6,12 +6,6 @@
 #include "base/flags.hh"
 #include "base/statistics.hh"
 
-#include "aladdin/common/cacti-p/cacti_interface.h"
-#include "aladdin/common/cacti-p/io.h"
-
-/*hack, to fix*/
-#define MIN_CACTI_SIZE 64
-
 // Current status of a memory access. Used for caches and DMA requests.
 enum MemAccessStatus {
   Ready,
@@ -33,54 +27,35 @@ struct MemoryQueueEntry {
   }
 };
 
-/* A generic memory queue that stores the number of reads and writes from some
- * shared memory resource.
+/* TODO: Rename this to something more suitable to reflect that it is just
+ * a simulation bookkeeping structure.
  */
 class MemoryQueue {
  public:
-  MemoryQueue(int _size,
-              int _bandwidth,
-              std::string _name,
-              std::string _cacti_config)
-      : size(_size), bandwidth(_bandwidth), issued_this_cycle(0), name(_name),
-        cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
-        leakagePower(0), area(0) {
-    readStats.name("system." + name + "_reads")
-        .desc("Number of reads to the " + name)
-        .flags(Stats::total | Stats::nonan);
-    writeStats.name("system." + name + "_writes")
-        .desc("Number of writes to the " + name)
-        .flags(Stats::total | Stats::nonan);
-  }
+  MemoryQueue() {}
 
-  /* Returns true if we have not exceeded the cache's bandwidth.
-   */
-  bool can_issue() { return bandwidth == 0 ? true : (issued_this_cycle < bandwidth); }
+  /* Returns true if the ops already contains an entry for this address. */
+  bool contains(Addr vaddr) { return (ops.find(vaddr) != ops.end()); }
 
-  /* Returns true if the queue already contains an entry for this address. */
-  bool contains(Addr vaddr) { return (queue.find(vaddr) != queue.end()); }
-
-  bool is_full() { return (queue.size() == size); }
-
-  bool enqueue(Addr vaddr) {
-    if (!contains(vaddr) && !is_full()) {
-      queue[vaddr] = MemoryQueueEntry();
+  bool insert(Addr vaddr) {
+    if (!contains(vaddr)) {
+      ops[vaddr] = MemoryQueueEntry();
       return true;
     }
     return false;
   }
 
-  void dequeue(Addr vaddr) { queue.erase(vaddr); }
+  void remove(Addr vaddr) { ops.erase(vaddr); }
 
   void setStatus(Addr vaddr, MemAccessStatus status) {
     assert(contains(vaddr));
-    queue[vaddr].status = status;
+    ops[vaddr].status = status;
   }
 
-  MemAccessStatus getStatus(Addr vaddr) { return queue[vaddr].status; }
+  MemAccessStatus getStatus(Addr vaddr) { return ops[vaddr].status; }
 
   void setPhysicalAddress(Addr vaddr, Addr paddr) {
-    queue[vaddr].paddr = paddr;
+    ops[vaddr].paddr = paddr;
   }
 
   /* Retires all entries that are returned.
@@ -88,71 +63,17 @@ class MemoryQueue {
    * This is done at the end of every cycle to free space for new requests.
    */
   void retireReturnedEntries() {
-
-    for (auto it = queue.begin(); it != queue.end(); /* no increment */) {
+    for (auto it = ops.begin(); it != ops.end(); /* no increment */) {
       if (it->second.status == Returned)
-        queue.erase(it++);  // Must be post-increment!
+        ops.erase(it++);  // Must be post-increment!
       else
         ++it;
     }
   }
 
-  void computeCactiResults() {
-    uca_org_t cacti_result = cacti_interface(cacti_config);
-    if (size >= MIN_CACTI_SIZE) {
-      readEnergy = cacti_result.power.readOp.dynamic * 1e12;
-      writeEnergy = cacti_result.power.writeOp.dynamic * 1e12;
-      leakagePower = cacti_result.power.readOp.leakage * 1000;
-      area = cacti_result.area;
-    } else {
-      /*Assuming it scales linearly with cache size*/
-      readEnergy =
-          cacti_result.power.readOp.dynamic * 1e12 * size / MIN_CACTI_SIZE;
-      writeEnergy =
-          cacti_result.power.writeOp.dynamic * 1e12 * size / MIN_CACTI_SIZE;
-      leakagePower =
-          cacti_result.power.readOp.leakage * 1000 * size / MIN_CACTI_SIZE;
-      area = cacti_result.area * size / MIN_CACTI_SIZE;
-    }
-  }
-
-  void getAveragePower(unsigned int cycles,
-                       unsigned int cycleTime,
-                       float* avg_power,
-                       float* avg_dynamic,
-                       float* avg_leak) {
-    *avg_dynamic =
-        (readStats.value() * readEnergy + writeStats.value() * writeEnergy) /
-        (cycles * cycleTime);
-    *avg_leak = leakagePower;
-    *avg_power = *avg_dynamic + *avg_leak;
-  }
-
-  void resetCounters() {
-    readStats = 0;
-    writeStats = 0;
-  }
-
-  float getArea() { return area; }
-
-  const int size;         // Size of the queue.
-  const int bandwidth;    // Max requests per cycle.
-  int issued_this_cycle;  // Requests issued in the current cycle.
-  Stats::Scalar readStats;
-  Stats::Scalar writeStats;
-
  private:
-  std::string name;          // Specifies whether this is a load or store queue.
-  std::string cacti_config;  // CACTI config file.
-  float readEnergy;
-  float writeEnergy;
-  float leakagePower;
-  float area;
-
-  // The actual "queue". We can use a map here because it's actually the
-  // Aladdin scheduler that determines which memory node gets executed, not the
-  // position of the memory access in the queue.
-  std::map<Addr, MemoryQueueEntry> queue;
+  // Maps address to the associated memory operation status.
+  std::map<Addr, MemoryQueueEntry> ops;
 };
 
 #endif

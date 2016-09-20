@@ -29,10 +29,6 @@
 #include "debug/HybridDatapath.hh"
 #include "params/HybridDatapath.hh"
 
-#define MAX_INFLIGHT_NODES 100
-/* hack, to fix. */
-#define MIN_CACTI_SIZE 64
-
 class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
  public:
@@ -105,10 +101,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   /* Invoked by the TLB when a TLB request has completed.
    *
-   * If the translation did not miss, the the physical address is stored
-   * into the load store queues. Otherwise, the status of the translation
-   * request is reset to its original state while the miss is being
-   * processed.
+   * If the translation did not miss, the the physical address is stored into
+   * the memory queue. Otherwise, the status of the translation request is
+   * reset to its original state while the miss is being processed.
    */
   void completeTLBRequest(PacketPtr pkt, bool was_miss);
 
@@ -189,11 +184,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   bool handleCacheMemoryOp(ExecNode* node);
 
-  /* Delete all load-store queue entries that are in state Returned.
-   *
-   * This opens up space for new memory requests.
-   */
-  void retireReturnedLSQEntries();
+  /* Delete all memory queue entries that have returned. */
+  void retireReturnedMemQEntries();
 
   // DMA access functions.
   void delayedDmaIssue();  // Used to postpone a call to issueDmaRequest().
@@ -292,7 +284,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    * operations, this is not used. Get rid of this entirely, including for
    * DMA ops.
    */
-  std::map<unsigned, MemAccessStatus> inflight_mem_nodes;
+  std::map<unsigned, MemAccessStatus> inflight_dma_nodes;
 
   /* Hash table to track DMA accesses. Indexed by the base address of DMA
    * accesses, and mapped to the corresponding node id for that DMA request. */
@@ -313,13 +305,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   CachePort cachePort;
   MasterID cacheMasterId;
 
-  // Load and store queues.
-  MemoryQueue load_queue;
-  MemoryQueue store_queue;
+  // Tracks outstanding memory nodes, one per datapath lane.
+  MemoryQueue memory_queue;
 
-  /* NOTE: These are provided by GEM5 directly but I have no idea how to
-   * access them. Based on an extensive Google search, there doesn't seem like
-   * a good answer even exists - all the power modeling appears to be done
+  /* NOTE: These are provided by gem5's caches directly but I have no idea how
+   * to access them. Based on an extensive Google search, there doesn't seem
+   * like a good answer even exists - all the power modeling appears to be done
    * after the fact rather than during runtime. For now, I'm just going to
    * track total loads and stores, regardless of whether they hit or miss.
    * Simulations confirm that they agree with GEM5's cache stats.
