@@ -55,7 +55,7 @@ unsigned LogicalArray::getPartitionIndex(Addr addr) {
   } else {
     /* block partition. */
     unsigned partition_size = ceil(((float)total_size) / num_partitions);
-    return (int)(rel_addr / word_size / partition_size );
+    return (int)(rel_addr / partition_size );
   }
 }
 

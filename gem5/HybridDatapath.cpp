@@ -91,8 +91,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    *
    * Latencies were characterized from Zynq Zedboard running at 666MHz.
    */
-  cacheLineFlushLatency = ceil((56.0 * 1.5)/BaseDatapath::cycleTime);
-  cacheLineInvalidateLatency = ceil((47.0 * 1.5)/BaseDatapath::cycleTime);
+  cacheLineFlushLatency = ceil((56.0 * 1.5) / BaseDatapath::cycleTime);
+  cacheLineInvalidateLatency = ceil((47.0 * 1.5) / BaseDatapath::cycleTime);
 }
 
 HybridDatapath::~HybridDatapath() {
