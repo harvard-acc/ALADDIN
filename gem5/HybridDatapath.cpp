@@ -119,12 +119,13 @@ void HybridDatapath::clearDatapath() { clearDatapath(false); }
 void HybridDatapath::initializeDatapath(int delay) {
   buildDddg();
   globalOptimizationPass();
-  scratchpad->resetReadyBits();
   prepareForScheduling();
   num_cycles = delay;
   isCacheBlocked = false;
   retryPkt = NULL;
   startDatapathScheduling(delay);
+  if (ready_mode)
+    scratchpad->resetReadyBits();
 }
 
 void HybridDatapath::startDatapathScheduling(int delay) {
@@ -396,7 +397,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
     std::string array_label = node->get_array_label();
-    if (node->is_dma_load())
+    if (node->is_dma_load() && ready_mode)
       // TODO: Will be replaced by call backs from dma_device.
       scratchpad->setReadyBits(array_label);
     inflight_dma_nodes.erase(node_id);
@@ -788,7 +789,8 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath,
           "Receiving DMA response for address %#x of base %#x with label %s and size %d.\n",
           paddr, addr, array_label.c_str(), size);
-  datapath->scratchpad->setReadyBitRange(array_label, paddr, size);
+  if (datapath->ready_mode)
+    datapath->scratchpad->setReadyBitRange(array_label, paddr, size);
   return DmaPort::recvTimingResp(pkt);
 }
 
