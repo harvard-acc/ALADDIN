@@ -85,8 +85,8 @@ void ScratchpadDatapath::completePartition() {
   std::cout << "-------------------------------" << std::endl;
 
   for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
-    std::string p_type = it->second.type;
-    if (!p_type.compare("complete")) {
+    PartitionType p_type = it->second.partition_type;
+    if (p_type == complete) {
       std::string array_label = it->first;
       unsigned size = it->second.array_size;
       registers.createRegister(array_label, size, cycleTime);
@@ -113,8 +113,9 @@ void ScratchpadDatapath::scratchpadPartition() {
   for (auto part_it = partition_config.begin();
        part_it != partition_config.end();
        ++part_it) {
-    std::string p_type = part_it->second.type;
-    if (!p_type.compare("complete") || !p_type.compare("cache"))
+    PartitionType p_type = part_it->second.partition_type;
+    MemoryType m_type = part_it->second.memory_type;
+    if (p_type == complete || m_type == cache)
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
@@ -124,7 +125,7 @@ void ScratchpadDatapath::scratchpadPartition() {
     unsigned wordsize = part_it->second.wordsize;  // in bytes
 
     PartitionType part_type = cyclic;
-    if (!p_type.compare("block"))
+    if (p_type == block)
       part_type = block;
     scratchpad->setScratchpad(
         array_label, base_addr, part_type, p_factor, size, wordsize);
@@ -144,11 +145,12 @@ void ScratchpadDatapath::scratchpadPartition() {
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
-      std::string p_type = part_it->second.type;
+      PartitionType p_type = part_it->second.partition_type;
+      MemoryType m_type = part_it->second.memory_type;
       /* continue if it's complete partition or cache*/
-      if (!p_type.compare("complete") || !p_type.compare("cache"))
+      if (p_type == complete || m_type == cache)
         continue;
-      assert((!p_type.compare("block")) || (!p_type.compare("cyclic")));
+      assert(p_type == block || p_type == cyclic);
 
       unsigned p_factor = part_it->second.part_factor;
       unsigned num_of_elements = part_it->second.array_size;
@@ -158,7 +160,7 @@ void ScratchpadDatapath::scratchpadPartition() {
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       unsigned rel_addr = (abs_addr - base_addr) / data_size;
       unsigned part_index = 0;
-      if (!p_type.compare("block")) {
+      if (p_type == block) {
         /* block partition */
         unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
         part_index = (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));

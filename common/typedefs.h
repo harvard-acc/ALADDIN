@@ -30,6 +30,8 @@ typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 
 // Other convenience typedefs.
+class partitionEntry;
 typedef std::unordered_map<std::string, unsigned> unrolling_config_t;
+typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
 
 #endif

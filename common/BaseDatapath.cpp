@@ -1994,23 +1994,21 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
   return -1;
 }
 
-std::string BaseDatapath::getArrayLabelFromAddr(Addr base_addr) {
-  std::string array_label;
-  for (auto part_it = partition_config.begin();
-       part_it != partition_config.end();
-       ++part_it) {
+partition_config_t::iterator BaseDatapath::getArrayConfigFromAddr(Addr base_addr) {
+  auto part_it = partition_config.begin();
+  for (; part_it != partition_config.end(); ++part_it) {
     if (part_it->second.base_addr == base_addr) {
-      array_label = part_it->first;
       break;
     }
   }
   // If the array label is not found, abort the simulation.
+  std::string array_label = part_it->first;
   if (array_label.empty()) {
     std::cerr << "Unknown address " << base_addr
               << std::endl;
     exit(-1);
   }
-  return array_label;
+  return part_it;
 }
 
 unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
@@ -2066,6 +2064,8 @@ void BaseDatapath::parse_config(std::string bench,
       unsigned size = 0, p_factor = 0, wordsize = 0;
       char part_type[256];
       char array_label[256];
+      PartitionType p_type;
+      MemoryType m_type;
       if (wholeline.find("complete") == std::string::npos) {
         sscanf(rest_line.c_str(),
                "%[^,],%[^,],%d,%d,%d\n",
@@ -2074,17 +2074,23 @@ void BaseDatapath::parse_config(std::string bench,
                &size,
                &wordsize,
                &p_factor);
+        m_type = spad;
+        if (strncmp(part_type, "cyclic", 6) == 0)
+          p_type = cyclic;
+        else
+          p_type = block;
       } else {
         sscanf(rest_line.c_str(),
                "%[^,],%[^,],%d\n",
                part_type,
                array_label,
                &size);
+        p_type = complete;
+        m_type = reg;
       }
-      std::string p_type(part_type);
       long long int addr = 0;
       partition_config[array_label] = {
-        p_type, size, wordsize, p_factor, addr
+        m_type, p_type, size, wordsize, p_factor, addr
       };
     } else if (!type.compare("cache")) {
       unsigned size = 0, p_factor = 0, wordsize = 0;
@@ -2093,7 +2099,7 @@ void BaseDatapath::parse_config(std::string bench,
       std::string p_type(type);
       long long int addr = 0;
       partition_config[array_label] = {
-        p_type, size, wordsize, p_factor, addr
+        cache, none, size, wordsize, p_factor, addr
       };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());

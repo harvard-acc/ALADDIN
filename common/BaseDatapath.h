@@ -70,8 +70,15 @@ struct funcActivity {
 
 class Scratchpad;
 
+enum MemoryType {
+  spad,
+  reg,
+  cache,
+};
+
 struct partitionEntry {
-  std::string type;
+  MemoryType memory_type;
+  PartitionType partition_type;
   unsigned array_size;  // num of bytes
   unsigned wordsize;    // in bytes
   unsigned part_factor;
@@ -214,7 +221,7 @@ class BaseDatapath {
     return exec_nodes[node_id];
   }
   ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
-  std::string getArrayLabelFromAddr(Addr base_addr);
+  partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
 
@@ -384,7 +391,7 @@ class BaseDatapath {
    * it maps loop labels to unrolling factor. */
   unrolling_config_t unrolling_config;
   /* complete, block, cyclic, and cache partition share partition_config */
-  std::unordered_map<std::string, partitionEntry> partition_config;
+  partition_config_t partition_config;
 
   /* Stores the register name mapping between caller and callee functions. */
   std::unordered_map<std::string, std::string> call_argument_map;

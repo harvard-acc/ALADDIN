@@ -481,9 +481,16 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
       HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", base_addr+offset, size);
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
-  std::string array_label = getArrayLabelFromAddr(base_addr);
+  auto part_it = getArrayConfigFromAddr(base_addr);
+  // std::string array_label = getArrayLabelFromAddr(base_addr);
+  MemoryType mtype = part_it->second.memory_type;
+  assert(mtype == spad || mtype == reg);
+  std::string array_label = part_it->first;
   node->set_array_label(array_label);
-  incrementDmaScratchpadAccesses(array_label, size, isLoad);
+  if (mtype == spad)
+    incrementDmaScratchpadAccesses(array_label, size, isLoad);
+  else
+    registers.getRegister(array_label)->increment_dma_accesses(isLoad);
   inflight_dma_nodes[node_id] = WaitingFromDma;
   Addr vaddr = (base_addr + offset) & ADDR_MASK;
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
