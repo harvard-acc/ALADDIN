@@ -174,7 +174,7 @@ class BaseDatapath {
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setLabelMap(std::map<unsigned, std::string>& _labelmap) {
+  void setLabelMap(std::multimap<unsigned, label_t>& _labelmap) {
     labelmap = _labelmap;
   }
   void addCallArgumentMapping(std::string callee_reg_id,
@@ -418,7 +418,7 @@ class BaseDatapath {
   std::map<unsigned int, ExecNode*> exec_nodes;
 
   // Maps line numbers to labels.
-  std::map<unsigned, std::string> labelmap;
+  std::multimap<unsigned, label_t> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;

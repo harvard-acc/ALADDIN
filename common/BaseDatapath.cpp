@@ -38,6 +38,8 @@ void BaseDatapath::buildDddg() {
   dddg = new DDDG(this);
   /* Build initial DDDG. */
   dddg->build_initial_dddg(trace_file);
+  if (labelmap.size() == 0)
+    labelmap = dddg->get_labelmap();
   delete dddg;
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
@@ -2015,14 +2017,20 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   // We'll only find a label if the labelmap is present in the dynamic trace,
   // but if the configuration file doesn't use labels (it's an older config
   // file), we have to fallback on using line numbers.
-  auto label_it = labelmap.find(node->get_line_num());
-  if (label_it != labelmap.end()) {
-    auto config_it = unrolling_config.find(label_it->second);
+  auto range = labelmap.equal_range(node->get_line_num());
+  char unrolling_id[256];
+  for (auto it = range.first; it != range.second; ++it) {
+    if (it->second.function != node->get_static_method())
+      continue;
+    // TODO: Using strings for identifiers in a commonly called function like
+    // this is a terrible terrible idea.
+    snprintf(unrolling_id, 256, "%s/%s", it->second.function.c_str(),
+             it->second.label_name.c_str());
+    auto config_it = unrolling_config.find(unrolling_id);
     if (config_it != unrolling_config.end())
       return config_it;
   }
-  char unrolling_id[320];
-  snprintf(unrolling_id, 320, "%s/%d", node->get_static_method().c_str(),
+  snprintf(unrolling_id, 256, "%s/%d", node->get_static_method().c_str(),
            node->get_line_num());
   return unrolling_config.find(unrolling_id);
 }

@@ -20,6 +20,10 @@ typedef std::unordered_map<std::string, unsigned int> string_to_uint;
 typedef std::unordered_map<Addr, unsigned int> uint_to_uint;
 typedef std::unordered_multimap<unsigned int, edge_node_info>
     multi_uint_to_node_info;
+struct label_t {
+  std::string function;
+  std::string label_name;
+};
 
 class BaseDatapath;
 
@@ -36,6 +40,7 @@ class DDDG {
   int num_of_memory_dependency();
   void output_dddg();
   bool build_initial_dddg(gzFile trace_file);
+  std::multimap<unsigned, label_t> get_labelmap() { return labelmap; }
 
  private:
   void parse_instruction_line(std::string line);
@@ -79,8 +84,10 @@ class DDDG {
   // edge multimap
   multi_uint_to_node_info register_edge_table;
   multi_uint_to_node_info memory_edge_table;
-  // Stores mappings of line numbers to labeled statement names.
-  std::map<unsigned, std::string> labelmap;
+  // Line number mapping to function and label name. If there are multiple
+  // source files, there could be multiple function/labels with the same line
+  // number.
+  std::multimap<unsigned, label_t> labelmap;
   // keep track of currently executed methods
   std::stack<std::string> active_method;
   // manage methods

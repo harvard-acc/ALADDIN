@@ -29,17 +29,17 @@ void DDDG::output_dddg() {
        ++it) {
     datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
   }
-
-  datapath->setLabelMap(labelmap);
 }
 
 // Parse line from the labelmap section.
 void DDDG::parse_labelmap_line(std::string line) {
-  char label[256];
+  char label_name[256], function[256];
   int line_number;
-  sscanf(line.c_str(), "%s %d", label, &line_number);
-  label[255] = '\0';  // Just in case...
-  labelmap[line_number] = label;
+  sscanf(line.c_str(), "%[^/]/%s %d", function, label_name, &line_number);
+  label_name[255] = '\0';  // Just in case...
+  function[255] = '\0';
+  label_t label = {function, label_name};
+  labelmap.insert(std::make_pair(line_number, label));
 }
 
 void DDDG::parse_instruction_line(std::string line) {
