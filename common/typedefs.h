@@ -8,7 +8,7 @@
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
-
+#include <unordered_map>
 typedef uint64_t Addr;
 
 // Typedefs for Boost::Graph.
