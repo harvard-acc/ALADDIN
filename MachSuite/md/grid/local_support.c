@@ -1,13 +1,27 @@
 #include "md.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON ((TYPE)1.0e-6)
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_MD_GRID, "n_points", (void*)&args->n_points, sizeof(args->n_points));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_GRID, "force", (void*)&args->force, sizeof(args->force));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_GRID, "position", (void*)&args->position, sizeof(args->position));
+  invokeAcceleratorAndBlock(MACHSUITE_MD_GRID);
+#else
   md( args->n_points, args->force, args->position );
+#endif
 }
 
 /* Input format:

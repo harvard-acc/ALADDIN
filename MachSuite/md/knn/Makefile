@@ -29,3 +29,4 @@ ifndef WORKLOAD
   export WORKLOAD=md_kernel
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5

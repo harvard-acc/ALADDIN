@@ -1,13 +1,27 @@
 #include "gemm.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON ((TYPE)1.0e-6)
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_NCUBED, "m1", (void*)&args->m1, sizeof(args->m1));
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_NCUBED, "m2", (void*)&args->m2, sizeof(args->m2));
+  mapArrayToAccelerator(
+      MACHSUITE_GEMM_NCUBED, "prod", (void*)&args->prod, sizeof(args->prod));
+  invokeAcceleratorAndBlock(MACHSUITE_GEMM_NCUBED);
+#else
   gemm( args->m1, args->m2, args->prod );
+#endif
 }
 
 /* Input format:

@@ -1,11 +1,33 @@
 #include "nw.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "seqA", (void*)&args->seqA, sizeof(args->seqA));
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "seqB", (void*)&args->seqB, sizeof(args->seqB));
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "alignedA", (void*)&args->alignedA,
+      sizeof(args->alignedA));
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "alignedB", (void*)&args->alignedB,
+      sizeof(args->alignedB));
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "M", (void*)&args->M, sizeof(args->M));
+  mapArrayToAccelerator(
+      MACHSUITE_NW_NW, "ptr", (void*)&args->ptr, sizeof(args->ptr));
+  invokeAcceleratorAndBlock(MACHSUITE_NW_NW);
+#else
   needwun( args->seqA, args->seqB, args->alignedA, args->alignedB, args->M, args->ptr);
+#endif
 }
 
 /* Input format:

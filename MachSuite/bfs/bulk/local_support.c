@@ -2,11 +2,31 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_BULK, "nodes", (void*)&args->nodes, sizeof(args->nodes));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_BULK, "edges", (void*)&args->edges, sizeof(args->edges));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_BULK, "starting_node", (void*)&args->starting_node,
+      sizeof(args->starting_node));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_BULK, "level", (void*)&args->level, sizeof(args->level));
+  mapArrayToAccelerator(
+      MACHSUITE_BFS_BULK, "level_counts", (void*)&args->level_counts,
+                                          sizeof(args->level_counts));
+  invokeAcceleratorAndBlock(MACHSUITE_BFS_BULK);
+#else
   bfs(args->nodes, args->edges, args->starting_node, args->level, args->level_counts);
+#endif
 }
 
 /* Input format:

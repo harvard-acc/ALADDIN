@@ -23,10 +23,11 @@ clean:
 	rm -f $(KERN) generate output.data
 
 # For the tracer makefile
-ACCEL_NAME = aes
+ACCEL_NAME = aes-aes
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD
   export WORKLOAD=aes256_encrypt_ecb
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5

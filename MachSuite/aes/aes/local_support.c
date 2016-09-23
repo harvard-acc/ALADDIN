@@ -1,11 +1,24 @@
 #include "aes.h"
 #include <string.h>
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
 
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_AES_AES, "ctx", (void*)&args->ctx, sizeof(args->ctx));
+  mapArrayToAccelerator(
+      MACHSUITE_AES_AES, "k", (void*)&args->k, sizeof(args->k));
+  mapArrayToAccelerator(
+      MACHSUITE_AES_AES, "buf", (void*)&args->buf, sizeof(args->buf));
+  invokeAcceleratorAndBlock(MACHSUITE_AES_AES);
+#else
   aes256_encrypt_ecb( &(args->ctx), args->k, args->buf );
+#endif
 }
 
 /* Input format:

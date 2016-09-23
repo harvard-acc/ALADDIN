@@ -1,11 +1,27 @@
 #include "sort.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_SORT_RADIX, "a", (void*)&args->a, sizeof(args->a));
+  mapArrayToAccelerator(
+      MACHSUITE_SORT_RADIX, "b", (void*)&args->b, sizeof(args->b));
+  mapArrayToAccelerator(
+      MACHSUITE_SORT_RADIX, "bucket", (void*)&args->bucket, sizeof(args->bucket));
+  mapArrayToAccelerator(
+      MACHSUITE_SORT_RADIX, "sum", (void*)&args->sum, sizeof(args->sum));
+  invokeAcceleratorAndBlock(MACHSUITE_SORT_RADIX);
+#else
   ss_sort( args->a, args->b, args->bucket, args->sum );
+#endif
 }
 
 /* Input format:

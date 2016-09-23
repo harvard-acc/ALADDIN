@@ -1,11 +1,32 @@
 #include "viterbi.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "obs", (void*)&args->obs, sizeof(args->obs));
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "path", (void*)&args->path, sizeof(args->path));
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "transition", (void*)&args->transition,
+      sizeof(args->transition));
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "emission", (void*)&args->emission,
+      sizeof(args->emission));
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "init", (void*)&args->init,
+      sizeof(args->init));
+  invokeAcceleratorAndBlock(MACHSUITE_VITERBI_VITERBI);
+#else
   viterbi( args->obs, args->init, args->transition, args->emission, args->path );
+#endif
 }
 
 /* Input format:

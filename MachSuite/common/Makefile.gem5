@@ -3,27 +3,20 @@
 # ALADDIN_HOME needs to be defined as an environment variable.
 # The gem5 dependencies are listed as .cpp files for compatibility with gem5.
 # To compile them with C code, we need to explicitly use gcc.
-#
-# This expects to be called from src/c and included by Makefile.tracer.
-
-#### Toggle the following line to toggle profiling with gem5 statistics.
-ENABLE_GEM5_PROFILING=-DENABLE_GEM5_PROFILING
-
-#### Toggle the following line to toggle profiling with system wall clock.
-# ENABLE_SYS_PROFILING=-DENABLE_SYS_PROFILING
 
 .PHONY: gem5 gem5-cpu gem5-accel clean-gem5
 
 GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
 GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
+# For the MachSuite harness and support system.
+CFLAGS = -O3 -Wall -Wno-unused-label -I../../common
+SRCS += ../../common/harness.c
+
 # -mno-sse
 GEM5_CFLAGS = -static -O3 -mno-80387 -msoft-float \
               -march=nocona -msse -mfpmath=sse \
-              -fno-exceptions -fno-inline \
-              -DGEM5 \
-              $(ENABLE_GEM5_PROFILING) \
-              $(ENABLE_SYS_PROFILING)
+              -fno-exceptions -fno-inline
 
 INCLUDES += -I$(ALADDIN_HOME)
 LFLAGS = -lm

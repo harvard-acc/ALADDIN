@@ -1,11 +1,27 @@
 #include "kmp.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "pattern", (void*)&args->pattern, sizeof(args->pattern));
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "input", (void*)&args->input, sizeof(args->input));
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "kmpNext", (void*)&args->kmpNext, sizeof(args->kmpNext));
+  mapArrayToAccelerator(
+      MACHSUITE_KMP_KMP, "n_matches", (void*)&args->n_matches, sizeof(args->n_matches));
+  invokeAcceleratorAndBlock(MACHSUITE_KMP_KMP);
+#else
   kmp( args->pattern, args->input, args->kmpNext, args->n_matches );
+#endif
 }
 
 /* Input format:

@@ -1,13 +1,29 @@
 #include "spmv.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON 1.0e-6
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_SPMV_ELLPACK, "nzval", (void*)&args->nzval, sizeof(args->nzval));
+  mapArrayToAccelerator(
+      MACHSUITE_SPMV_ELLPACK, "cols", (void*)&args->cols, sizeof(args->cols));
+  mapArrayToAccelerator(
+      MACHSUITE_SPMV_ELLPACK, "vec", (void*)&args->vec, sizeof(args->vec));
+  mapArrayToAccelerator(
+      MACHSUITE_SPMV_ELLPACK, "out", (void*)&args->out, sizeof(args->out));
+  invokeAcceleratorAndBlock(MACHSUITE_SPMV_ELLPACK);
+#else
   ellpack( args->nzval, args->cols, args->vec, args->out );
+#endif
 }
 
 /* Input format:

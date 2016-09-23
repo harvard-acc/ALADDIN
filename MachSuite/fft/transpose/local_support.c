@@ -1,13 +1,27 @@
 #include "fft.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON ((TYPE)1.0e-6)
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_TRANSPOSE, "work_x", (void*)&args->work_x,
+      sizeof(args->work_x));
+  mapArrayToAccelerator(
+      MACHSUITE_FFT_TRANSPOSE, "work_y", (void*)&args->work_y,
+      sizeof(args->work_y));
+  invokeAcceleratorAndBlock(MACHSUITE_FFT_TRANSPOSE);
+#else
   fft1D_512( args->work_x, args->work_y);
+#endif
 }
 
 /* Input format:

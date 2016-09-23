@@ -28,3 +28,4 @@ ifndef WORKLOAD
   export WORKLOAD=fft1D_512
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5

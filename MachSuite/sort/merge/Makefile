@@ -29,3 +29,4 @@ ifndef WORKLOAD
   export WORKLOAD=ms_mergesort
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5

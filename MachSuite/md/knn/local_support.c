@@ -1,15 +1,43 @@
 #include "md.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON ((TYPE)1.0e-6)
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "force_x", (void*)&args->force_x,
+      sizeof(args->force_x));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "force_y", (void*)&args->force_y,
+      sizeof(args->force_y));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "force_z", (void*)&args->force_z,
+      sizeof(args->force_z));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_x", (void*)&args->position_x,
+      sizeof(args->position_x));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_y", (void*)&args->position_y,
+      sizeof(args->position_y));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "position_z", (void*)&args->position_z,
+      sizeof(args->position_z));
+  mapArrayToAccelerator(
+      MACHSUITE_MD_KNN, "NL", (void*)&args->NL, sizeof(args->NL));
+  invokeAcceleratorAndBlock(MACHSUITE_MD_KNN);
+#else
   md_kernel( args->force_x, args->force_y, args->force_z,
              args->position_x, args->position_y, args->position_z,
              args->NL );
+#endif
 }
 
 /* Input format:

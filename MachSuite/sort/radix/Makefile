@@ -29,3 +29,4 @@ ifndef WORKLOAD
   export WORKLOAD=local_scan,sum_scan,last_step_scan,init,hist,update,ss_sort
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5

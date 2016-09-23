@@ -1,13 +1,27 @@
 #include "stencil.h"
 #include <string.h>
 
+#ifdef GEM5_HARNESS
+#include "gem5/gem5_harness.h"
+#endif
+
 int INPUT_SIZE = sizeof(struct bench_args_t);
 
 #define EPSILON (1.0e-6)
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+#ifdef GEM5_HARNESS
+  mapArrayToAccelerator(
+      MACHSUITE_STENCIL_3D, "C", (void*)&args->C, sizeof(args->C));
+  mapArrayToAccelerator(
+      MACHSUITE_STENCIL_3D, "orig", (void*)&args->orig, sizeof(args->orig));
+  mapArrayToAccelerator(
+      MACHSUITE_STENCIL_3D, "sol", (void*)&args->sol, sizeof(args->sol));
+  invokeAcceleratorAndBlock(MACHSUITE_STENCIL_3D);
+#else
   stencil3d( args->C, args->orig, args->sol );
+#endif
 }
 
 /* Input format:

@@ -42,6 +42,12 @@ dma-trace-binary:
 run-trace:
 	@( for b in $(BENCHMARKS); do $(MAKE) CFLAGS="$(CFLAGS)" -C $$b run-trace; done )
 
+gem5-cpu:
+	@( for b in $(BENCHMARKS); do $(MAKE) -C $$b gem5-cpu; done )
+
+gem5-accel:
+	@( for b in $(BENCHMARKS); do $(MAKE) -C $$b gem5-accel; done )
+
 ### For regression tests
 all: clean build generate run
 

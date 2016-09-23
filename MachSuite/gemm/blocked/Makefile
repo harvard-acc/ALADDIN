@@ -29,3 +29,4 @@ ifndef WORKLOAD
   export WORKLOAD=bbgemm
 endif
 include ../../common/Makefile.tracer
+include ../../common/Makefile.gem5
