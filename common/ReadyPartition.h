@@ -27,12 +27,12 @@ class ReadyPartition : public Partition {
   /* Set the ready bit for the specific blk_index. */
   virtual void setReadyBit(unsigned blk_index) {
     // Related to bugs ALADDIN-60 and ALADDIN-61.
-    // assert(blk_index < num_words);
+    assert(blk_index < num_words);
     dataBlocks[blk_index].ready = true;
   }
   /* Reset the ready bit for the specific blk_index. */
   virtual void resetReadyBit(unsigned blk_index) {
-    // assert(blk_index < num_words);
+    assert(blk_index < num_words);
     dataBlocks[blk_index].ready = false;
   }
   /* Set all the ready bits in the partition. */

@@ -1,6 +1,8 @@
 #ifndef __LOGICAL_ARRAY__
 #define __LOGICAL_ARRAY__
 
+#include <vector>
+
 #include "Partition.h"
 #include "ReadyPartition.h"
 
@@ -20,6 +22,7 @@ class LogicalArray {
                 bool _ready_mode);
   ~LogicalArray();
   void step();
+  void computePartitionSizes(std::vector<size_t>& size_per_part);
   /* Return true if any Partition can service. */
   bool canService();
   /* Return true if the partition with index part_index can service. */
@@ -36,8 +39,8 @@ class LogicalArray {
   /* Accessors. */
   /* Find the data block index for address addr in partition part_index. */
   std::string getBaseName() { return base_name; }
-  unsigned getBlockIndex(unsigned part_index, Addr addr);
-  unsigned getPartitionIndex(Addr addr);
+  size_t getBlockIndex(unsigned part_index, Addr addr);
+  size_t getPartitionIndex(Addr addr);
 
   unsigned getTotalLoads();
   unsigned getTotalStores();
@@ -95,6 +98,8 @@ class LogicalArray {
   unsigned word_size;
   /* Num of ports for each partition. */
   unsigned num_ports;
+  /* Size of each partition. */
+  std::vector<size_t> size_per_part;
   /* All the Partitions inside the same LogicalArray have the same
    * energy/power/area characteristics. */
   /* Per access read energy for each partition. */

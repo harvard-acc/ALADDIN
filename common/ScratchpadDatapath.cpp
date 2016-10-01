@@ -141,7 +141,6 @@ void ScratchpadDatapath::scratchpadPartition() {
     if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
     std::string base_label = node->get_array_label();
-    Addr base_addr = getBaseAddress(base_label);
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
@@ -152,23 +151,11 @@ void ScratchpadDatapath::scratchpadPartition() {
         continue;
       assert(p_type == block || p_type == cyclic);
 
-      unsigned p_factor = part_it->second.part_factor;
-      unsigned num_of_elements = part_it->second.array_size;
       MemAccess* mem_access = node->get_mem_access();
       long long int abs_addr = mem_access->vaddr;
       unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
-      unsigned rel_addr = (abs_addr - base_addr) / data_size;
-      unsigned part_index = 0;
-      if (p_type == block) {
-        /* block partition */
-        unsigned num_of_elements_in_2 = next_power_of_two(num_of_elements);
-        part_index = (int)(rel_addr / ceil(num_of_elements_in_2 / p_factor));
-      } else {
-        /* cyclic partition */
-        part_index = (rel_addr) % p_factor;
-      }
-      node->set_partition_index(part_index);
+      node->set_partition_index(scratchpad->getPartitionIndex(base_label, abs_addr));
     }
   }
 #ifdef DEBUG

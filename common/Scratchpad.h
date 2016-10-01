@@ -35,6 +35,10 @@ class Scratchpad {
                            bool isLoad);
   bool partitionExist(std::string baseName);
 
+  size_t getPartitionIndex(std::string arrayName, Addr abs_addr) {
+    return logical_arrays[arrayName]->getPartitionIndex(abs_addr);
+  }
+
   /* Set the ready bit for a specific addr. */
   void setReadyBit(
            std::string baseName, unsigned part_index, Addr addr) {
