@@ -23,6 +23,7 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   node_index_t dummy;
   node_index_t n;
   edge_index_t e;
+  unsigned i;
 
 #ifdef DMA_MODE
   dmaLoad(&level[0], 0, N_NODES * sizeof(level_t));
@@ -39,8 +40,8 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
 
   /*init_levels: for( n=0; n<N_NODES; n++ )*/
   /*level[n] = MAX_LEVEL;*/
-  /*init_horizons: for( i=0; i<N_LEVELS; i++ )*/
-  /*level_counts[i] = 0;*/
+  init_horizons: for( i=0; i<N_LEVELS; i++ )
+    level_counts[i] = 0;
 
   q_in = 1;
   q_out = 0;

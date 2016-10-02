@@ -11,7 +11,7 @@ GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
 # For the MachSuite harness and support system.
 CFLAGS = -O3 -Wall -Wno-unused-label -I../../common
-SRCS += ../../common/harness.c
+ALL_SRCS = $(SRCS) ../../common/harness.c
 
 # -mno-sse
 GEM5_CFLAGS = -static -O3 -mno-80387 -msoft-float \
@@ -33,13 +33,13 @@ gem5-cpu:
 gem5-accel:
 	@$(MAKE) -C . bench-gem5-accel
 
-bench-gem5: $(SRCS) $(GEM5_FULL_SRCS)
+bench-gem5: $(ALL_SRCS) $(GEM5_FULL_SRCS)
 	@echo Building benchmark $(BMARK) for gem5.
-	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) $(GEM5_FULL_SRCS) $(SRCS) $(INCLUDES) -o $(BMARK)-gem5 $(LFLAGS)
+	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) $(GEM5_FULL_SRCS) $(ALL_SRCS) $(INCLUDES) -o $(BMARK)-gem5 $(LFLAGS)
 
-bench-gem5-accel: $(SRCS) $(GEM5_FULL_SRCS)
+bench-gem5-accel: $(ALL_SRCS) $(GEM5_FULL_SRCS)
 	@echo Building benchmark $(BMARK) for gem5 with HW acceleration.
-	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) -DGEM5_HARNESS $(SRCS) $(GEM5_FULL_SRCS) $(INCLUDES) -o $(BMARK)-gem5-accel $(LFLAGS)
+	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) -DGEM5_HARNESS $(ALL_SRCS) $(GEM5_FULL_SRCS) $(INCLUDES) -o $(BMARK)-gem5-accel $(LFLAGS)
 
 clean-gem5:
 	rm -rf $(BMARK)-gem5 $(BMARK)-gem5-accel
