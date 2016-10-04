@@ -1,6 +1,63 @@
 #include "DDDG.h"
 #include "BaseDatapath.h"
 
+class FP2BitsConverter {
+  public:
+    /* Convert a float, double, or integer into its hex representation.
+     *
+     * By hex representation, we mean a 32-bit or 64-bit integer type whose
+     * value is the IEEE-754 format that represents either a float or double,
+     * respectively.
+     *
+     * Args:
+     *  value: The value to convert as a double precision float.
+     *  size: The size of the floating point value (floats and doubles have
+     *     different hex representations for the same number).
+     *  is_float: If false, then instead of a conversion, a cast is performed
+     *     on value from double to uint64_t.
+     *
+     *  Returns:
+     *    A uint64_t value that represents the given floating point value. If
+     *    the value was a double precision number, then all 64-bits are used.
+     *    If the value was a float, then the first 32-bits are zero. If
+     *    is_float was false, then this value is just the floating point value
+     *    casted to this type.
+     */
+    static uint64_t Convert(double value, size_t size, bool is_float) {
+      if (!is_float)
+        return (uint64_t) value;
+
+      if (size == sizeof(float))
+        return toFloat(value);
+      else if (size == sizeof(double))
+        return toDouble(value);
+      else
+        assert(false && "Size was not either sizeof(float) or sizeof(double)!");
+    }
+
+  private:
+    union fp2bits {
+      double dp;
+      // Relying on the compiler to insert the appropriate zero padding for the
+      // smaller sized float object in this union.
+      float fp;
+      uint64_t bits;
+    };
+
+    static uint64_t toFloat(double value) {
+      fp2bits converter;
+      converter.bits = 0;
+      converter.fp = value;
+      return converter.bits;
+    }
+    static uint64_t toDouble(double value) {
+      fp2bits converter;
+      converter.bits = 0;
+      converter.dp = value;
+      return converter.bits;
+    }
+};
+
 DDDG::DDDG(BaseDatapath* _datapath) : datapath(_datapath) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
@@ -151,7 +208,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   std::size_t found = tmp_value.find('.');
   if (found != std::string::npos)
     is_float = true;
-  double value = atof(char_value);
+  double value = strtof(char_value, NULL);
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
@@ -244,8 +301,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
       Addr mem_address = parameter_value_per_inst[0];
       unsigned mem_size = parameter_size_per_inst.back() / BYTE_SIZE;
-      double store_value = value;
-      curr_node->set_mem_access(mem_address, 0, mem_size, is_float, store_value);
+      uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
+      curr_node->set_mem_access(mem_address, 0, mem_size, is_float, bits);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       Addr base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
@@ -260,10 +317,17 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
 
 void DDDG::parse_result(std::string line) {
   int size, is_reg;
-  double value;
+  char char_value[256];
   char label[256];
 
-  sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
+  sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
+  bool is_float = false;
+  std::string tmp_value(char_value);
+  std::size_t found = tmp_value.find('.');
+  if (found != std::string::npos)
+    is_float = true;
+  double value = strtof(char_value, NULL);
+
   if (curr_node->is_fp_op() && (size == 64))
     curr_node->set_double_precision(true);
   assert(is_reg);
@@ -280,8 +344,9 @@ void DDDG::parse_result(std::string line) {
     datapath->addArrayBaseAddress(label, ((Addr)value) & ADDR_MASK);
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
-    curr_node->set_mem_access(
-        mem_address, 0, size / BYTE_SIZE, value);
+    size_t mem_size = size / BYTE_SIZE;
+    uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
+    curr_node->set_mem_access(mem_address, 0, mem_size, is_float, bits);
   } else if (curr_node->is_dma_op()) {
     Addr mem_address = parameter_value_per_inst[1];
     unsigned mem_offset = (unsigned)parameter_value_per_inst[2];

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <iostream>
 #include <math.h>
+#include <stdlib.h>
 #include <unordered_map>
 #include <vector>
 #include "power_func.h"
@@ -25,7 +26,7 @@ class Partition {
     num_words = 0;
     num_ports = 1;
   }
-  virtual ~Partition(){};
+  virtual ~Partition();
   /* Setters. */
   virtual void setSize(unsigned _size, unsigned _word_size);
   void setNumPorts(unsigned _num_ports) { num_ports = _num_ports; }
@@ -35,6 +36,18 @@ class Partition {
   unsigned getOccupiedBW() { return occupied_bw; }
   unsigned getLoads() { return loads; }
   unsigned getStores() { return stores; }
+
+  // Access data stored in this array.
+  // The _data array is assumed to be of length word_size/8.
+  virtual void writeBlock(unsigned blk_index, uint8_t* _data) {
+    assert(blk_index < data.size());
+    memcpy(data[blk_index], _data, word_size);
+  }
+
+  virtual void readBlock(unsigned blk_index, uint8_t* _data) {
+    assert(blk_index < data.size());
+    memcpy(_data, data[blk_index], word_size);
+  }
 
   /* Return true if there is available bandwidth. */
   bool canService() { return (num_ports != 0) ? occupied_bw < num_ports : true; }
@@ -80,6 +93,9 @@ class Partition {
   unsigned word_size;
   /* Total number of words. */
   unsigned num_words;
+
+  // Data stored in this partition, one array per block.
+  std::vector<uint8_t*> data;
 };
 
 

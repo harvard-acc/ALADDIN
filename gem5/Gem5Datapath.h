@@ -97,7 +97,7 @@ class Gem5Datapath : public MemObject {
   int accelerator_id;
 
   /* The accelerator will call sendFinishedSignal on this address to signal
-   * its completion to the CPU.
+   * its completion to the CPU. This is a physical address.
    */
   Addr finish_flag;
 

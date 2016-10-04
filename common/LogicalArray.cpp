@@ -81,20 +81,25 @@ void LogicalArray::computePartitionSizes(std::vector<size_t>& size_per_part) {
 size_t LogicalArray::getPartitionIndex(Addr addr) {
   int rel_addr = addr - base_addr;
   assert(rel_addr < total_size);
+  size_t part_index = 0;
   if (partition_type == cyclic) {
     /* cyclic partition. */
-    return (rel_addr / word_size ) % num_partitions;
+    part_index = (rel_addr / word_size ) % num_partitions;
   } else {
     /* block partition. */
     for (size_t i = 0; i < size_per_part.size(); i++) {
-      if (rel_addr <= 0)
-        return i;
+      if (rel_addr <= 0) {
+        part_index = i;
+        break;
+      }
       rel_addr -= size_per_part[i];
     }
     // If rel_addr > 0, then we've gone past the bounds of the array.
     assert(rel_addr <= 0);
-    return size_per_part.size() - 1;
+    part_index = size_per_part.size() - 1;
   }
+  assert(part_index < num_partitions);
+  return part_index;
 }
 
 size_t LogicalArray::getBlockIndex(unsigned part_index, Addr addr) {
@@ -179,6 +184,30 @@ void LogicalArray::increment_streaming_stores(unsigned streaming_size) {
   }
 }
 
+void LogicalArray::accessData(Addr addr, uint8_t* data, size_t len, bool is_read) {
+  assert(len > 0 && "data length must be greater than zero!");
+  assert(len % word_size == 0 && "data length is not a multiple of word_size!");
+  uint8_t* ptr = nullptr;
+  Addr curr_addr = addr;
+  for (size_t i = 0; i < len; i += word_size) {
+    ptr = &(data[i]);
+    unsigned part_index = getPartitionIndex(curr_addr);
+    unsigned blk_index = getBlockIndex(part_index, curr_addr);
+    if (is_read)
+      partitions[part_index]->readBlock(blk_index, ptr);
+    else
+      partitions[part_index]->writeBlock(blk_index, ptr);
+    curr_addr += word_size;
+  }
+}
+
+void LogicalArray::writeData(Addr addr, uint8_t* data, size_t len) {
+  accessData(addr, data, len, false);
+}
+
+void LogicalArray::readData(Addr addr, size_t len, uint8_t* data) {
+  accessData(addr, data, len, true);
+}
 
 void LogicalArray::setReadyBit(unsigned part_index, Addr addr) {
   unsigned blk_index = getBlockIndex(part_index, addr);
@@ -196,7 +225,6 @@ void LogicalArray::setReadyBitRange(Addr addr, unsigned size) {
     Addr curr_addr = addr + curr_size;
     assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
     unsigned part_index = getPartitionIndex(curr_addr);
-    assert(part_index < num_partitions);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->setReadyBit(blk_index);
   }
@@ -207,7 +235,6 @@ void LogicalArray::resetReadyBitRange(Addr addr, unsigned size) {
     Addr curr_addr = addr + curr_size;
     assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
     unsigned part_index = getPartitionIndex(curr_addr);
-    assert(part_index < num_partitions);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->resetReadyBit(blk_index);
   }

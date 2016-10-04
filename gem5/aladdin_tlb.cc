@@ -1,4 +1,5 @@
 #include <string>
+#include <utility>
 
 #include "aladdin/common/cacti-p/cacti_interface.h"
 #include "aladdin/common/cacti-p/io.h"
@@ -101,7 +102,7 @@ const std::string AladdinTLB::outStandingWalkReturnEvent::name() const {
   return tlb->name() + ".page_walk_event";
 }
 
-bool AladdinTLB::translateTiming(PacketPtr pkt) {
+std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
   /* A somewhat complex translation process.
    *
    * First, we have to determine the simulation environment. If Aladdin is
@@ -118,7 +119,7 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
    * consult the TLB to translate the simulated virtual address to the
    * simulated physical address.
    */
-  Addr vaddr, vpn, ppn, page_offset;
+  Addr vaddr, vpn, page_offset;
   if (datapath->isExecuteStandalone()) {
     vaddr = pkt->req->getPaddr();
     page_offset = vaddr % pageBytes;
@@ -141,6 +142,31 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
     page_offset = vaddr % pageBytes;
     vpn = vaddr - page_offset;
   }
+  return std::make_pair(vpn, page_offset);
+}
+
+bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
+  Addr vpn, ppn, page_offset;
+  auto result = translateTraceToSimVirtual(pkt);
+  vpn = result.first;
+  page_offset = result.second;
+  if (!tlbMemory->lookup(vpn, ppn)) {
+    if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
+      ppn = infiniteBackupTLB[vpn];
+    else
+      ppn = vpn;
+  }
+  *(pkt->getPtr<Addr>()) = ppn + page_offset;
+  DPRINTF(HybridDatapath, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
+  return true;
+}
+
+bool AladdinTLB::translateTiming(PacketPtr pkt) {
+  Addr vaddr, vpn, ppn, page_offset;
+  auto result = translateTraceToSimVirtual(pkt);
+  vpn = result.first;
+  page_offset = result.second;
+  vaddr = vpn + page_offset;
 
   reads++;  // Both TLB hits and misses perform a read.
   if (tlbMemory->lookup(vpn, ppn)) {

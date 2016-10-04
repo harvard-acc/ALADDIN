@@ -39,6 +39,14 @@ class Scratchpad {
     return logical_arrays[arrayName]->getPartitionIndex(abs_addr);
   }
 
+  void readData(std::string arrayName, Addr addr, size_t len, uint8_t* data) {
+    logical_arrays[arrayName]->readData(addr, len, data);
+  }
+
+  void writeData(std::string arrayName, Addr addr, uint8_t* data, size_t len) {
+    logical_arrays[arrayName]->writeData(addr, data, len);
+  }
+
   /* Set the ready bit for a specific addr. */
   void setReadyBit(
            std::string baseName, unsigned part_index, Addr addr) {

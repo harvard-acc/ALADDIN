@@ -197,15 +197,16 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                       bool is_dma_load);
 
   // Virtual address translation.
-  bool issueTLBRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id);
+  bool issueTLBRequestTiming(Addr addr, unsigned size, bool isLoad, unsigned node_id);
+  bool issueTLBRequestInvisibly(Addr addr, unsigned size, bool isLoad, unsigned node_id);
+  PacketPtr createTLBRequestPacket(Addr addr, unsigned size, bool isLoad, unsigned node_id);
 
   // Cache access functions.
   bool issueCacheRequest(Addr addr,
                          unsigned size,
                          bool isLoad,
                          unsigned node_id,
-                         bool is_float,
-                         double value);
+                         uint64_t value);
   void completeCacheRequest(PacketPtr pkt);
 
   // Marks a node as started and increments a stats counter.
@@ -276,6 +277,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     void process();
     /** Returns the description of the tick event. */
     const char* description() const;
+    unsigned get_node_id() { return dma_node_id; }
   };
 
   /* Stores status information about memory nodes currently in flight.

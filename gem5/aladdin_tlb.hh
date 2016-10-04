@@ -5,6 +5,7 @@
 #include <set>
 #include <deque>
 #include <unordered_map>
+#include <utility>
 
 #include "base/statistics.hh"
 #include "mem/mem_object.hh"
@@ -247,7 +248,20 @@ class AladdinTLB {
     return arrayLabelToVirtualAddrMap[array_label];
   }
 
+  /* Perform a TLB translation with timing. */
   bool translateTiming(PacketPtr pkt);
+
+  /* Perform a TLB translation invisibly.
+   *
+   * Invisibly means it takes zero time and has zero side effects - no
+   * incrementing of statistics, no changes to TLB state. This is required
+   * due to the current constraints of the DMA system.
+   */
+  bool translateInvisibly(PacketPtr pkt);
+
+  /* Translate a trace virtual address to a simulated virtual address. */
+  std::pair<Addr, Addr> translateTraceToSimVirtual(PacketPtr pkt);
+
   bool canRequestTranslation();
   void incrementRequestCounter() { requests_this_cycle++; }
   void resetRequestCounter() { requests_this_cycle = 0; }

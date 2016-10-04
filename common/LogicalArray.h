@@ -50,6 +50,16 @@ class LogicalArray {
   float getLeakagePower() { return part_leak_power * num_partitions; }
   float getArea() { return part_area * num_partitions; }
 
+  /* Write @len bytes contained in @data into this array at address @addr.
+   * It is assumed that data is at least len bytes long.
+   */
+  void writeData(Addr addr, uint8_t* data, size_t len);
+
+  /* Write @len bytes contained in @data into this array at address @addr.
+   * It is assumed that data has been allocated at least len bytes of space.
+   */
+  void readData(Addr addr, size_t len, uint8_t* data);
+
   /* Increment loads/stores for each Partition. */
   void increment_loads(unsigned part_index);
   void increment_stores(unsigned part_index);
@@ -84,6 +94,14 @@ class LogicalArray {
       part->resetAllReadyBits();
   }
  protected:
+
+  /* Read or write data to this array.
+   *
+   * If this is a read, then data is modified; otherwise, this LogicalArray
+   * is updated with the contents of data.
+   */
+  void accessData(Addr addr, uint8_t* data, size_t len, bool is_read);
+
   /* Array label for the LogicalArray. */
   std::string base_name;
   /* Base address for the LogicalArray. */

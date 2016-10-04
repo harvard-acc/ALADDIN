@@ -28,8 +28,9 @@ struct MemAccess {
   size_t offset;
   // Is floating-point value or not.
   bool is_float;
-  // If this is not a store, then this value is meaningless.
-  double value;
+  // Hex representation of the value loaded or stored.  For FP values, this is
+  // the IEEE-754 representation.
+  uint64_t value;
 
   MemAccess() {
     vaddr = 0x0;
@@ -121,7 +122,7 @@ class ExecNode {
                       size_t offset,
                       size_t size_in_bytes,
                       bool is_float = false,
-                      double value = 0) {
+                      uint64_t value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
     mem_access->offset = offset;
