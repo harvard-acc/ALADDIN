@@ -24,7 +24,7 @@ int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 
 // Read values from store_vals and copy them into store_loc.
 void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
-  for (int i = 0; i < num_vals; i++)
+  loop: for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_vals[i];
 }
 
@@ -40,7 +40,7 @@ int main() {
 
 #ifdef LLVM_TRACE
   store_kernel(store_vals, store_loc, num_vals);
-#elif ACCEL_SIMULATE_MODE
+#else
   mapArrayToAccelerator(
       INTEGRATION_TEST, "store_vals", &(store_vals[0]), num_vals * sizeof(int));
   mapArrayToAccelerator(
