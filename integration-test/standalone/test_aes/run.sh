@@ -10,11 +10,11 @@ ${gem5_dir}/build/X86/gem5.opt \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --num-cpus=0 \
   --mem-size=4GB \
-  --mem-type=ddr3_1600_x64  \
+  --mem-type=DDR3_1600_x64  \
   --sys-clock=1GHz \
   --cpu-type=timing \
   --caches \
-  --aladdin_cfg_file=${cfg_home}/gem5.cfg \
+  --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c ${bmk_home}/aes \
   -o "${bmk_home}/input.data ${bmk_home}/check.data" \
   > stdout.gz
