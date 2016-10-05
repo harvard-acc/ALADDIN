@@ -6,7 +6,7 @@ EXEC = test_mmap
 all: $(EXEC)
 
 $(EXEC): $(SRCS)
-	gcc -static -m32 -std=c99 -g -o $(EXEC) $(SRCS)
+	gcc -static -std=c99 -g -o $(EXEC) $(SRCS)
 
 clean:
 	rm -rf $(EXEC)

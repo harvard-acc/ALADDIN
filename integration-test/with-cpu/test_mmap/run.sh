@@ -10,9 +10,8 @@ ${gem5_dir}/build/X86/gem5.opt \
   --num-cpus=1 \
   --enable_prefetchers \
   --mem-size=4GB \
-  --mem-type=ddr3_1600_x64  \
+  --mem-type=DDR3_1600_x64  \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \
-  -c ${bmk_home}/test_mmap \
-  > outputs/stdout.gz
+  -c ${bmk_home}/test_mmap
