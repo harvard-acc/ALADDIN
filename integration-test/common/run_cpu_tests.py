@@ -26,21 +26,17 @@ class AesTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
-@unittest.skip("This requires a custom build.")
-class AesHybridTest(gat.Gem5AladdinTest):
+class DmaCacheHybridTest(gat.Gem5AladdinTest):
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]
     self.setTestDir(os.path.join(
-        aladdin_home, "integration-test", "with-cpu", "test_aes_hybrid"))
-    self.setSimBin("aes")
-    self.addRequiredFile("input.data")
-    self.addRequiredFile("check.data")
-    self.setTestSpecificArgs(["input.data", "check.data"])
+        aladdin_home, "integration-test", "with-cpu", "test_hybrid"))
+    self.setSimBin("test_hybrid")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 52186000)
+    self.addExpectedStatResult("sim_ticks", 48849000)
 
   def runTest(self):
     self.runAndValidate()
