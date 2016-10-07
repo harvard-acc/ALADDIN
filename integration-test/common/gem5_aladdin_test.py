@@ -10,14 +10,21 @@ import shutil
 import subprocess
 import tempfile
 
+# Although gem5 is a deterministic simulator, there can be differences in the
+# cycle count between runs in different directories. One difference (there may
+# be others) is parsing filepaths (which tend to be quite short in the testing
+# environment).
+SIM_TICKS_ERROR = 0.01
+
 # Default arguments to be passed to the gem5 binary after the setup script.
 DEFAULT_POST_SCRIPT_ARGS = {
   "num-cpus": 1,
   "mem-size": "4GB",
-  "mem-type": "ddr3_1600_x64",
+  "mem-type": "DDR3_1600_x64",
   "sys-clock": "1GHz",
-  "cpu-type": "timing",
-  "caches": True
+  "cpu-type": "detailed",
+  "caches": True,
+  "enable_prefetchers": True,
 }
 
 GEM5_CFG_FILE = "gem5.cfg"
@@ -51,9 +58,7 @@ class Gem5AladdinTest(unittest.TestCase):
     self.cpu_only = False
 
     # Relative path to the Aladdin test configuration file, from test_dir.
-    # TODO: Rename this to gem5_cfg_file after the parameter has been
-    # appropriately renamed in aladdin_se.py.
-    self.aladdin_cfg_file = ""
+    self.accel_cfg_file = ""
 
     # Arguments specific to the simulated binary. These will be specified as a
     # space-separated list on the run command.
@@ -104,19 +109,22 @@ class Gem5AladdinTest(unittest.TestCase):
     This can only be reliably done by reading the gem5.cfg file.
     """
     gem5cfg = ConfigParser.SafeConfigParser()
-    gem5cfg.read(os.path.join(target_dir, self.aladdin_cfg_file))
+    gem5cfg.read(os.path.join(target_dir, self.accel_cfg_file))
     test = gem5cfg.sections()[0]
     aladdin_cfg = gem5cfg.get(test, "config_file_name")
     return os.path.basename(aladdin_cfg)
 
   def prepareRunDir(self):
     """ Prepares the temp run dir by putting all config files into place. """
+    # Symlink the binary.
+    os.symlink(os.path.join(self.test_dir, self.sim_bin),
+               os.path.join(self.run_dir, self.sim_bin))
     # Copies CACTI config files.
     common_dir = os.path.join(self.aladdin_home, "integration-test", "common")
-    shutil.copy(os.path.join(common_dir, "test_cacti_cache.cfg"), self.run_dir)
-    shutil.copy(os.path.join(common_dir, "test_cacti_tlb.cfg"), self.run_dir)
-    shutil.copy(os.path.join(common_dir, "test_cacti_lq.cfg"), self.run_dir)
-    shutil.copy(os.path.join(common_dir, "test_cacti_sq.cfg"), self.run_dir)
+    os.symlink(os.path.join(common_dir, "test_cacti_cache.cfg"),
+               os.path.join(self.run_dir, "test_cacti_cache.cfg"))
+    os.symlink(os.path.join(common_dir, "test_cacti_tlb.cfg"),
+               os.path.join(self.run_dir, "test_cacti_tlb.cfg"))
 
     # Copies any additional required files.
     for f in self.required_files:
@@ -127,23 +135,25 @@ class Gem5AladdinTest(unittest.TestCase):
       os.symlink(os.path.join(self.test_dir, "dynamic_trace.gz"),
                  os.path.join(self.run_dir, "dynamic_trace.gz"))
       # Generates a new gem5.cfg file for the temp run dir.
-      test_name = self.createGem5Config()
+      self.createGem5Config()
       # Copies the Aladdin array/loop config file
       shutil.copy(os.path.join(
           self.test_dir, self.getAladdinConfigFile(self.run_dir)), self.run_dir)
+
+    run_cmd = self.buildRunCommand()
+    with open(os.path.join(self.run_dir, "run.sh"), "w") as f:
+      f.write("#!/bin/bash\n")
+      f.write(run_cmd)
 
   def createGem5Config(self):
     """ Creates a new gem5.cfg file for the temp directory.
 
     The gem5.cfg by default is designed to allow the user to run the test
-    manually in that same directory. We don't want this for automatic testing,
-    since it's cleaner to put everything into its own temp directory, so we're
-    going to rewrite the gem5.cfg file for the temp directory.
-
-    Returns: the name of the test.
+    manually in that same directory. We have to update paths for the test
+    directory.
     """
     gem5cfg = ConfigParser.SafeConfigParser()
-    gem5cfg.read(os.path.join(self.test_dir, self.aladdin_cfg_file))
+    gem5cfg.read(os.path.join(self.test_dir, self.accel_cfg_file))
     # TODO: We only support a single accelerator test at the moment. Expand
     # this when we encounter the need for multi-accelerator tests.
     test = gem5cfg.sections()[0]
@@ -152,13 +162,9 @@ class Gem5AladdinTest(unittest.TestCase):
                 os.path.join("%(input_dir)s", "test_cacti_cache.cfg"))
     gem5cfg.set(test, "cacti_tlb_config",
                 os.path.join("%(input_dir)s", "test_cacti_tlb.cfg"))
-    gem5cfg.set(test, "cacti_lq_config",
-                os.path.join("%(input_dir)s", "test_cacti_lq.cfg"))
-    gem5cfg.set(test, "cacti_sq_config",
-                os.path.join("%(input_dir)s", "test_cacti_sq.cfg"))
     with open(os.path.join(self.run_dir, GEM5_CFG_FILE), "w") as tmp_file:
       gem5cfg.write(tmp_file)
-    self.sim_script_args["aladdin_cfg_file"] = os.path.join(
+    self.sim_script_args["accel_cfg_file"] = os.path.join(
         self.run_dir, GEM5_CFG_FILE)
 
   def addRequiredFile(self, name):
@@ -184,7 +190,7 @@ class Gem5AladdinTest(unittest.TestCase):
 
   def setGem5CfgFile(self, cfg_file):
     """ Set the relative location of the gem5 configuration file. """
-    self.aladdin_cfg_file = cfg_file
+    self.accel_cfg_file = cfg_file
 
   def setTestSpecificArgs(self, args):
     """ Specify simulated binary specific arguments."""
@@ -240,15 +246,20 @@ class Gem5AladdinTest(unittest.TestCase):
 
     sim_script_args_str = " ".join(combined_sim_script_args)
 
-    sim_bin = "-c %s" % os.path.join(self.test_dir, self.sim_bin)
+    sim_bin = "-c %s" % self.sim_bin
     if (self.test_specific_args):
       sim_opt = "-o \"%s\"" % " ".join(self.test_specific_args)
     else:
       sim_opt = ""
 
-    cmd = ("%(binary)s %(debug_flags)s %(out_dir)s %(sim_script)s "
-           "%(sim_script_args)s %(sim_bin)s %(sim_opt)s > "
-           "%(run_dir)s/stdout.gz") % {
+    cmd = ("%(binary)s \\\n"
+           "%(debug_flags)s \\\n"
+           "%(out_dir)s \\\n"
+           "%(sim_script)s \\\n"
+           "%(sim_script_args)s \\\n"
+           "%(sim_bin)s %(sim_opt)s \\\n"
+           "> %(run_dir)s/stdout.gz \\\n"
+           "2> %(run_dir)s/stdout.gz") % {
         "binary": binary,
         "debug_flags": debug_flags,
         "out_dir": out_dir,
@@ -260,14 +271,13 @@ class Gem5AladdinTest(unittest.TestCase):
 
     return cmd
 
-  def parseGem5Stats(self, stats=[]):
+  def parseGem5Stats(self, expected_stats=[]):
     """ Parses the gem5 stats.txt file and returns a dict.
 
       As an optimization, we can specify the relevant stats so that the
       returned dict is limited in size (as stats.txt can be quite large).
     """
     stats_path = os.path.join(self.run_dir, "outputs", "stats.txt")
-    print stats_path
     stats_f = open(stats_path, "r")
 
     # Locate start of stats.
@@ -279,7 +289,7 @@ class Gem5AladdinTest(unittest.TestCase):
         break
     self.assertTrue(start_found, msg="stats.txt file contained no statistics!")
 
-    stats = {}
+    parsed_stats = {}
     end_flag = "End Simulation Statistics"
     for line in stats_f:
       if end_flag in line:
@@ -287,11 +297,15 @@ class Gem5AladdinTest(unittest.TestCase):
       stat = line.split()
       if not stat:
         continue
-      stats[stat[0]] = float(stat[1])
+      stat_name = stat[0]
+      stat_value = float(stat[1])
+      if expected_stats and not stat_name in expected_stats:
+        continue
+      parsed_stats[stat_name] = float(stat_value)
 
     stats_f.close()
 
-    return stats
+    return parsed_stats
 
   def parseGem5Trace(self):
     """ Parse the gem5 output trace. To be completed. """
@@ -299,16 +313,12 @@ class Gem5AladdinTest(unittest.TestCase):
 
   def runAndValidate(self):
     """ Run the test and validate the results. """
-    run_cmd = self.buildRunCommand()
-    print run_cmd
-    pwd = os.getcwd()
-
     os.chdir(self.run_dir)
-    returncode = subprocess.call(run_cmd, shell=True)
+    returncode = subprocess.call("sh run.sh", shell=True)
     self.assertEqual(returncode, 0, msg="gem5 returned nonzero exit code!")
-    statistics = self.parseGem5Stats()
+
+    expected_stats = [s for s in self.expected_results.iterkeys()]
+    statistics = self.parseGem5Stats(expected_stats=expected_stats)
 
     for stat, value in self.expected_results.iteritems():
-      self.assertEqual(statistics[stat], value)
-
-    os.chdir(pwd)
+      self.assertTrue(abs((statistics[stat] - value)/value) < SIM_TICKS_ERROR)

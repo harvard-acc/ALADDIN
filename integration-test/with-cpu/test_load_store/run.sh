@@ -12,8 +12,8 @@ ${gem5_dir}/build/X86/gem5.opt \
   --mem-size=4GB \
   --mem-type=DDR3_1600_x64  \
   --sys-clock=1GHz \
-  --cpu-type=timing \
+  --cpu-type=detailed \
   --caches \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
-  -c ${bmk_home}/test_load_store \
+  -c ${bmk_home}/test_load_store-gem5-accel \
   > stdout.gz

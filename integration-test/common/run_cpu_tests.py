@@ -21,11 +21,12 @@ class AesTest(gat.Gem5AladdinTest):
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 53559000)
+    self.addExpectedStatResult("sim_ticks", 91187000)
 
   def runTest(self):
     self.runAndValidate()
 
+@unittest.skip("This requires a custom build.")
 class AesHybridTest(gat.Gem5AladdinTest):
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]
@@ -54,7 +55,22 @@ class LoadStoreTest(gat.Gem5AladdinTest):
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 582707000)
+    self.addExpectedStatResult("sim_ticks", 92333000)
+
+  def runTest(self):
+    self.runAndValidate()
+
+class DmaLoadStoreTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_dma_load_store"))
+    self.setSimBin("test_dma_load_store")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("sim_ticks", 57074000)
 
   def runTest(self):
     self.runAndValidate()
@@ -68,44 +84,7 @@ class MmapTest(gat.Gem5AladdinTest):
     self.setCpuOnly()
 
   def setExpectedResults(self):
-    # TODO: Add the expected results.
-    return
-
-  def runTest(self):
-    self.runAndValidate()
-
-class SiftTest(gat.Gem5AladdinTest):
-  def setSimParams(self):
-    aladdin_home = os.environ["ALADDIN_HOME"]
-    self.setTestDir(os.path.join(
-        aladdin_home, "integration-test", "with-cpu", "test_sift"))
-    self.setSimBin("sift")
-    self.addRequiredFile("1.bmp")
-    self.setTestSpecificArgs(["."])
-    self.setGem5CfgFile("gem5.cfg")
-    self.addDebugFlags(["HybridDatapath", "Aladdin"])
-
-  def setExpectedResults(self):
-    # TODO: Add the expected results.
-    return
-
-  def runTest(self):
-    self.runAndValidate()
-
-class StitchTest(gat.Gem5AladdinTest):
-  def setSimParams(self):
-    aladdin_home = os.environ["ALADDIN_HOME"]
-    self.setTestDir(os.path.join(
-        aladdin_home, "integration-test", "with-cpu", "test_stitch"))
-    self.setSimBin("stitch")
-    self.addRequiredFile("1.bmp")
-    self.addRequiredFile("2.bmp")
-    self.setTestSpecificArgs(["."])
-    self.setGem5CfgFile("gem5.cfg")
-    self.addDebugFlags(["HybridDatapath", "Aladdin"])
-
-  def setExpectedResults(self):
-    # TODO: Add the expected results.
+    self.addExpectedStatResult("sim_ticks", 1344665000)
     return
 
   def runTest(self):

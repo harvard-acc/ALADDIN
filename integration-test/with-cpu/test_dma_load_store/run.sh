@@ -10,9 +10,10 @@ ${gem5_dir}/build/X86/gem5.opt \
   --enable_prefetchers \
   --mem-size=4GB \
   --mem-type=DDR3_1600_x64  \
-  --sys-clock=100MHz \
-  --cpu-type=timing \
+  --sys-clock=1GHz \
+  --cpu-type=detailed \
   --caches \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
-  -c ${bmk_home}/test_dma_load_store-gem5-accel \
+  -c ${bmk_home}/test_dma_load_store \
   > stdout.gz
+

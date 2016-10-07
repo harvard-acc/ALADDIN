@@ -12,9 +12,10 @@ ${gem5_dir}/build/X86/gem5.opt \
   --mem-size=4GB \
   --mem-type=DDR3_1600_x64  \
   --sys-clock=1GHz \
-  --cpu-type=timing \
+  --cpu-type=detailed \
   --caches \
+  --enable_prefetchers \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c aes \
-  -o "${bmk_home}/input.data ${bmk_home}/check.data" \
+  -o "input.data check.data" \
   > stdout.gz

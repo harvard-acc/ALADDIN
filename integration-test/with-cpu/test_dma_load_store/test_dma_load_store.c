@@ -37,7 +37,7 @@ void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
     store_loc[i] = store_vals[i];
 
 #ifdef DMA_MODE
-  dmaStore(&store_vals[0], 0, num_vals * sizeof(TYPE));
+  // dmaStore(&store_vals[0], 0, num_vals * sizeof(TYPE));
   dmaStore(&store_loc[0], 0, num_vals * sizeof(TYPE));
 #endif
 }
