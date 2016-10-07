@@ -803,7 +803,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
 
   // This will compute the offset of THIS packet from the base address.
   Addr paddr = pkt->getAddr();
-  Addr paddr_base = getPacketBaseAddr(pkt);
+  Addr paddr_base = getPacketAddr(pkt);
   Addr pkt_offset =  paddr - paddr_base;
   Addr vaddr = vaddr_base + pkt_offset;
 
