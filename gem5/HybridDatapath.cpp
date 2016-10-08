@@ -34,7 +34,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                    params->acceleratorId,
                    params->executeStandalone,
                    params->system),
-      dmaSetupLatency(params->dmaSetupLatency),
+      dmaSetupOverhead(params->dmaSetupOverhead),
       spadPort(this,
                params->system,
                params->maxDmaRequests,
@@ -59,7 +59,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->tlbBandwidth,
                          params->tlbCactiConfig,
                          params->acceleratorName),
-      issueDmaOpsASAP(params->issueDmaOpsASAP),
+      pipelinedDma(params->pipelinedDma),
       ignoreCacheFlush(params->ignoreCacheFlush),
       tickEvent(this), delayedDmaEvent(this), executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
@@ -82,7 +82,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    * latency.
    */
   if (execute_standalone) {
-    initializeDatapath(dmaSetupLatency);
+    initializeDatapath(dmaSetupOverhead);
   }
 
   /* For the DMA model, compute the cost of a CPU cache flush in terms of
@@ -184,7 +184,7 @@ void HybridDatapath::delayedDmaIssue() {
   // is completely finished. This optimization lets us issue DMA nodes as soon
   // as they have finished their own setup, rather than waiting for everyone's
   // setup to finish.
-  if (issueDmaOpsASAP) {
+  if (pipelinedDma) {
     issueDmaRequest(node_id);
   }
 
@@ -201,7 +201,7 @@ void HybridDatapath::delayedDmaIssue() {
 
   // In the typical case, after all DMA nodes have exited the waiting queue, we
   // can issue them all at once. No need to wait anymore.
-  if (!issueDmaOpsASAP && dmaWaitingQueue.empty()) {
+  if (!pipelinedDma && dmaWaitingQueue.empty()) {
     for (auto it = dmaIssueQueue.begin(); it != dmaIssueQueue.end(); it++)
       issueDmaRequest(it->second);
   }
@@ -297,12 +297,12 @@ bool HybridDatapath::step() {
     dumpStats();
     DPRINTF(Aladdin, "Accelerator completed.\n");
     if (execute_standalone) {
-      // If in standalone mode, we wait dmaSetupLatency before the datapath
+      // If in standalone mode, we wait dmaSetupOverhead before the datapath
       // starts, but this cost must be added to this stat. For some reason,
       // this cannot be done until we have started simulation of events,
       // because all stats get cleared before that happens.  So until I figure
       // out how to get around that, it's going to be accounted for at the end.
-      dma_setup_cycles += dmaSetupLatency;
+      dma_setup_cycles += dmaSetupOverhead;
       system->deregisterAccelerator(accelerator_id);
       if (system->numRunningAccelerators() == 0) {
         exitSimLoop("Aladdin called exit()");
@@ -866,7 +866,7 @@ int HybridDatapath::writeConfiguration(sql::Connection* con) {
   stringstream query;
   query << "insert into configs (id, memory_type, trace_file, "
            "config_file, pipelining, unrolling, partitioning, "
-           "max_dma_requests, dma_setup_latency, cache_size, cache_line_sz, "
+           "max_dma_requests, dma_setup_overhead, cache_size, cache_line_sz, "
            "cache_assoc, cache_hit_latency, "
            "tlb_page_size, tlb_assoc, tlb_miss_latency, "
            "tlb_hit_latency, tlb_max_outstanding_walks, tlb_bandwidth, "
@@ -877,7 +877,7 @@ int HybridDatapath::writeConfiguration(sql::Connection* con) {
         << "\"" << trace_file << "\""
         << ",\"" << config_file << "\"," << pipelining << ","
         << unrolling_factor << "," << partition_factor << ","
-        << spadPort.max_req << "," << dmaSetupLatency << ",\"" << cacheSize
+        << spadPort.max_req << "," << dmaSetupOverhead << ",\"" << cacheSize
         << "\"," << cacheLineSize << "," << cacheAssoc << "," << cacheHitLatency
         << "," << dtb.getPageBytes() << ","
         << dtb.getAssoc() << "," << dtb.getMissLatency() << ","

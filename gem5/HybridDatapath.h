@@ -300,7 +300,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   std::deque<std::pair<unsigned, Tick>> dmaWaitingQueue;
 
   // Number of cycles required for the CPU to initiate a DMA transfer.
-  unsigned dmaSetupLatency;
+  unsigned dmaSetupOverhead;
 
   // DMA port to the scratchpad.
   SpadPort spadPort;
@@ -360,10 +360,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Retry packet for cache accesses.
   PacketPtr retryPkt;
 
-  // If true, then DMA operations are issued as soon as they have finished
-  // inccurring their own setup latencies. If false (by default), all setup
-  // latencies are accounted for before even the first DMA op issues.
-  bool issueDmaOpsASAP;
+  // If true, then successive DMA nodes are pipelined to overlap transferring
+  // data of one DMA transaction with the setup latency of the next. If false,
+  // then DMA nodes wait for all transactions to finish setup before issuing.
+  bool pipelinedDma;
 
   bool ignoreCacheFlush;
 
