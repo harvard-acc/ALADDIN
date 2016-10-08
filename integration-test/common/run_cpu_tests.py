@@ -70,7 +70,7 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 57074000)
+    self.addExpectedStatResult("sim_ticks", 52128000)
 
   def runTest(self):
     self.runAndValidate()

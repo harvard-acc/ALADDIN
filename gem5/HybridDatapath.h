@@ -218,8 +218,11 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   class SpadPort : public DmaPort {
    public:
     SpadPort(HybridDatapath* dev, System* s, unsigned _max_req,
-             unsigned _chunk_size, bool _interleave)
-        : DmaPort(dev, s, _max_req, _chunk_size, _interleave), max_req(_max_req), datapath(dev) {}
+             unsigned _chunk_size, bool _interleave,
+             bool _invalidateOnDmaStore)
+        : DmaPort(dev, s, _max_req, _chunk_size,
+                  _interleave, _invalidateOnDmaStore),
+          max_req(_max_req), datapath(dev) {}
     // Maximum DMA requests that can be queued.
     const unsigned max_req;
 

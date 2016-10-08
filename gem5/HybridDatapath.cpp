@@ -39,7 +39,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                params->system,
                params->maxDmaRequests,
                params->dmaChunkSize,
-               params->multiChannelDMA),
+               params->multiChannelDMA,
+               params->invalidateOnDmaStore),
       spadMasterId(params->system->getMasterId(name() + ".spad")),
       cachePort(this),
       cacheMasterId(params->system->getMasterId(name() + ".cache")),
@@ -497,10 +498,10 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
     registers.getRegister(array_label)->increment_dma_accesses(isLoad);
   inflight_dma_nodes[node_id] = WaitingFromDma;
   Addr vaddr = (base_addr + offset) & ADDR_MASK;
-  // If this is a dmaStore, we issue a WriteInvalidateReq in order to
-  // invalidate any shared cache lines in CPU caches.
-  MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteInvalidateReq;
-  Request::Flags flag = 0;
+  MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
+  // Marking the DMA packets as uncacheable ensures they are not snooped by
+  // caches.
+  Request::Flags flags = Request::UNCACHEABLE;
 
   /* In order to make DMA stores visible to the rest of the memory hierarchy,
    * we have to do a virtual address translation. However, we do this
@@ -518,7 +519,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
   spadPort.dmaAction(
-      cmd, paddr, size, dma_event, data, 0, flag);
+      cmd, paddr, size, dma_event, data, 0, flags);
 }
 
 /* Mark the DMA request node as having completed. */

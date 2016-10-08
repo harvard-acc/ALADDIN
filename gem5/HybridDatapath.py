@@ -28,6 +28,8 @@ class HybridDatapath(MemObject):
       "incurred their own wating setup, without waiting for other DMA ops "
       "to finish first.")
   ignoreCacheFlush = Param.Bool(False, "Ignore Cache Flush latency.")
+  invalidateOnDmaStore = Param.Bool(True, "Invalidate the region of memory "
+      "that will be modified by a dmaStore before issuing the DMA request.")
 
   # Cache parameters.
   cacheSize = Param.String("16kB", "Private cache size")
