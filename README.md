@@ -81,7 +81,7 @@ Requirements:
 
 Build:
 ------
-1. Set `$ALDDIN_HOME` to where put Aladdin source code.
+1. Set `$ALADDIN_HOME` to where put Aladdin source code.
 
    `export ALADDIN_HOME=/your/path/to/aladdin`
 
@@ -276,10 +276,10 @@ Step-by-step:
 Caveats
 -------
 1. This distribution of Aladdin models the datapath and local scratcpad memory
-of accelerators but not includes the rest of the memory hierarchy.
-We are working on providing a release of Aladdin with a memory hierarchy. At the
-same time, if you are interested in doing your customized integration, we will
-provide a user`s guide on how to do the integration.
+of accelerators but does not include the rest of the memory hierarchy.  If you
+are interested in an SoC simulator that includes support for caches as well as
+CPUs (and more), please take a look at
+[gem5-Aladdin](https://github.com/harvard-acc/gem5-aladdin).
 
 2. No Function Pipelining:
 
