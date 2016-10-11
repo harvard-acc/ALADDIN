@@ -5,7 +5,6 @@ bmk_home=${ALADDIN_HOME}/MachSuite/aes/aes
 gem5_dir=${ALADDIN_HOME}/../..
 
 ${gem5_dir}/build/X86/gem5.opt \
-  --debug-flags=HybridDatapath,Aladdin,Event \
   --outdir=${cfg_home}/outputs \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --num-cpus=0 \
@@ -15,6 +14,4 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cpu-type=timing \
   --caches \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
-  -c ${bmk_home}/aes \
-  -o "${bmk_home}/input.data ${bmk_home}/check.data" \
   > stdout.gz

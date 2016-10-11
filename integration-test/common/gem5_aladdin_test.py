@@ -117,8 +117,9 @@ class Gem5AladdinTest(unittest.TestCase):
   def prepareRunDir(self):
     """ Prepares the temp run dir by putting all config files into place. """
     # Symlink the binary.
-    os.symlink(os.path.join(self.test_dir, self.sim_bin),
-               os.path.join(self.run_dir, self.sim_bin))
+    if self.sim_bin:
+      os.symlink(os.path.join(self.test_dir, self.sim_bin),
+                 os.path.join(self.run_dir, self.sim_bin))
     # Copies CACTI config files.
     common_dir = os.path.join(self.aladdin_home, "integration-test", "common")
     os.symlink(os.path.join(common_dir, "test_cacti_cache.cfg"),
@@ -246,11 +247,16 @@ class Gem5AladdinTest(unittest.TestCase):
 
     sim_script_args_str = " ".join(combined_sim_script_args)
 
-    sim_bin = "-c %s" % self.sim_bin
-    if (self.test_specific_args):
-      sim_opt = "-o \"%s\"" % " ".join(self.test_specific_args)
-    else:
+    if ("num-cpus" in self.sim_script_args and
+        self.sim_script_args["num-cpus"] == 0):
+      sim_bin = ""
       sim_opt = ""
+    else:
+      sim_bin = "-c %s" % self.sim_bin
+      if (self.test_specific_args):
+        sim_opt = "-o \"%s\"" % " ".join(self.test_specific_args)
+      else:
+        sim_opt = ""
 
     cmd = ("%(binary)s \\\n"
            "%(debug_flags)s \\\n"
