@@ -50,8 +50,6 @@
 #include <algorithm>
 #include <list>
 
-using namespace std;
-
 const uint32_t nthreads = NTHREADS;
 
 
@@ -99,8 +97,8 @@ void * calc_time_mt_wrapper(void * void_obj)
 {
   calc_time_mt_wrapper_struct * calc_obj = (calc_time_mt_wrapper_struct *) void_obj;
   uint32_t tid                   = calc_obj->tid;
-  list<mem_array *> & data_arr   = calc_obj->data_arr;
-  list<mem_array *> & tag_arr    = calc_obj->tag_arr;
+  std::list<mem_array *> & data_arr   = calc_obj->data_arr;
+  std::list<mem_array *> & tag_arr    = calc_obj->tag_arr;
   bool is_tag                    = calc_obj->is_tag;
   bool pure_ram                  = calc_obj->pure_ram;
   bool pure_cam					 = calc_obj->pure_cam;
@@ -331,9 +329,9 @@ void collect_uca_results(
     ptr_array->power_routing_to_bank = uca->power_routing_to_bank;
     ptr_array->power_addr_input_htree = uca->bank.htree_in_add->power;
     ptr_array->power_data_input_htree = uca->bank.htree_in_data->power;
-//    cout<<"power_data_input_htree"<<uca->bank.htree_in_data->power.readOp.leakage<<endl;
+//    std::cout<<"power_data_input_htree"<<uca->bank.htree_in_data->power.readOp.leakage<<std::endl;
     ptr_array->power_data_output_htree = uca->bank.htree_out_data->power;
-//    cout<<"power_data_output_htree"<<uca->bank.htree_out_data->power.readOp.leakage<<endl;
+//    std::cout<<"power_data_output_htree"<<uca->bank.htree_out_data->power.readOp.leakage<<std::endl;
     ptr_array->power_row_predecoder_drivers = uca->bank.mat.r_predec->driver_power;
     ptr_array->power_row_predecoder_drivers.readOp.dynamic *= num_act_mats_hor_dir;
     ptr_array->power_row_predecoder_drivers.writeOp.dynamic *= num_act_mats_hor_dir;
@@ -419,15 +417,15 @@ void collect_uca_results(
     ptr_array->power_comparators.writeOp.dynamic *= num_act_mats_hor_dir;
     ptr_array->power_comparators.searchOp.dynamic *= num_act_mats_hor_dir;
 
-//    cout <<  "  num of mats: " << dyn_p.num_mats << endl;
+//    std::cout <<  "  num of mats: " << dyn_p.num_mats << std::endl;
     if (is_fa || pure_cam)
     {
     ptr_array->power_htree_in_search = uca->bank.htree_in_search->power;
-//    cout<<"power_htree_in_search"<<uca->bank.htree_in_search->power.readOp.leakage<<endl;
+//    std::cout<<"power_htree_in_search"<<uca->bank.htree_in_search->power.readOp.leakage<<std::endl;
     ptr_array->power_htree_out_search = uca->bank.htree_out_search->power;
-//    cout<<"power_htree_out_search"<<uca->bank.htree_out_search->power.readOp.leakage<<endl;
+//    std::cout<<"power_htree_out_search"<<uca->bank.htree_out_search->power.readOp.leakage<<std::endl;
     ptr_array->power_searchline = uca->bank.mat.power_searchline;
-//    cout<<"power_searchlineh"<<uca->bank.mat.power_searchline.readOp.leakage<<endl;
+//    std::cout<<"power_searchlineh"<<uca->bank.mat.power_searchline.readOp.leakage<<std::endl;
     ptr_array->power_searchline.searchOp.dynamic *= num_mats;
     ptr_array->power_searchline_precharge = uca->bank.mat.power_searchline_precharge;
     ptr_array->power_searchline_precharge.searchOp.dynamic *= num_mats;
@@ -436,7 +434,7 @@ void collect_uca_results(
     ptr_array->power_matchline_precharge = uca->bank.mat.power_matchline_precharge;
     ptr_array->power_matchline_precharge.searchOp.dynamic *= num_mats;
     ptr_array->power_matchline_to_wordline_drv = uca->bank.mat.power_ml_to_ram_wl_drv;
-//    cout<<"power_matchline.searchOp.leakage"<<uca->bank.mat.power_matchline.searchOp.leakage<<endl;
+//    std::cout<<"power_matchline.searchOp.leakage"<<uca->bank.mat.power_matchline.searchOp.leakage<<std::endl;
     }
 
     ptr_array->activate_energy = uca->activate_energy;
@@ -451,18 +449,18 @@ void collect_uca_results(
     ptr_array->precharge_delay = uca->precharge_delay;
 
 
-//      cout<<"power_matchline.searchOp.leakage"<<uca->bank.mat.<<endl;
+//      std::cout<<"power_matchline.searchOp.leakage"<<uca->bank.mat.<<std::endl;
 //
 //    if (!(is_fa || pure_cam))
 //    {
-//     cout <<  "  num of cols: " << dyn_p.num_c_subarray << endl;
+//     std::cout <<  "  num of cols: " << dyn_p.num_c_subarray << std::endl;
 //    }
 //    else if (is_fa)
 //    {
-//  	  cout <<  "  num of cols: " << dyn_p.tag_num_c_subarray+ dyn_p.data_num_c_subarray<< endl;
+//  	  std::cout <<  "  num of cols: " << dyn_p.tag_num_c_subarray+ dyn_p.data_num_c_subarray<< std::endl;
 //    } else
-//  	  cout <<  "  num of cols: " << dyn_p.tag_num_c_subarray<< endl;
-//      cout <<  uca->bank.mat.subarray.get_total_cell_area()<<endl;
+//  	  std::cout <<  "  num of cols: " << dyn_p.tag_num_c_subarray<< std::endl;
+//      std::cout <<  uca->bank.mat.subarray.get_total_cell_area()<<std::endl;
 
 	ptr_array->array_leakage= uca->bank.array_leakage;
 	ptr_array->wl_leakage= uca->bank.wl_leakage;
@@ -488,9 +486,9 @@ void collect_uca_results(
 
     ptr_array->num_active_mats = uca->bank.dp.num_act_mats_hor_dir;
     ptr_array->num_submarray_mats = uca->bank.mat.num_subarrays_per_mat;
-    //    cout<<"array_leakage"<<ptr_array->array_leakage<<endl;
-//    cout<<"wl_leakage"<<ptr_array->wl_leakage<<endl;
-//    cout<<"cl_leakage"<<ptr_array->cl_leakage<<endl;
+    //    std::cout<<"array_leakage"<<ptr_array->array_leakage<<std::endl;
+//    std::cout<<"wl_leakage"<<ptr_array->wl_leakage<<std::endl;
+//    std::cout<<"cl_leakage"<<ptr_array->cl_leakage<<std::endl;
 
     ptr_array->long_channel_leakage_reduction_periperal = uca->long_channel_leakage_reduction_periperal;
     ptr_array->long_channel_leakage_reduction_memcell = uca->long_channel_leakage_reduction_memcell;
@@ -549,7 +547,7 @@ bool check_mem_org(mem_array & u, const min_values_t *minval)
 
 
 
-void find_optimal_uca(uca_org_t *res, min_values_t * minval, list<uca_org_t> & ulist)
+void find_optimal_uca(uca_org_t *res, min_values_t * minval, std::list<uca_org_t> & ulist)
 {
   double cost = 0;
   double min_cost = BIGNUM;
@@ -563,11 +561,11 @@ void find_optimal_uca(uca_org_t *res, min_values_t * minval, list<uca_org_t> & u
 
   if (ulist.empty() == true)
   {
-    cout << "ERROR: no valid cache organizations found" << endl;
+    std::cout << "ERROR: no valid cache organizations found" << std::endl;
     exit(0);
   }
 
-  for (list<uca_org_t>::iterator niter = ulist.begin(); niter != ulist.end(); niter++)
+  for (std::list<uca_org_t>::iterator niter = ulist.begin(); niter != ulist.end(); niter++)
   {
     if (g_ip->ed == 1)
     {
@@ -625,14 +623,14 @@ void find_optimal_uca(uca_org_t *res, min_values_t * minval, list<uca_org_t> & u
 
   if (min_cost == BIGNUM)
   {
-    cout << "ERROR: no cache organizations met optimization criteria" << endl;
+    std::cout << "ERROR: no cache organizations met optimization criteria" << std::endl;
     exit(0);
   }
 }
 
 
 
-void filter_tag_arr(const min_values_t * min, list<mem_array *> & list)
+void filter_tag_arr(const min_values_t * min, std::list<mem_array *> & list)
 {
   double cost = BIGNUM;
   double cur_cost;
@@ -641,7 +639,7 @@ void filter_tag_arr(const min_values_t * min, list<mem_array *> & list)
 
   if (list.empty() == true)
   {
-    cout << "ERROR: no valid tag organizations found" << endl;
+    std::cout << "ERROR: no valid tag organizations found" << std::endl;
     exit(1);
   }
 
@@ -678,7 +676,7 @@ void filter_tag_arr(const min_values_t * min, list<mem_array *> & list)
   }
   if(!res)
   {
-    cout << "ERROR: no valid tag organizations found" << endl;
+    std::cout << "ERROR: no valid tag organizations found" << std::endl;
     exit(0);
   }
 
@@ -687,15 +685,15 @@ void filter_tag_arr(const min_values_t * min, list<mem_array *> & list)
 
 
 
-void filter_data_arr(list<mem_array *> & curr_list)
+void filter_data_arr(std::list<mem_array *> & curr_list)
 {
   if (curr_list.empty() == true)
   {
-    cout << "ERROR: no valid data array organizations found" << endl;
+    std::cout << "ERROR: no valid data array organizations found" << std::endl;
     exit(1);
   }
 
-  list<mem_array *>::iterator iter;
+  std::list<mem_array *>::iterator iter;
 
   for (iter = curr_list.begin(); iter != curr_list.end(); ++iter)
   {
@@ -736,10 +734,10 @@ void solve(uca_org_t *fin_res)
   init_tech_params(g_ip->F_sz_um, false);
 
 
-  list<mem_array *> tag_arr (0);
-  list<mem_array *> data_arr(0);
-  list<mem_array *>::iterator miter;
-  list<uca_org_t> sol_list(1, uca_org_t());
+  std::list<mem_array *> tag_arr (0);
+  std::list<mem_array *> data_arr(0);
+  std::list<mem_array *>::iterator miter;
+  std::list<uca_org_t> sol_list(1, uca_org_t());
 
   fin_res->tag_array.access_time = 0;
   fin_res->tag_array.Ndwl = 0;
@@ -851,13 +849,13 @@ void solve(uca_org_t *fin_res)
   }
 
 
-  //cout << data_arr.size() << "\t" << tag_arr.size() <<" before\n";
+  //std::cout << data_arr.size() << "\t" << tag_arr.size() <<" before\n";
   filter_data_arr(data_arr);
   if(!(pure_ram||pure_cam||g_ip->fully_assoc))
   {
     filter_tag_arr(t_min, tag_arr);
   }
-  //cout << data_arr.size() << "\t" << tag_arr.size() <<" after\n";
+  //std::cout << data_arr.size() << "\t" << tag_arr.size() <<" after\n";
 
 
   if (pure_ram||pure_cam||g_ip->fully_assoc)
@@ -1001,7 +999,7 @@ void update_dvs(uca_org_t *fin_res)
 	}
 	else
 	{
-		cout << "ERROR: Cannot retrieve array structure for tag and data array" << endl;
+		std::cout << "ERROR: Cannot retrieve array structure for tag and data array" << std::endl;
 		exit(1);
 	}
 }
@@ -1017,7 +1015,7 @@ void update_pg(uca_org_t *fin_res)
 			if (i == 0) {g_ip->hp_Vdd = 0.8; }
 			else g_ip->hp_Vdd = 1.1;
 			g_ip->specific_hp_vdd = true;
-			cout<<"VDD=====" << g_ip->hp_Vdd <<endl;
+			std::cout<<"VDD=====" << g_ip->hp_Vdd <<std::endl;
 			//CactiWire winit;
 			winit.wire_dvs_update();
 			CactiWire::print_wire();
@@ -1072,7 +1070,7 @@ void update_pg(uca_org_t *fin_res)
 	}
 	else
 	{
-		cout << "ERROR: Cannot retrieve array structure for tag and data array" << endl;
+		std::cout << "ERROR: Cannot retrieve array structure for tag and data array" << std::endl;
 		exit(1);
 	}
 	//reset input to original values in *.cfg file
@@ -1100,7 +1098,7 @@ void update(uca_org_t *fin_res)
     }
     else
     {
-      cout << "ERROR: Cannot retrieve array structure for leakage feedback" << endl;
+      std::cout << "ERROR: Cannot retrieve array structure for leakage feedback" << std::endl;
       exit(1);
     }
   }
@@ -1113,7 +1111,7 @@ void update(uca_org_t *fin_res)
   }
   else
   {
-    cout << "ERROR: Cannot retrieve array structure for leakage feedback" << endl;
+    std::cout << "ERROR: Cannot retrieve array structure for leakage feedback" << std::endl;
     exit(1);
   }
 

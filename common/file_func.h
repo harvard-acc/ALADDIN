@@ -2,7 +2,6 @@
 #define FILE_FUNC_H
 
 #include <iostream>
-#include <sstream>  // std::istringstream
 #include <fstream>
 #include <stdlib.h>
 #include <string>
@@ -11,35 +10,43 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <zlib.h>
-using namespace std;
 
-void write_gzip_file(string gzip_file_name, unsigned size, vector<int>& output);
-void write_gzip_bool_file(string gzip_file_name,
+void write_gzip_file(std::string gzip_file_name,
+                     unsigned size,
+                     std::vector<int>& output);
+void write_gzip_bool_file(std::string gzip_file_name,
                           unsigned size,
-                          vector<bool>& output);
-void write_gzip_unsigned_file(string gzip_file_name,
+                          std::vector<bool>& output);
+void write_gzip_unsigned_file(std::string gzip_file_name,
                               unsigned size,
-                              vector<unsigned>& output);
-void write_gzip_string_file(string gzip_file_name,
+                              std::vector<unsigned>& output);
+void write_gzip_string_file(std::string gzip_file_name,
                             unsigned size,
-                            vector<string>& output);
-void write_string_file(string file_name, unsigned size, vector<string>& output);
+                            std::vector<std::string>& output);
+void write_string_file(std::string file_name,
+                       unsigned size,
+                       std::vector<std::string>& output);
 
-void read_file(string file_name, vector<int>& output);
-void read_gzip_file(string gzip_file_name, unsigned size, vector<int>& output);
-void read_gzip_unsigned_file(string gzip_file_name,
+void read_file(std::string file_name, std::vector<int>& output);
+void read_gzip_file(std::string gzip_file_name,
+                    unsigned size,
+                    std::vector<int>& output);
+void read_gzip_unsigned_file(std::string gzip_file_name,
                              unsigned size,
-                             vector<unsigned>& output);
-void read_gzip_string_file(string gzip_file_name,
+                             std::vector<unsigned>& output);
+void read_gzip_string_file(std::string gzip_file_name,
                            unsigned size,
-                           vector<string>& output);
-void read_gzip_file_no_size(string gzip_file_name, vector<int>& output);
-void read_gzip_2_unsigned_file(string gzip_file_name,
-                               unsigned size,
-                               vector<pair<unsigned, unsigned>>& output);
-void read_gzip_1in2_unsigned_file(string gzip_file_name,
+                           std::vector<std::string>& output);
+void read_gzip_file_no_size(std::string gzip_file_name,
+                            std::vector<int>& output);
+void read_gzip_2_unsigned_file(
+    std::string gzip_file_name,
+    unsigned size,
+    std::vector<std::pair<unsigned, unsigned>>& output);
+void read_gzip_1in2_unsigned_file(std::string gzip_file_name,
                                   unsigned size,
-                                  vector<unsigned>& output);
+                                  std::vector<unsigned>& output);
 
-bool fileExists(const string file_name);
+bool fileExists(const std::string file_name);
+
 #endif

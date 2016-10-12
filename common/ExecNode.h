@@ -5,27 +5,37 @@
 #include <sstream>
 #include <string>
 
-#include <boost/graph/graph_traits.hpp>
-
 #include "opcode_func.h"
-#include "boost_typedefs.h"
+#include "typedefs.h"
+
+#define BYTE_SIZE 8
+// Bitmask to ensure that we don't attempt to access above the 32-bit address
+// space assuming a 4GB memory. In accelerator simulation with memory system,
+// the mem_bus address range is the same as memory size, in stead of the 48-bit
+// address space in the X86_64 implementation.
+#define ADDR_MASK 0xffffffff
 
 // Stores all information about a memory access.
 struct MemAccess {
   // Address read from the trace.
-  uint64_t vaddr;
+  Addr vaddr;
   // Physical address (used for caches only).
-  uint64_t paddr;
-  // Size of the memory access in BITS.
+  Addr paddr;
+  // Size of the memory access in bytes.
   size_t size;
+  // HACK: Additional offset from vaddr/paddr, used to work around dependence
+  // analysis bugs when dmaLoading from non-base addresses.
+  size_t offset;
   // Is floating-point value or not.
   bool is_float;
-  // If this is not a store, then this value is meaningless.
-  double value;
+  // Hex representation of the value loaded or stored.  For FP values, this is
+  // the IEEE-754 representation.
+  uint64_t value;
 
   MemAccess() {
     vaddr = 0x0;
     paddr = 0x0;
+    offset = 0x0;
     size = 0;
     is_float = false;
     value = 0;
@@ -40,8 +50,8 @@ class ExecNode {
         basic_block_id(""), inst_id(""), line_num(-1), start_execution_cycle(0),
         complete_execution_cycle(0), num_parents(0), isolated(true),
         inductive(false), dynamic_mem_op(false), double_precision(false),
-        array_label(""), time_before_execution(0.0), mem_access(nullptr),
-        vertex_assigned(false) {}
+        array_label(""), partition_index(0), time_before_execution(0.0),
+        mem_access(nullptr), vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -77,6 +87,7 @@ class ExecNode {
   bool is_double_precision() { return double_precision; }
   bool has_vertex() { return vertex_assigned; }
   std::string get_array_label() { return array_label; }
+  unsigned get_partition_index() { return partition_index; }
   bool has_array_label() { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }
   float get_time_before_execution() { return time_before_execution; }
@@ -106,12 +117,16 @@ class ExecNode {
     this->double_precision = double_precision;
   }
   void set_array_label(std::string label) { array_label = label; }
+  void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(long long int vaddr,
-                      size_t size, bool is_float = false,
-                      double value = 0) {
+                      size_t offset,
+                      size_t size_in_bytes,
+                      bool is_float = false,
+                      uint64_t value = 0) {
     mem_access = new MemAccess;
     mem_access->vaddr = vaddr;
-    mem_access->size = size;
+    mem_access->offset = offset;
+    mem_access->size = size_in_bytes;
     mem_access->is_float = is_float;
     mem_access->value = value;
   }
@@ -120,13 +135,13 @@ class ExecNode {
   /* Compound accessors. */
   std::string get_dynamic_method() {
     // TODO: Really inefficient - make something better.
-    stringstream oss;
+    std::stringstream oss;
     oss << static_method << "-" << dynamic_invocation;
     return oss.str();
   }
   std::string get_static_node_id() {
     // TODO: Really inefficient - make something better.
-    stringstream oss;
+    std::stringstream oss;
     oss << static_method << "-" << dynamic_invocation << "-" << inst_id;
     return oss.str();
   }
@@ -257,7 +272,7 @@ class ExecNode {
   bool is_int_mul_op() {
     switch (microop) {
       case LLVM_IR_Mul:
-      case LLVM_IR_UDiv:
+      case LLVM_IR_UDiv:  // TODO: Divides need special treatment.
       case LLVM_IR_SDiv:
       case LLVM_IR_URem:
       case LLVM_IR_SRem:
@@ -368,9 +383,7 @@ class ExecNode {
     }
   }
 
-  bool is_multicycle_op() {
-    return is_fp_op();
-  }
+  bool is_multicycle_op() { return is_fp_op() || is_trig_op(); }
 
   bool is_fp_op() {
     switch (microop) {
@@ -388,8 +401,17 @@ class ExecNode {
   bool is_fp_mul_op() {
     switch (microop) {
       case LLVM_IR_FMul:
-      case LLVM_IR_FDiv:
+      case LLVM_IR_FDiv:  // TODO: Remove once we have a divider model.
       case LLVM_IR_FRem:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool is_fp_div_op() {
+    switch (microop) {
+      case LLVM_IR_FDiv:
         return true;
       default:
         return false;
@@ -405,13 +427,37 @@ class ExecNode {
         return false;
     }
   }
+
+  bool is_trig_op() {
+    switch (microop) {
+      case LLVM_IR_Sine:
+      case LLVM_IR_Cosine:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   unsigned get_multicycle_latency() {
     if (is_fp_op())
       return fp_node_latency_in_cycles();
+    else if (is_trig_op())
+      return trig_node_latency_in_cycles();
     return 1;
   }
 
-  unsigned fp_node_latency_in_cycles() { return FP_LATENCY_IN_CYCLES; }
+  unsigned fp_node_latency_in_cycles() {
+    if (is_fp_div_op())
+      return FP_DIV_LATENCY_IN_CYCLES;
+    else if (is_fp_mul_op())
+      return FP_MUL_LATENCY_IN_CYCLES;
+    else
+      return FP_ADD_LATENCY_IN_CYCLES;
+  }
+
+  unsigned trig_node_latency_in_cycles() {
+    return TRIG_SINE_LATENCY_IN_CYCLES;
+  }
 
  protected:
   /* Unique dynamic node id. */
@@ -449,6 +495,8 @@ class ExecNode {
   bool double_precision;
   /* Name of the array being accessed if this is a memory operation. */
   std::string array_label;
+  /* Index of the partitioned scratchpad being accessed. */
+  unsigned partition_index;
   /* Elapsed time before this node executes. Can be a fraction of a cycle.
    * TODO: Maybe refactor this so it's only part of ScratchpadDatapath
    * specifically. Something like a member class that can be extended.

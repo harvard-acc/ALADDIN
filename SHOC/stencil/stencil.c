@@ -1,20 +1,23 @@
 #include "stencil.h"
-//The row/col sizes specified in SHOC:
-//{512, 1024, 2048, 4096}
 
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
 
 void stencil (int *orig, int *sol, int const *filter)
 {
+#ifdef DMA_MODE
+	dmaLoad(&orig[0], 0, N*sizeof(int));
+#endif
 	int i, j,k1, k2, sidx, didx, fidx;
 	int tmp, Si, SI, Di, Ti;
-
-	for (i=0; i<32; i++) {
-		for (j=0; j<32; j++) {
+  outer:for (i=0; i<N-2; i++) {
+    inner:for (j=0; j<N-2; j++) {
 			Si = 0;
 			SI = 0;
 			tmp = 0;
 			fidx = 0;
-			SI = i * 34;
+			SI = i * N;
 			sidx = SI + j ;
 			didx = sidx;
 
@@ -33,7 +36,7 @@ void stencil (int *orig, int *sol, int const *filter)
 			sidx ++;
 			fidx ++;
 
-			sidx += (34 ) - 3;
+			sidx += (N ) - 3;
 
 			Si = filter[fidx] * orig[sidx];
 			tmp = tmp + Si;
@@ -50,7 +53,7 @@ void stencil (int *orig, int *sol, int const *filter)
 			sidx ++;
 			fidx ++;
 
-			sidx = sidx + (34 ) - 3;
+			sidx = sidx + (N ) - 3;
 
 			Si = filter[fidx] * orig[sidx];
 			tmp = tmp + Si;
@@ -69,6 +72,9 @@ void stencil (int *orig, int *sol, int const *filter)
 			sol[didx] = tmp;
 		}
 	}
+#ifdef DMA_MODE
+  dmaStore(&sol[0], 0, N*sizeof(int));
+#endif
 }
 
 int main()
@@ -82,15 +88,15 @@ int main()
  	srand(8650341L);
         max = 2147483646;
         min = 0;
-  OrigImg = (int *)malloc(sizeof(int) * 34 * 34);
-  Solution = (int *)malloc(sizeof(int) * 34 * 34);
+  OrigImg = (int *)malloc(sizeof(int) * N * N);
+  Solution = (int *)malloc(sizeof(int) * N * N);
   Filter = (int *) malloc(sizeof(int) * 3 * 3);
-	for(i=0;i<34 ;i++)
+	for(i=0;i<N ;i++)
 	{
-		for(j=0;j<34 ;j++)
+		for(j=0;j<N ;j++)
 		{
-			OrigImg[i * (34 ) + j] = (int)(( rand() * 1.0 * ( max-min) / (RAND_MAX)) + min);
-			Solution[i * (34 ) + j] = 0;
+			OrigImg[i * (N ) + j] = (int)(( rand() * 1.0 * ( max-min) / (RAND_MAX)) + min);
+			Solution[i * (N ) + j] = 0;
 			//printf("Orig: %d ", OrigImg[i*(34+2) +j]);
 		}
 	}
@@ -107,14 +113,20 @@ int main()
 		}
 	}
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	stencil(&OrigImg[0], &Solution[0], &Filter[0]);
+#ifdef GEM5
+  dumpGem5Stats("stencil");
+#endif
 
 	for(i=0;i<(4);i++)
 		{
 			for(j=0;j<4;j++)
 			{
-				printf("%d, %d, %d,%d\n ", i, j, OrigImg[i*(34 ) + j], Solution[i *
-        (34) + j]);
+				printf("%d, %d, %d,%d\n ", i, j, OrigImg[i*(N ) + j], Solution[i *
+        (N) + j]);
 			}
 		}
 	printf("Success!!\n");

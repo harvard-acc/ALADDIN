@@ -91,9 +91,9 @@ def main(directory, kernel, part, unroll, pipe, cycle_time):
       sys.exit(0)
   #loop unrolling and flattening
   if kernel == 'bb_gemm':
-    config.write('unrolling,bb_gemm,5,%s\n' %(unroll))
-    config.write('flatten,bb_gemm,6\n' )
-    config.write('flatten,bb_gemm,8\n' )
+    config.write('unrolling,bb_gemm,11,%s\n' %(unroll))
+    config.write('flatten,bb_gemm,12\n' )
+    config.write('flatten,bb_gemm,14\n' )
 
   elif kernel == 'fft':
     config.write('unrolling,step1,16,%s\n' %(unroll))
@@ -129,7 +129,8 @@ def main(directory, kernel, part, unroll, pipe, cycle_time):
     config.write('flatten,step11,304\n')
 
   elif kernel == 'md':
-    config.write('unrolling,md_kernel,19,%s\n' %(unroll))
+    config.write('unrolling,md,17,%s\n' %(unroll))
+    config.write('flatten,md,25\n')
 
   elif kernel == 'pp_scan':
     config.write('unrolling,sum_scan,26,%s\n' %(unroll))
@@ -139,7 +140,7 @@ def main(directory, kernel, part, unroll, pipe, cycle_time):
     config.write('flatten,last_step_scan,34\n')
 
   elif kernel == 'reduction':
-    config.write('unrolling,reduction,8,%s\n' %(unroll))
+    config.write('unrolling,reduction,10,%s\n' %(unroll))
 
   elif kernel == 'ss_sort':
     config.write('unrolling,init,52,%s\n' %(unroll))
@@ -158,7 +159,7 @@ def main(directory, kernel, part, unroll, pipe, cycle_time):
     config.write('flatten,stencil,12\n')
 
   elif kernel == 'triad':
-    config.write('unrolling,triad,5,%s\n' %(unroll))
+    config.write('unrolling,triad,10,%s\n' %(unroll))
 
   config.close()
 

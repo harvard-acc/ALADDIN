@@ -2,9 +2,7 @@
 
 #include "Registers.h"
 
-Registers::~Registers() {
-  clear();
-}
+Registers::~Registers() { clear(); }
 
 void Registers::clear() {
   for (auto it = regs.begin(); it != regs.end(); ++it) {

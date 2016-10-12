@@ -2,15 +2,13 @@
 #define __DDDG_H__
 
 #include <stack>
-#include <string.h>
+#include <string>
 #include <zlib.h>
 #include <stdlib.h>
 
 #include "ExecNode.h"
 #include "file_func.h"
 #include "opcode_func.h"
-/*#define HANDLE_INST(num, opc, clas) case num: return opc;*/
-using namespace std;
 
 struct edge_node_info {
   unsigned sink_node;
@@ -18,10 +16,14 @@ struct edge_node_info {
 };
 
 // data structure used to track dependency
-typedef unordered_map<std::string, unsigned int> string_to_uint;
-typedef unordered_map<long long int, unsigned int> uint_to_uint;
-typedef unordered_multimap<unsigned int, edge_node_info>
+typedef std::unordered_map<std::string, unsigned int> string_to_uint;
+typedef std::unordered_map<Addr, unsigned int> uint_to_uint;
+typedef std::unordered_multimap<unsigned int, edge_node_info>
     multi_uint_to_node_info;
+struct label_t {
+  std::string function;
+  std::string label_name;
+};
 
 class BaseDatapath;
 
@@ -38,6 +40,7 @@ class DDDG {
   int num_of_memory_dependency();
   void output_dddg();
   bool build_initial_dddg(gzFile trace_file);
+  std::multimap<unsigned, label_t> get_labelmap() { return labelmap; }
 
  private:
   void parse_instruction_line(std::string line);
@@ -45,6 +48,7 @@ class DDDG {
   void parse_result(std::string line);
   void parse_forward(std::string line);
   void parse_call_parameter(std::string line, int param_tag);
+  void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
 
@@ -63,9 +67,12 @@ class DDDG {
   int num_of_parameters;
   // Used to track the instruction that initialize call function parameters
   int last_call_source;
+  /* Unique register ID in the caller function. Used to create a mapping between
+   * register IDs in caller and callee functions. */
+  std::string unique_reg_in_caller_func;
 
   std::string curr_instid;
-  std::vector<long long int> parameter_value_per_inst;
+  std::vector<Addr> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
   int num_of_instructions;
@@ -77,8 +84,12 @@ class DDDG {
   // edge multimap
   multi_uint_to_node_info register_edge_table;
   multi_uint_to_node_info memory_edge_table;
+  // Line number mapping to function and label name. If there are multiple
+  // source files, there could be multiple function/labels with the same line
+  // number.
+  std::multimap<unsigned, label_t> labelmap;
   // keep track of currently executed methods
-  stack<std::string> active_method;
+  std::stack<std::string> active_method;
   // manage methods
   string_to_uint function_counter;
   string_to_uint register_last_written;

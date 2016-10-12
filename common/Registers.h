@@ -32,6 +32,13 @@ class Register {
 
   void increment_loads() { loads++; }
   void increment_stores() { stores++; }
+  void increment_dma_accesses(bool isLoad) {
+    // A dmaLoad will cause a STORE to the reg, and vice versa.
+    if (isLoad)
+      increment_stores();
+    else
+      increment_loads();
+  }
 
   double getReadEnergy() { return readEnergy; }
   double getWriteEnergy() { return writeEnergy; }
@@ -52,6 +59,7 @@ class Register {
   unsigned int stores;
 };
 
+// TODO: This is a pretty terrible naming distinction...
 class Registers {
 
  public:

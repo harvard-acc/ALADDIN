@@ -290,6 +290,7 @@ CactiRouter::calc_router_parameters()
   void
 CactiRouter::print_router()
 {
+  using namespace std;
   cout << "\n\nCactiRouter stats:\n";
   cout << "\tCactiRouter Area - "<< area.get_area()*1e-6<<"(mm^2)\n";
   cout << "\tMaximum possible network frequency - " << (1/max_cyc)*1e3 << "GHz\n";

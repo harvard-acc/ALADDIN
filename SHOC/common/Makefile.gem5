@@ -1,0 +1,52 @@
+# Common Make targets for simulating CortexSuite in gem5.
+#
+# ALADDIN_HOME needs to be defined as an environment variable.
+# The gem5 dependencies are listed as .cpp files for compatibility with gem5.
+# To compile them with C code, we need to explicitly use gcc.
+#
+# This expects to be called from src/c and included by Makefile.tracer.
+
+#### Toggle the following line to toggle profiling with gem5 statistics.
+ENABLE_GEM5_PROFILING=-DENABLE_GEM5_PROFILING
+
+#### Toggle the following line to toggle profiling with system wall clock.
+# ENABLE_SYS_PROFILING=-DENABLE_SYS_PROFILING
+
+.PHONY: gem5 gem5-cpu gem5-accel clean-gem5
+
+GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
+GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
+
+# -mno-sse
+GEM5_CFLAGS = -static -O3 -mno-80387 -msoft-float \
+                   -march=nocona -msse -mfpmath=sse \
+                   -fno-exceptions -fno-inline \
+                   -DGEM5 \
+                   $(ENABLE_GEM5_PROFILING) \
+                   $(ENABLE_SYS_PROFILING)
+
+INCLUDES += -I$(ALADDIN_HOME)
+LFLAGS = -lm
+
+# Builds both standalone CPU version and the HW accelerated version.
+gem5: gem5-cpu gem5-accel
+
+# Builds the standalone CPU version only.
+gem5-cpu:
+	@$(MAKE) -C . bench-gem5
+
+# Builds the gem5 version with HW acceleration turned on.
+gem5-accel:
+	@$(MAKE) -C . bench-gem5-accel
+
+bench-gem5: $(C_SRC) $(GEM5_FULL_SRCS)
+	@echo Building benchmark $(BMARK) for gem5.
+	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) $(GEM5_FULL_SRCS) $(C_SRC) $(INCLUDES) -o $(BMARK)-gem5 $(LFLAGS)
+
+bench-gem5-accel: $(C_SRC) $(GEM5_FULL_SRCS)
+	@echo Building benchmark $(BMARK) for gem5 with HW acceleration.
+	@$(CC) $(GEM5_CFLAGS) $(CFLAGS) -DGEM5_HARNESS $(C_SRC) $(GEM5_FULL_SRCS) $(INCLUDES) -o $(BMARK)-gem5-accel $(LFLAGS)
+
+clean-gem5:
+	rm -rf $(BMARK)-gem5 $(BMARK)-gem5-accel
+

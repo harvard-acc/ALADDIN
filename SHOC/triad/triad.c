@@ -1,9 +1,23 @@
 #include "triad.h"
 
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 void triad(int *a,int *b, int *c, int s){
-	int i;
-	for(i=0;i<NUM;i++)
+#ifdef DMA_MODE
+	dmaLoad(&a[0], 0*1024*sizeof(int), PAGE_SIZE);
+	dmaLoad(&a[0], 1*1024*sizeof(int), PAGE_SIZE);
+  dmaLoad(&b[0], 0*1024*sizeof(int), PAGE_SIZE);
+  dmaLoad(&b[0], 1*1024*sizeof(int), PAGE_SIZE);
+#endif
+  int i;
+  triad:for(i=0;i<NUM;i++)
     c[i] = a[i] + s*b[i];
+#ifdef DMA_MODE
+  dmaStore(&c[0], 0*1024*sizeof(int), PAGE_SIZE);
+  dmaStore(&c[0], 1*1024*sizeof(int), PAGE_SIZE);
+#endif
 }
 
 int main(){
@@ -18,13 +32,18 @@ int main(){
 		a[i] = rand();
 		b[i] = rand();
 	}
-
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	triad(&a[0],&b[0],&c[0],3);
+#ifdef GEM5
+  dumpGem5Stats("triad");
+#endif
   FILE *output;
   output = fopen("output.data", "w");
 	for(i=0; i<NUM; i++)
     fprintf(output, "%d,", c[i]);
   fprintf(output, "\n");
   fclose(output);
-	return a[0];
+	return 0;
 }

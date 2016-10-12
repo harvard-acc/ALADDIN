@@ -38,9 +38,6 @@
 #include "component.h"
 #include "parameter.h"
 
-using namespace std;
-
-
 class Subarray : public Component
 {
   public:
@@ -64,7 +61,4 @@ class Subarray : public Component
     void compute_C();  // compute bitline and wordline capacitance
 };
 
-
-
 #endif
-

@@ -9,7 +9,6 @@
  * getTotalMemArea()
  * getAverageMemPower()
  * writeConfiguration()
- *
  */
 
 #include <iostream>
@@ -23,8 +22,10 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include "DatabaseDeps.h"
+
 #include "ExecNode.h"
-#include "boost_typedefs.h"
+#include "typedefs.h"
 #include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
@@ -34,8 +35,6 @@
 
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
-
-using namespace std;
 
 struct memActivity {
   unsigned read;
@@ -50,6 +49,7 @@ struct funcActivity {
   unsigned fp_dp_mul;
   unsigned fp_sp_add;
   unsigned fp_dp_add;
+  unsigned trig;
   funcActivity() {
     mul = 0;
     add = 0;
@@ -59,13 +59,26 @@ struct funcActivity {
     fp_dp_mul = 0;
     fp_sp_add = 0;
     fp_dp_add = 0;
+    trig = 0;
+  }
+
+  bool is_idle() {
+    return (mul == 0 && add == 0 && bit == 0 && shifter == 0 &&
+            fp_sp_mul == 0 && fp_dp_mul == 0 && fp_dp_add == 0 && trig == 0);
   }
 };
 
 class Scratchpad;
 
+enum MemoryType {
+  spad,
+  reg,
+  cache,
+};
+
 struct partitionEntry {
-  std::string type;
+  MemoryType memory_type;
+  PartitionType partition_type;
   unsigned array_size;  // num of bytes
   unsigned wordsize;    // in bytes
   unsigned part_factor;
@@ -102,6 +115,7 @@ struct RQEntryComp {
 struct summary_data_t {
   std::string benchName;
   int num_cycles;
+  int idle_fu_cycles;
   float avg_power;
   float avg_mem_power;
   float avg_fu_power;
@@ -116,6 +130,7 @@ struct summary_data_t {
   int max_fp_dp_mul;
   int max_fp_sp_add;
   int max_fp_dp_add;
+  int max_trig;
   int max_mul;
   int max_add;
   int max_bit;
@@ -123,9 +138,33 @@ struct summary_data_t {
   int max_reg;
 };
 
+/* Custom graphviz label writer that outputs the micro-op of the vertex.
+ *
+ * Create a map from Vertex to microop and call make_microop_label_writer()
+ * with this map. The micro-op is not a Boost property of the Vertex, which is
+ * why the Boost-supplied label writer class is insufficient.
+ */
+template <class Map> class microop_label_writer {
+ public:
+  microop_label_writer(Map _vertexToMicroop)
+      : vertexToMicroop(_vertexToMicroop) {}
+  void operator()(std::ostream& out, const Vertex& v) {
+    out << "[label=" << vertexToMicroop[v] << "]";
+  }
+
+ private:
+  Map vertexToMicroop;
+};
+
+template <class Map>
+inline microop_label_writer<Map> make_microop_label_writer(Map map) {
+  return microop_label_writer<Map>(map);
+}
+
 class BaseDatapath {
  public:
-  BaseDatapath(std::string bench, std::string trace_file_name,
+  BaseDatapath(std::string bench,
+               std::string trace_file_name,
                std::string config_file);
   virtual ~BaseDatapath();
 
@@ -135,6 +174,13 @@ class BaseDatapath {
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
+  void setLabelMap(std::multimap<unsigned, label_t>& _labelmap) {
+    labelmap = _labelmap;
+  }
+  void addCallArgumentMapping(std::string callee_reg_id,
+                              std::string caller_reg_id);
+  std::string getCallerRegID(std::string callee_func,
+                             std::string reg_id);
   virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
@@ -155,6 +201,9 @@ class BaseDatapath {
   std::string getBaseAddressLabel(unsigned int node_id) {
     return exec_nodes[node_id]->get_array_label();
   }
+  unsigned getPartitionIndex(unsigned int node_id) {
+    return exec_nodes[node_id]->get_partition_index();
+  }
   long long int getBaseAddress(std::string label) {
     return partition_config[label].base_addr;
   }
@@ -172,14 +221,18 @@ class BaseDatapath {
     return exec_nodes[node_id];
   }
   ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
+  partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
 
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
     auto part_it = partition_config.find(label);
-    if (part_it != partition_config.end())
+    // Add checking for zero to handle DMA operations where we only use
+    // base_addr to find the label name.
+    if (part_it != partition_config.end() && part_it->second.base_addr == 0) {
       part_it->second.base_addr = addr;
+    }
   }
   /*Return true if the func_name is added;
     Return false if the func_name is already added.*/
@@ -201,12 +254,12 @@ class BaseDatapath {
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
     for (auto part_it = partition_config.begin();
-              part_it != partition_config.end(); ++part_it)
+         part_it != partition_config.end();
+         ++part_it)
       part_it->second.base_addr = 0;
   }
   void clearLoopBound() { loopBound.clear(); }
   void clearRegStats() { regStats.clear(); }
-
 
   // Graph optimizations.
   void removeInductionDependence();
@@ -223,6 +276,13 @@ class BaseDatapath {
   void removeRepeatedStores();
   void treeHeightReduction();
 
+#ifdef USE_DB
+  // Specify the experiment to be associated with this simulation. Calling this
+  // method will result in the summary data being written to a datbaase when the
+  // simulation is complete.
+  void setExperimentParameters(std::string experiment_name);
+#endif
+
  protected:
   // Graph transformation helpers.
   void findMinRankNodes(ExecNode** node1,
@@ -235,6 +295,9 @@ class BaseDatapath {
 
   // Configuration parsing and handling.
   void parse_config(std::string bench, std::string config_file);
+
+  // Returns the unrolling factor for the loop bounded at this node.
+  unrolling_config_t::iterator getUnrollFactor(ExecNode* node);
 
   // State initialization.
   virtual void initBaseAddress();
@@ -254,7 +317,7 @@ class BaseDatapath {
   int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
-  void markNodeStarted(ExecNode* node);
+  virtual void markNodeStarted(ExecNode* node);
   void markNodeCompleted(std::list<ExecNode*>::iterator& executingQueuePos,
                          int& advance_to);
 
@@ -284,7 +347,6 @@ class BaseDatapath {
 
   // Memory structures.
   virtual double getTotalMemArea() = 0;
-  virtual unsigned getTotalMemSize() = 0;
   virtual void getAverageMemPower(unsigned int cycles,
                                   float* avg_power,
                                   float* avg_dynamic,
@@ -318,7 +380,7 @@ class BaseDatapath {
   virtual void stepExecutingQueue() = 0;
   virtual void globalOptimizationPass() = 0;
 
-  char* benchName;
+  std::string benchName;
   int num_cycles;
   float cycleTime;
   std::string config_file;
@@ -326,10 +388,14 @@ class BaseDatapath {
   bool pipelining;
   /* Unrolling and flattening share unrolling_config;
    * flatten if factor is zero.
-   * it maps static-method-linenumber to unrolling factor. */
-  std::unordered_map<std::string, int> unrolling_config;
+   * it maps loop labels to unrolling factor. */
+  unrolling_config_t unrolling_config;
   /* complete, block, cyclic, and cache partition share partition_config */
-  std::unordered_map<std::string, partitionEntry> partition_config;
+  partition_config_t partition_config;
+
+  /* Stores the register name mapping between caller and callee functions. */
+  std::unordered_map<std::string, std::string> call_argument_map;
+
   /* True if the summarized results should be stored to a database, false
    * otherwise */
   bool use_db;
@@ -351,6 +417,8 @@ class BaseDatapath {
   // Complete list of all execution nodes and their properties.
   std::map<unsigned int, ExecNode*> exec_nodes;
 
+  // Maps line numbers to labels.
+  std::multimap<unsigned, label_t> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;
@@ -362,6 +430,12 @@ class BaseDatapath {
 
   // Trace file.
   gzFile trace_file;
+
+  // Scratchpad config.
+  /* True if ready-bit Scratchpad is used. */
+  bool ready_mode;
+  /* Num of read/write ports per partition. */
+  unsigned num_ports;
 };
 
 #endif

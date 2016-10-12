@@ -110,3 +110,31 @@ SCENARIO("Test initBaseAddress w/ Pp_scan", "[pp_scan]") {
     }
   }
 }
+
+SCENARIO("Test initBaseAddress w/ sort-radix", "[sort-radix]") {
+  GIVEN("Test the mapping between global variables to function's local variables.") {
+    std::string bench("outputs/sort-radix");
+    std::string trace_file("inputs/sort-radix-trace.gz");
+    std::string config_file("inputs/config-sort-radix");
+
+    ScratchpadDatapath* acc;
+    Scratchpad* spad;
+    acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    acc->buildDddg();
+    acc->removeInductionDependence();
+    acc->removePhiNodes();
+    WHEN("Test initBaseAddress()") {
+      acc->initBaseAddress();
+      THEN("In the 1st update(): global b -> local b, global a -> local a.\n\
+           In the 2nd update(): global a -> local b, global b -> local a.\n\
+           In the 3rd update(): global b -> local b, global a -> local a.") {
+        REQUIRE(acc->getBaseAddressLabel(97169).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(97180).compare("b") == 0);
+        REQUIRE(acc->getBaseAddressLabel(240417).compare("b") == 0);
+        REQUIRE(acc->getBaseAddressLabel(240428).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(383665).compare("a") == 0);
+        REQUIRE(acc->getBaseAddressLabel(383676).compare("b") == 0);
+      }
+    }
+  }
+}

@@ -1,5 +1,13 @@
 .PHONY: all clean clean-test report_dir test junit_test
 
+ifeq ($(USE_DB), 1)
+ifeq ($(wildcard $(MYSQL_HOME)),)
+    $(error Set MYSQL_HOME to a valid location)
+endif
+LFLAGS += -lmysqlcppconn
+CFLAGS += -I$(MYSQL_HOME)/include -DUSE_DB
+endif
+
 TEST_REPORT_DIR = report_dir
 
 COMMON_OBJS = catch_common.o
@@ -7,7 +15,8 @@ TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_dynamic_method_name.o test_loop_pipelining.o \
             test_loop_unrolling.o test_rm_induction_var.o test_rm_phi.o \
             test_spm_part.o test_store_buffer.o \
-            test_tree_height_reduction.o test_loop_flatten.o
+            test_tree_height_reduction.o test_loop_flatten.o \
+            test_dma.o
 TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)

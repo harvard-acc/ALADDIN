@@ -1,5 +1,9 @@
 #include "ss_sort.h"
 
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 void print(int *a, int size)
 {
 	int i;
@@ -14,7 +18,7 @@ void local_scan(int bucket[BUCKETSIZE])
 {
   int radixID, i;
   //l
-  loop1_outter:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
+  loop1_outer:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
     //fully unroll
     loop1_inner:for (i = 1; i < SCAN_BLOCK; ++i)
     {
@@ -35,7 +39,7 @@ void last_step_scan(int bucket[BUCKETSIZE], int sum[SCAN_RADIX])
 {
   int radixID, i;
   //l
-  loop3_outter:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
+  loop3_outer:for (radixID = 0; radixID < SCAN_RADIX; ++radixID)
     //fully unroll
     loop3_inner:for (i = 0; i < SCAN_BLOCK; ++i)
     {
@@ -49,18 +53,18 @@ void init(int bucket[BUCKETSIZE])
 {
   int radixID, i;
   //same as partition factor! p
-  loop1_outter:for (radixID = 0; radixID < BUCKETSIZE; ++radixID)
+  loop1_outer:for (radixID = 0; radixID < BUCKETSIZE; ++radixID)
       bucket[radixID] = 0;
 }
 
 
 void hist(int bucket[BUCKETSIZE], int a[N], int exp)
 {
-  int blockID = 0;
+  int blockID = 0, maskID = 0;
 //h
   loop2:for (blockID = 0; blockID < NUMOFBLOCKS; blockID++)
   {
-    loop1: for (int maskID = 0; maskID < 4; maskID++)
+    loop1: for ( maskID = 0; maskID < 4; maskID++)
       bucket[((a[blockID * ELEMENTSPERBLOCK + maskID] >> exp)  & 0x3) * NUMOFBLOCKS + blockID + 1]++;
   }
 }
@@ -70,11 +74,11 @@ void hist(int bucket[BUCKETSIZE], int a[N], int exp)
 
 void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
 {
-  int blockID = 0;
+  int blockID = 0, maskID = 0;
   //unroll == h
   loop3:for (blockID = 0; blockID < NUMOFBLOCKS; blockID++)
   {
-    loop1: for (int maskID = 0; maskID < 4; maskID++) {
+    loop1: for (maskID = 0; maskID < 4; maskID++) {
       int a_value =  a[blockID * ELEMENTSPERBLOCK + maskID];
       int bucket_value = bucket[((a_value >> exp)  & 0x3) * NUMOFBLOCKS + blockID];
       b[bucket_value] = a_value;
@@ -86,6 +90,10 @@ void update(int b[N], int bucket[BUCKETSIZE], int a[N], int exp)
 void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
 	int i, exp = 0;
   bool flag = 0;
+#ifdef DMA_MODE
+  dmaLoad(&a[0], 0 * 1024 * sizeof(int), PAGE_SIZE);
+  dmaLoad(&a[0], 1 * 1024 * sizeof(int), PAGE_SIZE);
+#endif
 	for (exp = 0; exp < 2; exp+=2){
     //NEW TRY
     //BLOCKING
@@ -115,9 +123,11 @@ void ss_sort(int a[N], int b[N], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]){
       update(a, bucket, b, exp);
       flag = 0;
     }
-
-    //copy(a, b);
 	}
+#ifdef DMA_MODE
+  dmaStore(&a[0], 0 * 1024 * sizeof(int), PAGE_SIZE);
+  dmaStore(&a[0], 1 * 1024 * sizeof(int), PAGE_SIZE);
+#endif
 }
 
 int main()
@@ -143,7 +153,13 @@ int main()
 
 	//print(&arr[0], N);
 
+#ifdef GEM5
+  resetGem5Stats();
+#endif
 	ss_sort(arr, b, bucket, sum);
+#ifdef GEM5
+  dumpGem5Stats("ss_sort");
+#endif
 
 	//printf("\nSORTED : ");
 	print(&arr[0], 1);

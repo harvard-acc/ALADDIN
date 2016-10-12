@@ -37,7 +37,7 @@ SCENARIO("Test loopUnrolling w/ Triad", "[triad]") {
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(acc->doesEdgeExist(2, 9) == 1);
+        REQUIRE(acc->doesEdgeExist(0, 9) == 1);
         REQUIRE(acc->doesEdgeExist(24, 27) == 1);
         REQUIRE(acc->doesEdgeExist(48, 53) == 1);
         REQUIRE(acc->doesEdgeExist(72, 81) == 1);
@@ -86,7 +86,7 @@ SCENARIO("Test loopUnrolling w/ Reduction", "[reduction]") {
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(acc->doesEdgeExist(3, 5) == 1);
+        REQUIRE(acc->doesEdgeExist(0, 5) == 1);
         REQUIRE(acc->doesEdgeExist(32, 37) == 1);
         REQUIRE(acc->doesEdgeExist(32, 45) == 1);
         REQUIRE(acc->doesEdgeExist(992, 1021) == 1);
@@ -120,19 +120,22 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
       acc->loopUnrolling();
       THEN("Unrolled loop boundary should match the expectations.") {
         REQUIRE(acc->getUnrolledLoopBoundary(0) == 0);
-        REQUIRE(acc->getUnrolledLoopBoundary(1) == 369);
-        REQUIRE(acc->getUnrolledLoopBoundary(2) == 737);
-        REQUIRE(acc->getUnrolledLoopBoundary(3) == 1105);
-        REQUIRE(acc->getUnrolledLoopBoundary(4) == 1473);
-        REQUIRE(acc->getUnrolledLoopBoundary(5) == 1475);  // call break
-        REQUIRE(acc->getUnrolledLoopBoundary(6) == 1545);
-        REQUIRE(acc->getUnrolledLoopBoundary(7) == 1613);
-        REQUIRE(acc->getUnrolledLoopBoundary(8) == 1681);
-        REQUIRE(acc->getUnrolledLoopBoundary(9) == 1734);  // call break
-        REQUIRE(acc->getUnrolledLoopBoundary(10) == 2095);
-        REQUIRE(acc->getUnrolledLoopBoundary(11) == 2455);
-        REQUIRE(acc->getUnrolledLoopBoundary(12) == 2815);
-        REQUIRE(acc->getUnrolledLoopBoundary(13) == 3175);
+        REQUIRE(acc->getUnrolledLoopBoundary(1) == 1); //call break
+        REQUIRE(acc->getUnrolledLoopBoundary(2) == 369);
+        REQUIRE(acc->getUnrolledLoopBoundary(3) == 737);
+        REQUIRE(acc->getUnrolledLoopBoundary(4) == 1105);
+        REQUIRE(acc->getUnrolledLoopBoundary(5) == 1473);
+        REQUIRE(acc->getUnrolledLoopBoundary(6) == 1475);  // call break
+        REQUIRE(acc->getUnrolledLoopBoundary(7) == 1477);
+        REQUIRE(acc->getUnrolledLoopBoundary(8) == 1545);
+        REQUIRE(acc->getUnrolledLoopBoundary(9) == 1613);
+        REQUIRE(acc->getUnrolledLoopBoundary(10) == 1681);
+        REQUIRE(acc->getUnrolledLoopBoundary(11) == 1734);  // call break
+        REQUIRE(acc->getUnrolledLoopBoundary(12) == 1735);
+        REQUIRE(acc->getUnrolledLoopBoundary(13) == 2095);
+        REQUIRE(acc->getUnrolledLoopBoundary(14) == 2455);
+        REQUIRE(acc->getUnrolledLoopBoundary(15) == 2815);
+        REQUIRE(acc->getUnrolledLoopBoundary(16) == 3175);
       }
       THEN("Branch nodes inside unrolled iterations are isolated.") {
         REQUIRE(acc->getNumOfConnectedNodes(93) == 0);
@@ -142,9 +145,9 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(acc->doesEdgeExist(0, 11) == 1);
+        REQUIRE(acc->doesEdgeExist(1, 11) == 1);
         REQUIRE(acc->doesEdgeExist(369, 379) == 1);
-        REQUIRE(acc->doesEdgeExist(1734, 1746) == 1);
+        REQUIRE(acc->doesEdgeExist(1735, 1746) == 1);
         REQUIRE(acc->doesEdgeExist(2455, 2466) == 1);
       }
       THEN("Branch edges are added between boundary nodes and nodes inside "

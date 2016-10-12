@@ -39,9 +39,6 @@
 #include "powergating.h"
 #include <vector>
 
-using namespace std;
-
-
 class Decoder : public Component
 {
   public:
@@ -143,7 +140,7 @@ class PredecBlk : public Component
 
   void leakage_feedback(double temperature);
 
-  pair<double, double> compute_delays(pair<double, double> inrisetime); // <nand2, nand3>
+  std::pair<double, double> compute_delays(std::pair<double, double> inrisetime); // <nand2, nand3>
   // return <outrise_nand2, outrise_nand3>
 };
 
@@ -191,7 +188,7 @@ class PredecBlkDrv : public Component
   void leakage_feedback(double temperature);
 
 
-  pair<double, double> compute_delays(
+  std::pair<double, double> compute_delays(
       double inrisetime_nand2_path,
       double inrisetime_nand3_path);  // return <outrise_nand2, outrise_nand3>
 
@@ -231,9 +228,9 @@ class Predec : public Component
 
   private:
     // returns <delay, risetime>
-    pair<double, double> get_max_delay_before_decoder(
-        pair<double, double> input_pair1,
-        pair<double, double> input_pair2);
+    std::pair<double, double> get_max_delay_before_decoder(
+        std::pair<double, double> input_pair1,
+        std::pair<double, double> input_pair2);
 };
 
 

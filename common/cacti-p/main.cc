@@ -42,9 +42,6 @@
 #include "io.h"
 #include <iostream>
 
-using namespace std;
-
-
 int main(int argc,char *argv[])
 {
 
@@ -52,11 +49,11 @@ int main(int argc,char *argv[])
   if (argc != 53 && argc != 55)
   {
     bool infile_specified = false;
-    string infile_name("");
+    std::string infile_name("");
 
     for (int32_t i = 0; i < argc; i++)
     {
-      if (argv[i] == string("-infile"))
+      if (argv[i] == std::string("-infile"))
       {
         infile_specified = true;
         i++;
@@ -66,10 +63,10 @@ int main(int argc,char *argv[])
 
     if (infile_specified == false)
     {
-      cerr << " Invalid arguments -- how to use CACTI:" << endl;
-      cerr << "  1) cacti -infile <input file name>" << endl;
-      cerr << "  2) cacti arg1 ... arg52 -- please refer to the README file" << endl;
-      cerr << " No. of arguments input - " << argc << endl;
+      std::cerr << " Invalid arguments -- how to use CACTI:" << std::endl;
+      std::cerr << "  1) cacti -infile <input file name>" << std::endl;
+      std::cerr << "  2) cacti arg1 ... arg52 -- please refer to the README file" << std::endl;
+      std::cerr << " No. of arguments input - " << argc << std::endl;
       exit(1);
     }
     else

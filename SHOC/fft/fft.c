@@ -1,4 +1,9 @@
 #include "fft.h"
+
+#ifdef DMA_MODE
+#include "gem5/dma_interface.h"
+#endif
+
 //////BEGIN TWIDDLES ////////
 void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
   TYPE DATA_y[], TYPE data_x[], TYPE data_y[ ], TYPE smem[],
@@ -12,9 +17,9 @@ void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
 	//Do it all at once...
-	for(tid = 0; tid < THREADS; tid++){
+  outer:for(tid = 0; tid < THREADS; tid++){
 		//GLOBAL_LOAD...
-		for(i = 0; i<8;i++){
+    load:for(i = 0; i<8;i++){
 			data_x[i] = work_x[i*stride+tid];
 			data_y[i] = work_y[i*stride+tid];
 		}
@@ -22,7 +27,7 @@ void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 		//First Twiddle
 		//twiddles8_512(data_x, data_y, tid, 512);
-     for(j = 1; j < 8; j++){
+    twiddles:for(j = 1; j < 8; j++){
             TYPE A_x, A_y, tmp;
             A_x = cos_512[tid*7+j-1];
             A_y = sin_512[tid*7+j-1];
@@ -32,7 +37,7 @@ void step1(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
     }
 
 		//save for fence
-		for(i = 0; i < 8; i ++){
+    store:for(i = 0; i < 8; i ++){
 			DATA_x[tid*8 + i] = data_x[i];
 			DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -49,8 +54,8 @@ void step2(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 {
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			//data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -71,15 +76,15 @@ void step3(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 {
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			//data_y[i] = DATA_y[tid*8 + i];
 		}
 		hi = tid>>3;
 		lo = tid&7;
 		load8(data_x, smem, lo*66+hi, 8);
-		for(i = 0; i < 8; i ++){
+    store:for(i = 0; i < 8; i ++){
 			DATA_x[tid*8 + i] = data_x[i];
 			//DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -96,8 +101,8 @@ void step4(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 {
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			//data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -118,15 +123,15 @@ void step5(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			//data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
 		hi = tid>>3;
 		lo = tid&7;
 		load8(data_y, smem, lo*66+hi, 8);
-		for(i = 0; i < 8; i ++){
+    store:for(i = 0; i < 8; i ++){
 			//DATA_x[tid*8 + i] = data_x[i];
 			DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -145,9 +150,9 @@ void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
 
-	for(tid = 0; tid < 64; tid++){
+  outer:for(tid = 0; tid < 64; tid++){
 		//Reload data post-transpose...
-		for(i = 0; i < 8; i ++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -160,7 +165,7 @@ void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 		//Second twiddles calc, use hi and 64 stride version as defined in G80/SHOC...
 		//twiddles8_64(data_x, data_y, hi, 64);
-    loop: for(j = 1; j < 8; j++){
+    twiddles: for(j = 1; j < 8; j++){
             TYPE A_x, A_y, tmp;
             A_x = cos_64[hi*7+j-1];
             A_y = sin_64[hi*7+j-1];
@@ -170,7 +175,7 @@ void step6(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
     }
 
 		//Save for final transpose...
-		for(i = 0; i < 8; i ++){
+    save:for(i = 0; i < 8; i ++){
 			DATA_x[tid*8 + i] = data_x[i];
 			DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -189,8 +194,8 @@ void step7(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
 	//Transpose..
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			//data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -212,15 +217,15 @@ void step8(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
 
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			//data_y[i] = DATA_y[tid*8 + i];
 		}
 		hi = tid>>3;
 		lo = tid&7;
 		load8(data_x, smem, hi*72+lo, 8);
-		for(i = 0; i < 8; i ++){
+    store:for(i = 0; i < 8; i ++){
 			DATA_x[tid*8 + i] = data_x[i];
 			//DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -239,8 +244,8 @@ void step9(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			//data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -262,15 +267,15 @@ void step10(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
-		for(i = 0; i < 8; i ++){
+  outer:for(tid = 0; tid < 64; tid++){
+    load:for(i = 0; i < 8; i ++){
 			//data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
 		hi = tid>>3;
 		lo = tid&7;
 		load8(data_y, smem, hi*72+lo, 8);
-		for(i = 0; i < 8; i ++){
+    store:for(i = 0; i < 8; i ++){
 			//DATA_x[tid*8 + i] = data_x[i];
 			DATA_y[tid*8 + i] = data_y[i];
 		}
@@ -289,9 +294,9 @@ void step11(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 
 	int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-	for(tid = 0; tid < 64; tid++){
+  outer:for(tid = 0; tid < 64; tid++){
 		//Load post-trans
-		for(i = 0; i < 8; i ++){
+    load:for(i = 0; i < 8; i ++){
 			data_x[i] = DATA_x[tid*8 + i];
 			data_y[i] = DATA_y[tid*8 + i];
 		}
@@ -300,7 +305,7 @@ void step11(TYPE work_x[], TYPE work_y[], TYPE DATA_x[],
 		FFT8(data_x, data_y);
 
 		//Global store
-		for(i=0; i<8;i++){
+    store:for(i=0; i<8;i++){
 			//work[i*stride+tid] = data[i];
 			work_x[i*stride+tid] = data_x[reversed[i]];
 			work_y[i*stride+tid] = data_y[reversed[i]];
@@ -320,9 +325,12 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
   float cos_512[448]
 )
 {
-	int tid, hi, lo, i, j, stride;
+#ifdef DMA_MODE
+	dmaLoad(&work_x[0], 0, 512*sizeof(TYPE));
+	dmaLoad(&work_y[0], 0, 512*sizeof(TYPE));
+#endif
+  int tid, hi, lo, i, j, stride;
 	stride = THREADS;
-
 
   step1(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step2(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
@@ -335,16 +343,21 @@ void fft1D_512(TYPE work_x[512], TYPE work_y[512],
   step9(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step10(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
   step11(work_x, work_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, cos_64, sin_512, cos_512);
+
+#ifdef DMA_MODE
+  dmaStore(&work_x[0], 0, 512*sizeof(TYPE));
+  dmaStore(&work_y[0], 0, 512*sizeof(TYPE));
+#endif
 }
 int main(){
-	TYPE a_x[512];
-	TYPE a_y[512];
-	int i;
+  TYPE a_x[512];
+  TYPE a_y[512];
+  int i;
 
-	for( i = 0; i < 512; i++){
-		a_x[i] = i;
-		a_y[i] = 0.0;
-	}
+  for( i = 0; i < 512; i++){
+    a_x[i] = i;
+    a_y[i] = 0.0;
+  }
   float sin_64[448] = {-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,	-0.000000,
     -0.382683,	-0.195090,	-0.555570,	-0.098017,	-0.471397,	-0.290285,	-0.634393,
     -0.707107,	-0.382683,	-0.923880,	-0.195090,	-0.831470,	-0.555570,	-0.980785,
@@ -606,17 +619,23 @@ int main(){
     -0.998795,	0.024541,	-0.073565,	0.715731,	-0.749136,	-0.680601,	0.643832};
 
 
-	TYPE DATA_x[THREADS*8];
-	TYPE DATA_y[THREADS*8];
-	TYPE data_x[ 8 ];
-	TYPE data_y[ 8 ];
-	TYPE smem[8*8*9];
+  TYPE DATA_x[THREADS*8];
+  TYPE DATA_y[THREADS*8];
+  TYPE data_x[ 8 ];
+  TYPE data_y[ 8 ];
+  TYPE smem[8*8*9];
   int reversed[8] = {0,4,2,6,1,5,3,7};
-	fft1D_512(a_x, a_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, sin_512, cos_64, cos_512);
+#ifdef GEM5
+  resetGem5Stats();
+#endif
+  fft1D_512(a_x, a_y, DATA_x, DATA_y, data_x, data_y, smem, reversed, sin_64, sin_512, cos_64, cos_512);
+#ifdef GEM5
+  dumpGem5Stats("fft");
+#endif
 
-	for( i = 0; i < 2; i++){
-		printf("x = %i y = %i \n", a_x[i], a_y[i]);
-	}
+  for( i = 0; i < 2; i++){
+    printf("x = %i y = %i \n", a_x[i], a_y[i]);
+  }
 
-	return 0;
+  return 0;
 }

@@ -108,7 +108,7 @@ class CactiWire : public Component
     double w_scale, s_scale;
     double resistivity;
     powerDef wire_model (double space, double size, double *delay);
-    list <Component> repeated_wire;
+    std::list <Component> repeated_wire;
     void update_fullswing();
     static int initialized;
 

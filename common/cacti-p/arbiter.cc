@@ -121,6 +121,7 @@ CactiArbiter::transmission_buf_ctrcap() {
 
 void CactiArbiter::print_arbiter()
 {
+  using namespace std;
   cout << "\nCactiArbiter Stats ("   << R << " input arbiter" << ")\n\n";
   cout << "Flit size        : " << flit_size << " bits" << endl;
   cout << "Dynamic Power    : " << power.readOp.dynamic*1e9 << " (nJ)" << endl;

@@ -1,0 +1,35 @@
+#select functional units you want
+set_directive_resource -core Mul "needwun" row
+set_directive_resource -core Mul "needwun" row_up
+set_directive_resource -core Mul "needwun" r
+
+#select memory resources
+set_directive_resource -core RAM_1P_BRAM "needwun" SEQA
+set_directive_resource -core RAM_1P_BRAM "needwun" SEQB
+set_directive_resource -core RAM_1P_BRAM "needwun" allignedA
+set_directive_resource -core RAM_1P_BRAM "needwun" allignedB
+
+#loop pipelining factors
+#set_directive_pipeline needwun/init_row
+#set_directive_pipeline needwun/init_col
+#set_directive_pipeline needwun/fill_out
+#set_directive_pipeline needwun/fill_in
+#set_directive_pipeline needwun/trace
+#set_directive_pipeline needwun/pad_a
+#set_directive_pipeline needwun/pad_b
+
+#loop unrolling
+#set_directive_unroll -factor 2 needwun/init
+#set_directive_unroll -factor 2 needwun/init_row
+#set_directive_unroll -factor 2 needwun/init_col
+#set_directive_unroll -factor 2 needwun/fill_out
+#set_directive_unroll -factor 2 needwun/fill_in
+#set_directive_unroll -factor 2 needwun/trace
+#set_directive_unroll -factor 2 needwun/pad_a
+#set_directive_unroll -factor 2 needwun/pad_b
+
+#Array partitioning
+#set_directive_array_partition -factor 2 -type cyclic needwun SEQA
+#set_directive_array_partition -factor 2 -type cyclic needwun SEQB
+#set_directive_array_partition -factor 2 -type cyclic needwun alignedA
+#set_directive_array_partition -factor 2 -type cyclic needwun alignedB

@@ -18,25 +18,30 @@ int main(int argc, const char* argv[]) {
       "\\_/\n"
       "                                                                 \n";
 
-  std::cout << logo << endl;
+  std::cout << logo << std::endl;
 
   if (argc < 4) {
-    std::cerr << "-------------------------------" << std::endl;
-    std::cerr << "Aladdin takes:                 " << std::endl;
-    std::cerr << "./aladdin <bench> <dynamic trace> <config file>" << endl;
-    std::cerr << "   Aladdin supports gzipped dynamic trace files - append \n"
+    std::cout << "-------------------------------" << std::endl;
+    std::cout << "Aladdin takes:                 " << std::endl;
+    std::cout
+        << "./aladdin <bench> <dynamic trace> <config file> <experiment_name>"
+        << std::endl;
+    std::cout << "   experiment_name is an optional parameter, only used to \n"
+              << "   identify results stored in a local database." << std::endl;
+    std::cout << "   Aladdin supports gzipped dynamic trace files - append \n"
               << "   the \".gz\" extension to the end of the trace file."
               << std::endl;
-    std::cerr << "-------------------------------" << std::endl;
+    std::cout << "-------------------------------" << std::endl;
     exit(0);
   }
-  std::cerr << "-------------------------------" << std::endl;
-  std::cerr << "      Starts Aladdin           " << std::endl;
-  std::cerr << "-------------------------------" << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Starts Aladdin           " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
 
   std::string bench(argv[1]);
   std::string trace_file(argv[2]);
   std::string config_file(argv[3]);
+  std::string experiment_name;
 
   std::cout << bench << "," << trace_file << "," << config_file << ","
             << std::endl;
@@ -44,6 +49,7 @@ int main(int argc, const char* argv[]) {
   ScratchpadDatapath* acc;
 
   acc = new ScratchpadDatapath(bench, trace_file, config_file);
+
 #ifdef USE_DB
   bool use_db = (argc == 5);
   if (use_db) {
@@ -51,6 +57,7 @@ int main(int argc, const char* argv[]) {
     acc->setExperimentParameters(experiment_name);
   }
 #endif
+
   // Get the complete graph.
   acc->buildDddg();
   acc->globalOptimizationPass();

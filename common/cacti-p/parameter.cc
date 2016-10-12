@@ -38,9 +38,6 @@
 #include "parameter.h"
 #include "area.h"
 
-using namespace std;
-
-
 InputParameter * g_ip;
 TechnologyParameter g_tp;
 
@@ -48,63 +45,64 @@ TechnologyParameter g_tp;
 
 void TechnologyParameter::DeviceType::display(uint32_t indent)
 {
-  string indent_str(indent, ' ');
+  std::string indent_str(indent, ' ');
 
-  cout << indent_str << "C_g_ideal = " << setw(12) << C_g_ideal << " F/um" << endl;
-  cout << indent_str << "C_fringe  = " << setw(12) << C_fringe  << " F/um" << endl;
-  cout << indent_str << "C_overlap = " << setw(12) << C_overlap << " F/um" << endl;
-  cout << indent_str << "C_junc    = " << setw(12) << C_junc    << " F/um^2" << endl;
-  cout << indent_str << "l_phy     = " << setw(12) << l_phy     << " um" << endl;
-  cout << indent_str << "l_elec    = " << setw(12) << l_elec    << " um" << endl;
-  cout << indent_str << "R_nch_on  = " << setw(12) << R_nch_on  << " ohm-um" << endl;
-  cout << indent_str << "R_pch_on  = " << setw(12) << R_pch_on  << " ohm-um" << endl;
-  cout << indent_str << "Vdd       = " << setw(12) << Vdd       << " V" << endl;
-  cout << indent_str << "Vth       = " << setw(12) << Vth       << " V" << endl;
-  cout << indent_str << "Vdd_default  = " << setw(12) << Vdd_default       << " V" << endl;
-  cout << indent_str << "I_on_n    = " << setw(12) << I_on_n    << " A/um" << endl;
-  cout << indent_str << "I_on_p    = " << setw(12) << I_on_p    << " A/um" << endl;
-  cout << indent_str << "I_off_n   = " << setw(12) << I_off_n   << " A/um" << endl;
-  cout << indent_str << "I_off_p   = " << setw(12) << I_off_p   << " A/um" << endl;
-  cout << indent_str << "C_ox      = " << setw(12) << C_ox      << " F/um^2" << endl;
-  cout << indent_str << "t_ox      = " << setw(12) << t_ox      << " um" << endl;
-  cout << indent_str << "n_to_p_eff_curr_drv_ratio = " << n_to_p_eff_curr_drv_ratio << endl;
+  std::cout << indent_str << "C_g_ideal = " << std::setw(12) << C_g_ideal << " F/um" << std::endl;
+  std::cout << indent_str << "C_fringe  = " << std::setw(12) << C_fringe  << " F/um" << std::endl;
+  std::cout << indent_str << "C_overlap = " << std::setw(12) << C_overlap << " F/um" << std::endl;
+  std::cout << indent_str << "C_junc    = " << std::setw(12) << C_junc    << " F/um^2" << std::endl;
+  std::cout << indent_str << "l_phy     = " << std::setw(12) << l_phy     << " um" << std::endl;
+  std::cout << indent_str << "l_elec    = " << std::setw(12) << l_elec    << " um" << std::endl;
+  std::cout << indent_str << "R_nch_on  = " << std::setw(12) << R_nch_on  << " ohm-um" << std::endl;
+  std::cout << indent_str << "R_pch_on  = " << std::setw(12) << R_pch_on  << " ohm-um" << std::endl;
+  std::cout << indent_str << "Vdd       = " << std::setw(12) << Vdd       << " V" << std::endl;
+  std::cout << indent_str << "Vth       = " << std::setw(12) << Vth       << " V" << std::endl;
+  std::cout << indent_str << "Vdd_default  = " << std::setw(12) << Vdd_default       << " V" << std::endl;
+  std::cout << indent_str << "I_on_n    = " << std::setw(12) << I_on_n    << " A/um" << std::endl;
+  std::cout << indent_str << "I_on_p    = " << std::setw(12) << I_on_p    << " A/um" << std::endl;
+  std::cout << indent_str << "I_off_n   = " << std::setw(12) << I_off_n   << " A/um" << std::endl;
+  std::cout << indent_str << "I_off_p   = " << std::setw(12) << I_off_p   << " A/um" << std::endl;
+  std::cout << indent_str << "C_ox      = " << std::setw(12) << C_ox      << " F/um^2" << std::endl;
+  std::cout << indent_str << "t_ox      = " << std::setw(12) << t_ox      << " um" << std::endl;
+  std::cout << indent_str << "n_to_p_eff_curr_drv_ratio = " << n_to_p_eff_curr_drv_ratio << std::endl;
 }
 
 
 
 void TechnologyParameter::InterconnectType::display(uint32_t indent)
 {
-  string indent_str(indent, ' ');
+  std::string indent_str(indent, ' ');
 
-  cout << indent_str << "pitch    = " << setw(12) << pitch    << " um" << endl;
-  cout << indent_str << "R_per_um = " << setw(12) << R_per_um << " ohm/um" << endl;
-  cout << indent_str << "C_per_um = " << setw(12) << C_per_um << " F/um" << endl;
+  std::cout << indent_str << "pitch    = " << std::setw(12) << pitch    << " um" << std::endl;
+  std::cout << indent_str << "R_per_um = " << std::setw(12) << R_per_um << " ohm/um" << std::endl;
+  std::cout << indent_str << "C_per_um = " << std::setw(12) << C_per_um << " F/um" << std::endl;
 }
 
 void TechnologyParameter::ScalingFactor::display(uint32_t indent)
 {
-  string indent_str(indent, ' ');
+  std::string indent_str(indent, ' ');
 
-  cout << indent_str << "logic_scaling_co_eff    = " << setw(12) << logic_scaling_co_eff << endl;
-  cout << indent_str << "curr_core_tx_density = " << setw(12) << core_tx_density << " # of tx/um^2" << endl;
+  std::cout << indent_str << "logic_scaling_co_eff    = " << std::setw(12) << logic_scaling_co_eff << std::endl;
+  std::cout << indent_str << "curr_core_tx_density = " << std::setw(12) << core_tx_density << " # of tx/um^2" << std::endl;
 }
 
 void TechnologyParameter::MemoryType::display(uint32_t indent)
 {
-  string indent_str(indent, ' ');
+  std::string indent_str(indent, ' ');
 
-  cout << indent_str << "b_w         = " << setw(12) << b_w << " um" << endl;
-  cout << indent_str << "b_h         = " << setw(12) << b_h << " um" << endl;
-  cout << indent_str << "cell_a_w    = " << setw(12) << cell_a_w << " um" << endl;
-  cout << indent_str << "cell_pmos_w = " << setw(12) << cell_pmos_w << " um" << endl;
-  cout << indent_str << "cell_nmos_w = " << setw(12) << cell_nmos_w << " um" << endl;
-  cout << indent_str << "Vbitpre     = " << setw(12) << Vbitpre << " V" << endl;
+  std::cout << indent_str << "b_w         = " << std::setw(12) << b_w << " um" << std::endl;
+  std::cout << indent_str << "b_h         = " << std::setw(12) << b_h << " um" << std::endl;
+  std::cout << indent_str << "cell_a_w    = " << std::setw(12) << cell_a_w << " um" << std::endl;
+  std::cout << indent_str << "cell_pmos_w = " << std::setw(12) << cell_pmos_w << " um" << std::endl;
+  std::cout << indent_str << "cell_nmos_w = " << std::setw(12) << cell_nmos_w << " um" << std::endl;
+  std::cout << indent_str << "Vbitpre     = " << std::setw(12) << Vbitpre << " V" << std::endl;
 }
 
 
 
 void TechnologyParameter::display(uint32_t indent)
 {
+  using namespace std;
   string indent_str(indent, ' ');
 
   cout << indent_str << "ram_wl_stitching_overhead_ = " << setw(12) << ram_wl_stitching_overhead_ << " um" << endl;
@@ -291,7 +289,7 @@ DynamicParameter::DynamicParameter(
 		  else
 		  {
 			  tagbits = int(ceil((ADDRESS_BITS + EXTRA_TAG_BITS)/8.0)*8);
-//			  cout<<"Pure CAM needs tag width to be specified"<<endl;
+//			  std::cout<<"Pure CAM needs tag width to be specified"<<std::endl;
 //			  exit(0);
 		  }
 		  //tagbits = (((tagbits + 3) >> 2) << 2);
@@ -446,7 +444,7 @@ DynamicParameter::DynamicParameter(
   {
 	    switch (Ndbl) {
 	      case (0):
-	        cout <<  "   Invalid Ndbl \n"<<endl;
+	        std::cout <<  "   Invalid Ndbl \n"<<std::endl;
 	        exit(0);
 	        break;
 	      case (1):

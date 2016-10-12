@@ -45,9 +45,6 @@
 #include <iostream>
 #include <algorithm>
 
-using namespace std;
-
-
 bool mem_array::lt(const mem_array * m1, const mem_array * m2)
 {
   if (m1->Nspd < m2->Nspd) return true;
@@ -163,7 +160,7 @@ uca_org_t :: uca_org_t()
  data_array2(0),
  uca_pg_reference(0)
 {
-	uca_q = vector<uca_org_t * >(0);
+	uca_q = std::vector<uca_org_t * >(0);
 }
 
 void uca_org_t :: cleanup()

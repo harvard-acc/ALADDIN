@@ -1,0 +1,17 @@
+pipelining,0
+cycle_time,10
+partition,cyclic,a,8192,4,2
+partition,cyclic,b,8192,4,2
+partition,cyclic,bucket,8192,4,2
+partition,cyclic,sum,512,4,2
+unrolling,last_step_scan,62,2
+flatten,last_step_scan,63
+flatten,local_scan,42
+unrolling,local_scan,41,2
+unrolling,sum_scan,53,2
+unrolling,hist,82,2
+flatten,hist,83
+unrolling,update,96,2
+flatten,update,97
+unrolling,init,73,2
+unrolling,ss_sort,112,1

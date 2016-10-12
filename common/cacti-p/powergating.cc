@@ -36,8 +36,6 @@
 #include <math.h>
 #include <assert.h>
 
-using namespace std;
-
 //TODO: although DTSN is used,since for memory array, the number of sleep txs
 //is related to the number of rows and cols. so All calculations are still base on
 //single sleep tx cases

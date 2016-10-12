@@ -1,4 +1,4 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#define size 2048
+#define NUM 2048

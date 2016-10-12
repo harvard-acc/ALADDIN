@@ -84,7 +84,7 @@ class Nuca : public Component
     int calc_cycles(double lat, double oper_freq);
     void calculate_nuca_area (nuca_org_t *nuca);
     int check_nuca_org (nuca_org_t *n, min_values_t *minval);
-    nuca_org_t * find_optimal_nuca (list<nuca_org_t *> *n, min_values_t *minval);
+    nuca_org_t * find_optimal_nuca (std::list<nuca_org_t *> *n, min_values_t *minval);
     void print_nuca(nuca_org_t *n);
     void print_cont_stats();
 

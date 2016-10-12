@@ -12,8 +12,7 @@ class ScratchpadDatapath : public BaseDatapath {
  public:
   ScratchpadDatapath(std::string bench,
                      std::string trace_file,
-                     std::string config_file,
-                     int num_spad_ports = 1);
+                     std::string config_file);
   virtual ~ScratchpadDatapath();
 
   void globalOptimizationPass();
@@ -24,7 +23,6 @@ class ScratchpadDatapath : public BaseDatapath {
   virtual void stepExecutingQueue();
   virtual bool step();
   virtual double getTotalMemArea();
-  virtual unsigned getTotalMemSize();
   virtual void getAverageMemPower(unsigned int cycles,
                                   float* avg_power,
                                   float* avg_dynamic,
