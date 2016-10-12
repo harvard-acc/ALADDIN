@@ -208,7 +208,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   std::size_t found = tmp_value.find('.');
   if (found != std::string::npos)
     is_float = true;
-  double value = strtof(char_value, NULL);
+  double value = strtod(char_value, NULL);
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
@@ -326,7 +326,7 @@ void DDDG::parse_result(std::string line) {
   std::size_t found = tmp_value.find('.');
   if (found != std::string::npos)
     is_float = true;
-  double value = strtof(char_value, NULL);
+  double value = strtod(char_value, NULL);
 
   if (curr_node->is_fp_op() && (size == 64))
     curr_node->set_double_precision(true);
