@@ -57,6 +57,7 @@ class DmaCacheHybridTest(gat.Gem5AladdinTest):
     self.runAndValidate()
 
 class LoadStoreTest(gat.Gem5AladdinTest):
+  """ Tests load/store functionality through a cache. """
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]
     self.setTestDir(os.path.join(
@@ -66,7 +67,8 @@ class LoadStoreTest(gat.Gem5AladdinTest):
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 92333000)
+    # Result depends mostly on cache queue size and bandwidth.
+    self.addExpectedStatResult("sim_ticks", 51095000)
 
   def runTest(self):
     self.runAndValidate()

@@ -38,6 +38,7 @@ class HybridDatapath(MemObject):
   l2cacheSize = Param.String("128kB", "Shared L2 cache size")
   cacheHitLatency = Param.Int(1, "Hit latency")
   cactiCacheConfig = Param.String("", "CACTI cache config file")
+  cactiCacheQueueConfig = Param.String("", "CACTI cache queue config file")
   tlbEntries = Param.Int(0, "number entries in TLB (0 implies infinite)")
   tlbAssoc = Param.Int(4, "Number of sets in the TLB")
   tlbHitLatency = Param.Cycles(0, "number of cycles for a hit")
@@ -47,6 +48,8 @@ class HybridDatapath(MemObject):
   numOutStandingWalks = Param.Int(4, "num of outstanding page walks")
   tlbBandwidth = Param.Int(
       1, "Number of translations that can be requested per cycle.")
+  cacheQueueSize = Param.Int(32, "Maximum outstanding cache requests.")
+  cacheBandwidth = Param.Int(4, "Maximum cache requests per cycle.")
 
   enableStatsDump = Param.Bool(
       False, "Dump m5 stats after each accelerator invocation.")

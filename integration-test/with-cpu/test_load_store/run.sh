@@ -15,5 +15,5 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cpu-type=detailed \
   --caches \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
-  -c ${bmk_home}/test_load_store-gem5-accel \
+  -c ${bmk_home}/test_load_store \
   > stdout.gz

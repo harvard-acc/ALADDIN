@@ -45,3 +45,4 @@ Source('HybridDatapath.cpp')
 
 DebugFlag('Aladdin')
 DebugFlag('HybridDatapath')
+DebugFlag('HybridDatapathVerbose')

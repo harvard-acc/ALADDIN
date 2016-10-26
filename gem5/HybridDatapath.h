@@ -121,6 +121,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                             float* avg_power,
                             float* avg_dynamic,
                             float* avg_leak);
+  void getAverageCacheQueuePower(unsigned int cycles,
+                                 float* avg_power,
+                                 float* avg_dynamic,
+                                 float* avg_leak);
   void computeCactiResults();
   void getMemoryBlocks(std::vector<std::string>& names);
   void getRegisterBlocks(std::vector<std::string>& names);
@@ -310,8 +314,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   CachePort cachePort;
   MasterID cacheMasterId;
 
-  // Tracks outstanding memory nodes, one per datapath lane.
-  MemoryQueue memory_queue;
+  // Tracks outstanding cache access nodes.
+  MemoryQueue cache_queue;
 
   /* NOTE: These are provided by gem5's caches directly but I have no idea how
    * to access them. Based on an extensive Google search, there doesn't seem
