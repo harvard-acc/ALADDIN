@@ -5,7 +5,7 @@
 
 #define PAGE_SIZE 4096
 
-// size in bits for LLVM-Tracer parsing
+// size in bytes for LLVM-Tracer parsing
 void* dmaLoad(void *addr, size_t offset, size_t size);
 void* dmaStore(void *addr, size_t offset, size_t size);
 
