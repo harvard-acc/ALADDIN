@@ -103,5 +103,21 @@ class MmapTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
+class DoubleBufferingTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_double_buffering"))
+    self.setSimBin("test_double_buffering")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("sim_ticks", 31328000)
+    return
+
+  def runTest(self):
+    self.runAndValidate()
+
 if __name__ == "__main__":
   unittest.main()

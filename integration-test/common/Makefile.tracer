@@ -51,7 +51,7 @@ LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
 #########################################################
 
 labelmap: $(ALL_SRCS)
-	$(GET_LABELED_STMTS) $(ALL_SRCS) -- -I$(LLVM_HOME)/lib/clang/3.4/include $(CPPFLAGS)
+	$(GET_LABELED_STMTS) $(ALL_SRCS) -- -I$(LLVM_HOME)/lib/clang/3.4/include $(CPPFLAGS) $(BMARK_SPECIFIC_CFLAGS)
 
 full.llvm: $(LLVM_OBJS)
 	llvm-link -o $@ $^ $(LOGGER)
