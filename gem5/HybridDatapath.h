@@ -188,6 +188,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   bool handleCacheMemoryOp(ExecNode* node);
 
+  /* Prints the ids of all nodes currently on the executing queue.
+   *
+   * Useful for debugging deadlocks.
+   */
+  void printExecutingQueue();
+
   /* Delete all memory queue entries that have returned. */
   void retireReturnedMemQEntries();
 

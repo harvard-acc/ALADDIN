@@ -212,6 +212,13 @@ void HybridDatapath::delayedDmaIssue() {
   }
 }
 
+void HybridDatapath::printExecutingQueue() {
+  std::cout << "Executing queue contents:\n";
+  for (auto it = executingQueue.begin(); it != executingQueue.end(); it++)
+    std::cout << (*it)->get_node_id() << ", ";
+  std::cout << std::endl;
+}
+
 void HybridDatapath::stepExecutingQueue() {
   auto it = executingQueue.begin();
   int index = 0;
@@ -291,6 +298,7 @@ bool HybridDatapath::step() {
   else
     cycles_since_last_node = 0;
   if (cycles_since_last_node > deadlock_threshold) {
+    printExecutingQueue();
     exitSimLoop("Deadlock detected!");
     return false;
   }
@@ -569,6 +577,7 @@ void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
   MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
   Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
+  assert(dmaIssueQueue.find(vaddr) == dmaIssueQueue.end());
   dmaIssueQueue[vaddr] = node_id;
 }
 
