@@ -88,6 +88,35 @@ void DDDG::output_dddg() {
   }
 }
 
+void DDDG::handle_post_write_dependency(Addr addr) {
+  // Get the last node to write to this address.
+  auto addr_it = address_last_written.find(addr);
+  if (addr_it != address_last_written.end()) {
+    unsigned source_inst = addr_it->second;
+    // Get all edges leaving this node.
+    auto same_source_inst = memory_edge_table.equal_range(source_inst);
+    bool edge_existed = false;
+    for (auto sink_it = same_source_inst.first;
+         sink_it != same_source_inst.second;
+         sink_it++) {
+      // If any one of these edges already points to this node, then we're
+      // good.
+      if (sink_it->second.sink_node == num_of_instructions) {
+        edge_existed = true;
+        break;
+      }
+    }
+    // Add the memory dependence edge to this node.
+    if (!edge_existed) {
+      edge_node_info tmp_edge;
+      tmp_edge.sink_node = num_of_instructions;
+      tmp_edge.par_id = -1;
+      memory_edge_table.insert(std::make_pair(source_inst, tmp_edge));
+      num_of_mem_dep++;
+    }
+  }
+}
+
 // Parse line from the labelmap section.
 void DDDG::parse_labelmap_line(std::string line) {
   char label_name[256], function[256];
@@ -255,32 +284,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     parameter_label_per_inst.push_back(label);
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
-      Addr mem_address =
-          parameter_value_per_inst.back();
-      auto addr_it = address_last_written.find(mem_address);
-      if (addr_it != address_last_written.end()) {
-        unsigned source_inst = addr_it->second;
-        auto same_source_inst = memory_edge_table.equal_range(source_inst);
-        bool edge_existed = 0;
-        for (auto sink_it = same_source_inst.first;
-             sink_it != same_source_inst.second;
-             sink_it++) {
-          if (sink_it->second.sink_node == num_of_instructions) {
-            edge_existed = 1;
-            break;
-          }
-        }
-        if (!edge_existed) {
-          edge_node_info tmp_edge;
-          tmp_edge.sink_node = num_of_instructions;
-          // tmp_edge.var_id = "";
-          tmp_edge.par_id = -1;
-          memory_edge_table.insert(std::make_pair(source_inst, tmp_edge));
-          num_of_mem_dep++;
-        }
-      }
-      Addr base_address =
-          parameter_value_per_inst.back();
+      Addr mem_address = parameter_value_per_inst.back();
+      handle_post_write_dependency(mem_address);
+      Addr base_address = mem_address;
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
@@ -288,11 +294,19 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       // 1st arg of store is the value, 2nd arg is the pointer.
       Addr mem_address = parameter_value_per_inst[0];
       auto addr_it = address_last_written.find(mem_address);
-      if (addr_it != address_last_written.end())
+      if (addr_it != address_last_written.end()) {
+        // Check if the last node to write was a DMA load. If so, we must obey
+        // this memory ordering, because DMA loads are variable-latency
+        // operations.
+        int last_node_to_write = addr_it->second;
+        if (datapath->getNodeFromNodeId(last_node_to_write)->is_dma_load())
+          handle_post_write_dependency(mem_address);
+        // Now we can overwrite the last written node id.
         addr_it->second = num_of_instructions;
-      else
+      } else {
         address_last_written.insert(
             std::make_pair(mem_address, num_of_instructions));
+      }
 
       Addr base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];
@@ -311,6 +325,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
+      // Data dependencies are handled in parse_result(), because we need all
+      // the arguments to dmaLoad in order to do this.
     }
   }
 }
@@ -352,6 +368,36 @@ void DDDG::parse_result(std::string line) {
     unsigned mem_offset = (unsigned)parameter_value_per_inst[2];
     unsigned mem_size = (unsigned)parameter_value_per_inst[3];
     curr_node->set_mem_access(mem_address, mem_offset, mem_size);
+    if (curr_microop == LLVM_IR_DMALoad) {
+      /* If we're using full/empty bits, then we want loads and stores to
+       * issue as soon as their data is available. This means that for nearly
+       * all of the loads, the DMA load node would not have completed, so we
+       * can't add these memory dependencies.
+       */
+      if (!datapath->isReadyMode()) {
+        // For dmaLoad (which is a STORE from the accelerator's perspective),
+        // enforce RAW and WAW dependencies on subsequent nodes.
+        for (Addr addr = mem_address + mem_offset;
+             addr < mem_address + mem_offset + mem_size;
+             addr += 1) {
+          // NOTE: Storing an entry for every byte in this range is very inefficient.
+          auto addr_it = address_last_written.find(addr);
+          if (addr_it != address_last_written.end())
+            addr_it->second = num_of_instructions;
+          else
+            address_last_written.insert(
+                std::make_pair(addr, num_of_instructions));
+        }
+      }
+    } else {
+      // For dmaStore (which is actually a LOAD from the accelerator's
+      // perspective), enforce RAW dependencies on this node.
+      for (Addr addr = mem_address + mem_offset;
+           addr < mem_address + mem_offset + mem_size;
+           addr += 1) {
+        handle_post_write_dependency(addr);
+      }
+    }
   }
 }
 

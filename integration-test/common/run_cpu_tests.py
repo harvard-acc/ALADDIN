@@ -51,7 +51,7 @@ class DmaCacheHybridTest(gat.Gem5AladdinTest):
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 48849000)
+    self.addExpectedStatResult("sim_ticks", 45279000)
 
   def runTest(self):
     self.runAndValidate()

@@ -276,7 +276,7 @@ void BaseDatapath::cleanLeafNodes() {
     int node_microop = node->get_microop();
     if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) &&
         node_microop != LLVM_IR_SilentStore && node_microop != LLVM_IR_Store &&
-        node_microop != LLVM_IR_Ret && !node->is_branch_op()) {
+        node_microop != LLVM_IR_Ret && !node->is_branch_op() && !node->is_dma_store()) {
       to_remove_nodes.push_back(node_id);
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
@@ -560,26 +560,25 @@ void BaseDatapath::loopUnrolling() {
       continue;
     unsigned node_id = node->get_node_id();
     if (!first) {
-      first = true;
-      loopBound.push_back(node_id);
-      prev_branch = node;
-    }
-    assert(prev_branch != nullptr);
-    if (prev_branch != node) {
-      if (prev_branch->is_dma_op() && node->is_dma_op()) {
-        /* If there are a group of consecutive DMA operations, we find the last
-         * DMA node of the group. For instructions after the DMA group, we only
-         * need to add dependence between the last DMA node and the following
-         * instructions. */
+      // prev_branch should not be anything but a branch node.
+      if (node->is_branch_op()) {
+        first = true;
+        loopBound.push_back(node_id);
         prev_branch = node;
       } else {
-        to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
+        continue;
       }
     }
-    /* If the current node is not a branch node, or if it is a DMA node, it will
-     * not be a boundary node. */
-    if (node->is_dma_op() || !node->is_branch_op()) {
-      nodes_between.push_back(node);
+    assert(prev_branch != nullptr);
+    // We should never add control edges to DMA nodes. They should be
+    // constrained by memory dependences only.
+    if (prev_branch != node && !node->is_dma_op()) {
+      to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
+    }
+    // If the current node is not a branch node, it will not be a boundary node.
+    if (!node->is_branch_op()) {
+      if (!node->is_dma_op())
+        nodes_between.push_back(node);
     } else {
       // for the case that the first non-isolated node is also a call node;
       if (node->is_call_op() && *loopBound.rbegin() != node_id) {
@@ -589,11 +588,11 @@ void BaseDatapath::loopUnrolling() {
       auto unroll_it = getUnrollFactor(node);
       if (unroll_it == unrolling_config.end() || unroll_it->second == 0) {
         // not unrolling branch
-        if (!node->is_call_op()) {
+        if (!node->is_call_op() && !node->is_dma_op()) {
           nodes_between.push_back(node);
           continue;
         }
-        if (!doesEdgeExist(prev_branch, node)) {
+        if (!doesEdgeExist(prev_branch, node) && !node->is_dma_op()) {
           // Enforce dependences between branch nodes, including call nodes
           to_add_edges.push_back({ prev_branch, node, CONTROL_EDGE });
         }

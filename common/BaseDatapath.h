@@ -185,6 +185,8 @@ class BaseDatapath {
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
 
+  bool isReadyMode() const { return ready_mode; }
+
   // Accessing graph stats.
   std::string getBenchName() { return benchName; }
   int getNumOfNodes() { return boost::num_vertices(graph_); }

@@ -207,8 +207,10 @@ void HybridDatapath::delayedDmaIssue() {
   // In the typical case, after all DMA nodes have exited the waiting queue, we
   // can issue them all at once. No need to wait anymore.
   if (!pipelinedDma && dmaWaitingQueue.empty()) {
-    for (auto it = dmaIssueQueue.begin(); it != dmaIssueQueue.end(); it++)
+    for (auto it = dmaIssueQueue.begin(); it != dmaIssueQueue.end();) {
       issueDmaRequest(it->second);
+      dmaIssueQueue.erase(it++);
+    }
   }
 }
 
@@ -459,7 +461,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     }
     if (!cache_queue.canIssue()) {
       DPRINTF(HybridDatapathVerbose,
-              "Unable to service cache request for %#x: " 
+              "Unable to service cache request for %#x: "
               "out of cache queue bandwidth.\n", vaddr);
       return false;
     }
@@ -523,8 +525,9 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   Addr base_addr = mem_access->vaddr;
   size_t offset = mem_access->offset;
   size_t size = mem_access->size;  // In bytes.
-  DPRINTF(
-      HybridDatapath, "issueDmaRequest for addr:%#x, size:%u\n", base_addr+offset, size);
+  Addr vaddr = (base_addr + offset) & ADDR_MASK;
+  DPRINTF(HybridDatapath,
+          "issueDmaRequest for trace addr:%#x, size:%u\n", base_addr+offset, size);
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
   auto part_it = getArrayConfigFromAddr(base_addr);
@@ -536,8 +539,11 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
     incrementDmaScratchpadAccesses(array_label, size, isLoad);
   else
     registers.getRegister(array_label)->increment_dma_accesses(isLoad);
+
+  // Update the tracking structures.
   inflight_dma_nodes[node_id] = WaitingFromDma;
-  Addr vaddr = (base_addr + offset) & ADDR_MASK;
+
+  // Prepare the transaction.
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   // Marking the DMA packets as uncacheable ensures they are not snooped by
   // caches.
@@ -566,7 +572,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
   MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
   Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
-  dmaIssueQueue.erase(vaddr);
+  assert(inflight_dma_nodes.find(node_id) != inflight_dma_nodes.end());
   DPRINTF(HybridDatapath,
           "completeDmaRequest for addr:%#x \n",
           vaddr);
@@ -574,6 +580,8 @@ void HybridDatapath::completeDmaRequest(unsigned node_id) {
 }
 
 void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
+  assert(exec_nodes[node_id]->is_dma_op() &&
+         "Cannot add non-DMA node to DMA issue queue!");
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
   MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
   Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
@@ -840,8 +848,6 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
 
   MemAccess* mem_access = node->get_mem_access();
   Addr vaddr_base = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
-  assert(datapath->dmaIssueQueue[vaddr_base] == node_id &&
-         "Node id in packet and issue queue do not match!");
 
   // This will compute the offset of THIS packet from the base address.
   Addr paddr = pkt->getAddr();
@@ -871,7 +877,6 @@ HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id
     : Event(Default_Pri, AutoDelete), datapath(_dpath), dma_node_id(_dma_node_id) {}
 
 void HybridDatapath::DmaEvent::process() {
-  assert(!datapath->dmaIssueQueue.empty());
   datapath->completeDmaRequest(dma_node_id);
 }
 

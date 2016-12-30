@@ -232,9 +232,7 @@ class ExecNode {
   }
 
   bool is_call_op() {
-    if (microop == LLVM_IR_Call)
-      return true;
-    return is_dma_op();
+    return (microop == LLVM_IR_Call);
   }
 
   bool is_index_op() {

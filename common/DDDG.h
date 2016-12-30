@@ -51,6 +51,8 @@ class DDDG {
   void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
+  // Enforce RAW/WAW dependencies on this address for the current node if necessary.
+  void handle_post_write_dependency(Addr addr);
 
   std::string curr_dynamic_function;
 
