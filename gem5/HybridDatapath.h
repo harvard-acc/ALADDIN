@@ -303,7 +303,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   /* Hash table to track DMA accesses. Indexed by the base address of DMA
    * accesses, and mapped to the corresponding node id for that DMA request. */
-  std::unordered_map<Addr, unsigned> dmaIssueQueue;
+  // std::unordered_map<Addr, unsigned> dmaIssueQueue;
+  std::set<unsigned> dmaIssueQueue;
 
   // This queue stores the DMA events that are waiting for their setup latency
   // to elapse before they can be issued, along with their setup latencies.

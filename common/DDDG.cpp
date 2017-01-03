@@ -314,9 +314,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
       Addr mem_address = parameter_value_per_inst[0];
-      unsigned mem_size = parameter_size_per_inst.back() / BYTE_SIZE;
+      unsigned mem_size = parameter_size_per_inst.back() / BYTE;
       uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
-      curr_node->set_mem_access(mem_address, 0, mem_size, is_float, bits);
+      curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       Addr base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
@@ -360,14 +360,27 @@ void DDDG::parse_result(std::string line) {
     datapath->addArrayBaseAddress(label, ((Addr)value) & ADDR_MASK);
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
-    size_t mem_size = size / BYTE_SIZE;
+    size_t mem_size = size / BYTE;
     uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
-    curr_node->set_mem_access(mem_address, 0, mem_size, is_float, bits);
+    curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
   } else if (curr_node->is_dma_op()) {
-    Addr mem_address = parameter_value_per_inst[1];
-    unsigned mem_offset = (unsigned)parameter_value_per_inst[2];
-    unsigned mem_size = (unsigned)parameter_value_per_inst[3];
-    curr_node->set_mem_access(mem_address, mem_offset, mem_size);
+    Addr base_addr;
+    size_t src_off, dst_off, size;
+    // Determine DMA interface version.
+    if (parameter_value_per_inst.size() == 4) {
+      // v1 (src offset = dst offset).
+      base_addr = parameter_value_per_inst[1];
+      src_off = (size_t) parameter_value_per_inst[2];
+      dst_off = src_off;
+      size = (size_t) parameter_value_per_inst[3];
+    } else if (parameter_value_per_inst.size() == 5) {
+      // v2 (src offset is separate from dst offset).
+      base_addr = parameter_value_per_inst[1];
+      src_off = (size_t) parameter_value_per_inst[2];
+      dst_off = (size_t) parameter_value_per_inst[3];
+      size = (size_t) parameter_value_per_inst[4];
+    }
+    curr_node->set_dma_mem_access(base_addr, src_off, dst_off, size);
     if (curr_microop == LLVM_IR_DMALoad) {
       /* If we're using full/empty bits, then we want loads and stores to
        * issue as soon as their data is available. This means that for nearly
@@ -377,9 +390,8 @@ void DDDG::parse_result(std::string line) {
       if (!datapath->isReadyMode()) {
         // For dmaLoad (which is a STORE from the accelerator's perspective),
         // enforce RAW and WAW dependencies on subsequent nodes.
-        for (Addr addr = mem_address + mem_offset;
-             addr < mem_address + mem_offset + mem_size;
-             addr += 1) {
+        Addr start_addr = base_addr + dst_off;
+        for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
           // NOTE: Storing an entry for every byte in this range is very inefficient.
           auto addr_it = address_last_written.find(addr);
           if (addr_it != address_last_written.end())
@@ -392,9 +404,8 @@ void DDDG::parse_result(std::string line) {
     } else {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.
-      for (Addr addr = mem_address + mem_offset;
-           addr < mem_address + mem_offset + mem_size;
-           addr += 1) {
+      Addr start_addr = base_addr + src_off;
+      for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
         handle_post_write_dependency(addr);
       }
     }

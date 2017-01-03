@@ -208,7 +208,7 @@ void HybridDatapath::delayedDmaIssue() {
   // can issue them all at once. No need to wait anymore.
   if (!pipelinedDma && dmaWaitingQueue.empty()) {
     for (auto it = dmaIssueQueue.begin(); it != dmaIssueQueue.end();) {
-      issueDmaRequest(it->second);
+      issueDmaRequest(*it);
       dmaIssueQueue.erase(it++);
     }
   }
@@ -521,13 +521,14 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   ExecNode *node = exec_nodes[node_id];
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
-  MemAccess* mem_access = node->get_mem_access();
+  DmaMemAccess* mem_access = node->get_dma_mem_access();
   Addr base_addr = mem_access->vaddr;
-  size_t offset = mem_access->offset;
   size_t size = mem_access->size;  // In bytes.
-  Addr vaddr = (base_addr + offset) & ADDR_MASK;
+  Addr src_vaddr = (base_addr + mem_access->src_off) & ADDR_MASK;
+  Addr dst_vaddr = (base_addr + mem_access->dst_off) & ADDR_MASK;
   DPRINTF(HybridDatapath,
-          "issueDmaRequest for trace addr:%#x, size:%u\n", base_addr+offset, size);
+          "issueDmaRequest: src_addr: %#x, dst_addr: %#x, size: %u\n",
+          src_vaddr, dst_vaddr, size);
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
   auto part_it = getArrayConfigFromAddr(base_addr);
@@ -556,26 +557,22 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    * from the accelerator, which can't know physical addresses without a
    * translation.
    */
-  issueTLBRequestInvisibly(vaddr, size, isLoad, node_id);
-  Addr paddr = mem_access->paddr;
+  issueTLBRequestInvisibly(dst_vaddr, size, isLoad, node_id);
+  Addr dst_paddr = mem_access->paddr;
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
-    scratchpad->readData(array_label, vaddr, size, data);
+    scratchpad->readData(array_label, src_vaddr, size, data);
   }
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
   spadPort.dmaAction(
-      cmd, paddr, size, dma_event, data, 0, flags);
+      cmd, dst_paddr, size, dma_event, data, 0, flags);
 }
 
 /* Mark the DMA request node as having completed. */
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
-  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
-  Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
   assert(inflight_dma_nodes.find(node_id) != inflight_dma_nodes.end());
-  DPRINTF(HybridDatapath,
-          "completeDmaRequest for addr:%#x \n",
-          vaddr);
+  DPRINTF(HybridDatapath, "completeDmaRequest for node %d.\n", node_id);
   inflight_dma_nodes[node_id] = Returned;
 }
 
@@ -583,10 +580,8 @@ void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
   assert(exec_nodes[node_id]->is_dma_op() &&
          "Cannot add non-DMA node to DMA issue queue!");
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
-  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
-  Addr vaddr = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
-  assert(dmaIssueQueue.find(vaddr) == dmaIssueQueue.end());
-  dmaIssueQueue[vaddr] = node_id;
+  assert(dmaIssueQueue.find(node_id) == dmaIssueQueue.end());
+  dmaIssueQueue.insert(node_id);
 }
 
 void HybridDatapath::sendFinishedSignal() {
@@ -846,14 +841,15 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   ExecNode * node = datapath->getNodeFromNodeId(node_id);
   assert(node != nullptr && "DMA node id is invalid!");
 
-  MemAccess* mem_access = node->get_mem_access();
-  Addr vaddr_base = (mem_access->vaddr + mem_access->offset) & ADDR_MASK;
+  DmaMemAccess* mem_access = node->get_dma_mem_access();
+  Addr src_vaddr_base = (mem_access->vaddr + mem_access->src_off) & ADDR_MASK;
+  Addr dst_vaddr_base = (mem_access->vaddr + mem_access->dst_off) & ADDR_MASK;
 
   // This will compute the offset of THIS packet from the base address.
   Addr paddr = pkt->getAddr();
   Addr paddr_base = getPacketAddr(pkt);
   Addr pkt_offset =  paddr - paddr_base;
-  Addr vaddr = vaddr_base + pkt_offset;
+  Addr vaddr = (node->is_dma_load() ? dst_vaddr_base : src_vaddr_base) + pkt_offset;
 
   std::string array_label = node->get_array_label();
   unsigned size = pkt->req->getSize(); // in bytes

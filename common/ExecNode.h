@@ -8,38 +8,61 @@
 #include "opcode_func.h"
 #include "typedefs.h"
 
-#define BYTE_SIZE 8
+#define BYTE 8
+
+// TODO: Is this correct in 64-bit mode?
+//
 // Bitmask to ensure that we don't attempt to access above the 32-bit address
 // space assuming a 4GB memory. In accelerator simulation with memory system,
-// the mem_bus address range is the same as memory size, in stead of the 48-bit
+// the mem_bus address range is the same as memory size, instead of the 48-bit
 // address space in the X86_64 implementation.
 #define ADDR_MASK 0xffffffff
 
-// Stores all information about a memory access.
-struct MemAccess {
-  // Address read from the trace.
-  Addr vaddr;
-  // Physical address (used for caches only).
-  Addr paddr;
-  // Size of the memory access in bytes.
-  size_t size;
-  // HACK: Additional offset from vaddr/paddr, used to work around dependence
-  // analysis bugs when dmaLoading from non-base addresses.
-  size_t offset;
-  // Is floating-point value or not.
-  bool is_float;
-  // Hex representation of the value loaded or stored.  For FP values, this is
-  // the IEEE-754 representation.
-  uint64_t value;
+// Stores basic information about a typical memory access.
+class MemAccess {
+  public:
+    MemAccess() : vaddr(0), paddr(0), size(0), is_float(false), value(0) {}
 
-  MemAccess() {
-    vaddr = 0x0;
-    paddr = 0x0;
-    offset = 0x0;
-    size = 0;
-    is_float = false;
-    value = 0;
-  }
+    // Address read from the trace.
+    Addr vaddr;
+    // Physical address (used for caches only).
+    Addr paddr;
+    // Size of the memory access in bytes.
+    size_t size;
+    // Is floating-point value or not.
+    bool is_float;
+    // Hex representation of the value loaded or stored.  For FP values, this is
+    // the IEEE-754 representation.
+    uint64_t value;
+};
+
+class DmaMemAccess : public MemAccess {
+  public:
+    DmaMemAccess()
+        : MemAccess()
+        , src_off(0)
+        , dst_off(0) {}
+
+    DmaMemAccess(size_t off)
+        : MemAccess()
+        , src_off(off)
+        , dst_off(off) {}
+
+    DmaMemAccess(size_t src_off, size_t dst_off)
+        : MemAccess()
+        , src_off(src_off)
+        , dst_off(dst_off) {}
+
+    /* Additional offset from vaddr/paddr.
+     *
+     * This is used to work around dependence analysis bugs when dmaLoading
+     * from non-base addresses. In the simplest case, src_off and dst_off are
+     * equal, but they don't have to be. Double buffering is a common example
+     * of where a source offset might be some number N, but the destination
+     * offset could be 0, the beginning of the scratchpad.
+     */
+    size_t src_off;
+    size_t dst_off;
 };
 
 class ExecNode {
@@ -90,6 +113,7 @@ class ExecNode {
   unsigned get_partition_index() { return partition_index; }
   bool has_array_label() { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }
+  DmaMemAccess* get_dma_mem_access() { return static_cast<DmaMemAccess*>(mem_access); }
   float get_time_before_execution() { return time_before_execution; }
 
   /* Setters. */
@@ -119,13 +143,23 @@ class ExecNode {
   void set_array_label(std::string label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(long long int vaddr,
-                      size_t offset,
                       size_t size_in_bytes,
                       bool is_float = false,
                       uint64_t value = 0) {
-    mem_access = new MemAccess;
+    mem_access = new MemAccess();
     mem_access->vaddr = vaddr;
-    mem_access->offset = offset;
+    mem_access->size = size_in_bytes;
+    mem_access->is_float = is_float;
+    mem_access->value = value;
+  }
+  void set_dma_mem_access(long long int vaddr,
+                          size_t src_offset,
+                          size_t dst_offset,
+                          size_t size_in_bytes,
+                          bool is_float = false,
+                          uint64_t value = 0) {
+    mem_access = new DmaMemAccess(src_offset, dst_offset);
+    mem_access->vaddr = vaddr;
     mem_access->size = size_in_bytes;
     mem_access->is_float = is_float;
     mem_access->value = value;
