@@ -2034,6 +2034,30 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   return unrolling_config.find(unrolling_id);
 }
 
+std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
+  in_edge_iter in_edge_it, in_edge_end;
+  out_edge_iter out_edge_it, out_edge_end;
+  ExecNode* node = exec_nodes[node_id];
+  Vertex vertex = node->get_vertex();
+
+  std::vector<unsigned> connectedNodes;
+  for (boost::tie(in_edge_it, in_edge_end) = in_edges(vertex, graph_);
+       in_edge_it != in_edge_end;
+       ++in_edge_it) {
+    Edge edge = *in_edge_it;
+    Vertex source_vertex = source(edge, graph_);
+    connectedNodes.push_back(vertexToName[source_vertex]);
+  }
+  for (boost::tie(out_edge_it, out_edge_end) = out_edges(vertex, graph_);
+       out_edge_it != out_edge_end;
+       ++out_edge_it) {
+    Edge edge = *out_edge_it;
+    Vertex target_vertex = target(edge, graph_);
+    connectedNodes.push_back(vertexToName[target_vertex]);
+  }
+  return connectedNodes;
+}
+
 // readConfigs
 void BaseDatapath::parse_config(std::string bench,
                                 std::string config_file_name) {

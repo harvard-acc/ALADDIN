@@ -197,6 +197,8 @@ class BaseDatapath {
   int getNumOfConnectedNodes(unsigned int node_id) {
     return boost::degree(exec_nodes[node_id]->get_vertex(), graph_);
   }
+  // Return all nodes with dependencies originating from OR leaving this node.
+  std::vector<unsigned> getConnectedNodes(unsigned int node_id);
   int getUnrolledLoopBoundary(unsigned int region_id) {
     return loopBound.at(region_id);
   }
