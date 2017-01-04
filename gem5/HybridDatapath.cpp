@@ -383,6 +383,9 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
+  if (node->is_dma_fence())
+    return true;
+
   MemAccessStatus status = Invalid;
   unsigned node_id = node->get_node_id();
   if (inflight_dma_nodes.find(node_id) == inflight_dma_nodes.end())

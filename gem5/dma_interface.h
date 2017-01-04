@@ -19,5 +19,6 @@ void* dmaStore(void* base_addr, size_t src_off, size_t dst_off, size_t size);
 void* dmaLoad(void *addr, size_t offset, size_t size);
 void* dmaStore(void *addr, size_t offset, size_t size);
 #endif
+void dmaFence();
 
 #endif

@@ -61,8 +61,10 @@ class FP2BitsConverter {
 DDDG::DDDG(BaseDatapath* _datapath) : datapath(_datapath) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
+  num_of_ctrl_dep = 0;
   num_of_instructions = -1;
   last_parameter = 0;
+  last_dma_fence = -1;
   prev_bblock = "-1";
   curr_bblock = "-1";
 }
@@ -74,21 +76,26 @@ int DDDG::num_edges() {
 int DDDG::num_nodes() { return num_of_instructions + 1; }
 int DDDG::num_of_register_dependency() { return num_of_reg_dep; }
 int DDDG::num_of_memory_dependency() { return num_of_mem_dep; }
-void DDDG::output_dddg() {
+int DDDG::num_of_control_dependency() { return num_of_ctrl_dep; }
 
+void DDDG::output_dddg() {
   for (auto it = register_edge_table.begin(); it != register_edge_table.end();
        ++it) {
     datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
   }
 
-  // Memory Dependency
   for (auto it = memory_edge_table.begin(); it != memory_edge_table.end();
+       ++it) {
+    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+  }
+
+  for (auto it = control_edge_table.begin(); it != control_edge_table.end();
        ++it) {
     datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
   }
 }
 
-void DDDG::handle_post_write_dependency(Addr addr) {
+void DDDG::handle_post_write_dependency(Addr addr, unsigned sink_node) {
   // Get the last node to write to this address.
   auto addr_it = address_last_written.find(addr);
   if (addr_it != address_last_written.end()) {
@@ -101,7 +108,7 @@ void DDDG::handle_post_write_dependency(Addr addr) {
          sink_it++) {
       // If any one of these edges already points to this node, then we're
       // good.
-      if (sink_it->second.sink_node == num_of_instructions) {
+      if (sink_it->second.sink_node == sink_node) {
         edge_existed = true;
         break;
       }
@@ -109,11 +116,32 @@ void DDDG::handle_post_write_dependency(Addr addr) {
     // Add the memory dependence edge to this node.
     if (!edge_existed) {
       edge_node_info tmp_edge;
-      tmp_edge.sink_node = num_of_instructions;
+      tmp_edge.sink_node = sink_node;
       tmp_edge.par_id = -1;
       memory_edge_table.insert(std::make_pair(source_inst, tmp_edge));
       num_of_mem_dep++;
     }
+  }
+}
+
+void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
+  auto same_source_inst = control_edge_table.equal_range(source_node);
+  bool edge_exists = false;
+  for (auto sink_it = same_source_inst.first;
+       sink_it != same_source_inst.second;
+       sink_it++) {
+    if (sink_it->second.sink_node == source_node &&
+        sink_it->second.par_id == CONTROL_EDGE) {
+      edge_exists = true;
+      break;
+    }
+  }
+  if (!edge_exists) {
+    edge_node_info edge;
+    edge.sink_node = dest_node;
+    edge.par_id = CONTROL_EDGE;
+    control_edge_table.insert(std::make_pair(source_node, edge));
+    num_of_ctrl_dep++;
   }
 }
 
@@ -201,6 +229,17 @@ void DDDG::parse_instruction_line(std::string line) {
   }
   if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
+  if (microop == LLVM_IR_DMAFence) {
+    last_dma_fence = num_of_instructions;
+    for (unsigned node_id : last_dma_nodes) {
+      insert_control_dependence(node_id, last_dma_fence);
+    }
+    last_dma_nodes.clear();
+  } else if (microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore) {
+    if (last_dma_fence != -1)
+      insert_control_dependence(last_dma_fence, num_of_instructions);
+    last_dma_nodes.push_back(num_of_instructions);
+  }
   curr_bblock = bblockid;
   curr_node->set_dynamic_invocation(func_invocation_count);
   last_parameter = 0;
@@ -285,7 +324,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
       Addr mem_address = parameter_value_per_inst.back();
-      handle_post_write_dependency(mem_address);
+      handle_post_write_dependency(mem_address, num_of_instructions);
       Addr base_address = mem_address;
       std::string base_label = parameter_label_per_inst.back();
       curr_node->set_array_label(base_label);
@@ -300,7 +339,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         // operations.
         int last_node_to_write = addr_it->second;
         if (datapath->getNodeFromNodeId(last_node_to_write)->is_dma_load())
-          handle_post_write_dependency(mem_address);
+          handle_post_write_dependency(mem_address, num_of_instructions);
         // Now we can overwrite the last written node id.
         addr_it->second = num_of_instructions;
       } else {
@@ -392,7 +431,7 @@ void DDDG::parse_result(std::string line) {
         // enforce RAW and WAW dependencies on subsequent nodes.
         Addr start_addr = base_addr + dst_off;
         for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
-          // NOTE: Storing an entry for every byte in this range is very inefficient.
+          // TODO: Storing an entry for every byte in this range is very inefficient...
           auto addr_it = address_last_written.find(addr);
           if (addr_it != address_last_written.end())
             addr_it->second = num_of_instructions;
@@ -406,7 +445,7 @@ void DDDG::parse_result(std::string line) {
       // perspective), enforce RAW dependencies on this node.
       Addr start_addr = base_addr + src_off;
       for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
-        handle_post_write_dependency(addr);
+        handle_post_write_dependency(addr, num_of_instructions);
       }
     }
   }
@@ -545,6 +584,7 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
   std::cout << "Num of Reg Edges: " << num_of_register_dependency()
             << std::endl;
   std::cout << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
+  std::cout << "Num of Control Edges: " << num_of_control_dependency() << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
   return 0;

@@ -298,8 +298,10 @@ class ExecNode {
 
   bool is_dma_load() { return microop == LLVM_IR_DMALoad; }
   bool is_dma_store() { return microop == LLVM_IR_DMAStore; }
-
-  bool is_dma_op() { return is_dma_load() || is_dma_store(); }
+  bool is_dma_fence() { return microop == LLVM_IR_DMAFence; }
+  bool is_dma_op() {
+    return is_dma_load() || is_dma_store() || is_dma_fence();
+  }
 
   bool is_int_mul_op() {
     switch (microop) {

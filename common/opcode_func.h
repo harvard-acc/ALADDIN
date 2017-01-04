@@ -62,6 +62,7 @@
 #define LLVM_IR_ExtractValue 57
 #define LLVM_IR_InsertValue 58
 #define LLVM_IR_LandingPad 59
+#define LLVM_IR_DMAFence 97
 #define LLVM_IR_DMAStore 98
 #define LLVM_IR_DMALoad 99
 #define LLVM_IR_IndexAdd 100

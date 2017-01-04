@@ -38,6 +38,7 @@ class DDDG {
   int num_nodes();
   int num_of_register_dependency();
   int num_of_memory_dependency();
+  int num_of_control_dependency();
   void output_dddg();
   bool build_initial_dddg(gzFile trace_file);
   std::multimap<unsigned, label_t> get_labelmap() { return labelmap; }
@@ -51,8 +52,9 @@ class DDDG {
   void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
-  // Enforce RAW/WAW dependencies on this address for the current node if necessary.
-  void handle_post_write_dependency(Addr addr);
+  // Enforce RAW/WAW dependencies on this address for the given node if necessary.
+  void handle_post_write_dependency(Addr addr, unsigned sink_node);
+  void insert_control_dependence(unsigned source_node, unsigned dest_node);
 
   std::string curr_dynamic_function;
 
@@ -80,12 +82,15 @@ class DDDG {
   int num_of_instructions;
   int num_of_reg_dep;
   int num_of_mem_dep;
+  int num_of_ctrl_dep;
+  int last_dma_fence;
 
   // register dependency tracking table using hash_map(hash_map)
   // memory dependency tracking table
   // edge multimap
   multi_uint_to_node_info register_edge_table;
   multi_uint_to_node_info memory_edge_table;
+  multi_uint_to_node_info control_edge_table;
   // Line number mapping to function and label name. If there are multiple
   // source files, there could be multiple function/labels with the same line
   // number.
@@ -96,6 +101,8 @@ class DDDG {
   string_to_uint function_counter;
   string_to_uint register_last_written;
   uint_to_uint address_last_written;
+  // DMA nodes that have been seen since the last DMA fence.
+  std::list<unsigned> last_dma_nodes;
 };
 
 #endif

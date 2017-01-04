@@ -22,3 +22,6 @@ void* dmaStore(void* addr, size_t offset, size_t size) {
   return NULL;
 }
 #endif
+void dmaFence() {
+  asm("");
+}
