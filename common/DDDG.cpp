@@ -1,6 +1,8 @@
 #include "DDDG.h"
 #include "BaseDatapath.h"
 
+#include "SourceManager.h"
+
 class FP2BitsConverter {
   public:
     /* Convert a float, double, or integer into its hex representation.
@@ -176,6 +178,7 @@ void DDDG::parse_instruction_line(std::string line) {
   curr_microop = (uint8_t)microop;
   curr_instid = instid;
 
+  Function& curr_function = srcManager.add_or_get_function(curr_static_function);
   curr_node = datapath->insertNode(num_of_instructions, microop);
   curr_node->set_line_num(line_num);
   curr_node->set_inst_id(curr_instid);
@@ -186,24 +189,16 @@ void DDDG::parse_instruction_line(std::string line) {
   bool curr_func_found = false;
 
   if (!active_method.empty()) {
-    char prev_static_function[256];
-    unsigned prev_counts;
-    sscanf(active_method.top().c_str(),
-           "%[^-]-%u",
-           prev_static_function,
-           &prev_counts);
-    if (strcmp(curr_static_function, prev_static_function) == 0) {
+    const Function& prev_function =
+        srcManager.get_function(active_method.top().get_function_id());
+    unsigned prev_counts = prev_function.get_invocations();
+    if (curr_function == prev_function) {
       // calling itself
-      if (prev_microop == LLVM_IR_Call &&
-          callee_function == curr_static_function) {
-        // a new instantiation
-        auto func_it = function_counter.find(curr_static_function);
-        assert(func_it != function_counter.end());
-        func_invocation_count = ++func_it->second;
-        std::ostringstream oss;
-        oss << curr_static_function << "-" << func_invocation_count;
-        curr_dynamic_function = oss.str();
-        active_method.push(curr_dynamic_function);
+      if (prev_microop == LLVM_IR_Call && callee_function == curr_function) {
+        curr_function.increment_invocations();
+        func_invocation_count = curr_function.get_invocations();
+        active_method.push(DynamicFunction(curr_function));
+        curr_dynamic_function = active_method.top();
       } else {
         func_invocation_count = prev_counts;
         curr_dynamic_function = active_method.top();
@@ -214,18 +209,10 @@ void DDDG::parse_instruction_line(std::string line) {
       active_method.pop();
   }
   if (!curr_func_found) {
-    auto func_it = function_counter.find(curr_static_function);
-    if (func_it == function_counter.end()) {
-      func_invocation_count = 0;
-      function_counter.insert(
-          std::make_pair(curr_static_function, func_invocation_count));
-    } else {
-      func_invocation_count = ++func_it->second;
-    }
-    std::ostringstream oss;
-    oss << curr_static_function << "-" << func_invocation_count;
-    curr_dynamic_function = oss.str();
-    active_method.push(curr_dynamic_function);
+    // This would only be true on a call.
+    curr_function.increment_invocations();
+    active_method.push(DynamicFunction(curr_function));
+    curr_dynamic_function = active_method.top();
   }
   if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
@@ -280,25 +267,20 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
-      callee_function = label;
-    auto func_it = function_counter.find(callee_function);
-    std::ostringstream oss;
-    if (func_it != function_counter.end())
-      oss << callee_function << "-" << func_it->second + 1;
-    else
-      oss << callee_function << "-0";
-    callee_dynamic_function = oss.str();
+      callee_function = srcManager.add_or_get_function(label);
+    callee_dynamic_function =
+        DynamicFunction(callee_function, callee_function.get_invocations() + 1);
   }
   last_parameter = 1;
   last_call_source = -1;
   if (is_reg) {
-    char unique_reg_id[256];
-    sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
+    Variable& variable = srcManager.add_or_get_variable(label);
+    DynamicVariable unique_reg_ref(curr_dynamic_function, variable);
     if (curr_microop == LLVM_IR_Call) {
-      unique_reg_in_caller_func = unique_reg_id;
+      unique_reg_in_caller_func = unique_reg_ref;
     }
     // Find the instruction that writes the register
-    auto reg_it = register_last_written.find(unique_reg_id);
+    auto reg_it = register_last_written.find(unique_reg_ref);
     if (reg_it != register_last_written.end()) {
       /*Find the last instruction that writes to the register*/
       edge_node_info tmp_edge;
@@ -313,7 +295,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
                (curr_microop == LLVM_IR_Load && param_tag == 1)) {
       /*For the load/store op without a gep instruction before, assuming the
        *load/store op performs a gep which writes to the label register*/
-      register_last_written[unique_reg_id] = num_of_instructions;
+      register_last_written[unique_reg_ref] = num_of_instructions;
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
@@ -386,13 +368,13 @@ void DDDG::parse_result(std::string line) {
   if (curr_node->is_fp_op() && (size == 64))
     curr_node->set_double_precision(true);
   assert(is_reg);
-  char unique_reg_id[256];
-  sprintf(unique_reg_id, "%s-%s", curr_dynamic_function.c_str(), label);
-  auto reg_it = register_last_written.find(unique_reg_id);
+  Variable& var = srcManager.add_or_get_variable(label);
+  DynamicVariable unique_reg_ref(curr_dynamic_function, var);
+  auto reg_it = register_last_written.find(unique_reg_ref);
   if (reg_it != register_last_written.end())
     reg_it->second = num_of_instructions;
   else
-    register_last_written[unique_reg_id] = num_of_instructions;
+    register_last_written[unique_reg_ref] = num_of_instructions;
 
   if (curr_microop == LLVM_IR_Alloca) {
     curr_node->set_array_label(label);
@@ -459,15 +441,17 @@ void DDDG::parse_forward(std::string line) {
   sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
   assert(is_reg);
 
-  char unique_reg_id[256];
   assert(curr_node->is_call_op() || curr_node->is_dma_op() || curr_node->is_trig_op());
-  sprintf(unique_reg_id, "%s-%s", callee_dynamic_function.c_str(), label);
+  Variable& var = srcManager.add_or_get_variable(label);
+  DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
-  if (!unique_reg_in_caller_func.empty()) {
-    datapath->addCallArgumentMapping(unique_reg_id, unique_reg_in_caller_func);
-    unique_reg_in_caller_func.clear();
+  if (unique_reg_in_caller_func != InvalidDynamicVariable) {
+    // TODO: Make refactoring easier by converting back to strings first...
+    datapath->addCallArgumentMapping(unique_reg_ref.str(srcManager),
+                                     unique_reg_in_caller_func.str(srcManager));
+    unique_reg_in_caller_func = InvalidDynamicVariable;
   }
-  auto reg_it = register_last_written.find(unique_reg_id);
+  auto reg_it = register_last_written.find(unique_reg_ref);
   int tmp_written_inst = num_of_instructions;
   if (last_call_source != -1) {
     tmp_written_inst = last_call_source;
@@ -475,7 +459,7 @@ void DDDG::parse_forward(std::string line) {
   if (reg_it != register_last_written.end())
     reg_it->second = tmp_written_inst;
   else
-    register_last_written[unique_reg_id] = tmp_written_inst;
+    register_last_written[unique_reg_ref] = tmp_written_inst;
 }
 
 std::string DDDG::parse_function_name(std::string line) {

@@ -5,10 +5,12 @@
 #include <string>
 #include <zlib.h>
 #include <stdlib.h>
+#include <sstream>
 
 #include "ExecNode.h"
 #include "file_func.h"
 #include "opcode_func.h"
+#include "SourceManager.h"
 
 struct edge_node_info {
   unsigned sink_node;
@@ -56,7 +58,7 @@ class DDDG {
   void handle_post_write_dependency(Addr addr, unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
 
-  std::string curr_dynamic_function;
+  DynamicFunction curr_dynamic_function;
 
   uint8_t curr_microop;
   uint8_t prev_microop;
@@ -64,8 +66,8 @@ class DDDG {
   std::string curr_bblock;
   ExecNode* curr_node;
 
-  std::string callee_function;
-  std::string callee_dynamic_function;
+  Function callee_function;
+  DynamicFunction callee_dynamic_function;
 
   bool last_parameter;
   int num_of_parameters;
@@ -73,7 +75,7 @@ class DDDG {
   int last_call_source;
   /* Unique register ID in the caller function. Used to create a mapping between
    * register IDs in caller and callee functions. */
-  std::string unique_reg_in_caller_func;
+  DynamicVariable unique_reg_in_caller_func;
 
   std::string curr_instid;
   std::vector<Addr> parameter_value_per_inst;
@@ -96,13 +98,13 @@ class DDDG {
   // number.
   std::multimap<unsigned, label_t> labelmap;
   // keep track of currently executed methods
-  std::stack<std::string> active_method;
+  std::stack<DynamicFunction> active_method;
   // manage methods
-  string_to_uint function_counter;
-  string_to_uint register_last_written;
+  std::unordered_map<DynamicVariable, unsigned> register_last_written;
   uint_to_uint address_last_written;
   // DMA nodes that have been seen since the last DMA fence.
   std::list<unsigned> last_dma_nodes;
+  SourceManager srcManager;
 };
 
 #endif
