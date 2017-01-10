@@ -2,6 +2,7 @@
 #include "BaseDatapath.h"
 
 #include "SourceManager.h"
+#include "DynamicEntity.h"
 
 class FP2BitsConverter {
   public:
@@ -60,7 +61,8 @@ class FP2BitsConverter {
     }
 };
 
-DDDG::DDDG(BaseDatapath* _datapath) : datapath(_datapath) {
+DDDG::DDDG(BaseDatapath* _datapath)
+    : datapath(_datapath), srcManager(_datapath->get_source_manager()) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_ctrl_dep = 0;
@@ -149,13 +151,15 @@ void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
 
 // Parse line from the labelmap section.
 void DDDG::parse_labelmap_line(std::string line) {
-  char label_name[256], function[256];
+  char label_name[256], function_name[256];
   int line_number;
-  sscanf(line.c_str(), "%[^/]/%s %d", function, label_name, &line_number);
+  sscanf(line.c_str(), "%[^/]/%s %d", function_name, label_name, &line_number);
   label_name[255] = '\0';  // Just in case...
-  function[255] = '\0';
-  label_t label = {function, label_name};
-  labelmap.insert(std::make_pair(line_number, label));
+  function_name[255] = '\0';
+  Function& function = srcManager.insert<Function>(function_name);
+  Label& label = srcManager.insert<Label>(label_name);
+  UniqueLabel unique_label(function, label);
+  labelmap.insert(std::make_pair(line_number, unique_label));
 }
 
 void DDDG::parse_instruction_line(std::string line) {
@@ -178,11 +182,13 @@ void DDDG::parse_instruction_line(std::string line) {
   curr_microop = (uint8_t)microop;
   curr_instid = instid;
 
-  Function& curr_function = srcManager.add_or_get_function(curr_static_function);
+  Function& curr_function =
+      srcManager.insert<Function>(curr_static_function);
+  Instruction& curr_inst = srcManager.insert<Instruction>(curr_instid);
   curr_node = datapath->insertNode(num_of_instructions, microop);
   curr_node->set_line_num(line_num);
-  curr_node->set_inst_id(curr_instid);
-  curr_node->set_static_method(curr_static_function);
+  curr_node->set_static_inst_id(curr_inst.get_id());
+  curr_node->set_static_function_id(curr_function.get_id());
   datapath->addFunctionName(curr_static_function);
 
   int func_invocation_count = 0;
@@ -190,7 +196,7 @@ void DDDG::parse_instruction_line(std::string line) {
 
   if (!active_method.empty()) {
     const Function& prev_function =
-        srcManager.get_function(active_method.top().get_function_id());
+        srcManager.get<Function>(active_method.top().get_function_id());
     unsigned prev_counts = prev_function.get_invocations();
     if (curr_function == prev_function) {
       // calling itself
@@ -211,6 +217,7 @@ void DDDG::parse_instruction_line(std::string line) {
   if (!curr_func_found) {
     // This would only be true on a call.
     curr_function.increment_invocations();
+    func_invocation_count = curr_function.get_invocations();
     active_method.push(DynamicFunction(curr_function));
     curr_dynamic_function = active_method.top();
   }
@@ -267,14 +274,14 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
-      callee_function = srcManager.add_or_get_function(label);
+      callee_function = srcManager.insert<Function>(label);
     callee_dynamic_function =
         DynamicFunction(callee_function, callee_function.get_invocations() + 1);
   }
   last_parameter = 1;
   last_call_source = -1;
   if (is_reg) {
-    Variable& variable = srcManager.add_or_get_variable(label);
+    Variable& variable = srcManager.insert<Variable>(label);
     DynamicVariable unique_reg_ref(curr_dynamic_function, variable);
     if (curr_microop == LLVM_IR_Call) {
       unique_reg_in_caller_func = unique_reg_ref;
@@ -309,6 +316,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       handle_post_write_dependency(mem_address, num_of_instructions);
       Addr base_address = mem_address;
       std::string base_label = parameter_label_per_inst.back();
+      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
@@ -331,6 +339,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
 
       Addr base_address = parameter_value_per_inst[0];
       std::string base_label = parameter_label_per_inst[0];
+      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
@@ -341,10 +350,12 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       Addr base_address = parameter_value_per_inst.back();
       std::string base_label = parameter_label_per_inst.back();
+      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
       curr_node->set_array_label(base_label);
       datapath->addArrayBaseAddress(base_label, base_address);
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
       std::string base_label = parameter_label_per_inst.back();
+      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
       curr_node->set_array_label(base_label);
       // Data dependencies are handled in parse_result(), because we need all
       // the arguments to dmaLoad in order to do this.
@@ -364,11 +375,12 @@ void DDDG::parse_result(std::string line) {
   if (found != std::string::npos)
     is_float = true;
   double value = strtod(char_value, NULL);
+  std::string label_str(label);
 
   if (curr_node->is_fp_op() && (size == 64))
     curr_node->set_double_precision(true);
   assert(is_reg);
-  Variable& var = srcManager.add_or_get_variable(label);
+  Variable& var = srcManager.insert<Variable>(label_str);
   DynamicVariable unique_reg_ref(curr_dynamic_function, var);
   auto reg_it = register_last_written.find(unique_reg_ref);
   if (reg_it != register_last_written.end())
@@ -377,8 +389,9 @@ void DDDG::parse_result(std::string line) {
     register_last_written[unique_reg_ref] = num_of_instructions;
 
   if (curr_microop == LLVM_IR_Alloca) {
-    curr_node->set_array_label(label);
-    datapath->addArrayBaseAddress(label, ((Addr)value) & ADDR_MASK);
+    curr_node->set_variable_id(srcManager.get_id<Variable>(label_str));
+    curr_node->set_array_label(label_str);
+    datapath->addArrayBaseAddress(label_str, ((Addr)value) & ADDR_MASK);
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
     size_t mem_size = size / BYTE;
@@ -442,13 +455,11 @@ void DDDG::parse_forward(std::string line) {
   assert(is_reg);
 
   assert(curr_node->is_call_op() || curr_node->is_dma_op() || curr_node->is_trig_op());
-  Variable& var = srcManager.add_or_get_variable(label);
+  Variable& var = srcManager.insert<Variable>(label);
   DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
   if (unique_reg_in_caller_func != InvalidDynamicVariable) {
-    // TODO: Make refactoring easier by converting back to strings first...
-    datapath->addCallArgumentMapping(unique_reg_ref.str(srcManager),
-                                     unique_reg_in_caller_func.str(srcManager));
+    datapath->addCallArgumentMapping(unique_reg_ref, unique_reg_in_caller_func);
     unique_reg_in_caller_func = InvalidDynamicVariable;
   }
   auto reg_it = register_last_written.find(unique_reg_ref);

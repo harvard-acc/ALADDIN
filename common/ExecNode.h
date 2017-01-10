@@ -7,6 +7,9 @@
 
 #include "opcode_func.h"
 #include "typedefs.h"
+#include "SourceEntity.h"
+#include "SourceManager.h"
+#include "DynamicEntity.h"
 
 #define BYTE 8
 
@@ -69,12 +72,13 @@ class ExecNode {
 
  public:
   ExecNode(unsigned int _node_id, uint8_t _microop)
-      : node_id(_node_id), microop(_microop), static_method(""),
-        basic_block_id(""), inst_id(""), line_num(-1), start_execution_cycle(0),
+      : node_id(_node_id), microop(_microop), basic_block_id(""),
+        dynamic_invocation(0), line_num(-1), start_execution_cycle(0),
         complete_execution_cycle(0), num_parents(0), isolated(true),
         inductive(false), dynamic_mem_op(false), double_precision(false),
         array_label(""), partition_index(0), time_before_execution(0.0),
-        mem_access(nullptr), vertex_assigned(false) {}
+        mem_access(nullptr), static_inst_id(-1), static_function_id(-1),
+        variable_id(-1), vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -95,10 +99,11 @@ class ExecNode {
   /* Accessors. */
   unsigned int get_node_id() const { return node_id; }
   uint8_t get_microop() { return microop; }
-  std::string get_static_method() { return static_method; }
+  src_id_t get_static_function_id() { return static_function_id; }
+  src_id_t get_variable_id() { return variable_id; }
   unsigned int get_dynamic_invocation() { return dynamic_invocation; }
   std::string get_basic_block_id() { return basic_block_id; }
-  std::string get_inst_id() { return inst_id; }
+  src_id_t get_static_inst_id() { return static_inst_id; }
   int get_line_num() { return line_num; }
   int get_start_execution_cycle() { return start_execution_cycle; }
   int get_complete_execution_cycle() { return complete_execution_cycle; }
@@ -118,12 +123,15 @@ class ExecNode {
 
   /* Setters. */
   void set_microop(uint8_t microop) { this->microop = microop; }
-  void set_static_method(std::string method) { static_method = method; }
+  void set_variable_id(src_id_t id) { variable_id = id; }
+  void set_static_function_id(src_id_t func_id) {
+    static_function_id = func_id;
+  }
   void set_dynamic_invocation(unsigned int invocation) {
     dynamic_invocation = invocation;
   }
   void set_basic_block_id(std::string bb_id) { basic_block_id = bb_id; }
-  void set_inst_id(std::string id) { inst_id = id; }
+  void set_static_inst_id(src_id_t id) { static_inst_id = id; }
   void set_line_num(int line) { line_num = line; }
   void set_start_execution_cycle(int cycle) { start_execution_cycle = cycle; }
   void set_complete_execution_cycle(int cycle) {
@@ -166,18 +174,18 @@ class ExecNode {
   }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
-  /* Compound accessors. */
-  std::string get_dynamic_method() {
-    // TODO: Really inefficient - make something better.
-    std::stringstream oss;
-    oss << static_method << "-" << dynamic_invocation;
-    return oss.str();
+  DynamicFunction get_dynamic_function() {
+    return DynamicFunction(static_function_id, dynamic_invocation);
   }
-  std::string get_static_node_id() {
-    // TODO: Really inefficient - make something better.
-    std::stringstream oss;
-    oss << static_method << "-" << dynamic_invocation << "-" << inst_id;
-    return oss.str();
+
+  DynamicInstruction get_dynamic_instruction() {
+    DynamicFunction dynfunc = get_dynamic_function();
+    return DynamicInstruction(dynfunc, static_inst_id);
+  }
+
+  DynamicVariable get_dynamic_variable() {
+    DynamicFunction dynfunc = get_dynamic_function();
+    return DynamicVariable(dynfunc, variable_id);
   }
 
   /* Increment/decrement. */
@@ -498,12 +506,8 @@ class ExecNode {
   unsigned int node_id;
   /* Micro opcode. */
   uint8_t microop;
-  /* Name of the function this node belongs to. */
-  std::string static_method;
   /* Name of the basic block this node belongs to. */
   std::string basic_block_id;
-  /* Unique identifier of the static instruction that generated this node. */
-  std::string inst_id;
   /* This node came from the ith invocation of the parent function. */
   unsigned int dynamic_invocation;
   /* Corresponding line number from source code. */
@@ -540,6 +544,13 @@ class ExecNode {
    * this is NULL.
    */
   MemAccess* mem_access;
+
+  /* ID of the static instruction that generated this node. */
+  src_id_t static_inst_id;
+  /* ID of the function this node belongs to. */
+  src_id_t static_function_id;
+  /* ID of the variable this node refers to. */
+  src_id_t variable_id;
 
  private:
   /* True if the node has been assigned a vertex, false otherwise. */

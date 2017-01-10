@@ -9,6 +9,7 @@
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <unordered_map>
+
 typedef uint64_t Addr;
 
 // Typedefs for Boost::Graph.
@@ -31,7 +32,8 @@ typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
 
 // Other convenience typedefs.
 class partitionEntry;
-typedef std::unordered_map<std::string, unsigned> unrolling_config_t;
+class UniqueLabel;
+typedef std::unordered_map<UniqueLabel, unsigned> unrolling_config_t;
 typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
 
 #endif

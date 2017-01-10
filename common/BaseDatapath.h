@@ -32,6 +32,8 @@
 #include "generic_func.h"
 #include "Registers.h"
 #include "Scratchpad.h"
+#include "SourceManager.h"
+#include "DynamicEntity.h"
 
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
@@ -171,16 +173,17 @@ class BaseDatapath {
   // Build graph.
   void buildDddg();
 
+  SourceManager& get_source_manager() { return srcManager; }
+
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setLabelMap(std::multimap<unsigned, label_t>& _labelmap) {
+  void setLabelMap(std::multimap<unsigned, UniqueLabel>& _labelmap) {
     labelmap = _labelmap;
   }
-  void addCallArgumentMapping(std::string callee_reg_id,
-                              std::string caller_reg_id);
-  std::string getCallerRegID(std::string callee_func,
-                             std::string reg_id);
+  void addCallArgumentMapping(DynamicVariable& callee_reg_id,
+                              DynamicVariable& caller_reg_id);
+  DynamicVariable getCallerRegID(DynamicVariable& reg_id);
   virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
@@ -397,8 +400,10 @@ class BaseDatapath {
   /* complete, block, cyclic, and cache partition share partition_config */
   partition_config_t partition_config;
 
+  SourceManager srcManager;
+
   /* Stores the register name mapping between caller and callee functions. */
-  std::unordered_map<std::string, std::string> call_argument_map;
+  std::unordered_map<DynamicVariable, DynamicVariable> call_argument_map;
 
   /* True if the summarized results should be stored to a database, false
    * otherwise */
@@ -422,7 +427,7 @@ class BaseDatapath {
   std::map<unsigned int, ExecNode*> exec_nodes;
 
   // Maps line numbers to labels.
-  std::multimap<unsigned, label_t> labelmap;
+  std::multimap<unsigned, UniqueLabel> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;

@@ -20,6 +20,7 @@
 #include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/ExecNode.h"
 #include "aladdin/common/ScratchpadDatapath.h"
+#include "aladdin/common/DynamicEntity.h"
 #include "debug/Aladdin.hh"
 #include "debug/HybridDatapath.hh"
 #include "debug/HybridDatapathVerbose.hh"
@@ -751,8 +752,8 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
    * can predict memory behavior similar to how branch predictors work. We
    * don't have real PCs in aladdin so we'll just hash the unique id of the
    * node.  */
-  std::string unique_id = exec_nodes[node_id]->get_static_node_id();
-  Addr pc = static_cast<Addr>(std::hash<std::string>()(unique_id));
+  DynamicInstruction inst = exec_nodes[node_id]->get_dynamic_instruction();
+  Addr pc = static_cast<Addr>(std::hash<DynamicInstruction>()(inst));
   req = new Request(addr, size, flags, getCacheMasterId(), curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
    * gem5, but they aren't actually required for the mechanics of the memory

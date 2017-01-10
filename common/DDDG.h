@@ -22,10 +22,6 @@ typedef std::unordered_map<std::string, unsigned int> string_to_uint;
 typedef std::unordered_map<Addr, unsigned int> uint_to_uint;
 typedef std::unordered_multimap<unsigned int, edge_node_info>
     multi_uint_to_node_info;
-struct label_t {
-  std::string function;
-  std::string label_name;
-};
 
 class BaseDatapath;
 
@@ -43,7 +39,7 @@ class DDDG {
   int num_of_control_dependency();
   void output_dddg();
   bool build_initial_dddg(gzFile trace_file);
-  std::multimap<unsigned, label_t> get_labelmap() { return labelmap; }
+  std::multimap<unsigned, UniqueLabel> get_labelmap() { return labelmap; }
 
  private:
   void parse_instruction_line(std::string line);
@@ -96,7 +92,7 @@ class DDDG {
   // Line number mapping to function and label name. If there are multiple
   // source files, there could be multiple function/labels with the same line
   // number.
-  std::multimap<unsigned, label_t> labelmap;
+  std::multimap<unsigned, UniqueLabel> labelmap;
   // keep track of currently executed methods
   std::stack<DynamicFunction> active_method;
   // manage methods
@@ -104,7 +100,8 @@ class DDDG {
   uint_to_uint address_last_written;
   // DMA nodes that have been seen since the last DMA fence.
   std::list<unsigned> last_dma_nodes;
-  SourceManager srcManager;
+  // This points to the SourceManager object inside a BaseDatapath object.
+  SourceManager& srcManager;
 };
 
 #endif

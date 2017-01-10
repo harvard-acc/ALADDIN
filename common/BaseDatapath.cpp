@@ -78,30 +78,26 @@ ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   return exec_nodes[node_id];
 }
 
-void BaseDatapath::addCallArgumentMapping(std::string callee_reg_id,
-                                          std::string caller_reg_id) {
+void BaseDatapath::addCallArgumentMapping(DynamicVariable& callee_reg_id,
+                                          DynamicVariable& caller_reg_id) {
   call_argument_map[callee_reg_id] = caller_reg_id;
 }
 
-std::string BaseDatapath::getCallerRegID(std::string callee_func,
-                                         std::string reg_id) {
-  std::string tmp_reg_id = callee_func;
-  tmp_reg_id += "-";
-  tmp_reg_id += reg_id;
-  auto it = call_argument_map.find(tmp_reg_id);
-  while ( it != call_argument_map.end()) {
-    tmp_reg_id = it->second;
-    it = call_argument_map.find(tmp_reg_id);
+DynamicVariable BaseDatapath::getCallerRegID(DynamicVariable& reg_id) {
+  auto it = call_argument_map.find(reg_id);
+  while (it != call_argument_map.end()) {
+    reg_id = it->second;
+    it = call_argument_map.find(reg_id);
   }
-  std::size_t reg_index = tmp_reg_id.find_last_of("-");
-  return tmp_reg_id.substr(reg_index+1);
+  return reg_id;
 }
+
 void BaseDatapath::memoryAmbiguation() {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "      Memory Ambiguation       " << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
-  std::unordered_map<std::string, ExecNode*> last_store;
+  std::unordered_map<DynamicInstruction, ExecNode*> last_store;
   std::vector<newEdge> to_add_edges;
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
@@ -119,7 +115,7 @@ void BaseDatapath::memoryAmbiguation() {
         continue;
       if (!parent_node->is_inductive()) {
         node->set_dynamic_mem_op(true);
-        std::string unique_id = node->get_static_node_id();
+        DynamicInstruction unique_id = node->get_dynamic_instruction();
         auto prev_store_it = last_store.find(unique_id);
         if (prev_store_it != last_store.end())
           to_add_edges.push_back({ prev_store_it->second, node, -1 });
@@ -319,8 +315,8 @@ void BaseDatapath::removeInductionDependence() {
     node->set_inductive(false);
     if (!node->has_vertex() || node->is_memory_op())
       continue;
-    std::string node_instid = node->get_inst_id();
-    if (node_instid.find("indvars") != std::string::npos) {
+    src_id_t node_instid = node->get_static_inst_id();
+    if (srcManager.get<Instruction>(node_instid).is_inductive()) {
       node->set_inductive(true);
       if (node->is_int_add_op())
         node->set_microop(LLVM_IR_IndexAdd);
@@ -454,8 +450,8 @@ void BaseDatapath::loopPipelining() {
       // check whether the previous branch is the same loop or not
       if (prev_branch_n != nullptr) {
         if ((br_node->get_line_num() == prev_branch_n->get_line_num()) &&
-            (br_node->get_static_method().compare(
-                 prev_branch_n->get_static_method()) == 0) &&
+            (br_node->get_static_function_id() ==
+             prev_branch_n->get_static_function_id()) &&
             first_node->get_line_num() == prev_first_n->get_line_num()) {
           found = true;
         }
@@ -1191,7 +1187,9 @@ void BaseDatapath::updatePerCycleActivity(
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
-    std::string func_id = node->get_static_method();
+    // TODO: On every iteration, this could be a bottleneck.
+    std::string func_id =
+        srcManager.get<Function>(node->get_static_function_id()).get_name();
     auto max_it = func_max_activity.find(func_id);
     assert(max_it != func_max_activity.end());
 
@@ -1935,10 +1933,10 @@ void BaseDatapath::initBaseAddress() {
         if (parent_microop == LLVM_IR_GetElementPtr ||
             parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
-          std::string label = getBaseAddressLabel(parent_id);
-          std::string method_id = parent_node->get_dynamic_method();
-          label = getCallerRegID(method_id, label);
-          node->set_array_label(label);
+          DynamicVariable var = parent_node->get_dynamic_variable();
+          var = getCallerRegID(var);
+          node->set_array_label(
+              srcManager.get<Variable>(var.get_variable_id()).get_name());
           curr_vertex = source(*in_edge_it, graph_);
           node_microop = parent_microop;
           found_parent = true;
@@ -2017,20 +2015,17 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   // but if the configuration file doesn't use labels (it's an older config
   // file), we have to fallback on using line numbers.
   auto range = labelmap.equal_range(node->get_line_num());
-  char unrolling_id[256];
   for (auto it = range.first; it != range.second; ++it) {
-    if (it->second.function != node->get_static_method())
+    if (it->second.get_function_id() != node->get_static_function_id())
       continue;
-    // TODO: Using strings for identifiers in a commonly called function like
-    // this is a terrible terrible idea.
-    snprintf(unrolling_id, 256, "%s/%s", it->second.function.c_str(),
-             it->second.label_name.c_str());
+    UniqueLabel unrolling_id(
+        it->second.get_function_id(), it->second.get_label_id());
     auto config_it = unrolling_config.find(unrolling_id);
     if (config_it != unrolling_config.end())
       return config_it;
   }
-  snprintf(unrolling_id, 256, "%s/%d", node->get_static_method().c_str(),
-           node->get_line_num());
+  Label label(node->get_line_num());
+  UniqueLabel unrolling_id(node->get_static_function_id(), label.get_id());
   return unrolling_config.find(unrolling_id);
 }
 
@@ -2080,16 +2075,21 @@ void BaseDatapath::parse_config(std::string bench,
     type = wholeline.substr(0, pos_end_tag);
     rest_line = wholeline.substr(pos_end_tag + 1);
     if (!type.compare("flatten")) {
-      char func[256], label_or_line_num[64], unrolling_id[320];
-      sscanf(rest_line.c_str(), "%[^,],%[^,]\n", func, label_or_line_num);
-      sprintf(unrolling_id, "%s/%s", func, label_or_line_num);
+      char function_name[256], label_or_line_num[64];
+      sscanf(
+          rest_line.c_str(), "%[^,],%[^,]\n", function_name, label_or_line_num);
+      Function& function = srcManager.insert<Function>(function_name);
+      Label& label = srcManager.insert<Label>(label_or_line_num);
+      UniqueLabel unrolling_id(function, label);
       unrolling_config[unrolling_id] = 0;
     } else if (!type.compare("unrolling")) {
-      char func[256], label_or_line_num[64], unrolling_id[320];
+      char function_name[256], label_or_line_num[64];
       int factor;
-      sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", func, label_or_line_num,
-             &factor);
-      sprintf(unrolling_id, "%s/%s", func, label_or_line_num);
+      sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", function_name,
+             label_or_line_num, &factor);
+      Function& function = srcManager.insert<Function>(function_name);
+      Label& label = srcManager.insert<Label>(label_or_line_num);
+      UniqueLabel unrolling_id(function, label);
       unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
       unsigned size = 0, p_factor = 0, wordsize = 0;
