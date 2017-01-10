@@ -29,6 +29,9 @@ LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
 report_dir:
 	@mkdir -p $(TEST_REPORT_DIR)
 
+perf: test_performance.o
+	$(CXX) -o test_performance $^ $(LFLAGS)
+
 all : report_dir $(TESTS)
 
 test : report_dir $(TESTS)
@@ -56,3 +59,7 @@ clean-test:
 	rm -f *.o
 	rm -f $(TESTS) $(COMMON_OBJS)
 	rm -rf $(TEST_REPORT_DIR)
+
+clean-perf:
+	rm test_performance.o
+	rm test_performance
