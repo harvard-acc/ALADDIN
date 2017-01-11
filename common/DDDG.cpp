@@ -149,6 +149,21 @@ void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
   }
 }
 
+// Find the original array corresponding to this array in the current function.
+//
+// The array_name argument may not actually be the real name of the array as it
+// was originally declared, so we have to backtrace dynamic variable references
+// until we find the original one.
+//
+// Return a reference to that Variable.
+const Variable& DDDG::get_array_real_var(const std::string& array_name) {
+  Variable var = srcManager.get<Variable>(array_name);
+  DynamicVariable dyn_var(curr_dynamic_function, var);
+  DynamicVariable real_dyn_var = datapath->getCallerRegID(dyn_var);
+  const Variable& real_var = srcManager.get<Variable>(real_dyn_var.get_variable_id());
+  return real_var;
+}
+
 // Parse line from the labelmap section.
 void DDDG::parse_labelmap_line(std::string line) {
   char label_name[256], function_name[256];
@@ -314,13 +329,19 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
       Addr mem_address = parameter_value_per_inst.back();
       handle_post_write_dependency(mem_address, num_of_instructions);
-      Addr base_address = mem_address;
-      std::string base_label = parameter_label_per_inst.back();
-      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
-      curr_node->set_array_label(base_label);
-      datapath->addArrayBaseAddress(base_label, base_address);
+      // The label is the name of the register that holds the address.
+      const std::string& reg_name = parameter_label_per_inst.back();
+      src_id_t var_id = srcManager.get_id<Variable>(reg_name);
+      curr_node->set_variable_id(var_id);
+      curr_node->set_array_label(reg_name);
+    } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
+      // 1st arg of store is the value.
+      Addr mem_address = parameter_value_per_inst[0];
+      unsigned mem_size = parameter_size_per_inst.back() / BYTE;
+      uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
+      curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
-      // 1st arg of store is the value, 2nd arg is the pointer.
+      // 2nd arg of store is the value.
       Addr mem_address = parameter_value_per_inst[0];
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
@@ -337,26 +358,24 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
             std::make_pair(mem_address, num_of_instructions));
       }
 
-      Addr base_address = parameter_value_per_inst[0];
-      std::string base_label = parameter_label_per_inst[0];
-      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
-      curr_node->set_array_label(base_label);
-      datapath->addArrayBaseAddress(base_label, base_address);
-    } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
-      Addr mem_address = parameter_value_per_inst[0];
-      unsigned mem_size = parameter_size_per_inst.back() / BYTE;
-      uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
-      curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
+      // The label is the name of the register that holds the address.
+      const std::string& reg_name = parameter_label_per_inst[0];
+      src_id_t var_id = srcManager.get_id<Variable>(reg_name);
+      curr_node->set_variable_id(var_id);
+      curr_node->set_array_label(reg_name);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       Addr base_address = parameter_value_per_inst.back();
-      std::string base_label = parameter_label_per_inst.back();
-      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
-      curr_node->set_array_label(base_label);
-      datapath->addArrayBaseAddress(base_label, base_address);
+      const std::string& base_label = parameter_label_per_inst.back();
+      // The variable id should be set to the current perceived array name,
+      // since that's how dependencies are locally enforced.
+      src_id_t var_id = srcManager.get_id<Variable>(base_label);
+      curr_node->set_variable_id(var_id);
+      // Only GEPs have an array label we can use to update the base address.
+      const Variable& real_array = get_array_real_var(base_label);
+      const std::string& real_name = real_array.get_name();
+      curr_node->set_array_label(real_name);
+      datapath->addArrayBaseAddress(real_name, base_address);
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
-      std::string base_label = parameter_label_per_inst.back();
-      curr_node->set_variable_id(srcManager.get_id<Variable>(base_label));
-      curr_node->set_array_label(base_label);
       // Data dependencies are handled in parse_result(), because we need all
       // the arguments to dmaLoad in order to do this.
     }

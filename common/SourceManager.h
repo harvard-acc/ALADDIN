@@ -49,11 +49,11 @@ class SourceManager {
    * If such an object does not exist, then an out of range exception is
    * thrown.
    */
-  template <class T> const T& get(std::string& name);
+  template <class T> const T& get(const std::string& name);
   template <class T> const T& get(src_id_t id);
 
   /* Get the id of a SourceEntity of type T by name. */
-  template <class T> src_id_t get_id(std::string& name);
+  template <class T> src_id_t get_id(const std::string& name);
 
  private:
   using src_id_map_t = std::map<std::string, src_id_t>;
@@ -74,7 +74,7 @@ class SourceManager {
   }
 
   template <class T>
-  const T& get_source_entity(std::string& name,
+  const T& get_source_entity(const std::string& name,
                              src_id_map_t& name_to_id,
                              std::map<src_id_t, T>& id_to_entity) {
     auto it = name_to_id.find(name);
@@ -89,7 +89,7 @@ class SourceManager {
     return id_to_entity.at(id);
   }
 
-  src_id_t get_id(std::string& name, src_id_map_t& _map) {
+  src_id_t get_id(const std::string& name, src_id_map_t& _map) {
     auto it = _map.find(name);
     if (it == _map.end())
       return InvalidId;

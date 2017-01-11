@@ -14,7 +14,7 @@ const DynamicVariable InvalidDynamicVariable;
 
 // Function overloads.
 template<>
-const Function& SourceManager::get<Function>(std::string& name) {
+const Function& SourceManager::get<Function>(const std::string& name) {
   return static_cast<const Function&>(get_source_entity<Function>(
         name, fname_to_id, functions));
 }
@@ -32,13 +32,13 @@ Function& SourceManager::insert<Function>(std::string name) {
 }
 
 template<>
-src_id_t SourceManager::get_id<Function>(std::string& name) {
+src_id_t SourceManager::get_id<Function>(const std::string& name) {
   return get_id(name, fname_to_id);
 }
 
 // Variable overloads
 template<>
-const Variable& SourceManager::get<Variable>(std::string& name) {
+const Variable& SourceManager::get<Variable>(const std::string& name) {
   return static_cast<const Variable&>(get_source_entity<Variable>(
         name, vname_to_id, variables));
 }
@@ -56,13 +56,13 @@ Variable& SourceManager::insert<Variable>(std::string name) {
 }
 
 template<>
-src_id_t SourceManager::get_id<Variable>(std::string& name) {
+src_id_t SourceManager::get_id<Variable>(const std::string& name) {
   return get_id(name, vname_to_id);
 }
 
 // Instruction overloads.
 template<>
-const Instruction& SourceManager::get<Instruction>(std::string& name) {
+const Instruction& SourceManager::get<Instruction>(const std::string& name) {
   return static_cast<const Instruction&>(get_source_entity<Instruction>(
         name, iname_to_id, instructions));
 }
@@ -80,13 +80,13 @@ Instruction& SourceManager::insert<Instruction>(std::string name) {
 }
 
 template<>
-src_id_t SourceManager::get_id<Instruction>(std::string& name) {
+src_id_t SourceManager::get_id<Instruction>(const std::string& name) {
   return get_id(name, iname_to_id);
 }
 
 // Label overloads
 template<>
-const Label& SourceManager::get<Label>(std::string& name) {
+const Label& SourceManager::get<Label>(const std::string& name) {
   return static_cast<const Label&>(get_source_entity<Label>(
         name, lname_to_id, labels));
 }
@@ -104,6 +104,6 @@ Label& SourceManager::insert<Label>(std::string name) {
 }
 
 template<>
-src_id_t SourceManager::get_id<Label>(std::string& name) {
+src_id_t SourceManager::get_id<Label>(const std::string& name) {
   return get_id(name, lname_to_id);
 }

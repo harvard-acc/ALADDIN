@@ -27,7 +27,7 @@ class SourceEntity {
   SourceEntity(std::string _name) : name(_name) {}
 
   src_id_t get_id() const { return id; }
-  const std::string get_name() const { return name; }
+  const std::string& get_name() const { return name; }
 
   bool operator==(const SourceEntity& other) const { return (other.id == id); }
   bool operator!=(const SourceEntity& other) const {

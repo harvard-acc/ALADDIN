@@ -119,5 +119,21 @@ class DoubleBufferingTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
+class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_array_func_arg"))
+    self.setSimBin("test_array_func_arg")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("sim_ticks", 31371000)
+    return
+
+  def runTest(self):
+    self.runAndValidate()
+
 if __name__ == "__main__":
   unittest.main()

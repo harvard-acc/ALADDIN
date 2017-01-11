@@ -53,6 +53,7 @@ class DDDG {
   // Enforce RAW/WAW dependencies on this address for the given node if necessary.
   void handle_post_write_dependency(Addr addr, unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
+  const Variable& get_array_real_var(const std::string& array_name);
 
   DynamicFunction curr_dynamic_function;
 
