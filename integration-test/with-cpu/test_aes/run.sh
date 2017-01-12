@@ -14,6 +14,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \
+  --cache_line_size=64 \
   --enable_prefetchers \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c aes \

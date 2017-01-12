@@ -13,6 +13,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \
+  --cache_line_sz=32 \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c test_double_buffering \
   > stdout.gz
