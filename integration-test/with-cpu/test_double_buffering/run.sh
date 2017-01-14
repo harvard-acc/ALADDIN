@@ -12,8 +12,9 @@ ${gem5_dir}/build/X86/gem5.opt \
   --mem-type=DDR3_1600_x64  \
   --sys-clock=1GHz \
   --cpu-type=detailed \
+  --enable_prefetchers \
   --caches \
-  --cache_line_sz=32 \
+  --cacheline_size=32 \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c test_double_buffering \
   > stdout.gz

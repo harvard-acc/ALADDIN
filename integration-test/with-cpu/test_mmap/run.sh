@@ -14,4 +14,5 @@ ${gem5_dir}/build/X86/gem5.opt \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \
-  -c ${bmk_home}/test_mmap
+  -c ${bmk_home}/test_mmap \
+  > stdout.gz

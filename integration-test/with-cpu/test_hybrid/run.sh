@@ -13,7 +13,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \
-  --cache_line_sz=64 \
+  --cacheline_size=64 \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
   -c ${bmk_home}/test_hybrid \
   > stdout.gz

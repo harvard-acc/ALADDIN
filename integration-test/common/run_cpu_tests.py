@@ -16,6 +16,7 @@ class StandaloneAesTest(gat.Gem5AladdinTest):
     self.setTestStandaloneMode()
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 7066000)
@@ -34,6 +35,7 @@ class AesTest(gat.Gem5AladdinTest):
     self.setTestSpecificArgs(["input.data", "check.data"])
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 91187000)
@@ -49,6 +51,7 @@ class DmaCacheHybridTest(gat.Gem5AladdinTest):
     self.setSimBin("test_hybrid")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 45279000)
@@ -65,6 +68,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
     self.setSimBin("test_load_store")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
     # Result depends mostly on cache queue size and bandwidth.
@@ -81,9 +85,10 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
     self.setSimBin("test_dma_load_store")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 52128000)
+    self.addExpectedStatResult("sim_ticks", 69283000)
 
   def runTest(self):
     self.runAndValidate()
@@ -111,9 +116,10 @@ class DoubleBufferingTest(gat.Gem5AladdinTest):
     self.setSimBin("test_double_buffering")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 31328000)
+    self.addExpectedStatResult("sim_ticks", 30711000)
     return
 
   def runTest(self):
@@ -127,6 +133,7 @@ class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
     self.setSimBin("test_array_func_arg")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 31371000)
