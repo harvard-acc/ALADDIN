@@ -7,13 +7,12 @@
 
 #include "DatabaseDeps.h"
 
-BaseDatapath::BaseDatapath(std::string bench,
-                           std::string trace_file_name,
-                           std::string config_file) {
-  parse_config(bench, config_file);
+BaseDatapath::BaseDatapath(std::string& bench,
+                           std::string& trace_file_name,
+                           std::string& config_file)
+    : benchName(bench), current_trace_off(0) {
+  parse_config(benchName, config_file);
 
-  benchName = (char*)bench.c_str();
-  this->config_file = config_file;
   use_db = false;
   if (!fileExists(trace_file_name)) {
     std::cerr << "-------------------------------" << std::endl;
@@ -24,20 +23,26 @@ BaseDatapath::BaseDatapath(std::string bench,
     std::cerr << "-------------------------------" << std::endl;
     exit(1);
   }
-  trace_file = gzopen(trace_file_name.c_str(), "r");
-  std::string file_name = bench + "_summary";
+  std::string file_name = benchName + "_summary";
   /* Remove the old file. */
   if (access(file_name.c_str(), F_OK) != -1 && remove(file_name.c_str()) != 0)
     perror("Failed to delete the old summary file");
+
+  struct stat st;
+  stat(trace_file_name.c_str(), &st);
+  trace_size = st.st_size;
+  trace_file = gzopen(trace_file_name.c_str(), "r");
 }
 
-BaseDatapath::~BaseDatapath() { gzclose(trace_file); }
+BaseDatapath::~BaseDatapath() {
+  gzclose(trace_file);
+}
 
 void BaseDatapath::buildDddg() {
   DDDG* dddg;
-  dddg = new DDDG(this);
+  dddg = new DDDG(this, trace_file);
   /* Build initial DDDG. */
-  dddg->build_initial_dddg(trace_file);
+  current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   if (labelmap.size() == 0)
     labelmap = dddg->get_labelmap();
   delete dddg;
@@ -2054,8 +2059,8 @@ std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
 }
 
 // readConfigs
-void BaseDatapath::parse_config(std::string bench,
-                                std::string config_file_name) {
+void BaseDatapath::parse_config(std::string& bench,
+                                std::string& config_file_name) {
   std::ifstream config_file;
   config_file.open(config_file_name);
   std::string wholeline;

@@ -31,14 +31,14 @@ class DDDG {
   BaseDatapath* datapath;
 
  public:
-  DDDG(BaseDatapath* _datapath);
+  DDDG(BaseDatapath* _datapath, gzFile& _trace_file);
   int num_edges();
   int num_nodes();
   int num_of_register_dependency();
   int num_of_memory_dependency();
   int num_of_control_dependency();
   void output_dddg();
-  bool build_initial_dddg(gzFile trace_file);
+  size_t build_initial_dddg(size_t trace_off, size_t trace_size);
   std::multimap<unsigned, UniqueLabel> get_labelmap() { return labelmap; }
 
  private:
@@ -78,11 +78,14 @@ class DDDG {
   std::vector<Addr> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
-  int num_of_instructions;
+  long num_of_instructions;
   int num_of_reg_dep;
   int num_of_mem_dep;
   int num_of_ctrl_dep;
   int last_dma_fence;
+
+  std::string trace_file_name;
+  gzFile& trace_file;
 
   // register dependency tracking table using hash_map(hash_map)
   // memory dependency tracking table

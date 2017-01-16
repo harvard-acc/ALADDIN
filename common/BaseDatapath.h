@@ -165,9 +165,9 @@ inline microop_label_writer<Map> make_microop_label_writer(Map map) {
 
 class BaseDatapath {
  public:
-  BaseDatapath(std::string bench,
-               std::string trace_file_name,
-               std::string config_file);
+  BaseDatapath(std::string& bench,
+               std::string& trace_file_name,
+               std::string& _config_file);
   virtual ~BaseDatapath();
 
   // Build graph.
@@ -301,7 +301,7 @@ class BaseDatapath {
   }
 
   // Configuration parsing and handling.
-  void parse_config(std::string bench, std::string config_file);
+  void parse_config(std::string& bench, std::string& config_file);
 
   // Returns the unrolling factor for the loop bounded at this node.
   unrolling_config_t::iterator getUnrollFactor(ExecNode* node);
@@ -390,7 +390,6 @@ class BaseDatapath {
   std::string benchName;
   int num_cycles;
   float cycleTime;
-  std::string config_file;
 
   bool pipelining;
   /* Unrolling and flattening share unrolling_config;
@@ -437,8 +436,10 @@ class BaseDatapath {
   std::list<ExecNode*> executingQueue;
   std::list<ExecNode*> readyToExecuteQueue;
 
-  // Trace file.
+  // Trace file name.
   gzFile trace_file;
+  size_t current_trace_off;
+  size_t trace_size;
 
   // Scratchpad config.
   /* True if ready-bit Scratchpad is used. */

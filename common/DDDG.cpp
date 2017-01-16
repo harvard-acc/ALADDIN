@@ -1,8 +1,12 @@
-#include "DDDG.h"
-#include "BaseDatapath.h"
+#include <stdio.h>
+#include <sys/stat.h>
 
-#include "SourceManager.h"
+#include "BaseDatapath.h"
+#include "DDDG.h"
 #include "DynamicEntity.h"
+#include "ExecNode.h"
+#include "ProgressTracker.h"
+#include "SourceManager.h"
 
 class FP2BitsConverter {
   public:
@@ -61,8 +65,9 @@ class FP2BitsConverter {
     }
 };
 
-DDDG::DDDG(BaseDatapath* _datapath)
-    : datapath(_datapath), srcManager(_datapath->get_source_manager()) {
+DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
+    : datapath(_datapath), trace_file(_trace_file),
+      srcManager(_datapath->get_source_manager()) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
   num_of_ctrl_dep = 0;
@@ -529,11 +534,20 @@ bool DDDG::is_function_returned(std::string line, std::string target_function) {
   return false;
 }
 
-bool DDDG::build_initial_dddg(gzFile trace_file) {
+size_t DDDG::build_initial_dddg(size_t trace_off, size_t trace_size) {
 
   std::cout << "-------------------------------" << std::endl;
   std::cout << "      Generating DDDG          " << std::endl;
   std::cout << "-------------------------------" << std::endl;
+
+  long current_trace_off = trace_off;
+  // Bigger traces would benefit from having a finer progress report.
+  float increment = trace_size > 5e8 ? 0.01 : 0.05;
+  // The total progress is the amount of the trace parsed.
+  ProgressTracker trace_progress(
+      "dddg_parse_progress.out", &current_trace_off, trace_size, increment);
+  trace_progress.add_stat("nodes", &num_of_instructions);
+  trace_progress.add_stat("bytes", &current_trace_off);
 
   char buffer[256];
   std::string first_function;
@@ -541,9 +555,14 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
   bool first_function_returned = false;
   bool in_labelmap_section = false;
   bool labelmap_parsed_or_not_present = false;
+  trace_progress.start_epoch();
   while (trace_file && !gzeof(trace_file)) {
     if (gzgets(trace_file, buffer, sizeof(buffer)) == NULL) {
       continue;
+    }
+    current_trace_off = gzoffset(trace_file);
+    if (trace_progress.at_epoch_end()) {
+      trace_progress.start_new_epoch();
     }
     std::string wholeline(buffer);
 
@@ -601,5 +620,5 @@ bool DDDG::build_initial_dddg(gzFile trace_file) {
   std::cout << "Num of Control Edges: " << num_of_control_dependency() << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
-  return 0;
+  return static_cast<size_t>(current_trace_off);
 }
