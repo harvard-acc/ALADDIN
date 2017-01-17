@@ -72,13 +72,12 @@ class ExecNode {
 
  public:
   ExecNode(unsigned int _node_id, uint8_t _microop)
-      : node_id(_node_id), microop(_microop), basic_block_id(""),
-        dynamic_invocation(0), line_num(-1), start_execution_cycle(0),
-        complete_execution_cycle(0), num_parents(0), isolated(true),
-        inductive(false), dynamic_mem_op(false), double_precision(false),
-        array_label(""), partition_index(0), time_before_execution(0.0),
-        mem_access(nullptr), static_inst_id(-1), static_function_id(-1),
-        variable_id(-1), vertex_assigned(false) {}
+      : node_id(_node_id), microop(_microop), dynamic_invocation(0),
+        line_num(-1), start_execution_cycle(0), complete_execution_cycle(0),
+        num_parents(0), isolated(true), inductive(false), dynamic_mem_op(false),
+        double_precision(false), array_label(""), partition_index(0),
+        time_before_execution(0.0), mem_access(nullptr), static_inst_id(-1),
+        static_function_id(-1), variable_id(-1), vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -102,7 +101,6 @@ class ExecNode {
   src_id_t get_static_function_id() { return static_function_id; }
   src_id_t get_variable_id() { return variable_id; }
   unsigned int get_dynamic_invocation() { return dynamic_invocation; }
-  std::string get_basic_block_id() { return basic_block_id; }
   src_id_t get_static_inst_id() { return static_inst_id; }
   int get_line_num() { return line_num; }
   int get_start_execution_cycle() { return start_execution_cycle; }
@@ -130,7 +128,6 @@ class ExecNode {
   void set_dynamic_invocation(unsigned int invocation) {
     dynamic_invocation = invocation;
   }
-  void set_basic_block_id(std::string bb_id) { basic_block_id = bb_id; }
   void set_static_inst_id(src_id_t id) { static_inst_id = id; }
   void set_line_num(int line) { line_num = line; }
   void set_start_execution_cycle(int cycle) { start_execution_cycle = cycle; }
@@ -506,8 +503,6 @@ class ExecNode {
   unsigned int node_id;
   /* Micro opcode. */
   uint8_t microop;
-  /* Name of the basic block this node belongs to. */
-  std::string basic_block_id;
   /* This node came from the ith invocation of the parent function. */
   unsigned int dynamic_invocation;
   /* Corresponding line number from source code. */
