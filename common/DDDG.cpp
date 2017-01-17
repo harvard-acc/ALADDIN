@@ -79,7 +79,7 @@ DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
 }
 
 int DDDG::num_edges() {
-  return register_edge_table.size() + memory_edge_table.size();
+  return num_of_reg_dep + num_of_mem_dep + num_of_ctrl_dep;
 }
 
 int DDDG::num_nodes() { return num_of_instructions + 1; }
@@ -93,65 +93,57 @@ void DDDG::output_dddg() {
     datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
   }
 
-  for (auto it = memory_edge_table.begin(); it != memory_edge_table.end();
-       ++it) {
-    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+  for (auto source_it = memory_edge_table.begin();
+       source_it != memory_edge_table.end();
+       ++source_it) {
+    unsigned source = source_it->first;
+    std::set<unsigned>& sink_list = source_it->second;
+    for (unsigned sink_node : sink_list)
+      datapath->addDddgEdge(source, sink_node, MEMORY_EDGE);
   }
 
-  for (auto it = control_edge_table.begin(); it != control_edge_table.end();
-       ++it) {
-    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+  for (auto source_it = control_edge_table.begin();
+       source_it != control_edge_table.end();
+       ++source_it) {
+    unsigned source = source_it->first;
+    std::set<unsigned>& sink_list = source_it->second;
+    for (unsigned sink_node : sink_list)
+      datapath->addDddgEdge(source, sink_node, CONTROL_EDGE);
   }
 }
 
-void DDDG::handle_post_write_dependency(Addr addr, unsigned sink_node) {
-  // Get the last node to write to this address.
-  auto addr_it = address_last_written.find(addr);
-  if (addr_it != address_last_written.end()) {
-    unsigned source_inst = addr_it->second;
-    // Get all edges leaving this node.
-    auto same_source_inst = memory_edge_table.equal_range(source_inst);
-    bool edge_existed = false;
-    for (auto sink_it = same_source_inst.first;
-         sink_it != same_source_inst.second;
-         sink_it++) {
-      // If any one of these edges already points to this node, then we're
-      // good.
-      if (sink_it->second.sink_node == sink_node) {
-        edge_existed = true;
-        break;
-      }
+void DDDG::handle_post_write_dependency(Addr start_addr,
+                                        size_t size,
+                                        unsigned sink_node) {
+  Addr addr = start_addr;
+  while (addr < start_addr + size) {
+    // Get the last node to write to this address.
+    auto addr_it = address_last_written.find(addr);
+    if (addr_it != address_last_written.end()) {
+      unsigned source_inst = addr_it->second;
+
+      if (memory_edge_table.find(source_inst) == memory_edge_table.end())
+        memory_edge_table[source_inst] = std::set<unsigned>();
+      std::set<unsigned>& sink_list = memory_edge_table[source_inst];
+
+      // No need to check if the node already exists - if it does, an insertion
+      // will not happen, and insertion would require searching for the place
+      // to place the new entry anyways.
+      auto result = sink_list.insert(sink_node);
+      if (result.second)
+        num_of_mem_dep++;
     }
-    // Add the memory dependence edge to this node.
-    if (!edge_existed) {
-      edge_node_info tmp_edge;
-      tmp_edge.sink_node = sink_node;
-      tmp_edge.par_id = -1;
-      memory_edge_table.insert(std::make_pair(source_inst, tmp_edge));
-      num_of_mem_dep++;
-    }
+    addr++;
   }
 }
 
 void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
-  auto same_source_inst = control_edge_table.equal_range(source_node);
-  bool edge_exists = false;
-  for (auto sink_it = same_source_inst.first;
-       sink_it != same_source_inst.second;
-       sink_it++) {
-    if (sink_it->second.sink_node == source_node &&
-        sink_it->second.par_id == CONTROL_EDGE) {
-      edge_exists = true;
-      break;
-    }
-  }
-  if (!edge_exists) {
-    edge_node_info edge;
-    edge.sink_node = dest_node;
-    edge.par_id = CONTROL_EDGE;
-    control_edge_table.insert(std::make_pair(source_node, edge));
+  if (control_edge_table.find(source_node) == control_edge_table.end())
+    control_edge_table[source_node] = std::set<unsigned>();
+  std::set<unsigned>& dest_nodes = control_edge_table[source_node];
+  auto result = dest_nodes.insert(dest_node);
+  if (result.second)
     num_of_ctrl_dep++;
-  }
 }
 
 // Find the original array corresponding to this array in the current function.
@@ -310,9 +302,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     auto reg_it = register_last_written.find(unique_reg_ref);
     if (reg_it != register_last_written.end()) {
       /*Find the last instruction that writes to the register*/
-      edge_node_info tmp_edge;
-      tmp_edge.sink_node = num_of_instructions;
-      tmp_edge.par_id = param_tag;
+      reg_edge_t tmp_edge = { (unsigned)num_of_instructions, param_tag };
       register_edge_table.insert(std::make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
       if (curr_microop == LLVM_IR_Call) {
@@ -332,22 +322,22 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     parameter_label_per_inst.push_back(label);
     // last parameter
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
-      Addr mem_address = parameter_value_per_inst.back();
-      handle_post_write_dependency(mem_address, num_of_instructions);
       // The label is the name of the register that holds the address.
       const std::string& reg_name = parameter_label_per_inst.back();
       src_id_t var_id = srcManager.get_id<Variable>(reg_name);
       curr_node->set_variable_id(var_id);
       curr_node->set_array_label(reg_name);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
-      // 1st arg of store is the value.
+      // 1st arg of store is the address, and the 2nd arg is the value, but the
+      // 2nd arg is parsed first.
       Addr mem_address = parameter_value_per_inst[0];
       unsigned mem_size = parameter_size_per_inst.back() / BYTE;
       uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
       curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
-      // 2nd arg of store is the value.
       Addr mem_address = parameter_value_per_inst[0];
+      unsigned mem_size = parameter_size_per_inst.back() / BYTE;
+
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
         // Check if the last node to write was a DMA load. If so, we must obey
@@ -355,7 +345,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         // operations.
         int last_node_to_write = addr_it->second;
         if (datapath->getNodeFromNodeId(last_node_to_write)->is_dma_load())
-          handle_post_write_dependency(mem_address, num_of_instructions);
+          handle_post_write_dependency(
+              mem_address, mem_size, num_of_instructions);
         // Now we can overwrite the last written node id.
         addr_it->second = num_of_instructions;
       } else {
@@ -419,6 +410,7 @@ void DDDG::parse_result(std::string line) {
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
     size_t mem_size = size / BYTE;
+    handle_post_write_dependency(mem_address, mem_size, num_of_instructions);
     uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
     curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
   } else if (curr_node->is_dma_op()) {
@@ -463,9 +455,7 @@ void DDDG::parse_result(std::string line) {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.
       Addr start_addr = base_addr + src_off;
-      for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
-        handle_post_write_dependency(addr, num_of_instructions);
-      }
+      handle_post_write_dependency(start_addr, size, num_of_instructions);
     }
   }
 }

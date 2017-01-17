@@ -1,6 +1,8 @@
 #ifndef __DDDG_H__
 #define __DDDG_H__
 
+#include <map>
+#include <set>
 #include <stack>
 #include <string>
 #include <zlib.h>
@@ -12,7 +14,7 @@
 #include "opcode_func.h"
 #include "SourceManager.h"
 
-struct edge_node_info {
+struct reg_edge_t {
   unsigned sink_node;
   int par_id;
 };
@@ -20,8 +22,9 @@ struct edge_node_info {
 // data structure used to track dependency
 typedef std::unordered_map<std::string, unsigned int> string_to_uint;
 typedef std::unordered_map<Addr, unsigned int> uint_to_uint;
-typedef std::unordered_multimap<unsigned int, edge_node_info>
-    multi_uint_to_node_info;
+typedef std::unordered_multimap<unsigned int, reg_edge_t>
+    multi_uint_to_reg_edge;
+typedef std::map<unsigned int, std::set<unsigned int>> map_uint_to_set;
 
 class BaseDatapath;
 
@@ -50,8 +53,15 @@ class DDDG {
   void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
-  // Enforce RAW/WAW dependencies on this address for the given node if necessary.
-  void handle_post_write_dependency(Addr addr, unsigned sink_node);
+
+  // Enforce RAW/WAW dependencies on this memory access.
+  //
+  // start_addr: Address of the memory access.
+  // size: Number of bytes modified.
+  // sink_node: The node corresponding to this memory access.
+  void handle_post_write_dependency(Addr start_addr,
+                                    size_t size,
+                                    unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
   const Variable& get_array_real_var(const std::string& array_name);
 
@@ -87,12 +97,12 @@ class DDDG {
   std::string trace_file_name;
   gzFile& trace_file;
 
-  // register dependency tracking table using hash_map(hash_map)
-  // memory dependency tracking table
-  // edge multimap
-  multi_uint_to_node_info register_edge_table;
-  multi_uint_to_node_info memory_edge_table;
-  multi_uint_to_node_info control_edge_table;
+  // Register dependency tracking table.
+  multi_uint_to_reg_edge register_edge_table;
+  // Memory dependence tracking table.
+  map_uint_to_set memory_edge_table;
+  // Control edge tracking table.
+  map_uint_to_set control_edge_table;
   // Line number mapping to function and label name. If there are multiple
   // source files, there could be multiple function/labels with the same line
   // number.

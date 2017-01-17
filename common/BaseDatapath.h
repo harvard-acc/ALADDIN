@@ -35,6 +35,7 @@
 #include "SourceManager.h"
 #include "DynamicEntity.h"
 
+#define MEMORY_EDGE -1
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
 
