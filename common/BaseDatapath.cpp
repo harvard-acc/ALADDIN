@@ -535,8 +535,10 @@ void BaseDatapath::loopUnrolling() {
   std::cout << "         Loop Unrolling        " << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
+  using inst_id_t = std::pair<uint8_t, int>;
+
   std::vector<unsigned> to_remove_nodes;
-  std::unordered_map<std::string, unsigned> inst_dynamic_counts;
+  std::map<inst_id_t, unsigned> inst_dynamic_counts;
   std::vector<ExecNode*> nodes_between;
   std::vector<newEdge> to_add_edges;
 
@@ -610,9 +612,8 @@ void BaseDatapath::loopUnrolling() {
       } else {  // unrolling the branch
         // Counting number of loop iterations.
         int factor = unroll_it->second;
-        char unique_inst_id[256];
-        sprintf(
-            unique_inst_id, "%d-%d", node->get_microop(), node->get_line_num());
+        inst_id_t unique_inst_id =
+            std::make_pair(node->get_microop(), node->get_line_num());
         auto it = inst_dynamic_counts.find(unique_inst_id);
         if (it == inst_dynamic_counts.end()) {
           inst_dynamic_counts[unique_inst_id] = 0;
