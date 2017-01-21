@@ -16,7 +16,7 @@ typedef uint64_t Addr;
 
 typedef boost::property<boost::vertex_index_t, unsigned> VertexProperty;
 typedef boost::property<boost::edge_name_t, uint8_t> EdgeProperty;
-typedef boost::adjacency_list<boost::listS,
+typedef boost::adjacency_list<boost::setS,
                               boost::vecS,
                               boost::bidirectionalS,
                               VertexProperty,

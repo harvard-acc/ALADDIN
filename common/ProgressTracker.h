@@ -33,9 +33,13 @@ class ProgressTracker {
   ProgressTracker(std::string filename,
                 long* _curr_total,
                 const long _total,
-                const float _epoch_length)
+                const float _epoch_length,
+                bool overwrite=true)
       : curr_total(_curr_total), epoch_length(_epoch_length), total(_total) {
-    file = fopen(filename.c_str(), "w");
+    if (overwrite)
+      file = fopen(filename.c_str(), "w");
+    else
+      file = fopen(filename.c_str(), "a");
   }
 
   ~ProgressTracker() { fclose(file); }

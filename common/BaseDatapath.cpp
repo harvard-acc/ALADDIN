@@ -54,6 +54,7 @@ void BaseDatapath::buildDddg() {
   BGL_FORALL_VERTICES(v, graph_, Graph) {
     exec_nodes[get(boost::vertex_index, graph_, v)]->set_vertex(v);
   }
+
   vertexToName = get(boost::vertex_index, graph_);
 
   num_cycles = 0;
@@ -73,8 +74,9 @@ void BaseDatapath::clearDatapath() {
 void BaseDatapath::addDddgEdge(unsigned int from,
                                unsigned int to,
                                uint8_t parid) {
-  if (from != to)
+  if (from != to) {
     add_edge(from, to, EdgeProperty(parid), graph_);
+  }
 }
 
 ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
@@ -1096,16 +1098,18 @@ void BaseDatapath::findMinRankNodes(ExecNode** node1,
 
 void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {
-    if (*it->from != *it->to && !doesEdgeExist(it->from, it->to))
+    if (*it->from != *it->to && !doesEdgeExist(it->from, it->to)) {
       get(boost::edge_name, graph_)[add_edge(
           it->from->get_node_id(), it->to->get_node_id(), graph_).first] =
           it->parid;
+    }
   }
 }
 void BaseDatapath::updateGraphWithIsolatedNodes(
     std::vector<unsigned>& to_remove_nodes) {
-  for (auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it)
+  for (auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it) {
     clear_vertex(exec_nodes[*it]->get_vertex(), graph_);
+  }
 }
 
 void BaseDatapath::updateGraphWithIsolatedEdges(

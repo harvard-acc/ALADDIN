@@ -71,7 +71,7 @@ SCENARIO("Test DDDG Generation w/ aes", "[aes]") {
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
         REQUIRE(acc->getNumOfNodes() == 14822);
-        REQUIRE(acc->getNumOfEdges() == 21375);
+        REQUIRE(acc->getNumOfEdges() == 21373);
       }
     }
   }
