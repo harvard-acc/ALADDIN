@@ -1037,10 +1037,6 @@ double HybridDatapath::getTotalMemArea() {
   return scratchpad->getTotalArea() + cache_area;
 }
 
-void HybridDatapath::getMemoryBlocks(std::vector<std::string>& names) {}
-
-void HybridDatapath::getRegisterBlocks(std::vector<std::string>& names) {}
-
 Addr HybridDatapath::getBaseAddress(std::string label) {
   return (Addr)BaseDatapath::getBaseAddress(label);
 }

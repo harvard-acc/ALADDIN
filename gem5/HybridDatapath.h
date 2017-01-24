@@ -126,8 +126,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                  float* avg_dynamic,
                                  float* avg_leak);
   void computeCactiResults();
-  void getMemoryBlocks(std::vector<std::string>& names);
-  void getRegisterBlocks(std::vector<std::string>& names);
 
  protected:
 #ifdef USE_DB
