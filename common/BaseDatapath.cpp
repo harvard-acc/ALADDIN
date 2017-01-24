@@ -1097,6 +1097,7 @@ void BaseDatapath::findMinRankNodes(ExecNode** node1,
 }
 
 void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
+  std::cout << "  Adding " << to_add_edges.size() << " new edges.\n";
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {
     if (*it->from != *it->to && !doesEdgeExist(it->from, it->to)) {
       get(boost::edge_name, graph_)[add_edge(
@@ -1107,6 +1108,7 @@ void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
 }
 void BaseDatapath::updateGraphWithIsolatedNodes(
     std::vector<unsigned>& to_remove_nodes) {
+  std::cout << "  Removing " << to_remove_nodes.size() << " isolated nodes.\n";
   for (auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it) {
     clear_vertex(exec_nodes[*it]->get_vertex(), graph_);
   }
@@ -1114,6 +1116,7 @@ void BaseDatapath::updateGraphWithIsolatedNodes(
 
 void BaseDatapath::updateGraphWithIsolatedEdges(
     std::set<Edge>& to_remove_edges) {
+  std::cout << "  Removing " << to_remove_edges.size() << " edges.\n";
   for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it != E;
        ++it)
     remove_edge(*it, graph_);
@@ -1736,6 +1739,10 @@ void BaseDatapath::prepareForScheduling() {
       totalConnectedNodes++;
     }
   }
+  std::cout << "  Total connected nodes: " << totalConnectedNodes << "\n";
+  std::cout << "  Total edges: " << numTotalEdges << "\n";
+  std::cout << "=============================================" << std::endl;
+
   executingQueue.clear();
   readyToExecuteQueue.clear();
   initExecutingQueue();
