@@ -103,7 +103,6 @@ class MmapTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 1344665000)
-    return
 
   def runTest(self):
     self.runAndValidate()
@@ -120,7 +119,6 @@ class DoubleBufferingTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 30711000)
-    return
 
   def runTest(self):
     self.runAndValidate()
@@ -137,7 +135,22 @@ class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult("sim_ticks", 31371000)
-    return
+
+  def runTest(self):
+    self.runAndValidate()
+
+class MultipleInvocationsTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_multiple_invocations"))
+    self.setSimBin("test_multiple_invocations")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("sim_ticks", 43903000)
 
   def runTest(self):
     self.runAndValidate()
