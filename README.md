@@ -50,7 +50,9 @@ mkdir build
 
 3. LLVM 3.4.0 and Clang 3.4.0 64-bit. Notice that LLVM is not backward compatible. We recommend users to use the exact versions for LLVM and Clang.
 
-4. LLVM IR Trace Profiler (LLVM-Tracer)
+4. zlib 1.2.8 or later.
+
+5. LLVM IR Trace Profiler (LLVM-Tracer)
 LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM
 machine-independent IR. It prints out a dynamic trace of your program, which can
 then be taken as an input for Aladdin.
