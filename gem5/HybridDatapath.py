@@ -1,11 +1,13 @@
 from m5.params import *
+from m5.objects import CommMonitor
 from MemObject import MemObject
 from m5.proxy import *
 
 class HybridDatapath(MemObject):
   type = "HybridDatapath"
   cxx_header = "aladdin/gem5/HybridDatapath.h"
-  benchName = Param.String("Aladdin Bench Name")
+  benchName = Param.String("Aladdin accelerator name.")
+  outputPrefix = Param.String("Aladdin output prefix.")
   traceFileName = Param.String("Aladdin Input Trace File")
   configFileName = Param.String("Aladdin Config File")
   cycleTime = Param.Unsigned(1, "Clock Period: 1ns default")
@@ -53,15 +55,39 @@ class HybridDatapath(MemObject):
 
   enableStatsDump = Param.Bool(
       False, "Dump m5 stats after each accelerator invocation.")
+  recordMemoryTrace = Param.Bool(
+      False, "Record memory traffic going to/from the accelerator.")
 
   spad_port = MasterPort("HybridDatapath DMA port")
   cache_port = MasterPort("HybridDatapath cache coherent port")
+
   # HACK: We don't have a scratchpad object. Currently we just connect the
   # scratchpad port inside datapath directly to the memory bus.
-  def connectPrivateScratchpad(self, bus):
-    self.spad_port = bus.slave
 
-  def addPrivateL1Dcache(self, cache, bus, dwc = None) :
+  def connectThroughMonitor(self, system, trace_name, master_port, slave_port):
+    """ Connect the master and slave port through a CommMonitor. """
+    monitor = CommMonitor.CommMonitor(trace_enable=True, trace_file=trace_name)
+    monitor.slave = master_port
+    monitor.master = slave_port
+    if trace_name.endswith(".gz"):
+      monitor_name = trace_name[:-3].replace(".", "_")
+    else:
+      monitor_name = trace_name.replace(".", "_")
+    setattr(system, monitor_name, monitor)
+
+  def connectPrivateScratchpad(self, system, bus):
+    if self.recordMemoryTrace:
+      trace_name = "%s.spad.memtrc.gz" % self.benchName
+      self.connectThroughMonitor(system, trace_name, self.spad_port, bus.slave)
+    else:
+      self.spad_port = bus.slave
+
+  def addPrivateL1Dcache(self, system, cache, bus, dwc = None) :
     self.cache = cache
     self.cache_port = cache.cpu_side
-    self.cache.mem_side  = bus.slave
+
+    if self.recordMemoryTrace:
+      trace_name = "%s.cache.memtrc.gz" % self.benchName
+      self.connectThroughMonitor(system, trace_name, cache.mem_side, bus.slave)
+    else:
+      self.cache.mem_side = bus.slave

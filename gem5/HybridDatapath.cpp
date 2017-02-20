@@ -32,7 +32,7 @@ const unsigned int maxInflightNodes = 100;
 
 HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
     : ScratchpadDatapath(
-          params->benchName, params->traceFileName, params->configFileName),
+          params->outputPrefix, params->traceFileName, params->configFileName),
       Gem5Datapath(params,
                    params->acceleratorId,
                    params->executeStandalone,
