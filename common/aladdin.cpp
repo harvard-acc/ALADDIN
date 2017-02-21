@@ -58,18 +58,25 @@ int main(int argc, const char* argv[]) {
   }
 #endif
 
-  // Get the complete graph.
-  acc->buildDddg();
-  acc->globalOptimizationPass();
-  /* Profiling */
-  acc->prepareForScheduling();
+  // Build the graph.
+  bool dddg_built = acc->buildDddg();
 
-  // Scheduling
-  while (!acc->step()) {
-  }
+  // Repeat for each invocation of the accelerator.
+  while (dddg_built) {
+    acc->globalOptimizationPass();
+    /* Profiling */
+    acc->prepareForScheduling();
 
-  acc->dumpStats();
-  acc->clearDatapath();
+    // Scheduling
+    while (!acc->step()) {
+    }
+
+    acc->dumpStats();
+    acc->clearDatapath();
+
+    dddg_built = acc->buildDddg();
+  };
+
   delete acc;
   return 0;
 }

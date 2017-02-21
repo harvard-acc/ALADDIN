@@ -75,6 +75,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   void eventStep();
   // Aladdin cycle step.
   bool step();
+  // Handles how simulation exits.
+  void exitSimulation();
   // Returns the tick event that will schedule the next step.
   Event& getTickEvent() { return tickEvent; }
 
@@ -194,6 +196,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   /* Delete all memory queue entries that have returned. */
   void retireReturnedMemQEntries();
+
+  // Wrapper for initializeDatapath() to match EventWrapper interface.
+  void reinitializeDatapath() { initializeDatapath(1); }
 
   // DMA access functions.
   void delayedDmaIssue();  // Used to postpone a call to issueDmaRequest().
@@ -380,6 +385,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   EventWrapper<HybridDatapath, &HybridDatapath::eventStep> tickEvent;
   // Delayed DMA issue
   EventWrapper<HybridDatapath, &HybridDatapath::delayedDmaIssue> delayedDmaEvent;
+  // Datapath re-initialization.
+  //
+  // Used in standalone mode to support multiple invocations.
+  EventWrapper<HybridDatapath, &HybridDatapath::reinitializeDatapath> reinitializeEvent;
 
   // Number of executed nodes as of the last event trigger.
   // This is required for deadlock detection.

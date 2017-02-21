@@ -28,12 +28,13 @@ typedef std::map<unsigned int, std::set<unsigned int>> map_uint_to_set;
 
 class BaseDatapath;
 
+
+
 class DDDG {
-
- private:
-  BaseDatapath* datapath;
-
  public:
+  // Indicates that we have reached the end of the trace.
+  static const size_t END_OF_TRACE = std::numeric_limits<size_t>::max();
+
   DDDG(BaseDatapath* _datapath, gzFile& _trace_file);
   int num_edges();
   int num_nodes();
@@ -94,6 +95,7 @@ class DDDG {
   int num_of_ctrl_dep;
   int last_dma_fence;
 
+  BaseDatapath* datapath;
   std::string trace_file_name;
   gzFile& trace_file;
 

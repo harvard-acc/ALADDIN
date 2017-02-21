@@ -48,8 +48,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
       cachePort(this),
       cacheMasterId(params->system->getMasterId(name() + ".cache")),
       cache_queue(params->cacheQueueSize,
-									params->cacheBandwidth,
-									"cache_queue",
+                  params->cacheBandwidth,
+                  "cache_queue",
                   params->cactiCacheQueueConfig),
       enable_stats_dump(params->enableStatsDump), cacheSize(params->cacheSize),
       cacti_cfg(params->cactiCacheConfig), cacheLineSize(params->cacheLineSize),
@@ -66,8 +66,9 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->tlbCactiConfig,
                          params->acceleratorName),
       pipelinedDma(params->pipelinedDma),
-      ignoreCacheFlush(params->ignoreCacheFlush),
-      tickEvent(this), delayedDmaEvent(this), executedNodesLastTrigger(0) {
+      ignoreCacheFlush(params->ignoreCacheFlush), tickEvent(this),
+      delayedDmaEvent(this), reinitializeEvent(this),
+      executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
 #ifdef USE_DB
@@ -124,7 +125,11 @@ void HybridDatapath::resetCounters(bool flush_tlb) {
 void HybridDatapath::clearDatapath() { clearDatapath(false); }
 
 void HybridDatapath::initializeDatapath(int delay) {
-  buildDddg();
+  bool dddg_built = buildDddg();
+  if (!dddg_built) {
+    exitSimulation();
+    return;
+  }
   globalOptimizationPass();
   prepareForScheduling();
   num_cycles = delay;
@@ -320,21 +325,33 @@ bool HybridDatapath::step() {
       // because all stats get cleared before that happens.  So until I figure
       // out how to get around that, it's going to be accounted for at the end.
       dma_setup_cycles += dmaSetupOverhead;
-      system->deregisterAccelerator(accelerator_id);
-      if (system->numRunningAccelerators() == 0) {
-        exitSimLoop("Aladdin called exit()");
-      }
-    } else {
-      if (enable_stats_dump) {
-        std::string exit_reason =
-            DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
-        exitSimLoop(exit_reason);
-      }
-      sendFinishedSignal();
+
+      // In case there are more invocations to run, we will immediately
+      // reschedule for initialization.
       clearDatapath(false);
+      schedule(reinitializeEvent, clockEdge(Cycles(1)));
+    } else {
+      exitSimulation();
     }
   }
   return false;
+}
+
+void HybridDatapath::exitSimulation() {
+  if (execute_standalone) {
+    system->deregisterAccelerator(accelerator_id);
+    if (system->numRunningAccelerators() == 0) {
+      exitSimLoop("Aladdin called exit()");
+    }
+  } else {
+    if (enable_stats_dump) {
+      std::string exit_reason =
+          DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
+      exitSimLoop(exit_reason);
+    }
+    sendFinishedSignal();
+    clearDatapath(false);
+  }
 }
 
 HybridDatapath::MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {

@@ -172,7 +172,10 @@ class BaseDatapath {
   virtual ~BaseDatapath();
 
   // Build graph.
-  void buildDddg();
+  //
+  // Return true if the graph was built, false if not. False can happen if the
+  // trace was empty.
+  bool buildDddg();
 
   SourceManager& get_source_manager() { return srcManager; }
 

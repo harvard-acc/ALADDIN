@@ -38,7 +38,7 @@ BaseDatapath::~BaseDatapath() {
   gzclose(trace_file);
 }
 
-void BaseDatapath::buildDddg() {
+bool BaseDatapath::buildDddg() {
   DDDG* dddg;
   dddg = new DDDG(this, trace_file);
   /* Build initial DDDG. */
@@ -46,6 +46,9 @@ void BaseDatapath::buildDddg() {
   if (labelmap.size() == 0)
     labelmap = dddg->get_labelmap();
   delete dddg;
+  if (current_trace_off == DDDG::END_OF_TRACE)
+    return false;
+
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
   std::cout << "-------------------------------" << std::endl;
@@ -58,6 +61,7 @@ void BaseDatapath::buildDddg() {
   vertexToName = get(boost::vertex_index, graph_);
 
   num_cycles = 0;
+  return true;
 }
 
 void BaseDatapath::clearDatapath() {

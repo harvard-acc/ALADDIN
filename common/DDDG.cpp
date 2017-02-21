@@ -599,16 +599,25 @@ size_t DDDG::build_initial_dddg(size_t trace_off, size_t trace_size) {
     }
   }
 
-  output_dddg();
+  if (seen_first_line) {
+    output_dddg();
 
-  std::cout << "-------------------------------" << std::endl;
-  std::cout << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
-  std::cout << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
-  std::cout << "Num of Reg Edges: " << num_of_register_dependency()
-            << std::endl;
-  std::cout << "Num of MEM Edges: " << num_of_memory_dependency() << std::endl;
-  std::cout << "Num of Control Edges: " << num_of_control_dependency() << std::endl;
-  std::cout << "-------------------------------" << std::endl;
-
-  return static_cast<size_t>(current_trace_off);
+    std::cout << "-------------------------------" << std::endl;
+    std::cout << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
+    std::cout << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
+    std::cout << "Num of Reg Edges: " << num_of_register_dependency()
+              << std::endl;
+    std::cout << "Num of MEM Edges: " << num_of_memory_dependency()
+              << std::endl;
+    std::cout << "Num of Control Edges: " << num_of_control_dependency()
+              << std::endl;
+    std::cout << "-------------------------------" << std::endl;
+    return static_cast<size_t>(current_trace_off);
+  } else {
+    // The trace (or whatever was left) was empty.
+    std::cout << "-------------------------------" << std::endl;
+    std::cout << "Reached end of trace." << std::endl;
+    std::cout << "-------------------------------" << std::endl;
+    return END_OF_TRACE;
+  }
 }
