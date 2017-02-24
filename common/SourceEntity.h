@@ -9,6 +9,8 @@
  * and a variable could have the same C name but would still have different ids.
  */
 
+#include <iostream>
+#include <sstream>
 #include <string>
 
 // It is unlikely for us to exceed 4 billion unique functions or variables.
@@ -33,6 +35,8 @@ class SourceEntity {
   bool operator!=(const SourceEntity& other) const {
     return !(this->operator==(other));
   }
+  virtual std::string str() const = 0;
+  virtual void dump() const { std::cout << str() << std::endl; }
 
  protected:
   virtual void set_id() = 0;
@@ -51,6 +55,12 @@ class Function : public SourceEntity {
 
   void increment_invocations() { invocations++; }
   unsigned long get_invocations() const { return invocations; }
+  virtual std::string str() const {
+    std::stringstream str;
+    str << "Function(\"" << name << "\", invocations=" << invocations
+        << ", id=" << id << ")";
+    return str.str();
+  }
 
  private:
   // To prevent hash collisions between functions and variables with the same
@@ -72,6 +82,11 @@ class Variable : public SourceEntity {
  public:
   Variable() : SourceEntity() {}
   Variable(std::string _name) : SourceEntity(_name) { set_id(); }
+  virtual std::string str() const {
+    std::stringstream str;
+    str << "Variable(\"" << name << "\", id=" << id << ")";
+    return str.str();
+  }
 
  private:
   virtual void set_id() {
@@ -89,6 +104,11 @@ class Instruction : public SourceEntity {
   Instruction(std::string name) : SourceEntity(name) {
     set_id();
     inductive = (name.find("indvars") != std::string::npos);
+  }
+  virtual std::string str() const {
+    std::stringstream str;
+    str << "Instruction(\"" << name << "\", id=" << id << ")";
+    return str.str();
   }
 
   bool is_inductive() const { return inductive; }
@@ -109,6 +129,11 @@ class Label : public SourceEntity {
   Label(std::string name) : SourceEntity(name) { set_id(); }
   Label(unsigned line_num) : SourceEntity(std::to_string(line_num)) {
     set_id();
+  }
+  virtual std::string str() const {
+    std::stringstream str;
+    str << "Label(\"" << name << "\", id=" << id << ")";
+    return str.str();
   }
 
  private:

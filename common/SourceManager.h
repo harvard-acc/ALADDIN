@@ -11,15 +11,32 @@
  */
 
 #include <limits>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 
 #include "SourceEntity.h"
 
-extern const Function InvalidFunction;
-extern const Variable InvalidVariable;
-extern const Instruction InvalidInstruction;
+template <typename T> class InvalidSourceEntity {
+ public:
+  static const T& value();
+};
+
+#define DEFINE_INVALID_SOURCE_ENTITY(KIND)                                     \
+  extern const KIND Invalid##KIND;                                             \
+  template <> class InvalidSourceEntity<KIND> {                                \
+   public:                                                                     \
+    static const KIND & value() { return Invalid##KIND; }                       \
+  };
+
+#define DECLARE_INVALID_SOURCE_ENTITY(KIND, args...)                           \
+  const KIND Invalid##KIND(args)
+
+DEFINE_INVALID_SOURCE_ENTITY(Function);
+DEFINE_INVALID_SOURCE_ENTITY(Variable);
+DEFINE_INVALID_SOURCE_ENTITY(Instruction);
+DEFINE_INVALID_SOURCE_ENTITY(Label);
 
 // Central tracking data structure for all source code objects.
 //
@@ -55,6 +72,12 @@ class SourceManager {
   /* Get the id of a SourceEntity of type T by name. */
   template <class T> src_id_t get_id(const std::string& name);
 
+  /* Get a description of the SourceEntity by this id. */
+  std::string __attribute__((noinline)) str(src_id_t id);
+
+  /* Print a description of the SourceEntity by this id. */
+  void __attribute__((noinline)) dump(src_id_t id);
+
  private:
   using src_id_map_t = std::map<std::string, src_id_t>;
 
@@ -86,7 +109,10 @@ class SourceManager {
   template <class T>
   const T& get_source_entity(src_id_t id,
                              std::map<src_id_t, T>& id_to_entity) {
-    return id_to_entity.at(id);
+    auto it = id_to_entity.find(id);
+    if (it != id_to_entity.end())
+      return it->second;
+    return InvalidSourceEntity<T>::value();
   }
 
   src_id_t get_id(const std::string& name, src_id_map_t& _map) {

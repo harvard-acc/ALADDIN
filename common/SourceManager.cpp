@@ -6,9 +6,15 @@
 
 const src_id_t InvalidId = std::numeric_limits<src_id_t>::max();
 
-const Function InvalidFunction("INV");
-const Variable InvalidVariable("INV");
-const Instruction InvalidInstruction("INV");
+// Variable names can't possibly have spaces, so this is a safe way to make it
+// clear that these objects are invalid (particularly when printed out by
+// dump()).
+DECLARE_INVALID_SOURCE_ENTITY(Function, "This is an invalid SourceEntity");
+DECLARE_INVALID_SOURCE_ENTITY(Variable, "This is an invalid SourceEntity");
+DECLARE_INVALID_SOURCE_ENTITY(Instruction, "This is an invalid SourceEntity");
+DECLARE_INVALID_SOURCE_ENTITY(Label, "This is an invalid SourceEntity");
+
+// These are not SourceEntity objects.
 const DynamicFunction InvalidDynamicFunction;
 const DynamicVariable InvalidDynamicVariable;
 
@@ -107,3 +113,33 @@ template<>
 src_id_t SourceManager::get_id<Label>(const std::string& name) {
   return get_id(name, lname_to_id);
 }
+
+// Keeping the implementations of str() and dump() in the .cpp file is more
+// likely to prevent the functions from being inlined (and thus not usable from
+// the debugger).
+std::string SourceManager::str(src_id_t id) {
+  const Function& f = get<Function>(id);
+  if (f != InvalidFunction) {
+    return f.str();
+  }
+  const Variable& v = get<Variable>(id);
+  if (v != InvalidVariable) {
+    return v.str();
+  }
+  const Instruction& i = get<Instruction>(id);
+  if (i != InvalidInstruction) {
+    return i.str();
+  }
+  const Label& l = get<Label>(id);
+  if (l != InvalidLabel) {
+    return l.str();
+  }
+  std::stringstream no_id;
+  no_id << "No SourceEntity with id " << id << " found.";
+  return no_id.str();
+}
+
+void SourceManager::dump(src_id_t id) {
+    std::cout << str(id) << std::endl;
+}
+
