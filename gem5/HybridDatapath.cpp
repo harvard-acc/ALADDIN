@@ -49,7 +49,6 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
       cacheMasterId(params->system->getMasterId(name() + ".cache")),
       cache_queue(params->cacheQueueSize,
                   params->cacheBandwidth,
-                  "cache_queue",
                   params->cactiCacheQueueConfig),
       enable_stats_dump(params->enableStatsDump), cacheSize(params->cacheSize),
       cacti_cfg(params->cactiCacheConfig), cacheLineSize(params->cacheLineSize),
@@ -80,6 +79,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
   std::stringstream name_builder;
   name_builder << "datapath" << accelerator_id;
   datapath_name = name_builder.str();
+  cache_queue.initStats(datapath_name + ".cache_queue");
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   isCacheBlocked = false;
   retryPkt = nullptr;

@@ -32,13 +32,13 @@ struct MemoryQueueEntry {
 
 class MemoryQueue {
  public:
-  MemoryQueue(int _size,
-              int _bandwidth,
-              std::string _name,
-              std::string _cacti_config)
-      : issuedThisCycle(0), size(_size), bandwidth(_bandwidth), name(_name),
+  MemoryQueue(int _size, int _bandwidth, std::string _cacti_config)
+      : issuedThisCycle(0), size(_size), bandwidth(_bandwidth),
         cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
-        leakagePower(0), area(0) {
+        leakagePower(0), area(0) {}
+
+  void initStats(std::string _name) {
+    name = _name;
     readStats.name("system." + name + "_reads")
         .desc("Number of reads to the " + name)
         .flags(Stats::total | Stats::nonan);
@@ -150,8 +150,8 @@ class MemoryQueue {
  private:
   const int size;         // Size of the queue.
   const int bandwidth;    // Max requests per cycle.
-  const std::string name;          // Specifies whether this is a load or store queue.
   const std::string cacti_config;  // CACTI config file.
+  std::string name;  // Specifies whether this is a load or store queue.
 
   float readEnergy;
   float writeEnergy;
