@@ -199,10 +199,10 @@ class BaseDatapath {
   int getNumOfNodes() { return boost::num_vertices(graph_); }
   int getNumOfEdges() { return boost::num_edges(graph_); }
   int getMicroop(unsigned int node_id) {
-    return exec_nodes[node_id]->get_microop();
+    return exec_nodes.at(node_id)->get_microop();
   }
   int getNumOfConnectedNodes(unsigned int node_id) {
-    return boost::degree(exec_nodes[node_id]->get_vertex(), graph_);
+    return boost::degree(exec_nodes.at(node_id)->get_vertex(), graph_);
   }
   // Return all nodes with dependencies originating from OR leaving this node.
   std::vector<unsigned> getConnectedNodes(unsigned int node_id);
@@ -210,13 +210,13 @@ class BaseDatapath {
     return loopBound.at(region_id);
   }
   std::string getBaseAddressLabel(unsigned int node_id) {
-    return exec_nodes[node_id]->get_array_label();
+    return exec_nodes.at(node_id)->get_array_label();
   }
   unsigned getPartitionIndex(unsigned int node_id) {
-    return exec_nodes[node_id]->get_partition_index();
+    return exec_nodes.at(node_id)->get_partition_index();
   }
   long long int getBaseAddress(std::string label) {
-    return partition_config[label].base_addr;
+    return partition_config.at(label).base_addr;
   }
   bool doesEdgeExist(ExecNode* from, ExecNode* to) {
     if (from != nullptr && to != nullptr)
@@ -225,13 +225,13 @@ class BaseDatapath {
   }
   // This is kept for unit testing reasons only.
   bool doesEdgeExist(unsigned int from, unsigned int to) {
-    return doesEdgeExist(exec_nodes[from], exec_nodes[to]);
+    return doesEdgeExist(exec_nodes.at(from), exec_nodes.at(to));
   }
   ExecNode* getNodeFromVertex(Vertex& vertex) {
     unsigned node_id = vertexToName[vertex];
-    return exec_nodes[node_id];
+    return exec_nodes.at(node_id);
   }
-  ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes[node_id]; }
+  ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes.at(node_id); }
   partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
@@ -258,12 +258,13 @@ class BaseDatapath {
   /* Clear graph stats. */
   virtual void clearDatapath();
   void clearExecNodes() {
-    for (int i = 0; i < exec_nodes.size(); i++)
-      delete exec_nodes[i];
+    for (auto& node_pair : exec_nodes)
+      delete node_pair.second;
     exec_nodes.clear();
   }
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
+    // Don't clear partition_config - it only gets read once.
     for (auto part_it = partition_config.begin();
          part_it != partition_config.end();
          ++part_it)

@@ -214,13 +214,13 @@ void ScratchpadDatapath::stepExecutingQueue() {
         inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
         markNodeStarted(node);
       } else {
-        unsigned remaining_cycles = inflight_multicycle_nodes[node_id];
+        unsigned remaining_cycles = inflight_multicycle_nodes.at(node_id);
         if (remaining_cycles == 1) {
           inflight_multicycle_nodes.erase(node_id);
           markNodeCompleted(it, index);
           executed = true;
         } else {
-          inflight_multicycle_nodes[node_id]--;
+          inflight_multicycle_nodes.at(node_id)--;
         }
       }
     } else {
@@ -242,7 +242,7 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   std::vector<float> alap_finish_time(numTotalNodes, num_cycles * cycleTime);
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
-    ExecNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes.at(node_id);
     if (node->is_isolated())
       continue;
     float alap_start_execution_time =

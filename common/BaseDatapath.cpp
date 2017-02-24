@@ -281,7 +281,7 @@ void BaseDatapath::cleanLeafNodes() {
     if (boost::degree(node_vertex, graph_) == 0)
       continue;
     unsigned node_id = vertexToName[node_vertex];
-    ExecNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes.at(node_id);
     int node_microop = node->get_microop();
     if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) &&
         node_microop != LLVM_IR_SilentStore && node_microop != LLVM_IR_Store &&
@@ -420,10 +420,10 @@ void BaseDatapath::loopPipelining() {
   std::map<unsigned, unsigned> first_non_isolated_node;
   auto bound_it = loopBound.begin();
   auto node_it = exec_nodes.begin();
-  ExecNode* curr_node = exec_nodes[*bound_it];
+  ExecNode* curr_node = exec_nodes.at(*bound_it);
   bound_it++;  // skip first region
   while (node_it != exec_nodes.end()) {
-    assert(exec_nodes[*bound_it]->is_branch_op());
+    assert(exec_nodes.at(*bound_it)->is_branch_op());
     while (node_it != exec_nodes.end() && node_it->first < *bound_it) {
       curr_node = node_it->second;
       if (!curr_node->has_vertex() ||
@@ -452,8 +452,8 @@ void BaseDatapath::loopPipelining() {
             E = first_non_isolated_node.end();
        first_it != E;
        ++first_it) {
-    ExecNode* br_node = exec_nodes[first_it->first];
-    ExecNode* first_node = exec_nodes[first_it->second];
+    ExecNode* br_node = exec_nodes.at(first_it->first);
+    ExecNode* first_node = exec_nodes.at(first_it->second);
     bool found = false;
     auto unroll_it = getUnrollFactor(br_node);
     /* We only want to pipeline loop iterations that are from the same unrolled
@@ -515,7 +515,7 @@ void BaseDatapath::loopPipelining() {
              out_edges(prev_branch_n->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
-      if (exec_nodes[vertexToName[target(*out_edge_it, graph_)]]->is_call_op())
+      if (exec_nodes.at(vertexToName[target(*out_edge_it, graph_)])->is_call_op())
         continue;
       if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
         continue;
@@ -873,7 +873,7 @@ void BaseDatapath::removeRepeatedStores() {
     std::unordered_map<unsigned, int> address_store_map;
 
     while (node_id >= *bound_it && node_id >= 0) {
-      ExecNode* node = exec_nodes[node_id];
+      ExecNode* node = exec_nodes.at(node_id);
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0 ||
           !node->is_store_op()) {
@@ -1117,7 +1117,7 @@ void BaseDatapath::updateGraphWithIsolatedNodes(
     std::vector<unsigned>& to_remove_nodes) {
   std::cout << "  Removing " << to_remove_nodes.size() << " isolated nodes.\n";
   for (auto it = to_remove_nodes.begin(); it != to_remove_nodes.end(); ++it) {
-    clear_vertex(exec_nodes[*it]->get_vertex(), graph_);
+    clear_vertex(exec_nodes.at(*it)->get_vertex(), graph_);
   }
 }
 
@@ -1228,14 +1228,14 @@ void BaseDatapath::updatePerCycleActivity(
     if (node->is_isolated())
       continue;
     int node_level = node->get_start_execution_cycle();
-    funcActivity& curr_fu_activity = func_activity[func_id].at(node_level);
+    funcActivity& curr_fu_activity = func_activity.at(func_id).at(node_level);
 
     if (node->is_multicycle_op()) {
       for (unsigned stage = 0;
            node_level + stage < node->get_complete_execution_cycle();
            stage++) {
         funcActivity& fp_fu_activity =
-            func_activity[func_id].at(node_level + stage);
+            func_activity.at(func_id).at(node_level + stage);
         /* Activity for floating point functional units includes all their
          * stages.*/
         if (node->is_fp_add_op()) {
@@ -1266,17 +1266,17 @@ void BaseDatapath::updatePerCycleActivity(
     } else if (node->is_load_op()) {
       std::string array_label = node->get_array_label();
       if (mem_activity.find(array_label) != mem_activity.end())
-        mem_activity[array_label].at(node_level).read += 1;
+        mem_activity.at(array_label).at(node_level).read += 1;
     } else if (node->is_store_op()) {
       std::string array_label = node->get_array_label();
       if (mem_activity.find(array_label) != mem_activity.end())
-        mem_activity[array_label].at(node_level).write += 1;
+        mem_activity.at(array_label).at(node_level).write += 1;
     }
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
     auto max_it = func_max_activity.find(*it);
     assert(max_it != func_max_activity.end());
-    std::vector<funcActivity>& cycle_activity = func_activity[*it];
+    std::vector<funcActivity>& cycle_activity = func_activity.at(*it);
     max_it->second.mul =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
@@ -1476,7 +1476,7 @@ void BaseDatapath::outputPerCycleActivity(
     bool is_fu_idle = true;
     // For FUs
     for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-      funcActivity& curr_activity = func_activity[*it].at(curr_level);
+      funcActivity& curr_activity = func_activity.at(*it).at(curr_level);
       is_fu_idle &= curr_activity.is_idle();
 #ifdef DEBUG
       stats << curr_activity.fp_sp_mul << ","
@@ -1759,7 +1759,7 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
   std::unordered_map<Vertex, unsigned> vertexToMicroop;
   BGL_FORALL_VERTICES(v, graph_, Graph) {
     vertexToMicroop[v] =
-        exec_nodes[get(boost::vertex_index, graph_, v)]->get_microop();
+        exec_nodes.at(get(boost::vertex_index, graph_, v))->get_microop();
   }
   std::ofstream out(
       graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
@@ -1783,7 +1783,7 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
   }
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
-    ExecNode* node = exec_nodes[node_id];
+    ExecNode* node = exec_nodes.at(node_id);
     if (node->is_isolated())
       continue;
     if (!node->is_memory_op() && !node->is_branch_op()) {
@@ -1827,7 +1827,7 @@ void BaseDatapath::updateRegStats() {
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       int child_id = vertexToName[target(*out_edge_it, graph_)];
-      ExecNode* child_node = exec_nodes[child_id];
+      ExecNode* child_node = exec_nodes.at(child_id);
       if (child_node->is_control_op() || child_node->is_load_op())
         continue;
 
@@ -1955,7 +1955,7 @@ void BaseDatapath::initBaseAddress() {
           continue;
 
         unsigned parent_id = vertexToName[source(*in_edge_it, graph_)];
-        ExecNode* parent_node = exec_nodes[parent_id];
+        ExecNode* parent_node = exec_nodes.at(parent_id);
         int parent_microop = parent_node->get_microop();
         if (parent_microop == LLVM_IR_GetElementPtr ||
             parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
@@ -2005,7 +2005,7 @@ int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
     unsigned int curr_dist = queue.front().second;
     out_edge_iter out_edge_it, out_edge_end;
     for (boost::tie(out_edge_it, out_edge_end) =
-             out_edges(exec_nodes[curr_node]->get_vertex(), graph_);
+             out_edges(exec_nodes.at(curr_node)->get_vertex(), graph_);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       if (get(boost::edge_name, graph_, *out_edge_it) != CONTROL_EDGE) {
@@ -2059,7 +2059,7 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
   in_edge_iter in_edge_it, in_edge_end;
   out_edge_iter out_edge_it, out_edge_end;
-  ExecNode* node = exec_nodes[node_id];
+  ExecNode* node = exec_nodes.at(node_id);
   Vertex vertex = node->get_vertex();
 
   std::vector<unsigned> connectedNodes;

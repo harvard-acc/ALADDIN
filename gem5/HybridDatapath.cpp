@@ -259,13 +259,13 @@ void HybridDatapath::stepExecutingQueue() {
         inflight_multicycle_nodes[node_id] = node->get_multicycle_latency();
         markNodeStarted(node);
       } else {
-        unsigned remaining_cycles = inflight_multicycle_nodes[node_id];
+        unsigned remaining_cycles = inflight_multicycle_nodes.at(node_id);
         if (remaining_cycles == 1) {
           inflight_multicycle_nodes.erase(node_id);
           markNodeCompleted(it, index);
           op_satisfied = true;
         } else {
-          inflight_multicycle_nodes[node_id]--;
+          inflight_multicycle_nodes.at(node_id)--;
         }
       }
     } else {
@@ -409,7 +409,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
   if (inflight_dma_nodes.find(node_id) == inflight_dma_nodes.end())
     inflight_dma_nodes[node_id] = status;
   else
-    status = inflight_dma_nodes[node_id];
+    status = inflight_dma_nodes.at(node_id);
   if (status == Invalid && inflight_dma_nodes.size() < maxInflightNodes) {
     /* A DMA load needs to be preceded by a cache flush of the buffer being sent,
      * while a DMA store needs to be preceded by a cache invalidate of the
@@ -539,7 +539,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
 // Issue a DMA request for memory.
 void HybridDatapath::issueDmaRequest(unsigned node_id) {
-  ExecNode *node = exec_nodes[node_id];
+  ExecNode *node = exec_nodes.at(node_id);
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
   DmaMemAccess* mem_access = node->get_dma_mem_access();
@@ -563,7 +563,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
     registers.getRegister(array_label)->increment_dma_accesses(isLoad);
 
   // Update the tracking structures.
-  inflight_dma_nodes[node_id] = WaitingFromDma;
+  inflight_dma_nodes.at(node_id) = WaitingFromDma;
 
   // Prepare the transaction.
   MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
@@ -594,11 +594,11 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 void HybridDatapath::completeDmaRequest(unsigned node_id) {
   assert(inflight_dma_nodes.find(node_id) != inflight_dma_nodes.end());
   DPRINTF(HybridDatapath, "completeDmaRequest for node %d.\n", node_id);
-  inflight_dma_nodes[node_id] = Returned;
+  inflight_dma_nodes.at(node_id) = Returned;
 }
 
 void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
-  assert(exec_nodes[node_id]->is_dma_op() &&
+  assert(exec_nodes.at(node_id)->is_dma_op() &&
          "Cannot add non-DMA node to DMA issue queue!");
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
   assert(dmaIssueQueue.find(node_id) == dmaIssueQueue.end());
@@ -687,7 +687,7 @@ bool HybridDatapath::issueTLBRequestInvisibly(
   PacketPtr data_pkt = createTLBRequestPacket(addr, size, isLoad, node_id);
   dtb.translateInvisibly(data_pkt);
   // data_pkt now contains the translated address.
-  ExecNode* node = exec_nodes[node_id];
+  ExecNode* node = exec_nodes.at(node_id);
   node->get_mem_access()->paddr = *data_pkt->getPtr<Addr>();
   return true;
 }
@@ -724,7 +724,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
           pkt->cmdString());
   Addr vaddr = pkt->getAddr();
   unsigned node_id = state->node_id;
-  ExecNode* node = exec_nodes[node_id];
+  ExecNode* node = exec_nodes.at(node_id);
   assert(cache_queue.contains(vaddr) && cache_queue.getStatus(vaddr) == Translating);
 
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
@@ -769,7 +769,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
    * can predict memory behavior similar to how branch predictors work. We
    * don't have real PCs in aladdin so we'll just hash the unique id of the
    * node.  */
-  DynamicInstruction inst = exec_nodes[node_id]->get_dynamic_instruction();
+  DynamicInstruction inst = exec_nodes.at(node_id)->get_dynamic_instruction();
   Addr pc = static_cast<Addr>(std::hash<DynamicInstruction>()(inst));
   req = new Request(addr, size, flags, getCacheMasterId(), curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
@@ -836,7 +836,7 @@ void HybridDatapath::completeCacheRequest(PacketPtr pkt) {
   DPRINTF(HybridDatapath, "node:%d mem access is returned\n", node_id);
 
   bool isLoad = (pkt->cmd == MemCmd::ReadResp);
-  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
+  MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
   Addr vaddr = mem_access->vaddr;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
