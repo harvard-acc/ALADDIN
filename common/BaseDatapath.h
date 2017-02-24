@@ -422,6 +422,10 @@ class BaseDatapath {
   // Graph node and edge attributes.
   unsigned numTotalNodes;
   unsigned numTotalEdges;
+  // ID of the first node.
+  unsigned int beginNodeId;
+  // ID of the last node + 1.
+  unsigned int endNodeId;
 
   // Completely partitioned arrays.
   Registers registers;

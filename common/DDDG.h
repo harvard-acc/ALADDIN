@@ -90,6 +90,7 @@ class DDDG {
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
   long num_of_instructions;
+  long current_node_id;
   int num_of_reg_dep;
   int num_of_mem_dep;
   int num_of_ctrl_dep;

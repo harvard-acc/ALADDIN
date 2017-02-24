@@ -72,6 +72,7 @@ DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
   num_of_mem_dep = 0;
   num_of_ctrl_dep = 0;
   num_of_instructions = -1;
+  current_node_id = -1;
   last_parameter = 0;
   last_dma_fence = -1;
   prev_bblock = "-1";
@@ -179,15 +180,14 @@ void DDDG::parse_instruction_line(std::string line) {
   char instid[256], bblockid[256];
   int line_num;
   int microop;
-  int dyn_inst_count;
   sscanf(line.c_str(),
-         "%d,%[^,],%[^,],%[^,],%d,%d\n",
+         "%d,%[^,],%[^,],%[^,],%d,%lu\n",
          &line_num,
          curr_static_function,
          bblockid,
          instid,
          &microop,
-         &dyn_inst_count);
+         &current_node_id);
 
   num_of_instructions++;
   prev_microop = curr_microop;
@@ -197,7 +197,7 @@ void DDDG::parse_instruction_line(std::string line) {
   Function& curr_function =
       srcManager.insert<Function>(curr_static_function);
   Instruction& curr_inst = srcManager.insert<Instruction>(curr_instid);
-  curr_node = datapath->insertNode(num_of_instructions, microop);
+  curr_node = datapath->insertNode(current_node_id, microop);
   curr_node->set_line_num(line_num);
   curr_node->set_static_inst_id(curr_inst.get_id());
   curr_node->set_static_function_id(curr_function.get_id());
@@ -236,15 +236,15 @@ void DDDG::parse_instruction_line(std::string line) {
   if (microop == LLVM_IR_PHI && prev_microop != LLVM_IR_PHI)
     prev_bblock = curr_bblock;
   if (microop == LLVM_IR_DMAFence) {
-    last_dma_fence = num_of_instructions;
+    last_dma_fence = current_node_id;
     for (unsigned node_id : last_dma_nodes) {
       insert_control_dependence(node_id, last_dma_fence);
     }
     last_dma_nodes.clear();
   } else if (microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore) {
     if (last_dma_fence != -1)
-      insert_control_dependence(last_dma_fence, num_of_instructions);
-    last_dma_nodes.push_back(num_of_instructions);
+      insert_control_dependence(last_dma_fence, current_node_id);
+    last_dma_nodes.push_back(current_node_id);
   }
   curr_bblock = bblockid;
   curr_node->set_dynamic_invocation(func_invocation_count);
@@ -302,7 +302,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     auto reg_it = register_last_written.find(unique_reg_ref);
     if (reg_it != register_last_written.end()) {
       /*Find the last instruction that writes to the register*/
-      reg_edge_t tmp_edge = { (unsigned)num_of_instructions, param_tag };
+      reg_edge_t tmp_edge = { (unsigned)current_node_id, param_tag };
       register_edge_table.insert(std::make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
       if (curr_microop == LLVM_IR_Call) {
@@ -312,7 +312,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
                (curr_microop == LLVM_IR_Load && param_tag == 1)) {
       /*For the load/store op without a gep instruction before, assuming the
        *load/store op performs a gep which writes to the label register*/
-      register_last_written[unique_reg_ref] = num_of_instructions;
+      register_last_written[unique_reg_ref] = current_node_id;
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
@@ -346,12 +346,12 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         int last_node_to_write = addr_it->second;
         if (datapath->getNodeFromNodeId(last_node_to_write)->is_dma_load())
           handle_post_write_dependency(
-              mem_address, mem_size, num_of_instructions);
+              mem_address, mem_size, current_node_id);
         // Now we can overwrite the last written node id.
-        addr_it->second = num_of_instructions;
+        addr_it->second = current_node_id;
       } else {
         address_last_written.insert(
-            std::make_pair(mem_address, num_of_instructions));
+            std::make_pair(mem_address, current_node_id));
       }
 
       // The label is the name of the register that holds the address.
@@ -399,9 +399,9 @@ void DDDG::parse_result(std::string line) {
   DynamicVariable unique_reg_ref(curr_dynamic_function, var);
   auto reg_it = register_last_written.find(unique_reg_ref);
   if (reg_it != register_last_written.end())
-    reg_it->second = num_of_instructions;
+    reg_it->second = current_node_id;
   else
-    register_last_written[unique_reg_ref] = num_of_instructions;
+    register_last_written[unique_reg_ref] = current_node_id;
 
   if (curr_microop == LLVM_IR_Alloca) {
     curr_node->set_variable_id(srcManager.get_id<Variable>(label_str));
@@ -410,7 +410,7 @@ void DDDG::parse_result(std::string line) {
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
     size_t mem_size = size / BYTE;
-    handle_post_write_dependency(mem_address, mem_size, num_of_instructions);
+    handle_post_write_dependency(mem_address, mem_size, current_node_id);
     uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
     curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
   } else if (curr_node->is_dma_op()) {
@@ -445,17 +445,17 @@ void DDDG::parse_result(std::string line) {
           // TODO: Storing an entry for every byte in this range is very inefficient...
           auto addr_it = address_last_written.find(addr);
           if (addr_it != address_last_written.end())
-            addr_it->second = num_of_instructions;
+            addr_it->second = current_node_id;
           else
             address_last_written.insert(
-                std::make_pair(addr, num_of_instructions));
+                std::make_pair(addr, current_node_id));
         }
       }
     } else {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.
       Addr start_addr = base_addr + src_off;
-      handle_post_write_dependency(start_addr, size, num_of_instructions);
+      handle_post_write_dependency(start_addr, size, current_node_id);
     }
   }
 }
@@ -477,7 +477,7 @@ void DDDG::parse_forward(std::string line) {
     unique_reg_in_caller_func = InvalidDynamicVariable;
   }
   auto reg_it = register_last_written.find(unique_reg_ref);
-  int tmp_written_inst = num_of_instructions;
+  int tmp_written_inst = current_node_id;
   if (last_call_source != -1) {
     tmp_written_inst = last_call_source;
   }

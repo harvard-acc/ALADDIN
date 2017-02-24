@@ -53,6 +53,8 @@ bool BaseDatapath::buildDddg() {
   std::cout << "    Initializing BaseDatapath      " << std::endl;
   std::cout << "-------------------------------" << std::endl;
   numTotalNodes = exec_nodes.size();
+  beginNodeId = exec_nodes.begin()->first;
+  endNodeId = (--exec_nodes.end())->first + 1;
 
   BGL_FORALL_VERTICES(v, graph_, Graph) {
     exec_nodes[get(boost::vertex_index, graph_, v)]->set_vertex(v);
@@ -997,7 +999,7 @@ void BaseDatapath::treeHeightReduction() {
             if (parent_region == node_region) {
               updated.at(parent_id) = 1;
               if (!parent_node->is_associative())
-                leaves.push_back(std::make_pair(parent_node, 0));
+                leaves.push_back(std::make_pair(parent_node, false));
               else {
                 out_edge_iter out_edge_it, out_edge_end;
                 int num_of_children = 0;
@@ -1012,19 +1014,19 @@ void BaseDatapath::treeHeightReduction() {
                 if (num_of_children == 1)
                   associative_chain.push_back(parent_node);
                 else
-                  leaves.push_back(std::make_pair(parent_node, 0));
+                  leaves.push_back(std::make_pair(parent_node, false));
               }
             } else {
-              leaves.push_back(std::make_pair(parent_node, 1));
+              leaves.push_back(std::make_pair(parent_node, true));
             }
           }
         } else {
           /* Promote the single parent node with higher priority. This affects
            * mostly the top of the graph where no parent exists. */
-          leaves.push_back(std::make_pair(chain_node, 1));
+          leaves.push_back(std::make_pair(chain_node, true));
         }
       } else {
-        leaves.push_back(std::make_pair(chain_node, 0));
+        leaves.push_back(std::make_pair(chain_node, false));
       }
       chain_id++;
     }
@@ -1040,10 +1042,10 @@ void BaseDatapath::treeHeightReduction() {
     auto leaf_it = leaves.begin();
 
     while (leaf_it != leaves.end()) {
-      if (leaf_it->second == 0)
-        rank_map[leaf_it->first] = 0;
+      if (leaf_it->second == false)
+        rank_map[leaf_it->first] = beginNodeId;
       else
-        rank_map[leaf_it->first] = numTotalNodes;
+        rank_map[leaf_it->first] = endNodeId;
       ++leaf_it;
     }
     // reconstruct the rest of the balanced tree
@@ -1058,8 +1060,9 @@ void BaseDatapath::treeHeightReduction() {
       } else {
         findMinRankNodes(&node1, &node2, rank_map);
       }
-      assert((node1->get_node_id() != numTotalNodes) &&
-             (node2->get_node_id() != numTotalNodes));
+      // TODO: Is this at all possible...?
+      assert((node1->get_node_id() != endNodeId) &&
+             (node2->get_node_id() != endNodeId));
       to_add_edges.push_back({ node1, *new_node_it, 1 });
       to_add_edges.push_back({ node2, *new_node_it, 1 });
 
@@ -1082,7 +1085,7 @@ void BaseDatapath::treeHeightReduction() {
 void BaseDatapath::findMinRankNodes(ExecNode** node1,
                                     ExecNode** node2,
                                     std::map<ExecNode*, unsigned>& rank_map) {
-  unsigned min_rank = numTotalNodes;
+  unsigned min_rank = endNodeId;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
     int node_rank = it->second;
     if (node_rank < min_rank) {
@@ -1090,7 +1093,7 @@ void BaseDatapath::findMinRankNodes(ExecNode** node1,
       min_rank = node_rank;
     }
   }
-  min_rank = numTotalNodes;
+  min_rank = endNodeId;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
     int node_rank = it->second;
     if ((it->first != *node1) && (node_rank < min_rank)) {
@@ -1774,7 +1777,10 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // bottom nodes first
-  std::vector<int> earliest_child(numTotalNodes, num_cycles);
+  std::map<unsigned, int> earliest_child;
+  for (auto node_id_pair : exec_nodes) {
+    earliest_child[node_id_pair.first] = num_cycles;
+  }
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
     ExecNode* node = exec_nodes[node_id];
