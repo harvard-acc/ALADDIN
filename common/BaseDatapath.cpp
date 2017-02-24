@@ -56,11 +56,7 @@ bool BaseDatapath::buildDddg() {
   beginNodeId = exec_nodes.begin()->first;
   endNodeId = (--exec_nodes.end())->first + 1;
 
-  BGL_FORALL_VERTICES(v, graph_, Graph) {
-    exec_nodes[get(boost::vertex_index, graph_, v)]->set_vertex(v);
-  }
-
-  vertexToName = get(boost::vertex_index, graph_);
+  vertexToName = get(boost::vertex_node_id, graph_);
 
   num_cycles = 0;
   return true;
@@ -81,14 +77,17 @@ void BaseDatapath::addDddgEdge(unsigned int from,
                                unsigned int to,
                                uint8_t parid) {
   if (from != to) {
-    add_edge(from, to, EdgeProperty(parid), graph_);
+    add_edge(exec_nodes.at(from)->get_vertex(), exec_nodes.at(to)->get_vertex(),
+             EdgeProperty(parid), graph_);
   }
 }
 
 ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
   exec_nodes[node_id] = new ExecNode(node_id, microop);
-  add_vertex(VertexProperty(node_id), graph_);
-  return exec_nodes[node_id];
+  Vertex v = add_vertex(VertexProperty(node_id), graph_);
+  exec_nodes.at(node_id)->set_vertex(v);
+  assert(get(boost::vertex_node_id, graph_, v) == node_id);
+  return exec_nodes.at(node_id);
 }
 
 void BaseDatapath::addCallArgumentMapping(DynamicVariable& callee_reg_id,
@@ -270,7 +269,9 @@ void BaseDatapath::cleanLeafNodes() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
   /*track the number of children each node has*/
-  std::vector<int> num_of_children(numTotalNodes, 0);
+  std::map<unsigned, int> num_of_children;
+  for (auto& node_it : exec_nodes)
+    num_of_children[node_it.first] = 0;
   std::vector<unsigned> to_remove_nodes;
 
   std::vector<Vertex> topo_nodes;
@@ -929,13 +930,18 @@ void BaseDatapath::treeHeightReduction() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
 
-  std::vector<bool> updated(numTotalNodes, 0);
-  std::vector<int> bound_region(numTotalNodes, 0);
+  std::map<unsigned, bool> updated;
+  std::map<unsigned, int> bound_region;
+  for (auto node_pair : exec_nodes) {
+    updated[node_pair.first] = false;
+    bound_region[node_pair.first] = 0;
+  }
 
   int region_id = 0;
-  unsigned node_id = 0;
+  auto node_it = exec_nodes.begin();
+  unsigned node_id = node_it->first;
   auto bound_it = loopBound.begin();
-  while (node_id <= *bound_it && node_id < numTotalNodes) {
+  while (node_id <= *bound_it && node_it != exec_nodes.end()) {
     bound_region.at(node_id) = region_id;
     if (node_id == *bound_it) {
       region_id++;
@@ -943,7 +949,8 @@ void BaseDatapath::treeHeightReduction() {
       if (bound_it == loopBound.end())
         break;
     }
-    node_id++;
+    node_it++;
+    node_id = node_it->first;
   }
 
   std::set<Edge> to_remove_edges;
@@ -1108,7 +1115,7 @@ void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {
     if (*it->from != *it->to && !doesEdgeExist(it->from, it->to)) {
       get(boost::edge_name, graph_)[add_edge(
-          it->from->get_node_id(), it->to->get_node_id(), graph_).first] =
+          it->from->get_vertex(), it->to->get_vertex(), graph_).first] =
           it->parid;
     }
   }
@@ -1683,8 +1690,12 @@ void BaseDatapath::writeBaseAddress() {
     char original_label[256];
     int partition_id;
     std::string partitioned_label = it->second->get_array_label();
-    sscanf(
+    if (partitioned_label.empty())
+      continue;
+    int num_fields = sscanf(
         partitioned_label.c_str(), "%[^-]-%d", original_label, &partition_id);
+    if (num_fields != 2)
+      continue;
     gzprintf(gzip_file,
              "node:%u,part:%s,base:%lld\n",
              it->first,
@@ -1696,17 +1707,19 @@ void BaseDatapath::writeBaseAddress() {
 
 void BaseDatapath::writeOtherStats() {
   // First collect the data from exec_nodes.
-  std::vector<int> microop(numTotalNodes, 0);
-  std::vector<int> exec_cycle(numTotalNodes, 0);
-  std::vector<bool> isolated(numTotalNodes, false);
+  std::vector<int> microop;
+  std::vector<int> exec_cycle;
+  std::vector<bool> isolated;
+  microop.reserve(totalConnectedNodes);
+  exec_cycle.reserve(totalConnectedNodes);
+  isolated.reserve(totalConnectedNodes);
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
        ++node_it) {
-    unsigned node_id = node_it->first;
     ExecNode* node = node_it->second;
-    microop[node_id] = node->get_microop();
-    exec_cycle[node_id] = node->get_start_execution_cycle();
-    isolated[node_id] = node->is_isolated();
+    microop.push_back(node->get_microop());
+    exec_cycle.push_back(node->get_start_execution_cycle());
+    isolated.push_back(node->is_isolated());
   }
 
   std::string cycle_file_name(benchName);
@@ -1759,7 +1772,7 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
   std::unordered_map<Vertex, unsigned> vertexToMicroop;
   BGL_FORALL_VERTICES(v, graph_, Graph) {
     vertexToMicroop[v] =
-        exec_nodes.at(get(boost::vertex_index, graph_, v))->get_microop();
+        exec_nodes.at(get(boost::vertex_node_id, graph_, v))->get_microop();
   }
   std::ofstream out(
       graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);

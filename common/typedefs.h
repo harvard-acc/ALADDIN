@@ -14,7 +14,12 @@ typedef uint64_t Addr;
 
 // Typedefs for Boost::Graph.
 
-typedef boost::property<boost::vertex_index_t, unsigned> VertexProperty;
+namespace boost {
+enum vertex_node_id_t { vertex_node_id };
+BOOST_INSTALL_PROPERTY(vertex, node_id);
+}
+
+typedef boost::property<boost::vertex_node_id_t, unsigned> VertexProperty;
 typedef boost::property<boost::edge_name_t, uint8_t> EdgeProperty;
 typedef boost::adjacency_list<boost::setS,
                               boost::vecS,
@@ -28,7 +33,7 @@ typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
 typedef boost::graph_traits<Graph>::in_edge_iterator in_edge_iter;
 typedef boost::graph_traits<Graph>::out_edge_iterator out_edge_iter;
 typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
-typedef boost::property_map<Graph, boost::vertex_index_t>::type VertexNameMap;
+typedef boost::property_map<Graph, boost::vertex_node_id_t>::type VertexNameMap;
 
 // Other convenience typedefs.
 class partitionEntry;

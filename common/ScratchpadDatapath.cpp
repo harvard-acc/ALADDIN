@@ -239,7 +239,10 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(graph_, std::back_inserter(topo_nodes));
   // bottom nodes first
-  std::vector<float> alap_finish_time(numTotalNodes, num_cycles * cycleTime);
+  std::map<unsigned, float> alap_finish_time;
+  for (auto node_it : exec_nodes)
+    alap_finish_time[node_it.first] = num_cycles * cycleTime;
+
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
     ExecNode* node = exec_nodes.at(node_id);
