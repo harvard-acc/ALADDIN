@@ -414,8 +414,8 @@ void DDDG::parse_result(std::string line) {
     uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
     curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
   } else if (curr_node->is_dma_op()) {
-    Addr base_addr;
-    size_t src_off, dst_off, size;
+    Addr base_addr = 0;
+    size_t src_off = 0, dst_off = 0, size = 0;
     // Determine DMA interface version.
     if (parameter_value_per_inst.size() == 4) {
       // v1 (src offset = dst offset).
@@ -429,6 +429,8 @@ void DDDG::parse_result(std::string line) {
       src_off = (size_t) parameter_value_per_inst[2];
       dst_off = (size_t) parameter_value_per_inst[3];
       size = (size_t) parameter_value_per_inst[4];
+    } else {
+      assert("Unknown DMA interface version!");
     }
     curr_node->set_dma_mem_access(base_addr, src_off, dst_off, size);
     if (curr_microop == LLVM_IR_DMALoad) {
