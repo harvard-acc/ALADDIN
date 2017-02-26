@@ -64,21 +64,18 @@ class HybridDatapath(MemObject):
   # HACK: We don't have a scratchpad object. Currently we just connect the
   # scratchpad port inside datapath directly to the memory bus.
 
-  def connectThroughMonitor(self, system, trace_name, master_port, slave_port):
+  def connectThroughMonitor(self, monitor_name, master_port, slave_port):
     """ Connect the master and slave port through a CommMonitor. """
-    monitor = CommMonitor.CommMonitor(trace_enable=True, trace_file=trace_name)
+    trace_file_name = "%s.%s.gz" % (self.benchName, monitor_name)
+    monitor = CommMonitor.CommMonitor(trace_enable=True, trace_file=trace_file_name)
     monitor.slave = master_port
     monitor.master = slave_port
-    if trace_name.endswith(".gz"):
-      monitor_name = trace_name[:-3].replace(".", "_")
-    else:
-      monitor_name = trace_name.replace(".", "_")
-    setattr(system, monitor_name, monitor)
+    setattr(self, monitor_name, monitor)
 
   def connectPrivateScratchpad(self, system, bus):
     if self.recordMemoryTrace:
-      trace_name = "%s.spad.memtrc.gz" % self.benchName
-      self.connectThroughMonitor(system, trace_name, self.spad_port, bus.slave)
+      monitor_name = "spad_monitor"
+      self.connectThroughMonitor(monitor_name, self.spad_port, bus.slave)
     else:
       self.spad_port = bus.slave
 
@@ -87,7 +84,7 @@ class HybridDatapath(MemObject):
     self.cache_port = cache.cpu_side
 
     if self.recordMemoryTrace:
-      trace_name = "%s.cache.memtrc.gz" % self.benchName
-      self.connectThroughMonitor(system, trace_name, cache.mem_side, bus.slave)
+      monitor_name = "cache_monitor"
+      self.connectThroughMonitor(monitor_name, cache.mem_side, bus.slave)
     else:
       self.cache.mem_side = bus.slave

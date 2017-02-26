@@ -76,9 +76,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
   }
 #endif
   BaseDatapath::cycleTime = params->cycleTime;
-  std::stringstream name_builder;
-  name_builder << "datapath" << accelerator_id;
-  datapath_name = name_builder.str();
+  datapath_name = params->acceleratorName;
   cache_queue.initStats(datapath_name + ".cache_queue");
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
   isCacheBlocked = false;
