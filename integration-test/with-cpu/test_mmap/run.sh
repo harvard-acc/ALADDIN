@@ -10,7 +10,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --num-cpus=1 \
   --enable_prefetchers \
   --mem-size=4GB \
-  --mem-type=DDR3_1600_x64  \
+  --mem-type=DDR3_1600_8x8  \
   --sys-clock=1GHz \
   --cpu-type=detailed \
   --caches \

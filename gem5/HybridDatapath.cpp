@@ -611,7 +611,7 @@ void HybridDatapath::sendFinishedSignal() {
   for (int i = 0; i < size; i++)
     data[i] = 0x13;
   Request* req = new Request(finish_flag, size, flags, getCacheMasterId());
-  req->setThreadContext(context_id, thread_id);  // Only needed for prefetching.
+  req->setContext(context_id);  // Only needed for prefetching.
   MemCmd::Command cmd = MemCmd::WriteReq;
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);
@@ -774,7 +774,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
    * gem5, but they aren't actually required for the mechanics of the memory
    * checking itsef. This has to be set outside of the constructor or the
    * address will be interpreted as a virtual, not physical. */
-  req->setThreadContext(context_id, thread_id);
+  req->setContext(context_id);
 
   MemCmd command;
   uint8_t* data = new uint8_t[size];
@@ -851,6 +851,12 @@ void HybridDatapath::completeCacheRequest(PacketPtr pkt) {
 
 /* Receiving response from DMA. */
 bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
+  if (pkt->cmd == MemCmd::InvalidateResp) {
+    // TODO: We can create a completion event for invalidation responses so
+    // that DMA nodes cannot proceed until the invalidations are done.
+    return DmaPort::recvTimingResp(pkt);
+  }
+
   // Get the DMA sender state to retrieve node id, so we can get the virtual
   // address (the packet address is possibly physical).
   DmaEvent* event = dynamic_cast<DmaEvent*>(getPacketCompletionEvent(pkt));
@@ -916,6 +922,7 @@ void HybridDatapath::regStats() {
   dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
       .desc("Total number of cycles spent on setting up DMA transfers.")
       .flags(total | nonan);
+  Gem5Datapath::regStats();
 }
 
 #ifdef USE_DB

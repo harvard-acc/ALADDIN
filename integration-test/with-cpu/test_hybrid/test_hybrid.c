@@ -3,7 +3,9 @@
  * This test uses both the cache and DMA to access input data.
  */
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "aladdin_sys_connection.h"
 #include "aladdin_sys_constants.h"
 
@@ -12,6 +14,7 @@
 #endif
 
 #define TYPE int
+#define CACHELINE_SIZE 64
 
 int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
   int num_failures = 0;
@@ -41,8 +44,13 @@ void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 
 int main() {
   const int num_vals = 1024;
-  TYPE* store_vals =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
-  TYPE* store_loc =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
+  TYPE *store_vals, *store_loc;
+  int err = posix_memalign(
+      (void**)&store_vals, CACHELINE_SIZE, sizeof(TYPE) * num_vals);
+  assert(err == 0 && "Failed to allocate memory!");
+  err = posix_memalign(
+      (void**)&store_loc, CACHELINE_SIZE, sizeof(TYPE) * num_vals);
+  assert(err == 0 && "Failed to allocate memory!");
   for (int i = 0; i < num_vals; i++) {
     store_vals[i] = i;
     store_loc[i] = -1;
@@ -67,5 +75,8 @@ int main() {
     return -1;
   }
   fprintf(stdout, "Test passed!\n");
+
+  free(store_vals);
+  free(store_loc);
   return 0;
 }

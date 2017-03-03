@@ -20,7 +20,7 @@ SIM_TICKS_ERROR = 0.01
 DEFAULT_POST_SCRIPT_ARGS = {
   "num-cpus": 1,
   "mem-size": "4GB",
-  "mem-type": "DDR3_1600_x64",
+  "mem-type": "DDR3_1600_8x8",
   "sys-clock": "1GHz",
   "cpu-type": "detailed",
   "caches": True,
