@@ -4,7 +4,7 @@ bmk_home=${ALADDIN_HOME}/integration-test/with-cpu/test_array_func_arg
 gem5_dir=${ALADDIN_HOME}/../..
 
 ${gem5_dir}/build/X86/gem5.opt \
-  --debug-flags=HybridDatapath,Aladdin \
+  --debug-flags=HybridDatapath,Aladdin,DMA \
   --outdir=${bmk_home}/outputs \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \
   --num-cpus=1 \

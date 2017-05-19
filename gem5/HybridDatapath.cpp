@@ -42,7 +42,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                params->system,
                params->maxDmaRequests,
                params->dmaChunkSize,
-               params->multiChannelDMA,
+               params->numDmaChannels,
                params->invalidateOnDmaStore),
       spadMasterId(params->system->getMasterId(name() + ".spad")),
       cachePort(this),

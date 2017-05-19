@@ -23,7 +23,7 @@ class HybridDatapath(MemObject):
   # Scratchpad/DMA parameters.
   dmaSetupOverhead = Param.Unsigned(30, "Overhead in starting a DMA transaction.")
   maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
-  multiChannelDMA = Param.Bool(False, "Use multi-channel DMA.")
+  numDmaChannels = Param.Unsigned(16, "Number of virtual DMA channels.")
   dmaChunkSize = Param.Unsigned("64", "DMA transaction chunk size.")
   spadPorts = Param.Unsigned(1, "Scratchpad ports per partition")
   pipelinedDma = Param.Bool(False, "Issue DMA ops as soon as they have "

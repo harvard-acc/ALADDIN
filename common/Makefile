@@ -25,8 +25,8 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-DEBUG =
-CFLAGS += $(DEBUG) $(BITWIDTH) -O3 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
+DEBUG = -g
+CFLAGS += $(DEBUG) $(BITWIDTH) -DDEBUG -O3 -std=c++0x -I$(BOOST_ROOT) -Icacti-p
 LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex -lpthread
 
 

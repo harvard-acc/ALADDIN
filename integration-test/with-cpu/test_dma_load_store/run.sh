@@ -17,5 +17,5 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cacheline_size=32 \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
   -c ${bmk_home}/test_dma_load_store \
-  > stdout.gz
+  | gzip -c > stdout.gz
 
