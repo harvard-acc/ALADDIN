@@ -72,7 +72,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     # Result depends mostly on cache queue size and bandwidth.
-    self.addExpectedStatResult("sim_ticks", 35548500)
+    self.addExpectedStatResult("sim_ticks", 36276000)
 
   def runTest(self):
     self.runAndValidate()
@@ -134,7 +134,7 @@ class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 26145000)
+    self.addExpectedStatResult("sim_ticks", 25243000)
 
   def runTest(self):
     self.runAndValidate()
