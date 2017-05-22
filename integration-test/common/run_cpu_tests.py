@@ -155,5 +155,22 @@ class MultipleInvocationsTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
+class ArrayMultidimIndexingTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_array_indexing"))
+    self.setSimBin("test_array_indexing")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 32})
+
+  def setExpectedResults(self):
+    # No need to check for simulated cycles. This is a functionality test only.
+    return
+
+  def runTest(self):
+    self.runAndValidate()
+
 if __name__ == "__main__":
   unittest.main()
