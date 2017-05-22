@@ -21,18 +21,22 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)
 
-CFLAGS += -g $(BITWIDTH) -O2 -std=c++0x -I$(BOOST_ROOT) \
+CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) \
          -I$(ALADDIN_HOME)/common
 LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
          -L$(ALADDIN_HOME) -laladdin -lpthread -lz
+
+all: CFLAGS+=-DDEBUG -O3
+all: report_dir $(TESTS)
+
+debug: CFLAGS+=-DDEBUG -O0
+debug: report_dir $(TESTS)
 
 report_dir:
 	@mkdir -p $(TEST_REPORT_DIR)
 
 perf: test_performance.o
 	$(CXX) -o test_performance $^ $(LFLAGS)
-
-all : report_dir $(TESTS)
 
 test : report_dir $(TESTS)
 	$(foreach t,$(TESTS),./$t;)
