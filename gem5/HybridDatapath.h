@@ -340,6 +340,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Total cycles spent on DMA setup.
   Stats::Scalar dma_setup_cycles;
 
+  // Total accelerator cycles, accumulated across invocations unless reset.
+  //
+  // Although Aladdin will print this anyways, registering the stat will make
+  // it show up in stats.txt.
+  Stats::Scalar acc_sim_cycles;
+
   // True if the cache's MSHRs are full.
   bool isCacheBlocked;
 

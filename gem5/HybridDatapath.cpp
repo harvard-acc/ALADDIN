@@ -130,7 +130,8 @@ void HybridDatapath::initializeDatapath(int delay) {
   }
   globalOptimizationPass();
   prepareForScheduling();
-  num_cycles = delay;
+  num_cycles += delay;
+  acc_sim_cycles += delay;
   isCacheBlocked = false;
   retryPkt = NULL;
   startDatapathScheduling(delay);
@@ -310,6 +311,7 @@ bool HybridDatapath::step() {
   }
 
   num_cycles++;
+  acc_sim_cycles++;
   if (executedNodes < totalConnectedNodes) {
     schedule(tickEvent, clockEdge(Cycles(1)));
     return true;
@@ -921,6 +923,9 @@ void HybridDatapath::regStats() {
       .flags(total | nonan);
   dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
       .desc("Total number of cycles spent on setting up DMA transfers.")
+      .flags(total | nonan);
+  acc_sim_cycles.name("system." + datapath_name + ".sim_cycles")
+      .desc("Total accelerator cycles")
       .flags(total | nonan);
   Gem5Datapath::regStats();
 }
