@@ -8,63 +8,6 @@
 #include "ProgressTracker.h"
 #include "SourceManager.h"
 
-class FP2BitsConverter {
-  public:
-    /* Convert a float, double, or integer into its hex representation.
-     *
-     * By hex representation, we mean a 32-bit or 64-bit integer type whose
-     * value is the IEEE-754 format that represents either a float or double,
-     * respectively.
-     *
-     * Args:
-     *  value: The value to convert as a double precision float.
-     *  size: The size of the floating point value (floats and doubles have
-     *     different hex representations for the same number).
-     *  is_float: If false, then instead of a conversion, a cast is performed
-     *     on value from double to uint64_t.
-     *
-     *  Returns:
-     *    A uint64_t value that represents the given floating point value. If
-     *    the value was a double precision number, then all 64-bits are used.
-     *    If the value was a float, then the first 32-bits are zero. If
-     *    is_float was false, then this value is just the floating point value
-     *    casted to this type.
-     */
-    static uint64_t Convert(double value, size_t size, bool is_float) {
-      if (!is_float)
-        return (uint64_t) value;
-
-      if (size == sizeof(float))
-        return toFloat(value);
-      else if (size == sizeof(double))
-        return toDouble(value);
-      else
-        assert(false && "Size was not either sizeof(float) or sizeof(double)!");
-    }
-
-  private:
-    union fp2bits {
-      double dp;
-      // Relying on the compiler to insert the appropriate zero padding for the
-      // smaller sized float object in this union.
-      float fp;
-      uint64_t bits;
-    };
-
-    static uint64_t toFloat(double value) {
-      fp2bits converter;
-      converter.bits = 0;
-      converter.fp = value;
-      return converter.bits;
-    }
-    static uint64_t toDouble(double value) {
-      fp2bits converter;
-      converter.bits = 0;
-      converter.dp = value;
-      return converter.bits;
-    }
-};
-
 DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
     : datapath(_datapath), trace_file(_trace_file),
       srcManager(_datapath->get_source_manager()) {
