@@ -35,6 +35,10 @@ all : $(EXE)
 debug: CFLAGS+=-DDEBUG -O0
 debug: $(EXE)
 
+debugger: obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES)
+	$(CXX) $(CFLAGS) -c $@.cpp
+	$(CXX)  $(BITWIDTH) -o $@ $@.o $(OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
+
 obj_dir:
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(CACTI_OBJ_DIR)
