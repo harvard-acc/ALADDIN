@@ -2070,8 +2070,14 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
 }
 
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
+  std::vector<unsigned> parentNodes = getParentNodes(node_id);
+  std::vector<unsigned> childNodes = getChildNodes(node_id);
+  parentNodes.insert(parentNodes.end(), childNodes.begin(), childNodes.end());
+  return parentNodes;
+}
+
+std::vector<unsigned> BaseDatapath::getParentNodes(unsigned int node_id) {
   in_edge_iter in_edge_it, in_edge_end;
-  out_edge_iter out_edge_it, out_edge_end;
   ExecNode* node = exec_nodes.at(node_id);
   Vertex vertex = node->get_vertex();
 
@@ -2083,6 +2089,15 @@ std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
     Vertex source_vertex = source(edge, graph_);
     connectedNodes.push_back(vertexToName[source_vertex]);
   }
+  return connectedNodes;
+}
+
+std::vector<unsigned> BaseDatapath::getChildNodes(unsigned int node_id) {
+  out_edge_iter out_edge_it, out_edge_end;
+  ExecNode* node = exec_nodes.at(node_id);
+  Vertex vertex = node->get_vertex();
+
+  std::vector<unsigned> connectedNodes;
   for (boost::tie(out_edge_it, out_edge_end) = out_edges(vertex, graph_);
        out_edge_it != out_edge_end;
        ++out_edge_it) {

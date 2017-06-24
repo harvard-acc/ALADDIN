@@ -189,6 +189,7 @@ class BaseDatapath {
   void setLabelMap(std::multimap<unsigned, UniqueLabel>& _labelmap) {
     labelmap = _labelmap;
   }
+  const std::multimap<unsigned, UniqueLabel>& getLabelMap() { return labelmap; }
   void addCallArgumentMapping(DynamicVariable& callee_reg_id,
                               DynamicVariable& caller_reg_id);
   DynamicVariable getCallerRegID(DynamicVariable& reg_id);
@@ -199,6 +200,7 @@ class BaseDatapath {
   bool isReadyMode() const { return ready_mode; }
 
   // Accessing graph stats.
+  const Graph& getGraph() { return graph_; }
   std::string getBenchName() { return benchName; }
   int getNumOfNodes() { return boost::num_vertices(graph_); }
   int getNumOfEdges() { return boost::num_edges(graph_); }
@@ -210,6 +212,9 @@ class BaseDatapath {
   }
   // Return all nodes with dependencies originating from OR leaving this node.
   std::vector<unsigned> getConnectedNodes(unsigned int node_id);
+  std::vector<unsigned> getParentNodes(unsigned int node_id);
+  std::vector<unsigned> getChildNodes(unsigned int node_id);
+
   int getUnrolledLoopBoundary(unsigned int region_id) {
     return loopBound.at(region_id);
   }
@@ -231,6 +236,10 @@ class BaseDatapath {
   bool doesEdgeExist(unsigned int from, unsigned int to) {
     return doesEdgeExist(exec_nodes.at(from), exec_nodes.at(to));
   }
+  bool doesNodeExist(unsigned int node_id) {
+    return exec_nodes.find(node_id) != exec_nodes.end();
+  }
+
   ExecNode* getNodeFromVertex(Vertex& vertex) {
     unsigned node_id = vertexToName[vertex];
     return exec_nodes.at(node_id);
