@@ -141,27 +141,31 @@ struct summary_data_t {
   int max_reg;
 };
 
-/* Custom graphviz label writer that outputs the micro-op of the vertex.
+/* Custom graphviz label writer that outputs the node id and microop of the vertex.
  *
  * Create a map from Vertex to microop and call make_microop_label_writer()
  * with this map. The micro-op is not a Boost property of the Vertex, which is
  * why the Boost-supplied label writer class is insufficient.
  */
-template <class Map> class microop_label_writer {
+template <class Map, class Graph>
+class microop_label_writer {
  public:
-  microop_label_writer(Map _vertexToMicroop)
-      : vertexToMicroop(_vertexToMicroop) {}
+  microop_label_writer(Map _vertexToMicroop, Graph& _graph)
+      : vertexToMicroop(_vertexToMicroop), graph(_graph) {}
   void operator()(std::ostream& out, const Vertex& v) {
-    out << "[label=" << vertexToMicroop[v] << "]";
+    unsigned node_id = get(boost::vertex_node_id, graph, v);
+    ExecNode* node = new ExecNode(node_id, vertexToMicroop[v]);
+    out << "[label=\"" << node_id << "\\n(" << node->get_microop_name() << ")\"]";
   }
 
  private:
   Map vertexToMicroop;
+  Graph graph;
 };
 
-template <class Map>
-inline microop_label_writer<Map> make_microop_label_writer(Map map) {
-  return microop_label_writer<Map>(map);
+template <class Map, class Graph>
+inline microop_label_writer<Map, Graph> make_microop_label_writer(Map map, Graph graph) {
+  return microop_label_writer<Map, Graph>(map, graph);
 }
 
 class BaseDatapath {

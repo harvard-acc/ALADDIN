@@ -1776,7 +1776,7 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
   }
   std::ofstream out(
       graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
-  write_graphviz(out, graph_, make_microop_label_writer(vertexToMicroop));
+  write_graphviz(out, graph_, make_microop_label_writer(vertexToMicroop, graph_));
 }
 
 /*As Late As Possible (ALAP) rescheduling for non-memory, non-control nodes.
