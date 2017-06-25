@@ -12,14 +12,18 @@
 //
 // For more information, see the help command.
 
-#include "file_func.h"
-#include "ScratchpadDatapath.h"
-#include "Scratchpad.h"
-#include "DDDG.h"
+#include <exception>
+#include <iostream>
 #include <stdio.h>
+
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/tokenizer.hpp>
-#include <exception>
+
+#include "DDDG.h"
+#include "debugger_print.h"
+#include "file_func.h"
+#include "Scratchpad.h"
+#include "ScratchpadDatapath.h"
 
 enum DebugReturnCode {
   CONTINUE,
@@ -147,96 +151,8 @@ DebugReturnCode cmd_print(std::vector<std::string>& command_tokens,
       return ERR;
     }
     ExecNode* node = acc->getNodeFromNodeId(node_id);
-
-    std::cout << "Node " << node_id << ":\n"
-              << "  Opcode: " << node->get_microop_name() << "\n";
-
-    SourceManager& srcManager = acc->get_source_manager();
-    int line_num = node->get_line_num();
-    if (line_num != -1)
-      std::cout << "  Line number: " << line_num << "\n";
-
-    // What function does this node belong to?
-    Function func = srcManager.get<Function>(node->get_static_function_id());
-    if (func != InvalidFunction) {
-      std::cout << "  Parent function: " << func.get_name() << "\n";
-      std::cout << "  Dynamic invocation count: " << node->get_dynamic_invocation() << "\n";
-    }
-    if (line_num != -1 && func != InvalidFunction) {
-      const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
-      auto label_range = labelmap.equal_range(line_num);
-      for (auto it = label_range.first; it != label_range.second; ++it) {
-        if (it->second.get_function_id() == func.get_id()) {
-          src_id_t label_id = it->second.get_label_id();
-          Label label = srcManager.get<Label>(label_id);
-          std::cout << "  Code label: " << label.get_name() << "\n";
-          break;
-        }
-      }
-    }
-
-    if (node->is_memory_op()) {
-      MemAccess *mem_access = node->get_mem_access();
-      std::cout << "  Memory access to array " << node->get_array_label() << "\n"
-                << "    Addr:  0x" << std::hex << mem_access->vaddr << "\n"
-                << "    Size:  " << std::dec << mem_access->size << "\n";
-      std::cout << "    Value: ";
-      if (mem_access->is_float && mem_access->size == 4)
-        std::cout << FP2BitsConverter::ConvertBitsToFloat(mem_access->value);
-      else if (mem_access->is_float && mem_access->size == 8)
-        std::cout << FP2BitsConverter::ConvertBitsToDouble(mem_access->value);
-      else
-        std::cout << mem_access->value;
-      std::cout << "\n";
-    }
-    if (node->get_microop() == LLVM_IR_GetElementPtr) {
-      std::cout << "  GEP of array " << node->get_array_label() << "\n";
-    }
-    std::cout << "  Inductive: ";
-    if (node->is_inductive())
-      std::cout << "Yes\n";
-    else
-      std::cout << "No\n";
-
-    // Print information about the variables involved, if info exists.
-    Variable var = srcManager.get<Variable>(node->get_variable_id());
-    if (var != InvalidVariable)
-      std::cout << "  Variable: " << var.str() << "\n";
-
-    // For Call nodes, the next node will indicate what the called function is
-    // (unless the called function is empty).
-    if (node->is_call_op()) {
-      ExecNode* called_node = NULL;
-      try {
-        called_node = acc->getNodeFromNodeId(node_id + 1);
-      } catch (const std::out_of_range &e) {}
-
-      std::cout << "  Called function: ";
-      if (called_node) {
-        Function called_func =
-            srcManager.get<Function>(called_node->get_static_function_id());
-        if (called_func != func && called_func != InvalidFunction)
-          std::cout << called_func.get_name() << "\n";
-        else
-          std::cout << "Unable to determine.\n";
-      } else {
-        std::cout << "Unable to determine.\n";
-      }
-    }
-
-    // Print the list of all parent nodes and child nodes.
-    std::vector<unsigned> parentNodes = acc->getParentNodes(node_id);
-    std::cout << "  Parents: " << parentNodes.size() << " [ ";
-    for (auto parent_node : parentNodes) {
-      std::cout << parent_node << " ";
-    }
-    std::cout << "]\n";
-    std::vector<unsigned> childNodes = acc->getChildNodes(node_id);
-    std::cout << "  Children: " << childNodes.size() << " [ ";
-    for (auto child_node : childNodes) {
-      std::cout << child_node << " ";
-    }
-    std::cout << "]\n";
+    DebugPrinter printer(node, acc, std::cout);
+    printer.printAll();
   } else {
     std::cerr << "ERROR: Unsupported object to print!\n";
     return ERR;
