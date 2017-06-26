@@ -10,6 +10,10 @@
 // This is a drop in replacement for Aladdin, so run it just like standalone
 // Aladdin but with the different executable name.
 //
+// For best results, install libreadline (any recent version will do) to enable
+// features like accessing command history (C-r to search, up/down arrows to go
+// back and forth).
+//
 // For more information, see the help command.
 
 #include <exception>
@@ -24,6 +28,11 @@
 #include "file_func.h"
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
+
+#ifdef HAS_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 enum DebugReturnCode {
   CONTINUE,
@@ -288,6 +297,20 @@ void cmd_unknown(std::string& command) {
   std::cout << "\nUnknown command " << command << std::endl;
 }
 
+std::string get_command() {
+  std::string command;
+#ifdef HAS_READLINE
+  char* cmd = readline("aladdin >> ");
+  if (cmd && *cmd)
+    add_history(cmd);
+  command = std::string(cmd);
+  free(cmd);
+#else
+  std::cout << "aladdin >> ";
+  std::getline(std::cin, command);
+#endif
+  return command;
+}
 // Supported commands.
 //
 // help
@@ -299,9 +322,7 @@ void cmd_unknown(std::string& command) {
 DebugReturnCode interactive_mode(ScratchpadDatapath* acc) {
   std::cout << "Entering Aladdin Debugger...\n";
   while (true) {
-    std::cout << "aladdin >> ";
-    std::string command;
-    std::getline(std::cin, command);
+    std::string command = get_command();
 
     if (command.empty()) {
       continue;

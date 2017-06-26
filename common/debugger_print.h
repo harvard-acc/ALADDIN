@@ -21,6 +21,7 @@ class DebugPrinter {
   void printCall();
   void printChildren();
   void printParents();
+  void printExecutionStats();
 
  private:
   ExecNode* node;

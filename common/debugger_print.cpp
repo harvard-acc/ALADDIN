@@ -18,6 +18,7 @@ void DebugPrinter::printAll() {
   printCall();
   printParents();
   printChildren();
+  printExecutionStats();
 }
 
 void DebugPrinter::printBasic() {
@@ -70,6 +71,7 @@ void DebugPrinter::printMemoryOp() {
     MemAccess* mem_access = node->get_mem_access();
     out << "  Memory access to array " << node->get_array_label() << "\n"
         << "    Addr:  0x" << std::hex << mem_access->vaddr << "\n"
+        << "    Partition: " << node->get_partition_index() << "\n"
         << "    Size:  " << std::dec << mem_access->size << "\n";
     out << "    Value: ";
     if (mem_access->is_float && mem_access->size == 4)
@@ -132,4 +134,9 @@ void DebugPrinter::printParents() {
     out << parent_node << " ";
   }
   out << "]\n";
+}
+
+void DebugPrinter::printExecutionStats() {
+  out << "  Start execution: " << node->get_start_execution_cycle() << "\n"
+      << "  End execution:  " << node->get_complete_execution_cycle() << "\n";
 }

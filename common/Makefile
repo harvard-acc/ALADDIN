@@ -2,6 +2,8 @@
 .PHONY: all clean
 EXE = aladdin
 
+HAS_READLINE ?= 0
+
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
                      Registers.o Partition.o LogicalArray.o ReadyPartition.o \
                      SourceManager.o
@@ -28,6 +30,10 @@ CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -Icacti-p
 LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex -lpthread
 
+ifeq ($(HAS_READLINE),1)
+  CFLAGS += -DHAS_READLINE
+  LFLAGS += -lreadline
+endif
 
 all : CFLAGS+=-O3
 all : $(EXE)
