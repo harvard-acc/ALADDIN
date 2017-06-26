@@ -7,9 +7,11 @@
 #include "ScratchpadDatapath.h"
 #include "SourceManager.h"
 
-class DebugPrinter {
+class DebugNodePrinter {
  public:
-  DebugPrinter(ExecNode* _node, ScratchpadDatapath* _acc, std::ostream& _out)
+  DebugNodePrinter(ExecNode* _node,
+                   ScratchpadDatapath* _acc,
+                   std::ostream& _out)
       : node(_node), acc(_acc), out(_out),
         srcManager(acc->get_source_manager()) {}
 
@@ -25,6 +27,31 @@ class DebugPrinter {
 
  private:
   ExecNode* node;
+  ScratchpadDatapath* acc;
+  std::ostream& out;
+  SrcTypes::SourceManager& srcManager;
+};
+
+class DebugLoopPrinter {
+ public:
+  DebugLoopPrinter(ScratchpadDatapath* _acc, std::ostream& _out)
+      : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {}
+
+  void printLoop(const std::string& loop_name);
+  void printAllLoops();
+
+ private:
+  enum LoopIdentifyStatus {
+    LOOP_FOUND,
+    LOOP_NOT_FOUND,
+    ABORTED,
+  };
+
+  LoopIdentifyStatus identifyLoop(const std::string& loop_name);
+  int getUserSelection(int max_option);
+
+  // Pair of UniqueLabel and the line number.
+  std::pair<SrcTypes::UniqueLabel, unsigned> selected_label;
   ScratchpadDatapath* acc;
   std::ostream& out;
   SrcTypes::SourceManager& srcManager;

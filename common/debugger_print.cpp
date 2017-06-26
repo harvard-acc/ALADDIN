@@ -3,6 +3,12 @@
 #include <map>
 #include <vector>
 
+#ifdef HAS_READLINE
+#include <readline/readline.h>
+#endif
+
+#include <boost/algorithm/string.hpp>
+
 #include "ExecNode.h"
 #include "ScratchpadDatapath.h"
 #include "SourceManager.h"
@@ -10,7 +16,11 @@
 
 #include "debugger_print.h"
 
-void DebugPrinter::printAll() {
+//-------------------
+// DebugNodePrinter
+//-------------------
+
+void DebugNodePrinter::printAll() {
   printBasic();
   printSourceInfo();
   printMemoryOp();
@@ -21,7 +31,7 @@ void DebugPrinter::printAll() {
   printExecutionStats();
 }
 
-void DebugPrinter::printBasic() {
+void DebugNodePrinter::printBasic() {
   out << "Node " << node->get_node_id() << ":\n"
       << "  Opcode: " << node->get_microop_name() << "\n";
   out << "  Inductive: ";
@@ -31,7 +41,7 @@ void DebugPrinter::printBasic() {
     out << "No\n";
 }
 
-void DebugPrinter::printSourceInfo() {
+void DebugNodePrinter::printSourceInfo() {
   using namespace SrcTypes;
 
   SourceManager& srcManager = acc->get_source_manager();
@@ -40,7 +50,8 @@ void DebugPrinter::printSourceInfo() {
     out << "  Line number: " << line_num << "\n";
 
   // What function does this node belong to?
-  Function func = srcManager.get<Function>(node->get_static_function_id());
+  SrcTypes::Function func =
+      srcManager.get<SrcTypes::Function>(node->get_static_function_id());
   if (func != InvalidFunction) {
     out << "  Parent function: " << func.get_name() << "\n";
     out << "  Dynamic invocation count: " << node->get_dynamic_invocation()
@@ -66,7 +77,7 @@ void DebugPrinter::printSourceInfo() {
     out << "  Variable: " << var.str() << "\n";
 }
 
-void DebugPrinter::printMemoryOp() {
+void DebugNodePrinter::printMemoryOp() {
   if (node->is_memory_op()) {
     MemAccess* mem_access = node->get_mem_access();
     out << "  Memory access to array " << node->get_array_label() << "\n"
@@ -84,13 +95,13 @@ void DebugPrinter::printMemoryOp() {
   }
 }
 
-void DebugPrinter::printGep() {
+void DebugNodePrinter::printGep() {
   if (node->get_microop() == LLVM_IR_GetElementPtr) {
     out << "  GEP of array " << node->get_array_label() << "\n";
   }
 }
 
-void DebugPrinter::printCall() {
+void DebugNodePrinter::printCall() {
   using namespace SrcTypes;
 
   // For Call nodes, the next node will indicate what the called function is
@@ -102,12 +113,12 @@ void DebugPrinter::printCall() {
     } catch (const std::out_of_range& e) {
     }
 
-    Function curr_func =
-        srcManager.get<Function>(node->get_static_function_id());
+    SrcTypes::Function curr_func =
+        srcManager.get<SrcTypes::Function>(node->get_static_function_id());
     out << "  Called function: ";
     if (called_node) {
-      Function called_func =
-          srcManager.get<Function>(called_node->get_static_function_id());
+      SrcTypes::Function called_func = srcManager.get<SrcTypes::Function>(
+          called_node->get_static_function_id());
       if (called_func != curr_func && called_func != InvalidFunction)
         out << called_func.get_name() << "\n";
       else
@@ -118,7 +129,7 @@ void DebugPrinter::printCall() {
   }
 }
 
-void DebugPrinter::printChildren() {
+void DebugNodePrinter::printChildren() {
   std::vector<unsigned> childNodes = acc->getChildNodes(node->get_node_id());
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
@@ -127,7 +138,7 @@ void DebugPrinter::printChildren() {
   out << "]\n";
 }
 
-void DebugPrinter::printParents() {
+void DebugNodePrinter::printParents() {
   std::vector<unsigned> parentNodes = acc->getParentNodes(node->get_node_id());
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
@@ -136,7 +147,112 @@ void DebugPrinter::printParents() {
   out << "]\n";
 }
 
-void DebugPrinter::printExecutionStats() {
+void DebugNodePrinter::printExecutionStats() {
   out << "  Start execution: " << node->get_start_execution_cycle() << "\n"
       << "  End execution:  " << node->get_complete_execution_cycle() << "\n";
+}
+
+//-------------------
+// DebugLoopPrinter
+//-------------------
+
+DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
+    const std::string& loop_name) {
+  using namespace SrcTypes;
+
+  src_id_t label_id = srcManager.get_id<Label>(loop_name);
+  if (label_id == InvalidId)
+    return LOOP_NOT_FOUND;
+
+  Label label = srcManager.get<Label>(label_id);
+  std::vector<std::pair<UniqueLabel, unsigned>> candidates;
+
+  const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
+  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+    const UniqueLabel& unique_label = it->second;
+    if (unique_label.get_label_id() == label.get_id())
+      candidates.push_back(std::make_pair(unique_label, it->first));
+  }
+
+  if (candidates.size() == 0) {
+    selected_label = std::make_pair(UniqueLabel(InvalidId, InvalidId), 0);
+    return LOOP_NOT_FOUND;
+  } else if (candidates.size() == 1) {
+    selected_label = candidates[0];
+    return LOOP_FOUND;
+  } else {
+    // Ask the user to choose between the possibilities.
+    out << "Several functions contain labeled statements matching \""
+        << loop_name << "\".\n"
+        << "Please select one by entering the number, or press <Enter> to "
+           "abort.\n";
+    for (unsigned i = 0; i < candidates.size(); i++) {
+      UniqueLabel& candidate_label = candidates[i].first;
+      const SrcTypes::Function& func =
+          srcManager.get<SrcTypes::Function>(candidate_label.get_function_id());
+      out << "  " << i + 1 << ": " << func.get_name() << "\n";
+    }
+    out << "\n";
+    int selection = getUserSelection(candidates.size());
+    if (selection == -1) {
+      return ABORTED;
+    } else {
+      selected_label = candidates[selection];
+      return LOOP_FOUND;
+    }
+  }
+}
+
+int DebugLoopPrinter::getUserSelection(int max_option) {
+  const char* invalid_selection_msg =
+      "Invalid selection! Try again (or <Enter> to quit)\n";
+
+  while (true) {
+#ifdef HAS_READLINE
+    char* cmd = readline("Selection: ");
+    std::string command(cmd);
+    free(cmd);
+#else
+    std::string command;
+    std::cout << "Selection: ";
+    std::getline(std::cin, command);
+#endif
+    boost::trim(command);
+
+    if (command.empty())
+      return -1;
+
+    int selection = 0;
+    try {
+      selection = std::stoi(command, NULL, 10);
+    } catch (const std::invalid_argument& e) {
+      std::cerr << invalid_selection_msg;
+      continue;
+    }
+    if (selection < 1 || selection > max_option) {
+      std::cerr << invalid_selection_msg;
+      continue;
+    }
+
+    return selection;
+  }
+}
+
+void DebugLoopPrinter::printLoop(const std::string &loop_name) {
+  LoopIdentifyStatus status = identifyLoop(loop_name);
+  if (status == ABORTED) {
+    return;
+  } else if (status == LOOP_NOT_FOUND) {
+    std::cerr << "ERROR: No loops matching the name \"" << loop_name
+              << "\" were found!\n";
+    return;
+  }
+  const SrcTypes::Function& func =
+      srcManager.get<SrcTypes::Function>(selected_label.first.get_function_id());
+  out << "Loop \"" << loop_name << "\"\n"
+      << "  Function: " << func.get_name() << "\n"
+      << "  Line number: " << selected_label.second << "\n";
+
+  // TODO: Print info from the graph (branch nodes that involve this loop) and
+  // execution stats (number of cycles between those nodes).
 }

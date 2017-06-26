@@ -160,8 +160,16 @@ DebugReturnCode cmd_print(std::vector<std::string>& command_tokens,
       return ERR;
     }
     ExecNode* node = acc->getNodeFromNodeId(node_id);
-    DebugPrinter printer(node, acc, std::cout);
+    DebugNodePrinter printer(node, acc, std::cout);
     printer.printAll();
+  } else if (print_type == "loop") {
+    if (num_tokens < 3) {
+      std::cerr << "ERROR: Need to specify a loop to print!\n";
+      return ERR;
+    }
+    std::string loop_name = command_tokens[2];
+    DebugLoopPrinter printer(acc, std::cout);
+    printer.printLoop(loop_name);
   } else {
     std::cerr << "ERROR: Unsupported object to print!\n";
     return ERR;
@@ -280,7 +288,14 @@ void cmd_help() {
             << "in its current form.\n\n"
             << "Supported commands:\n"
             << "  help                               : Print this message\n"
+            << "\n"
             << "  print node [id]                    : Print details about this node\n"
+            << "  print loop [label-name]            : Print details about the loop labeled by label-name.\n"
+            << "         If multiple functions contain such a label, the user is prompted to select\n"
+            << "         the correct one. Details include the average latency of the loop and a list of\n"
+            << "         the branch nodes that correspond to this loop header. Technically, this will\n"
+            << "         work for any labeled statement, but the loop statistics would not be present.\n"
+            << "\n"
             << "  graph root=node-id <maxnodes=N>    : Dump the DDDG in BFS fashion, starting from\n"
             << "         the specified root node. maxnodes indicates the maximum number of nodes to\n"
             << "         dump (since large graphs can cause rendering programs to choke. If maxnodes\n"
@@ -289,6 +304,7 @@ void cmd_help() {
             << "         that are usually not dependent on each other (e.g. different iterations of the\n"
             << "         same or different loop). So, unless it is the specified root node, the children\n"
             << "         of branch and call nodes will not get printed.\n"
+            << "\n"
             << "  continue                           : Continue executing Aladdin\n"
             << "  quit                               : Quit the debugger.\n";
 }
