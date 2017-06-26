@@ -37,8 +37,10 @@ typedef boost::property_map<Graph, boost::vertex_node_id_t>::type VertexNameMap;
 
 // Other convenience typedefs.
 class partitionEntry;
-class UniqueLabel;
-typedef std::unordered_map<UniqueLabel, unsigned> unrolling_config_t;
+namespace SrcTypes {
+  class UniqueLabel;
+};
+typedef std::unordered_map<SrcTypes::UniqueLabel, unsigned> unrolling_config_t;
 typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
 
 #endif

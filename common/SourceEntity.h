@@ -13,6 +13,9 @@
 #include <sstream>
 #include <string>
 
+// Some type names here collide with other type names in libreadline.
+namespace SrcTypes {
+
 // It is unlikely for us to exceed 4 billion unique functions or variables.
 using src_id_t = uint32_t;
 
@@ -164,10 +167,12 @@ class UniqueLabel {
     src_id_t label_id;
 };
 
+};  // namespace SrcTypes
+
 // Hashing functions to enable these classes to be stored as keys in hash maps.
 namespace std {
-template <> struct hash<UniqueLabel> {
-  size_t operator()(const UniqueLabel& l) const {
+template <> struct hash<SrcTypes::UniqueLabel> {
+  size_t operator()(const SrcTypes::UniqueLabel& l) const {
     return (l.get_function_id() ^ (l.get_label_id() << 1) >> 1);
   }
 };

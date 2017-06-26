@@ -12,6 +12,8 @@
 #include "SourceEntity.h"
 #include "SourceManager.h"
 
+namespace SrcTypes {
+
 // Represents a specific invocation of a function.
 //
 // This pairs a Function with an iteration. For efficiency, this stores
@@ -139,10 +141,12 @@ class DynamicInstruction {
 
 extern const DynamicVariable InvalidDynamicVariable;
 
+};  // namespace SrcTypes
+
 // Hashing functions to enable these classes to be stored as keys in hash maps.
 namespace std {
-template <> struct hash<DynamicFunction> {
-  size_t operator()(const DynamicFunction& f) const {
+template <> struct hash<SrcTypes::DynamicFunction> {
+  size_t operator()(const SrcTypes::DynamicFunction& f) const {
     // Compute individual hash values for two data members and combine them
     // using XOR and bit shifting
     return (f.get_function_id() ^
@@ -150,17 +154,17 @@ template <> struct hash<DynamicFunction> {
   }
 };
 
-template <> struct hash<DynamicVariable> {
-  size_t operator()(const DynamicVariable& v) const {
-    return (std::hash<DynamicFunction>()(v.get_dynamic_function()) ^
+template <> struct hash<SrcTypes::DynamicVariable> {
+  size_t operator()(const SrcTypes::DynamicVariable& v) const {
+    return (std::hash<SrcTypes::DynamicFunction>()(v.get_dynamic_function()) ^
             (v.get_variable_id() << 2) >> 2);
   }
 };
 
-template <> struct hash<DynamicInstruction> {
-  size_t operator()(const DynamicInstruction& di) const {
-    const DynamicFunction& dynfunc = di.get_dynamic_function();
-    return (std::hash<DynamicFunction>()(dynfunc) ^
+template <> struct hash<SrcTypes::DynamicInstruction> {
+  size_t operator()(const SrcTypes::DynamicInstruction& di) const {
+    const SrcTypes::DynamicFunction& dynfunc = di.get_dynamic_function();
+    return (std::hash<SrcTypes::DynamicFunction>()(dynfunc) ^
             (di.get_inst_id() << 2) >> 2);
   }
 };

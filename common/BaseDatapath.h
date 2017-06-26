@@ -169,6 +169,9 @@ inline microop_label_writer<Map, Graph> make_microop_label_writer(Map map, Graph
 }
 
 class BaseDatapath {
+ protected:
+   typedef SrcTypes::DynamicVariable DynamicVariable;
+
  public:
   BaseDatapath(std::string& bench,
                std::string& trace_file_name,
@@ -181,15 +184,17 @@ class BaseDatapath {
   // trace was empty.
   bool buildDddg();
 
-  SourceManager& get_source_manager() { return srcManager; }
+  SrcTypes::SourceManager& get_source_manager() { return srcManager; }
 
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setLabelMap(std::multimap<unsigned, UniqueLabel>& _labelmap) {
+  void setLabelMap(std::multimap<unsigned, SrcTypes::UniqueLabel>& _labelmap) {
     labelmap = _labelmap;
   }
-  const std::multimap<unsigned, UniqueLabel>& getLabelMap() { return labelmap; }
+  const std::multimap<unsigned, SrcTypes::UniqueLabel>& getLabelMap() {
+    return labelmap;
+  }
   void addCallArgumentMapping(DynamicVariable& callee_reg_id,
                               DynamicVariable& caller_reg_id);
   DynamicVariable getCallerRegID(DynamicVariable& reg_id);
@@ -417,7 +422,7 @@ class BaseDatapath {
   /* complete, block, cyclic, and cache partition share partition_config */
   partition_config_t partition_config;
 
-  SourceManager srcManager;
+  SrcTypes::SourceManager srcManager;
 
   /* Stores the register name mapping between caller and callee functions. */
   std::unordered_map<DynamicVariable, DynamicVariable> call_argument_map;
@@ -448,7 +453,7 @@ class BaseDatapath {
   std::map<unsigned int, ExecNode*> exec_nodes;
 
   // Maps line numbers to labels.
-  std::multimap<unsigned, UniqueLabel> labelmap;
+  std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<int> loopBound;

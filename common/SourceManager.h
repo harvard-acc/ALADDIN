@@ -18,6 +18,8 @@
 
 #include "SourceEntity.h"
 
+namespace SrcTypes {
+
 template <typename T> class InvalidSourceEntity {
  public:
   static const T& value();
@@ -139,4 +141,5 @@ template<> const Function& SourceManager::get<Function>(src_id_t id);
 template<> const Variable& SourceManager::get<Variable>(src_id_t id);
 template<> const Instruction& SourceManager::get<Instruction>(src_id_t id);
 
+};
 #endif

@@ -69,6 +69,8 @@ class DmaMemAccess : public MemAccess {
 };
 
 class ExecNode {
+ protected:
+   typedef SrcTypes::src_id_t src_id_t;
 
  public:
   ExecNode(unsigned int _node_id, uint8_t _microop)
@@ -171,18 +173,18 @@ class ExecNode {
   }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
-  DynamicFunction get_dynamic_function() {
-    return DynamicFunction(static_function_id, dynamic_invocation);
+  SrcTypes::DynamicFunction get_dynamic_function() {
+    return SrcTypes::DynamicFunction(static_function_id, dynamic_invocation);
   }
 
-  DynamicInstruction get_dynamic_instruction() {
-    DynamicFunction dynfunc = get_dynamic_function();
-    return DynamicInstruction(dynfunc, static_inst_id);
+  SrcTypes::DynamicInstruction get_dynamic_instruction() {
+    SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
+    return SrcTypes::DynamicInstruction(dynfunc, static_inst_id);
   }
 
-  DynamicVariable get_dynamic_variable() {
-    DynamicFunction dynfunc = get_dynamic_function();
-    return DynamicVariable(dynfunc, variable_id);
+  SrcTypes::DynamicVariable get_dynamic_variable() {
+    SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
+    return SrcTypes::DynamicVariable(dynfunc, variable_id);
   }
 
   /* Increment/decrement. */

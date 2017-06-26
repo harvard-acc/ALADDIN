@@ -31,6 +31,8 @@ void DebugPrinter::printBasic() {
 }
 
 void DebugPrinter::printSourceInfo() {
+  using namespace SrcTypes;
+
   SourceManager& srcManager = acc->get_source_manager();
   int line_num = node->get_line_num();
   if (line_num != -1)
@@ -87,6 +89,8 @@ void DebugPrinter::printGep() {
 }
 
 void DebugPrinter::printCall() {
+  using namespace SrcTypes;
+
   // For Call nodes, the next node will indicate what the called function is
   // (unless the called function is empty).
   if (node->is_call_op()) {

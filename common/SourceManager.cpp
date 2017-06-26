@@ -4,6 +4,8 @@
 
 #include <limits>
 
+namespace SrcTypes {
+
 const src_id_t InvalidId = std::numeric_limits<src_id_t>::max();
 
 // Variable names can't possibly have spaces, so this is a safe way to make it
@@ -142,4 +144,6 @@ std::string SourceManager::str(src_id_t id) {
 void SourceManager::dump(src_id_t id) {
     std::cout << str(id) << std::endl;
 }
+
+};
 

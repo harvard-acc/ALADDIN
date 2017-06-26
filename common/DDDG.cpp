@@ -8,6 +8,8 @@
 #include "ProgressTracker.h"
 #include "SourceManager.h"
 
+using namespace SrcTypes;
+
 DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
     : datapath(_datapath), trace_file(_trace_file),
       srcManager(_datapath->get_source_manager()) {

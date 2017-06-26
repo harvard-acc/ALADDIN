@@ -7,6 +7,8 @@
 
 #include "DatabaseDeps.h"
 
+using namespace SrcTypes;
+
 BaseDatapath::BaseDatapath(std::string& bench,
                            std::string& trace_file_name,
                            std::string& config_file)

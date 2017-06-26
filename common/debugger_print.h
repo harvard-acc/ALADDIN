@@ -26,7 +26,7 @@ class DebugPrinter {
   ExecNode* node;
   ScratchpadDatapath* acc;
   std::ostream& out;
-  SourceManager& srcManager;
+  SrcTypes::SourceManager& srcManager;
 };
 
 #endif

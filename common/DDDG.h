@@ -111,7 +111,9 @@ class DDDG {
   int num_of_control_dependency();
   void output_dddg();
   size_t build_initial_dddg(size_t trace_off, size_t trace_size);
-  std::multimap<unsigned, UniqueLabel> get_labelmap() { return labelmap; }
+  std::multimap<unsigned, SrcTypes::UniqueLabel> get_labelmap() {
+    return labelmap;
+  }
 
  private:
   void parse_instruction_line(std::string line);
@@ -132,9 +134,9 @@ class DDDG {
                                     size_t size,
                                     unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
-  const Variable& get_array_real_var(const std::string& array_name);
+  const SrcTypes::Variable& get_array_real_var(const std::string& array_name);
 
-  DynamicFunction curr_dynamic_function;
+  SrcTypes::DynamicFunction curr_dynamic_function;
 
   uint8_t curr_microop;
   uint8_t prev_microop;
@@ -142,8 +144,8 @@ class DDDG {
   std::string curr_bblock;
   ExecNode* curr_node;
 
-  Function callee_function;
-  DynamicFunction callee_dynamic_function;
+  SrcTypes::Function callee_function;
+  SrcTypes::DynamicFunction callee_dynamic_function;
 
   bool last_parameter;
   int num_of_parameters;
@@ -151,7 +153,7 @@ class DDDG {
   int last_call_source;
   /* Unique register ID in the caller function. Used to create a mapping between
    * register IDs in caller and callee functions. */
-  DynamicVariable unique_reg_in_caller_func;
+  SrcTypes::DynamicVariable unique_reg_in_caller_func;
 
   std::string curr_instid;
   std::vector<Addr> parameter_value_per_inst;
@@ -177,16 +179,16 @@ class DDDG {
   // Line number mapping to function and label name. If there are multiple
   // source files, there could be multiple function/labels with the same line
   // number.
-  std::multimap<unsigned, UniqueLabel> labelmap;
+  std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap;
   // keep track of currently executed methods
-  std::stack<DynamicFunction> active_method;
+  std::stack<SrcTypes::DynamicFunction> active_method;
   // manage methods
-  std::unordered_map<DynamicVariable, unsigned> register_last_written;
+  std::unordered_map<SrcTypes::DynamicVariable, unsigned> register_last_written;
   uint_to_uint address_last_written;
   // DMA nodes that have been seen since the last DMA fence.
   std::list<unsigned> last_dma_nodes;
   // This points to the SourceManager object inside a BaseDatapath object.
-  SourceManager& srcManager;
+  SrcTypes::SourceManager& srcManager;
 };
 
 #endif
