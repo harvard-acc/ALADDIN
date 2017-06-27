@@ -16,8 +16,10 @@
 //
 // For more information, see the help command.
 
+#include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <signal.h>
 #include <stdio.h>
 
 #include <boost/graph/breadth_first_search.hpp>
@@ -33,6 +35,10 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+
+// Determines how SIGINT is handled. If we're waiting for an input, then we
+// want to resume the application; otherwise, we want to kill it.
+static sig_atomic_t waiting_for_input;
 
 enum DebugReturnCode {
   CONTINUE,
@@ -315,6 +321,7 @@ void cmd_unknown(std::string& command) {
 
 std::string get_command() {
   std::string command;
+  waiting_for_input = 1;
 #ifdef HAS_READLINE
   char* cmd = readline("aladdin >> ");
   if (cmd && *cmd)
@@ -325,6 +332,7 @@ std::string get_command() {
   std::cout << "aladdin >> ";
   std::getline(std::cin, command);
 #endif
+  waiting_for_input = 0;
   return command;
 }
 // Supported commands.
@@ -374,6 +382,28 @@ DebugReturnCode interactive_mode(ScratchpadDatapath* acc) {
   }
 }
 
+#ifdef HAS_READLINE
+void handle_sigint(int signo) {
+  if (waiting_for_input) {
+    // Move to a new line and clear the existing one.
+    printf("\n");
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
+    // Reregister the signal handler.
+    signal(SIGINT, handle_sigint);
+    return;
+  }
+  exit(1);
+}
+
+void init_readline() {
+  // Installs signal handlers to capture SIGINT, so we can move to a new prompt
+  // instead of ending the process.
+  signal(SIGINT, handle_sigint);
+}
+#endif
+
 int main(int argc, const char* argv[]) {
   const char* logo =
       "     ________                                                    \n"
@@ -411,6 +441,11 @@ int main(int argc, const char* argv[]) {
             << std::endl;
 
   ScratchpadDatapath* acc;
+
+#ifdef HAS_READLINE
+  init_readline();
+#endif
+  waiting_for_input = 0;
 
   acc = new ScratchpadDatapath(bench, trace_file, config_file);
 
