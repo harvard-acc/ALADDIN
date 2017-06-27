@@ -59,7 +59,8 @@ void DebugNodePrinter::printSourceInfo() {
   }
 
   if (line_num != -1 && func != InvalidFunction) {
-    const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
+    const std::multimap<unsigned, UniqueLabel>& labelmap =
+        acc->getLabelMap();
     auto label_range = labelmap.equal_range(line_num);
     for (auto it = label_range.first; it != label_range.second; ++it) {
       if (it->second.get_function_id() == func.get_id()) {
@@ -238,6 +239,21 @@ int DebugLoopPrinter::getUserSelection(int max_option) {
   }
 }
 
+std::list<int> DebugLoopPrinter::findLoopBoundNodes() {
+  using namespace SrcTypes;
+  const UniqueLabel& label = selected_label.first;
+  const unsigned line_num = selected_label.second;
+  std::list<ExecNode*> branch_nodes = acc->getNodesOfMicroop(LLVM_IR_Br);
+  std::list<int> matching_nodes;
+  for (auto node : branch_nodes) {
+    if (node->get_line_num() == line_num &&
+        node->get_static_function_id() == label.get_function_id()) {
+      matching_nodes.push_back(node->get_node_id());
+    }
+  }
+  return matching_nodes;
+}
+
 void DebugLoopPrinter::printLoop(const std::string &loop_name) {
   LoopIdentifyStatus status = identifyLoop(loop_name);
   if (status == ABORTED) {
@@ -253,6 +269,10 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
       << "  Function: " << func.get_name() << "\n"
       << "  Line number: " << selected_label.second << "\n";
 
-  // TODO: Print info from the graph (branch nodes that involve this loop) and
-  // execution stats (number of cycles between those nodes).
+  std::list<int> loop_bound_nodes = findLoopBoundNodes();
+  out << "  Loop boundary nodes: " << loop_bound_nodes.size() << " [";
+  for (const auto& node_id : loop_bound_nodes) {
+    out << node_id << " ";
+  }
+  out << "]\n";
 }

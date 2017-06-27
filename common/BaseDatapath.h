@@ -220,6 +220,8 @@ class BaseDatapath {
   std::vector<unsigned> getParentNodes(unsigned int node_id);
   std::vector<unsigned> getChildNodes(unsigned int node_id);
 
+  std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
+
   int getUnrolledLoopBoundary(unsigned int region_id) {
     return loopBound.at(region_id);
   }

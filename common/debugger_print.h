@@ -49,6 +49,7 @@ class DebugLoopPrinter {
 
   LoopIdentifyStatus identifyLoop(const std::string& loop_name);
   int getUserSelection(int max_option);
+  std::list<int> findLoopBoundNodes();
 
   // Pair of UniqueLabel and the line number.
   std::pair<SrcTypes::UniqueLabel, unsigned> selected_label;

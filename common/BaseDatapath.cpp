@@ -2110,6 +2110,16 @@ std::vector<unsigned> BaseDatapath::getChildNodes(unsigned int node_id) {
   return connectedNodes;
 }
 
+std::list<ExecNode*> BaseDatapath::getNodesOfMicroop(unsigned microop) {
+  std::list<ExecNode*> matching_nodes;
+  for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
+    ExecNode* node = it->second;
+    if (node->get_microop() == microop)
+      matching_nodes.push_back(node);
+  }
+  return matching_nodes;
+}
+
 // readConfigs
 void BaseDatapath::parse_config(std::string& bench,
                                 std::string& config_file_name) {
