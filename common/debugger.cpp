@@ -26,6 +26,7 @@
 #include <boost/tokenizer.hpp>
 
 #include "DDDG.h"
+#include "debugger_graph.h"
 #include "debugger_print.h"
 #include "file_func.h"
 #include "Scratchpad.h"
@@ -46,98 +47,33 @@ enum DebugReturnCode {
   ERR
 };
 
-class bfs_finished : public std::exception {
-  virtual const char* what() const throw() {
-    return "BFS finished";
+void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
+  std::unordered_map<Vertex, unsigned> vertexToMicroop;
+  BGL_FORALL_VERTICES(v, graph, Graph) {
+    ExecNode* node = acc->getNodeFromNodeId(get(boost::vertex_node_id, graph, v));
+    vertexToMicroop[v] = node->get_microop();
   }
-};
+  std::ofstream out(graph_name + "_graph.dot", std::ofstream::out);
+  write_graphviz(out, graph, make_microop_label_writer(vertexToMicroop, graph));
+}
 
-class NodeVisitor : public boost::default_bfs_visitor {
- public:
-  NodeVisitor(Graph* _subgraph,
-              std::map<unsigned, Vertex>* _existing_nodes,
-              ScratchpadDatapath* _acc,
-              Vertex _root_vertex,
-              unsigned maxnodes,
-              unsigned* _num_nodes_visited)
-      : new_graph(_subgraph), existing_nodes(_existing_nodes), acc(_acc),
-        root_vertex(_root_vertex), max_nodes(maxnodes),
-        num_nodes_visited(_num_nodes_visited) {}
-
-  // Insert a vertex with node_id if we aren't above the max_nodes limit.
-  Vertex insert_vertex(unsigned node_id) const {
-    if (*num_nodes_visited >= max_nodes)
-      throw bfs_finished();
-
-    return add_vertex(VertexProperty(node_id), *new_graph);
-  }
-
-  // Add a vertex and all of its children to the graph.
-  void discover_vertex(const Vertex& v, const Graph& g) const {
-    unsigned node_id = get(boost::vertex_node_id, g, v);
-    auto node_it = existing_nodes->find(node_id);
-    Vertex new_vertex;
-    if (node_it == existing_nodes->end()) {
-      new_vertex = insert_vertex(node_id);
-      existing_nodes->operator[](node_id) = new_vertex;
-      (*num_nodes_visited)++;
-    } else {
-      new_vertex = existing_nodes->at(node_id);
-    }
-
-    // If this node is a branch/call, don't print its children (unless this
-    // node is the root of the BFS). These nodes tend to have a lot of children.
-    if (new_vertex != root_vertex) {
-      ExecNode* node = acc->getNodeFromNodeId(node_id);
-      if (node->is_branch_op() || node->is_call_op())
-        return;
-    }
-
-    // Check if any of its parents is a branch/call whose children we ignored.
-    // If so, add an edge for each parent we already saw.
-    in_edge_iter in_edge_it, in_edge_end;
-    for (boost::tie(in_edge_it, in_edge_end) = in_edges(v, g);
-         in_edge_it != in_edge_end;
-         ++in_edge_it) {
-      Vertex source_vertex_orig = source(*in_edge_it, g);
-      unsigned source_id = get(boost::vertex_node_id, g, source_vertex_orig);
-      auto source_it = existing_nodes->find(source_id);
-      if (source_it != existing_nodes->end()) {
-        Vertex source_vertex_new = source_it->second;
-        unsigned edge_weight = get(boost::edge_name, g, *in_edge_it);
-        add_edge(source_vertex_new,
-                 new_vertex,
-                 EdgeProperty(edge_weight),
-                 *new_graph);
-      }
-    }
-
-    // Immediately add all of its outgoing edges to the graph.
-    out_edge_iter out_edge_it, out_edge_end;
-    for (boost::tie(out_edge_it, out_edge_end) = out_edges(v, g);
-         out_edge_it != out_edge_end;
-         ++out_edge_it) {
-      Vertex target_vertex_orig = target(*out_edge_it, g);
-      unsigned target_id = get(boost::vertex_node_id, g, target_vertex_orig);
-      if (existing_nodes->find(target_id) == existing_nodes->end()) {
-        Vertex target_vertex = insert_vertex(target_id);
-        unsigned edge_weight = get(boost::edge_name, g, *out_edge_it);
-        add_edge(
-            new_vertex, target_vertex, EdgeProperty(edge_weight), *new_graph);
-        existing_nodes->operator[](target_id) = target_vertex;
-        (*num_nodes_visited)++;
-      }
-    }
-  }
-
- private:
-  std::map<unsigned, Vertex> *existing_nodes;
-  Graph* new_graph;
-  ScratchpadDatapath* acc;
-  Vertex root_vertex;
-  unsigned max_nodes;
-  unsigned* num_nodes_visited;
-};
+void reconstruct_graph(Graph* new_graph,
+                       ScratchpadDatapath* acc,
+                       unsigned root_node_id,
+                       unsigned maxnodes) {
+  const Graph &g = acc->getGraph();
+  ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
+  Vertex root_vertex = root_node->get_vertex();
+  unsigned num_nodes_visited = 0;
+  std::map<unsigned, Vertex> existing_nodes;
+  NodeVisitor visitor(new_graph,
+                      &existing_nodes,
+                      acc,
+                      root_vertex,
+                      maxnodes,
+                      &num_nodes_visited);
+  boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
+}
 
 DebugReturnCode cmd_print(std::vector<std::string>& command_tokens,
                          ScratchpadDatapath* acc) {
@@ -181,34 +117,6 @@ DebugReturnCode cmd_print(std::vector<std::string>& command_tokens,
     return ERR;
   }
   return CONTINUE;
-}
-
-void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
-  std::unordered_map<Vertex, unsigned> vertexToMicroop;
-  BGL_FORALL_VERTICES(v, graph, Graph) {
-    ExecNode* node = acc->getNodeFromNodeId(get(boost::vertex_node_id, graph, v));
-    vertexToMicroop[v] = node->get_microop();
-  }
-  std::ofstream out(graph_name + "_graph.dot", std::ofstream::out);
-  write_graphviz(out, graph, make_microop_label_writer(vertexToMicroop, graph));
-}
-
-void reconstruct_graph(Graph* new_graph,
-                       ScratchpadDatapath* acc,
-                       unsigned root_node_id,
-                       unsigned maxnodes) {
-  const Graph &g = acc->getGraph();
-  ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
-  Vertex root_vertex = root_node->get_vertex();
-  unsigned num_nodes_visited = 0;
-  std::map<unsigned, Vertex> existing_nodes;
-  NodeVisitor visitor(new_graph,
-                      &existing_nodes,
-                      acc,
-                      root_vertex,
-                      maxnodes,
-                      &num_nodes_visited);
-  boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
 }
 
 // graph root=N [maxnodes=K]
