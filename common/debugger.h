@@ -15,6 +15,7 @@ enum HandlerRet {
 };
 
 typedef std::vector<std::string> CommandTokens;
+typedef std::map<std::string, int> CommandArgs;
 
 struct Command {
   typedef HandlerRet (*CommandHandler)(const CommandTokens&,
@@ -40,5 +41,7 @@ extern const Command COMMANDS_END;
 HandlerRet dispatch_command(const CommandTokens& tokens,
                             Command* command_list,
                             ScratchpadDatapath* acc);
+
+int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args);
 
 #endif

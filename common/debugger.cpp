@@ -75,6 +75,41 @@ std::string get_command() {
   return command;
 }
 
+// Parse a space-separated list of command args of the form param=INT.
+//
+// The parsed result is placed into @args.
+//
+// Return:
+//  0 on success, -1 otherwise.
+int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args) {
+  boost::char_separator<char> sep("=");
+  for (unsigned i = 0; i < command_tokens.size(); i++) {
+    boost::tokenizer<boost::char_separator<char>> tok(command_tokens[i], sep);
+    std::string arg_name;
+    int value = -1;
+    int argnum = 0;
+    for (auto it = tok.begin(); it != tok.end(); ++it, ++argnum) {
+      if (argnum == 0) {
+        arg_name = *it;
+        continue;
+      } else if (argnum == 1) {
+        try {
+          value = stoi(*it);
+        } catch (const std::invalid_argument &e) {
+          std::cerr << "ERROR: Invalid argument " << *it << " to parameter " << arg_name << ".\n";
+          return -1;
+        }
+      }
+      if (value == -1) {
+        std::cerr << "ERROR: Missing value to parameter " << arg_name << ".\n";
+        return -1;
+      }
+      args[arg_name] = value;
+    }
+  }
+  return 0;
+}
+
 HandlerRet dispatch_command(const CommandTokens& command_tokens,
                             Command* command_list,
                             ScratchpadDatapath* acc) {

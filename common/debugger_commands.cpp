@@ -111,49 +111,23 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   }
 
   int root_node = -1;
-  int maxnodes = -1;
+  int maxnodes = 100;  // Default.
 
-  boost::char_separator<char> sep("=");
-  for (unsigned i = 1; i < command_tokens.size(); i++) {
-    boost::tokenizer<boost::char_separator<char>> tok(command_tokens[i], sep);
-    std::string arg;
-    int value = -1;
-    int argnum = 0;
-    for (auto it = tok.begin(); it != tok.end(); ++it, ++argnum) {
-      if (argnum == 0) {
-        arg = *it;
-        continue;
-      } else if (argnum == 1) {
-        try {
-          value = stoi(*it);
-        } catch (const std::invalid_argument &e) {
-          std::cerr << "ERROR: Invalid argument " << *it << " to parameter " << arg << ".\n";
-          return HANDLER_ERROR;
-        }
-      }
-      if (value == -1) {
-        std::cerr << "ERROR: Missing value to parameter " << arg << ".\n";
-        return HANDLER_ERROR;
-      }
-      if (arg == "root") {
-        root_node = value;
-      } else if (arg == "maxnodes") {
-        maxnodes = value;
-      } else {
-        std::cerr << "ERROR: Unknown parameter " << arg << " to command 'graph'.\n";
-        return HANDLER_ERROR;
-      }
-    }
-  }
+  CommandTokens args_tokens(++command_tokens.begin(), command_tokens.end());
+  CommandArgs args;
+  if (parse_command_args(args_tokens, args) != 0)
+    return HANDLER_ERROR;
 
-  if (root_node == -1) {
+  if (args.find("root") != args.end()) {
+    root_node = args["root"];
+  } else {
     std::cerr << "ERROR: Must specify the root node!\n";
     return HANDLER_ERROR;
   }
 
-  // Set default values for missing parameters.
-  if (maxnodes == -1)
-    maxnodes = 100;
+  if (args.find("maxnodes") != args.end()) {
+    maxnodes = args["maxnodes"];
+  }
 
   if (!acc->doesNodeExist(root_node)) {
     std::cerr << "ERROR: Node " << root_node << " does not exist!\n";
@@ -163,6 +137,7 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   try {
     reconstruct_graph(&subgraph, acc, root_node, maxnodes);
   } catch (const bfs_finished &e) {
+    // Nothing to do.
   }
   dump_graph(subgraph, acc, "debug");
   std::cout << "Graph has been written to debug_graph.dot.\n";
