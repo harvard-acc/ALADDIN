@@ -14,6 +14,7 @@
 #include "SourceManager.h"
 #include "SourceEntity.h"
 
+#include "debugger.h"
 #include "debugger_print.h"
 
 //-------------------
@@ -149,8 +150,25 @@ void DebugNodePrinter::printParents() {
 }
 
 void DebugNodePrinter::printExecutionStats() {
-  out << "  Start execution: " << node->get_start_execution_cycle() << "\n"
-      << "  End execution:  " << node->get_complete_execution_cycle() << "\n";
+  out << "  Execution stats: ";
+  if (execution_status == PRESCHEDULING) {
+    out << "Not available before scheduling.\n";
+    return;
+  }
+  unsigned start_cycle = node->get_start_execution_cycle();
+  unsigned end_cycle = node->get_complete_execution_cycle();
+  unsigned current_cycle = acc->getCurrentCycle();
+  if (execution_status == SCHEDULING) {
+    if (start_cycle < current_cycle) {
+      out << "Scheduling has not reached this node yet.\n";
+    } else if (start_cycle >= current_cycle && end_cycle < start_cycle) {
+      out << "Started " << start_cycle << ", not yet completed.\n";
+    } else if (start_cycle >= current_cycle && end_cycle >= start_cycle) {
+      out << "Started " << start_cycle << ", completed " << end_cycle << ".\n";
+    }
+  } else if (execution_status == POSTSCHEDULING) {
+    out << "Started " << start_cycle << ", completed " << end_cycle << ".\n";
+  }
 }
 
 //-------------------

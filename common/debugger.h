@@ -14,6 +14,12 @@ enum HandlerRet {
   HANDLER_ERROR,
 };
 
+enum ExecutionStatus {
+  PRESCHEDULING,
+  SCHEDULING,
+  POSTSCHEDULING,
+};
+
 typedef std::vector<std::string> CommandTokens;
 typedef std::map<std::string, int> CommandArgs;
 
@@ -36,12 +42,13 @@ struct Command {
   }
 };
 
-extern const Command COMMANDS_END;
-
 HandlerRet dispatch_command(const CommandTokens& tokens,
                             Command* command_list,
                             ScratchpadDatapath* acc);
 
 int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args);
+
+extern const Command COMMANDS_END;
+extern ExecutionStatus execution_status;
 
 #endif

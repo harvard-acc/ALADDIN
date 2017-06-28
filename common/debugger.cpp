@@ -58,6 +58,10 @@ Command commands[]  = {
 // want to resume the application; otherwise, we want to kill it.
 static sig_atomic_t waiting_for_input;
 
+// Whether we compute execution statistics or not depends on where we are in
+// the scheduling.
+ExecutionStatus execution_status;
+
 std::string get_command() {
   std::string command;
   waiting_for_input = 1;
@@ -230,6 +234,7 @@ int main(int argc, const char* argv[]) {
   init_readline();
 #endif
   waiting_for_input = 0;
+  execution_status = PRESCHEDULING;
 
   acc = new ScratchpadDatapath(bench, trace_file, config_file);
 
@@ -245,10 +250,12 @@ int main(int argc, const char* argv[]) {
   }
 
   // Scheduling
+  execution_status = SCHEDULING;
   while (!acc->step()) {}
   acc->dumpStats();
 
   // Begin interactive mode again.
+  execution_status = POSTSCHEDULING;
   ret = interactive_mode(acc);
 
   acc->clearDatapath();

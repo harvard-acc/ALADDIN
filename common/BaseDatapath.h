@@ -183,6 +183,7 @@ class BaseDatapath {
   // Return true if the graph was built, false if not. False can happen if the
   // trace was empty.
   bool buildDddg();
+  unsigned getCurrentCycle() { return num_cycles; }
 
   SrcTypes::SourceManager& get_source_manager() { return srcManager; }
 
