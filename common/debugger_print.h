@@ -34,6 +34,8 @@ class DebugNodePrinter {
 
 class DebugLoopPrinter {
  public:
+  typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
+
   DebugLoopPrinter(ScratchpadDatapath* _acc, std::ostream& _out)
       : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {}
 
@@ -41,15 +43,39 @@ class DebugLoopPrinter {
   void printAllLoops();
 
  private:
+
   enum LoopIdentifyStatus {
     LOOP_FOUND,
     LOOP_NOT_FOUND,
     ABORTED,
   };
+  enum LoopExecutionStatus {
+    NOT_STARTED,
+    STARTED,
 
+  };
+
+  /* Identify the UniqueLabel referred to by loop_name.
+   *
+   * If there are multiple labeled statements by that name, prompt the user for
+   * a selection.
+   */
   LoopIdentifyStatus identifyLoop(const std::string& loop_name);
+
+  /* Get a numeric selection from the user, from 1 to max_option. */
   int getUserSelection(int max_option);
-  std::list<int> findLoopBoundNodes();
+
+  /* Return pairs of nodes that demarcate the start and end of a loop boundary.
+   *
+   * The loop is identified by the class member selected_label.
+   */
+  std::list<node_pair_t> findLoopBoundaries();
+
+  /* Compute the max latency of the loops bounded by loop_bound_nodes.
+   *
+   * loop_bound_nodes is the result of findLoopBoundaries().
+   */
+  int computeLoopLatency(const std::list<node_pair_t>& loop_bound_nodes);
 
   // Pair of UniqueLabel and the line number.
   std::pair<SrcTypes::UniqueLabel, unsigned> selected_label;

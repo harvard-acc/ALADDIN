@@ -261,20 +261,67 @@ int DebugLoopPrinter::getUserSelection(int max_option) {
   }
 }
 
-std::list<int> DebugLoopPrinter::findLoopBoundNodes() {
+std::list<DebugLoopPrinter::node_pair_t> DebugLoopPrinter::findLoopBoundaries() {
   using namespace SrcTypes;
   const UniqueLabel& label = selected_label.first;
   const unsigned line_num = selected_label.second;
-  std::list<ExecNode*> branch_nodes = acc->getNodesOfMicroop(LLVM_IR_Br);
-  std::list<int> matching_nodes;
-  for (auto node : branch_nodes) {
+  const std::vector<DynLoopBound>& all_loop_bounds = acc->getLoopBoundaries();
+  std::list<node_pair_t> loop_boundaries;
+  bool is_loop_executing = false;
+  int current_loop_depth = -1;
+
+  ExecNode* loop_start;
+
+  // The loop boundaries provided by the accelerator are in a linear list with
+  // no structure. We need to identify the start and end of each unrolled loop
+  // section and add the corresponding pair of nodes to loop_boundaries.
+  //
+  // The last loop bound node is one past the last node, so we'll ignore it.
+  for (auto it = all_loop_bounds.begin(); it != --all_loop_bounds.end(); ++it) {
+    const DynLoopBound& loop_bound = *it;
+    ExecNode* node = acc->getNodeFromNodeId(loop_bound.node_id);
     if (!node->is_isolated() &&
         node->get_line_num() == line_num &&
         node->get_static_function_id() == label.get_function_id()) {
-      matching_nodes.push_back(node->get_node_id());
+      if (!is_loop_executing) {
+        is_loop_executing = true;
+        loop_start = node;
+        current_loop_depth = loop_bound.target_loop_depth;
+      } else {
+        if (loop_bound.target_loop_depth == current_loop_depth) {
+          // We're repeating an iteration of the same loop body.
+          loop_boundaries.push_back(std::make_pair(loop_start, node));
+          loop_start = node;
+        } else if (loop_bound.target_loop_depth < current_loop_depth) {
+          // We've left the loop.
+          loop_boundaries.push_back(std::make_pair(loop_start, node));
+          is_loop_executing = false;
+          loop_start = NULL;
+        } else if (loop_bound.target_loop_depth > current_loop_depth) {
+          // We've entered an inner loop nest. We're not interested in the
+          // inner loop nest.
+          continue;
+        }
+      }
     }
   }
-  return matching_nodes;
+  return loop_boundaries;
+}
+
+// TODO: New strategy: rather than go branch to branch, go
+// branch->next-non-isolated-node to branch.
+int DebugLoopPrinter::computeLoopLatency(
+    const std::list<DebugLoopPrinter::node_pair_t>& loop_bound_nodes) {
+  int max_latency = 0;
+  for (auto it = loop_bound_nodes.begin(); it != loop_bound_nodes.end(); ++it) {
+    ExecNode* first = it->first;
+    ExecNode* second = it->second;
+    int latency = second->get_complete_execution_cycle() -
+                  first->get_complete_execution_cycle();
+    if (latency > max_latency)
+      max_latency = latency;
+  }
+  return max_latency;
 }
 
 void DebugLoopPrinter::printLoop(const std::string &loop_name) {
@@ -292,10 +339,17 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
       << "  Function: " << func.get_name() << "\n"
       << "  Line number: " << selected_label.second << "\n";
 
-  std::list<int> loop_bound_nodes = findLoopBoundNodes();
-  out << "  Loop boundary nodes: " << loop_bound_nodes.size() << " [";
-  for (const auto& node_id : loop_bound_nodes) {
-    out << node_id << " ";
+  std::list<node_pair_t> loop_bound_nodes = findLoopBoundaries();
+  out << "  Latency: ";
+  if (execution_status == PRESCHEDULING) {
+    out << "Not available before scheduling.\n";
+  } else {
+    int latency = computeLoopLatency(loop_bound_nodes);
+    out << latency << " cycles";
+    if (execution_status == SCHEDULING) {
+      out << " (may change as scheduling continues).\n";
+    } else {
+      out << ".\n";
+    }
   }
-  out << "]\n";
 }
