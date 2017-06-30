@@ -7,10 +7,12 @@ HAS_READLINE ?= 0
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
                      Registers.o Partition.o LogicalArray.o ReadyPartition.o \
                      SourceManager.o
-UTILS_OBJS = file_func.o generic_func.o power_func.o debugger_print.o debugger_commands.o
+UTILS_OBJS = file_func.o generic_func.o power_func.o
+DEBUGGER_OBJS = debugger_print.o debugger_commands.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
+DEBUGGER_OBJ_FILES = $(patsubst %.o,obj/%.o,$(DEBUGGER_OBJS))
 
 OBJ_DIR = obj
 
@@ -41,9 +43,9 @@ all : $(EXE)
 debug: CFLAGS+=-DDEBUG -O0
 debug: $(EXE)
 
-debugger: obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES)
+debugger: obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES) $(DEBUGGER_OBJ_FILES)
 	$(CXX) $(CFLAGS) -c $@.cpp
-	$(CXX)  $(BITWIDTH) -o $@ $@.o $(OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
+	$(CXX)  $(BITWIDTH) -o $@ $@.o $(OBJ_FILES) $(DEBUGGER_OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
 obj_dir:
 	mkdir -p $(OBJ_DIR)
