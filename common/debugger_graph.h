@@ -90,14 +90,17 @@ class NodeVisitor : public boost::default_bfs_visitor {
          ++out_edge_it) {
       Vertex target_vertex_orig = target(*out_edge_it, g);
       unsigned target_id = get(boost::vertex_node_id, g, target_vertex_orig);
+      Vertex target_vertex;
       if (existing_nodes->find(target_id) == existing_nodes->end()) {
-        Vertex target_vertex = insert_vertex(target_id);
-        unsigned edge_weight = get(boost::edge_name, g, *out_edge_it);
-        add_edge(
-            new_vertex, target_vertex, EdgeProperty(edge_weight), *new_graph);
-        existing_nodes->operator[](target_id) = target_vertex;
+        target_vertex = insert_vertex(target_id);
         (*num_nodes_visited)++;
+      } else {
+        target_vertex = existing_nodes->at(target_id);
       }
+      unsigned edge_weight = get(boost::edge_name, g, *out_edge_it);
+      add_edge(
+          new_vertex, target_vertex, EdgeProperty(edge_weight), *new_graph);
+      existing_nodes->operator[](target_id) = target_vertex;
     }
   }
 
