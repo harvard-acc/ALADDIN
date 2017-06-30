@@ -27,9 +27,11 @@ class NodeVisitor : public boost::default_bfs_visitor {
               ScratchpadDatapath* _acc,
               Vertex _root_vertex,
               unsigned maxnodes,
+              bool _show_branch_children,
               unsigned* _num_nodes_visited)
       : new_graph(_subgraph), existing_nodes(_existing_nodes), acc(_acc),
         root_vertex(_root_vertex), max_nodes(maxnodes),
+        show_branch_children(_show_branch_children),
         num_nodes_visited(_num_nodes_visited) {}
 
   // Insert a vertex with node_id if we aren't above the max_nodes limit.
@@ -54,10 +56,11 @@ class NodeVisitor : public boost::default_bfs_visitor {
     }
 
     // If this node is a branch/call, don't print its children (unless this
-    // node is the root of the BFS). These nodes tend to have a lot of children.
+    // node is the root of the BFS or if we explicitly ask for them). These
+    // nodes tend to have a lot of children.
     if (new_vertex != root_vertex) {
       ExecNode* node = acc->getNodeFromNodeId(node_id);
-      if (node->is_branch_op() || node->is_call_op())
+      if ((node->is_branch_op() || node->is_call_op()) && !show_branch_children)
         return;
     }
 
@@ -104,6 +107,7 @@ class NodeVisitor : public boost::default_bfs_visitor {
   ScratchpadDatapath* acc;
   Vertex root_vertex;
   unsigned max_nodes;
+  bool show_branch_children;
   unsigned* num_nodes_visited;
 };
 

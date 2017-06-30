@@ -28,7 +28,8 @@ void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
 void reconstruct_graph(Graph* new_graph,
                        ScratchpadDatapath* acc,
                        unsigned root_node_id,
-                       unsigned maxnodes) {
+                       unsigned maxnodes,
+                       bool show_branch_children) {
   const Graph &g = acc->getGraph();
   ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
   Vertex root_vertex = root_node->get_vertex();
@@ -39,6 +40,7 @@ void reconstruct_graph(Graph* new_graph,
                       acc,
                       root_vertex,
                       maxnodes,
+                      show_branch_children,
                       &num_nodes_visited);
   boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
 }
@@ -101,7 +103,7 @@ HandlerRet cmd_print(const CommandTokens& command_tokens,
   return ret;
 }
 
-// graph root=N [maxnodes=K]
+// graph root=N [max_nodes=K] [show_branch_children=1/0]
 HandlerRet cmd_graph(const CommandTokens& command_tokens,
                      Command* subcmd_list,
                      ScratchpadDatapath* acc) {
@@ -111,7 +113,8 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   }
 
   int root_node = -1;
-  int maxnodes = 100;  // Default.
+  bool show_branch_children = false;  // Default
+  int max_nodes = 100;  // Default.
 
   CommandTokens args_tokens(++command_tokens.begin(), command_tokens.end());
   CommandArgs args;
@@ -125,9 +128,10 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
     return HANDLER_ERROR;
   }
 
-  if (args.find("maxnodes") != args.end()) {
-    maxnodes = args["maxnodes"];
-  }
+  if (args.find("max_nodes") != args.end())
+    max_nodes = args["max_nodes"];
+  if (args.find("show_branch_children") != args.end())
+    show_branch_children = args["show_branch_children"];
 
   if (!acc->doesNodeExist(root_node)) {
     std::cerr << "ERROR: Node " << root_node << " does not exist!\n";
@@ -135,7 +139,7 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   }
   Graph subgraph;
   try {
-    reconstruct_graph(&subgraph, acc, root_node, maxnodes);
+    reconstruct_graph(&subgraph, acc, root_node, max_nodes, show_branch_children);
   } catch (const bfs_finished &e) {
     // Nothing to do.
   }
@@ -162,23 +166,23 @@ HandlerRet cmd_help(const CommandTokens& tokens,
             << "Note: the debugger cannot alter any Aladdin state. It can only report the state\n"
             << "in its current form.\n\n"
             << "Supported commands:\n"
-            << "  help                               : Print this message\n"
+            << "  help                            : Print this message\n"
             << "\n"
-            << "  print node [id]                    : Print details about this node\n"
-            << "  print loop [label-name]            : Print details about the loop labeled by label-name.\n"
+            << "  print node [id]                 : Print details about this node\n"
+            << "  print loop [label-name]         : Print details about the loop labeled by label-name.\n"
             << "         If multiple functions contain such a label, the user is prompted to select\n"
             << "         the correct one. Details include the average latency of the loop and a list of\n"
             << "         the branch nodes that correspond to this loop header. Technically, this will\n"
             << "         work for any labeled statement, but the loop statistics would not be present.\n"
             << "\n"
-            << "  graph root=node-id <maxnodes=N>    : Dump the DDDG in BFS fashion, starting from\n"
-            << "         the specified root node. maxnodes indicates the maximum number of nodes to\n"
-            << "         dump (since large graphs can cause rendering programs to choke. If maxnodes\n"
-            << "         is not specified, it defaults to 100.\n\n"
-            << "         NOTE: Branch and call nodes tend to have a lot of child dependent nodes\n"
-            << "         that are usually not dependent on each other (e.g. different iterations of the\n"
-            << "         same or different loop). So, unless it is the specified root node, the children\n"
-            << "         of branch and call nodes will not get printed.\n"
+            << "  graph root=[node-id]            : Dump the DDDG in BFS fashion, with node-id as the root.\n"
+            << "    Optional arguments:\n"
+            << "      max_nodes=M              : Graph up to M nodes.\n"
+            << "      show_branch_children=1/0 : Include edges to the children of all branch and call nodes.\n"
+            << "           By default, we exclude (0). Set to 1 to include.\n"
+            << "           Branch and call nodes tend to have a lot of child dependent nodes that are\n"
+            << "           usually not dependent on each other (e.g. different iterations of the same or\n"
+            << "           different loop), so by default, we exclude them to keep the output cleaner\n"
             << "\n"
             << "  continue                           : Continue executing Aladdin\n"
             << "  quit                               : Quit the debugger.\n";
