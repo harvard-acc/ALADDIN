@@ -135,7 +135,9 @@ void DebugNodePrinter::printChildren() {
   std::vector<unsigned> childNodes = acc->getChildNodes(node->get_node_id());
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
-    out << child_node << " ";
+    ExecNode* node = acc->getNodeFromNodeId(child_node);
+    if (!node->is_isolated())
+      out << child_node << " ";
   }
   out << "]\n";
 }
@@ -144,7 +146,9 @@ void DebugNodePrinter::printParents() {
   std::vector<unsigned> parentNodes = acc->getParentNodes(node->get_node_id());
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
-    out << parent_node << " ";
+    ExecNode* node = acc->getNodeFromNodeId(parent_node);
+    if (!node->is_isolated())
+      out << parent_node << " ";
   }
   out << "]\n";
 }
@@ -264,7 +268,8 @@ std::list<int> DebugLoopPrinter::findLoopBoundNodes() {
   std::list<ExecNode*> branch_nodes = acc->getNodesOfMicroop(LLVM_IR_Br);
   std::list<int> matching_nodes;
   for (auto node : branch_nodes) {
-    if (node->get_line_num() == line_num &&
+    if (!node->is_isolated() &&
+        node->get_line_num() == line_num &&
         node->get_static_function_id() == label.get_function_id()) {
       matching_nodes.push_back(node->get_node_id());
     }
