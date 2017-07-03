@@ -119,6 +119,7 @@ class ExecNode {
   bool has_array_label() { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }
   DmaMemAccess* get_dma_mem_access() { return static_cast<DmaMemAccess*>(mem_access); }
+  unsigned get_loop_depth() { return loop_depth; }
   float get_time_before_execution() { return time_before_execution; }
 
   /* Setters. */
@@ -171,6 +172,7 @@ class ExecNode {
     mem_access->is_float = is_float;
     mem_access->value = value;
   }
+  void set_loop_depth(unsigned depth) { loop_depth = depth; }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
   SrcTypes::DynamicFunction get_dynamic_function() {
@@ -619,6 +621,8 @@ class ExecNode {
    * this is NULL.
    */
   MemAccess* mem_access;
+  /* Loop depth of the basic block this node belongs to. */
+  unsigned loop_depth;
 
   /* ID of the static instruction that generated this node. */
   src_id_t static_inst_id;

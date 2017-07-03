@@ -151,6 +151,8 @@ class DDDG {
   int num_of_parameters;
   // Used to track the instruction that initialize call function parameters
   int last_call_source;
+  // The loop depth of the basic block the current node belongs to.
+  unsigned current_loop_depth;
   /* Unique register ID in the caller function. Used to create a mapping between
    * register IDs in caller and callee functions. */
   SrcTypes::DynamicVariable unique_reg_in_caller_func;

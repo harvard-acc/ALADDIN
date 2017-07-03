@@ -139,6 +139,13 @@ void DDDG::parse_instruction_line(std::string line) {
   curr_microop = (uint8_t)microop;
   curr_instid = instid;
 
+  // Update the current loop depth.
+  sscanf(bblockid, "%*[^:]:%u", &current_loop_depth);
+  // If the loop depth is greater than 1000 within this function, we've
+  // probably done something wrong.
+  assert(current_loop_depth < 1000 &&
+         "Loop depth is much higher than expected!");
+
   Function& curr_function =
       srcManager.insert<Function>(curr_static_function);
   Instruction& curr_inst = srcManager.insert<Instruction>(curr_instid);
@@ -146,6 +153,7 @@ void DDDG::parse_instruction_line(std::string line) {
   curr_node->set_line_num(line_num);
   curr_node->set_static_inst_id(curr_inst.get_id());
   curr_node->set_static_function_id(curr_function.get_id());
+  curr_node->set_loop_depth(current_loop_depth);
   datapath->addFunctionName(curr_static_function);
 
   int func_invocation_count = 0;

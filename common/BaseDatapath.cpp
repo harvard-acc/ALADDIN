@@ -9,6 +9,17 @@
 
 using namespace SrcTypes;
 
+std::ostream& operator<<(std::ostream& os, const LoopBoundDescriptor& obj) {
+  os << "LoopBoundDescriptor(microop = " << obj.microop
+     << ", line number = " << obj.line_num
+     << ", loop_depth = " << obj.loop_depth
+     << ", call depth = " << obj.call_depth
+     << ", dyn_invocations = " << obj.dyn_invocations
+     << ")";
+
+  return os;
+}
+
 BaseDatapath::BaseDatapath(std::string& bench,
                            std::string& trace_file_name,
                            std::string& config_file)
@@ -546,15 +557,14 @@ void BaseDatapath::loopUnrolling() {
   std::cout << "         Loop Unrolling        " << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
-  using inst_id_t = std::pair<uint8_t, int>;
-
+  std::stack<LoopBoundDescriptor> loop_nests;
   std::vector<unsigned> to_remove_nodes;
-  std::map<inst_id_t, unsigned> inst_dynamic_counts;
   std::vector<ExecNode*> nodes_between;
   std::vector<newEdge> to_add_edges;
 
   bool first = false;
   int iter_counts = 0;
+  unsigned curr_call_depth = 0;
   ExecNode* prev_branch = nullptr;
 
   for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
@@ -562,6 +572,15 @@ void BaseDatapath::loopUnrolling() {
     ExecNode* node = node_it->second;
     if (!node->has_vertex())
       continue;
+    if (node->get_microop() == LLVM_IR_Ret) {
+      curr_call_depth--;
+      // Clear all loop nests from the stack in case we return from an inner
+      // loop.
+      while (!loop_nests.empty() &&
+             loop_nests.top().call_depth > curr_call_depth) {
+        loop_nests.pop();
+      }
+    }
     Vertex node_vertex = node->get_vertex();
     // We let all the branch nodes proceed to the unrolling handling no matter
     // whether they are isolated or not. Although most of the branch nodes are
@@ -597,6 +616,7 @@ void BaseDatapath::loopUnrolling() {
       // for the case that the first non-isolated node is also a call node;
       if (node->is_call_op() && *loopBound.rbegin() != node_id) {
         loopBound.push_back(node_id);
+        curr_call_depth++;
         prev_branch = node;
       }
       auto unroll_it = getUnrollFactor(node);
@@ -621,18 +641,57 @@ void BaseDatapath::loopUnrolling() {
         nodes_between.push_back(node);
         prev_branch = node;
       } else {  // unrolling the branch
-        // Counting number of loop iterations.
-        int factor = unroll_it->second;
-        inst_id_t unique_inst_id =
-            std::make_pair(node->get_microop(), node->get_line_num());
-        auto it = inst_dynamic_counts.find(unique_inst_id);
-        if (it == inst_dynamic_counts.end()) {
-          inst_dynamic_counts[unique_inst_id] = 0;
-          it = inst_dynamic_counts.find(unique_inst_id);
+        auto next_node_it = std::next(node_it);
+        ExecNode* next_node = next_node_it->second;
+        // This is the loop descriptor we're trying to find in the loop nest
+        // stack.
+        LoopBoundDescriptor loop_id(node->get_microop(), node->get_line_num(),
+                              next_node->get_loop_depth(), curr_call_depth);
+        // Once we've found the loop descriptor, use this pointer to the top of
+        // the stack to update the invocations count.
+        LoopBoundDescriptor* curr_loop = nullptr;
+
+        /* Four possibilities with this loop:
+         * 1. We're entering a new loop nest (possibly due to a Call).
+         * 2. We're exiting the current innermost loop.
+         * 3. We're repeating an inner loop.
+         * 4. We're jumping to a different loop entirely due to a goto.
+         */
+        if (loop_nests.empty() ||
+            loop_nests.top().loop_depth < loop_id.loop_depth ||
+            loop_nests.top().call_depth < curr_call_depth) {
+          // If our loop depth is greater than the top of the stack, add a new
+          // loop nest.
+          loop_nests.push(loop_id);
+          curr_loop = &loop_nests.top();
+        } else if (loop_nests.top().exitBrIs(loop_id)) {
+          curr_loop = &loop_nests.top();
+          loop_nests.pop();
+        } else if (loop_nests.top() == loop_id) {
+          // We're repeating the same loop. Nothing to do.
+          curr_loop = &loop_nests.top();
         } else {
-          it->second++;
+          // We've jumped to a different loop entirely.
+          while (!loop_nests.empty() &&
+                 loop_nests.top() != loop_id &&
+                 loop_nests.top().loop_depth >= loop_id.loop_depth) {
+            loop_nests.pop();
+          }
+
+          // Did not find anything matching this loop boundary node. Add a new
+          // one. This happens if the branch was a goto from a disjoint loop, but it
+          // can also happen if we don't have any loop depth information (aka
+          // all loops have depth 0).
+          if (loop_nests.empty() || loop_nests.top() != loop_id) {
+            loop_nests.push(loop_id);
+          }
+          curr_loop = &loop_nests.top();
         }
-        if (it->second % factor == 0) {
+
+        // Counting number of loop iterations.
+        int unroll_factor = unroll_it->second;
+        curr_loop->dyn_invocations++;
+        if (curr_loop->dyn_invocations % unroll_factor == 0) {
           if (*loopBound.rbegin() != node_id) {
             loopBound.push_back(node_id);
           }
