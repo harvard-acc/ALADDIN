@@ -22,6 +22,7 @@ DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
   last_dma_fence = -1;
   prev_bblock = "-1";
   curr_bblock = "-1";
+  current_loop_depth = 0;
 }
 
 int DDDG::num_edges() {

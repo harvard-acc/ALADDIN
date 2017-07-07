@@ -16,7 +16,7 @@ SCENARIO("Test Dynamic Method Name w/ aes", "[aes]") {
     WHEN("DDDG is generated.") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
-      SourceManager& srcManager = acc->get_source_manager();
+      SrcTypes::SourceManager& srcManager = acc->get_source_manager();
 
       THEN("The unique static node id should match.") {
         REQUIRE(acc->getNodeFromNodeId(0)->get_dynamic_instruction().str(
