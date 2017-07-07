@@ -434,11 +434,11 @@ void BaseDatapath::loopPipelining() {
   std::map<unsigned, unsigned> first_non_isolated_node;
   auto bound_it = loopBound.begin();
   auto node_it = exec_nodes.begin();
-  ExecNode* curr_node = exec_nodes.at(*bound_it);
+  ExecNode* curr_node = exec_nodes.at(bound_it->node_id);
   bound_it++;  // skip first region
   while (node_it != exec_nodes.end()) {
-    assert(exec_nodes.at(*bound_it)->is_branch_op());
-    while (node_it != exec_nodes.end() && node_it->first < *bound_it) {
+    assert(exec_nodes.at(bound_it->node_id)->is_branch_op());
+    while (node_it != exec_nodes.end() && node_it->first < bound_it->node_id) {
       curr_node = node_it->second;
       if (!curr_node->has_vertex() ||
           boost::degree(curr_node->get_vertex(), graph_) == 0 ||
@@ -446,15 +446,15 @@ void BaseDatapath::loopPipelining() {
         ++node_it;
         continue;
       } else {
-        first_non_isolated_node[*bound_it] = curr_node->get_node_id();
-        node_it = exec_nodes.find(*bound_it);
+        first_non_isolated_node[bound_it->node_id] = curr_node->get_node_id();
+        node_it = exec_nodes.find(bound_it->node_id);
         assert(node_it != exec_nodes.end());
         break;
       }
     }
-    if (first_non_isolated_node.find(*bound_it) ==
+    if (first_non_isolated_node.find(bound_it->node_id) ==
         first_non_isolated_node.end())
-      first_non_isolated_node[*bound_it] = *bound_it;
+      first_non_isolated_node[bound_it->node_id] = bound_it->node_id;
     bound_it++;
     if (bound_it == loopBound.end() - 1)
       break;
@@ -592,11 +592,13 @@ void BaseDatapath::loopUnrolling() {
     if (ready_mode && node->is_dma_load())
       continue;
     unsigned node_id = node->get_node_id();
+    unsigned target_loop_depth = getNextNodeLoopDepth(node_id);
+    DynLoopBound dyn_bound(node_id, target_loop_depth);
     if (!first) {
       // prev_branch should not be anything but a branch node.
       if (node->is_branch_op()) {
         first = true;
-        loopBound.push_back(node_id);
+        loopBound.push_back(dyn_bound);
         prev_branch = node;
       } else {
         continue;
@@ -614,8 +616,8 @@ void BaseDatapath::loopUnrolling() {
         nodes_between.push_back(node);
     } else {
       // for the case that the first non-isolated node is also a call node;
-      if (node->is_call_op() && *loopBound.rbegin() != node_id) {
-        loopBound.push_back(node_id);
+      if (node->is_call_op() && loopBound.rbegin()->node_id != node_id) {
+        loopBound.push_back(dyn_bound);
         curr_call_depth++;
         prev_branch = node;
       }
@@ -641,12 +643,10 @@ void BaseDatapath::loopUnrolling() {
         nodes_between.push_back(node);
         prev_branch = node;
       } else {  // unrolling the branch
-        auto next_node_it = std::next(node_it);
-        ExecNode* next_node = next_node_it->second;
         // This is the loop descriptor we're trying to find in the loop nest
         // stack.
         LoopBoundDescriptor loop_id(node->get_microop(), node->get_line_num(),
-                              next_node->get_loop_depth(), curr_call_depth);
+                                    target_loop_depth, curr_call_depth);
         // Once we've found the loop descriptor, use this pointer to the top of
         // the stack to update the invocations count.
         LoopBoundDescriptor* curr_loop = nullptr;
@@ -692,8 +692,8 @@ void BaseDatapath::loopUnrolling() {
         int unroll_factor = unroll_it->second;
         curr_loop->dyn_invocations++;
         if (curr_loop->dyn_invocations % unroll_factor == 0) {
-          if (*loopBound.rbegin() != node_id) {
-            loopBound.push_back(node_id);
+          if (loopBound.rbegin()->node_id != node_id) {
+            loopBound.push_back(dyn_bound);
           }
           iter_counts++;
           for (auto prev_node_it = nodes_between.begin(),
@@ -713,7 +713,7 @@ void BaseDatapath::loopUnrolling() {
       }
     }
   }
-  loopBound.push_back(numTotalNodes);
+  loopBound.push_back(DynLoopBound(numTotalNodes, 0));
 
   if (iter_counts == 0 && unrolling_config.size() != 0) {
     std::cerr << "-------------------------------\n"
@@ -751,7 +751,7 @@ void BaseDatapath::removeSharedLoads() {
   auto node_it = exec_nodes.begin();
   while (node_it != exec_nodes.end()) {
     std::unordered_map<unsigned, ExecNode*> address_loaded;
-    while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
+    while (node_it->first < bound_it->node_id && node_it != exec_nodes.end()) {
       ExecNode* node = node_it->second;
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0 ||
@@ -832,7 +832,7 @@ void BaseDatapath::storeBuffer() {
   auto node_it = exec_nodes.begin();
 
   while (node_it != exec_nodes.end()) {
-    while (node_it->first < *bound_it && node_it != exec_nodes.end()) {
+    while (node_it->first < bound_it->node_id && node_it != exec_nodes.end()) {
       ExecNode* node = node_it->second;
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0) {
@@ -858,7 +858,7 @@ void BaseDatapath::storeBuffer() {
           ExecNode* child_node = getNodeFromVertex(child_vertex);
           if (child_node->is_load_op()) {
             if (child_node->is_dynamic_mem_op() ||
-                child_node->get_node_id() >= (unsigned)*bound_it)
+                child_node->get_node_id() >= (unsigned)bound_it->node_id)
               continue;
             else
               store_child.push_back(child_vertex);
@@ -934,7 +934,7 @@ void BaseDatapath::removeRepeatedStores() {
   while (node_id >= 0) {
     std::unordered_map<unsigned, int> address_store_map;
 
-    while (node_id >= *bound_it && node_id >= 0) {
+    while (node_id >= bound_it->node_id && node_id >= 0) {
       ExecNode* node = exec_nodes.at(node_id);
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph_) == 0 ||
@@ -1002,9 +1002,9 @@ void BaseDatapath::treeHeightReduction() {
   auto node_it = exec_nodes.begin();
   unsigned node_id = node_it->first;
   auto bound_it = loopBound.begin();
-  while (node_id <= *bound_it && node_it != exec_nodes.end()) {
+  while (node_id <= bound_it->node_id && node_it != exec_nodes.end()) {
     bound_region.at(node_id) = region_id;
-    if (node_id == *bound_it) {
+    if (node_id == bound_it->node_id) {
       region_id++;
       bound_it++;
       if (bound_it == loopBound.end())
@@ -1281,7 +1281,7 @@ void BaseDatapath::updatePerCycleActivity(
     auto max_it = func_max_activity.find(func_id);
     assert(max_it != func_max_activity.end());
 
-    if (node->get_node_id() == *bound_it) {
+    if (node->get_node_id() == bound_it->node_id) {
       if (max_it->second.add < num_adds_so_far)
         max_it->second.add = num_adds_so_far;
       if (max_it->second.bit < num_bits_so_far)
@@ -2169,14 +2169,13 @@ std::vector<unsigned> BaseDatapath::getChildNodes(unsigned int node_id) {
   return connectedNodes;
 }
 
-std::list<ExecNode*> BaseDatapath::getNodesOfMicroop(unsigned microop) {
-  std::list<ExecNode*> matching_nodes;
-  for (auto it = exec_nodes.begin(); it != exec_nodes.end(); ++it) {
-    ExecNode* node = it->second;
-    if (node->get_microop() == microop)
-      matching_nodes.push_back(node);
-  }
-  return matching_nodes;
+unsigned BaseDatapath::getNextNodeLoopDepth(unsigned node_id) {
+  auto it = exec_nodes.find(node_id);
+  assert(it != exec_nodes.end());
+  auto next_it = std::next(it);
+  if (next_it == exec_nodes.end())
+    return 0;
+  return next_it->second->get_loop_depth();
 }
 
 // readConfigs

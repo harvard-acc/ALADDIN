@@ -158,6 +158,15 @@ struct LoopBoundDescriptor {
   friend std::ostream& operator<<(std::ostream& os, const LoopBoundDescriptor& obj);
 };
 
+/* A dynamic loop boundary is identified by a branch/call node and a target
+ * loop depth. */
+struct DynLoopBound {
+  unsigned node_id;
+  unsigned target_loop_depth;
+  DynLoopBound(unsigned _node_id, unsigned _target_loop_depth)
+      : node_id(_node_id), target_loop_depth(_target_loop_depth) {}
+};
+
 // Data to print out to file, stdout, or database.
 struct summary_data_t {
   std::string benchName;
@@ -267,9 +276,12 @@ class BaseDatapath {
 
   std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
 
-  const std::vector<int>& getLoopBound() { return loopBound; }
+  unsigned getNextNodeLoopDepth(unsigned node_id);
+  const std::vector<DynLoopBound>& getLoopBoundaries() { return loopBound; }
+
+  // For unit tests.
   int getUnrolledLoopBoundary(unsigned int region_id) {
-    return loopBound.at(region_id);
+    return loopBound.at(region_id).node_id;
   }
   std::string getBaseAddressLabel(unsigned int node_id) {
     return exec_nodes.at(node_id)->get_array_label();
@@ -504,7 +516,7 @@ class BaseDatapath {
   std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
-  std::vector<int> loopBound;
+  std::vector<DynLoopBound> loopBound;
   // Scheduling.
   unsigned totalConnectedNodes;
   unsigned executedNodes;
