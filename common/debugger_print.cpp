@@ -220,7 +220,7 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
     if (selection == -1) {
       return ABORTED;
     } else {
-      selected_label = candidates[selection];
+      selected_label = candidates[selection-1];
       return LOOP_FOUND;
     }
   }
