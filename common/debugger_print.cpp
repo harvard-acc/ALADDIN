@@ -340,6 +340,34 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
       << "  Line number: " << selected_label.second << "\n";
 
   std::list<node_pair_t> loop_bound_nodes = findLoopBoundaries();
+  out << "  Loop boundaries: ";
+  if (loop_bound_nodes.empty()) {
+    out << "None.\n";
+  } else {
+    const unsigned kMaxPrintsPerRow = 4;
+    const unsigned kMaxPrints = kMaxPrintsPerRow * 20;
+    unsigned num_prints = 0;
+    auto bound_it = loop_bound_nodes.begin();
+    while (bound_it != loop_bound_nodes.end() &&
+           num_prints < kMaxPrints) {
+      for (unsigned i = 0; i < kMaxPrintsPerRow; i++) {
+        if (bound_it != loop_bound_nodes.end()) {
+          out << "[" << bound_it->first->get_node_id() << ", "
+              << bound_it->second->get_node_id() << "]  ";
+          ++bound_it;
+          num_prints++;
+        } else {
+          break;
+        }
+      }
+      out << "\n";
+      if (bound_it != loop_bound_nodes.end())
+        out << "                   ";
+    }
+    if (kMaxPrints < loop_bound_nodes.size())
+      out << "... (and " << loop_bound_nodes.size() - kMaxPrints << " more).\n";
+  }
+
   out << "  Latency: ";
   if (execution_status == PRESCHEDULING) {
     out << "Not available before scheduling.\n";
