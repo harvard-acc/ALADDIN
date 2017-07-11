@@ -757,6 +757,7 @@ bool HybridDatapath::issueCacheRequest(Addr addr,
                                        bool isLoad,
                                        unsigned node_id,
                                        uint64_t value) {
+  using namespace SrcTypes;
   DPRINTF(HybridDatapath, "issueCacheRequest for addr:%#x\n", addr);
   if (isCacheBlocked) {
     DPRINTF(HybridDatapath, "MSHR is full. Waiting for misses to return.\n");

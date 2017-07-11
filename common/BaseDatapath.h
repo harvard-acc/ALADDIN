@@ -118,7 +118,7 @@ struct RQEntryComp {
 // current call and loop nesting level.
 struct LoopBoundDescriptor {
   // Static properties.
-  
+
   // Either branch or call.
   unsigned microop;
   // Line number.
@@ -133,11 +133,11 @@ struct LoopBoundDescriptor {
   int dyn_invocations;
 
   LoopBoundDescriptor(unsigned _microop,
-                unsigned _line_num,
-                unsigned _loop_depth,
-                unsigned _call_depth)
-      : microop(_microop), line_num(_line_num), loop_depth(_loop_depth),
-        call_depth(_call_depth), dyn_invocations(-1) {}
+                      unsigned _line_num,
+                      unsigned _loop_depth,
+                      unsigned _call_depth)
+      : microop(_microop), line_num(_line_num), call_depth(_call_depth),
+        loop_depth(_loop_depth), dyn_invocations(-1) {}
 
   // Returns true if @other is a branch that exits from this loop.
   bool exitBrIs(const LoopBoundDescriptor& other) {

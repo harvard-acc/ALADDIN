@@ -575,6 +575,8 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(SilentStore);
       LLVM_IR_OPCODE_TO_NAME(Sine);
       LLVM_IR_OPCODE_TO_NAME(Cosine);
+      default:
+        return "";
     }
 
 #undef LLVM_IR_OPCODE_TO_NAME
