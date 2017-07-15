@@ -397,7 +397,7 @@ void BaseDatapath::dumpStats() {
 
 void BaseDatapath::loopPipelining() {
   if (!pipelining) {
-    std::cerr << "Loop Pipelining is not ON." << std::endl;
+    std::cerr << "Global loop pipelining is not ON." << std::endl;
     return;
   }
 
@@ -422,7 +422,7 @@ void BaseDatapath::loopPipelining() {
 
   // After loop unrolling, we define strict control dependences between basic
   // block, where all the instructions in the following basic block depend on
-  // the prev branch instruction To support loop pipelining, which allows the
+  // the prev branch instruction. To support loop pipelining, which allows the
   // next iteration starting without waiting until the prev iteration finish,
   // we move the control dependences between last branch node in the prev basic
   // block and instructions in the next basic block to first non isolated
@@ -491,8 +491,9 @@ void BaseDatapath::loopPipelining() {
       continue;
     }
     // adding dependence between prev_first and first_id
-    if (!doesEdgeExist(prev_first_n, first_node))
+    if (!doesEdgeExist(prev_first_n, first_node)) {
       to_add_edges.push_back({ prev_first_n, first_node, CONTROL_EDGE });
+    }
     // adding dependence between first_id and prev_branch's children
     assert(prev_branch_n->has_vertex());
     out_edge_iter out_edge_it, out_edge_end;
@@ -505,8 +506,9 @@ void BaseDatapath::loopPipelining() {
       if (*child_node < *first_node ||
           edge_to_parid[*out_edge_it] != CONTROL_EDGE)
         continue;
-      if (!doesEdgeExist(first_node, child_node))
+      if (!doesEdgeExist(first_node, child_node)) {
         to_add_edges.push_back({ first_node, child_node, 1 });
+      }
     }
     // update first_id's parents, dependence become strict control dependence
     assert(first_node->has_vertex());
@@ -543,6 +545,164 @@ void BaseDatapath::loopPipelining() {
   updateGraphWithIsolatedEdges(to_remove_edges);
   cleanLeafNodes();
 }
+
+void BaseDatapath::perLoopPipelining() {
+  if (loopBound.size() <= 2 || pipeline_config.size() == 0)
+    return;
+
+  if (pipelining) {
+    std::cerr
+        << "Per loop pipelining cannot be used in conjunction with the "
+           "legacy global pipelining! Please disable the global pipelining "
+           "setting first.\n";
+    return;
+  }
+
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "      Per Loop Pipelining      " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  std::set<Edge> to_remove_edges;
+  std::vector<newEdge> to_add_edges;
+
+  // Strategy: for every loop I want to pipeline:
+  //  1. Find every node that starts an iteration of this loop.
+  //  2. Find the first non-isolated node (FNIN) from this iteration.
+  //  3. For all control dependences going to instructions in an iteration and
+  //     originating from the branch node that marked the boundary of the
+  //     previous iteration:
+  //     a. Change the source to the FNIN of the previous iteration.
+  for (const UniqueLabel& loop : pipeline_config) {
+    // Step 1.
+    std::list<unsigned> current_loop_bounds;
+    for (auto bound_it = loopBound.begin(); bound_it != --loopBound.end();
+         ++bound_it) {
+      const DynLoopBound& dyn_loop_bound = *bound_it;
+      ExecNode* curr_node = exec_nodes.at(dyn_loop_bound.node_id);
+      UniqueLabel this_label = getUniqueLabel(curr_node);
+      if (loop == this_label)
+        current_loop_bounds.push_back(curr_node->get_node_id());
+    }
+
+    // Step 2.
+    std::map<unsigned, unsigned> first_non_isolated_nodes;
+    for (auto bound_it = current_loop_bounds.begin(),
+              end_it = current_loop_bounds.end();
+         bound_it != end_it;) {
+      unsigned curr_bound_node_id = *bound_it;
+      unsigned next_bound_node_id = *(++bound_it);
+      auto it = exec_nodes.find(curr_bound_node_id);
+      // Find the FNIN after this boundary node (so, don't consider the
+      // boundary node itself).
+      ++it;
+      unsigned node_id = it->first;
+      bool is_isolated = true;
+      while (node_id < next_bound_node_id) {
+        ExecNode* next_node = it->second;
+        is_isolated = (!next_node->has_vertex() ||
+                       boost::degree(next_node->get_vertex(), graph_) == 0 ||
+                       next_node->is_branch_op());
+        if (!is_isolated) {
+          // Use the next bound node as the key, not the current boundary node,
+          // because this is exactly how we will change the control dependence
+          // edge sources in the next step.
+          first_non_isolated_nodes[next_bound_node_id] = node_id;
+          break;
+        } else {
+          it++;
+          node_id = it->first;
+        }
+      }
+    }
+
+    // Step 3.
+    ExecNode* prev_branch_node = nullptr;
+    ExecNode* prev_first_node = nullptr;
+    for (auto first_it = first_non_isolated_nodes.begin(),
+              end_it = first_non_isolated_nodes.end();
+         first_it != end_it;
+         ++first_it) {
+      ExecNode* branch_node = exec_nodes.at(first_it->first);
+      ExecNode* first_node = exec_nodes.at(first_it->second);
+      if (!prev_branch_node && !prev_first_node) {
+        prev_branch_node = branch_node;
+        prev_first_node = first_node;
+        continue;
+      }
+
+      if (!doesEdgeExist(prev_first_node, first_node)) {
+        to_add_edges.push_back({ prev_first_node, first_node, CONTROL_EDGE });
+      }
+      // Identify all nodes in the body of the previous iteration that succeed
+      // the FNIN of that iteration. If any of these nodes have a control
+      // dependence on that iteration's entry branch node, change the source of
+      // that edge to be the FNIN.
+      //
+      // This pass just adds that new edge. The original edge will be removed
+      // later.
+      assert(prev_branch_node->has_vertex());
+      out_edge_iter out_edge_it, out_edge_end;
+      for (boost::tie(out_edge_it, out_edge_end) =
+               out_edges(prev_branch_node->get_vertex(), graph_);
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
+        Vertex child_vertex = target(*out_edge_it, graph_);
+        ExecNode* child_node = getNodeFromVertex(child_vertex);
+        if (*child_node >= *first_node &&
+            edge_to_parid[*out_edge_it] == CONTROL_EDGE) {
+          // TODO: What is the meaning of EDGE = 1? It gets used in Load/Store
+          // Buffer.
+          if (!doesEdgeExist(first_node, child_node))
+            to_add_edges.push_back({ first_node, child_node, 1 });
+        }
+      }
+
+      // Pipelining causes the first non-isolated nodes to be the real
+      // iteration bounds (rather than branch nodes), so any dependences of
+      // FNINs must be converted to control edges.
+      assert(first_node->has_vertex());
+      in_edge_iter in_edge_it, in_edge_end;
+      for (boost::tie(in_edge_it, in_edge_end) =
+               in_edges(first_node->get_vertex(), graph_);
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
+        Vertex parent_vertex = source(*in_edge_it, graph_);
+        ExecNode* parent_node = getNodeFromVertex(parent_vertex);
+        // TODO: Ignore branch nodes since they are typically loop bounds, but
+        // what if we have control flow with a loop?
+        if (!parent_node->is_branch_op()) {
+          to_remove_edges.insert(*in_edge_it);
+          to_add_edges.push_back({ parent_node, first_node, CONTROL_EDGE });
+        }
+      }
+
+      // Remove all control dependences from the previous branch node to its
+      // children (because these dependences have been moved to the previous
+      // FNIN), except for call nodes (we don't optimize across function
+      // boundaries).
+      assert(prev_branch_node->has_vertex());
+      for (boost::tie(out_edge_it, out_edge_end) =
+               out_edges(prev_branch_node->get_vertex(), graph_);
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
+        unsigned target_node_id = vertexToName[target(*out_edge_it, graph_)];
+        if (exec_nodes.at(target_node_id)->is_call_op())
+          continue;
+        if (edge_to_parid[*out_edge_it] != CONTROL_EDGE)
+          continue;
+        to_remove_edges.insert(*out_edge_it);
+      }
+      prev_branch_node = branch_node;
+      prev_first_node = first_node;
+    }
+  }
+
+  updateGraphWithNewEdges(to_add_edges);
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  cleanLeafNodes();
+}
+
 /*
  * Read: graph_, lineNum.gz, unrollingConfig
  * Modify: graph_
@@ -2111,7 +2271,7 @@ partition_config_t::iterator BaseDatapath::getArrayConfigFromAddr(Addr base_addr
   return part_it;
 }
 
-unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
+SrcTypes::UniqueLabel BaseDatapath::getUniqueLabel(ExecNode* node) {
   // We'll only find a label if the labelmap is present in the dynamic trace,
   // but if the configuration file doesn't use labels (it's an older config
   // file), we have to fallback on using line numbers.
@@ -2119,15 +2279,19 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   for (auto it = range.first; it != range.second; ++it) {
     if (it->second.get_function_id() != node->get_static_function_id())
       continue;
-    UniqueLabel unrolling_id(
-        it->second.get_function_id(), it->second.get_label_id());
-    auto config_it = unrolling_config.find(unrolling_id);
-    if (config_it != unrolling_config.end())
-      return config_it;
+    return it->second;
   }
+  return UniqueLabel(SrcTypes::InvalidId, SrcTypes::InvalidId);
+}
+
+unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
+  UniqueLabel unrolling_id = getUniqueLabel(node);
+  auto config_it = unrolling_config.find(unrolling_id);
+  if (config_it != unrolling_config.end())
+    return config_it;
   Label label(node->get_line_num());
-  UniqueLabel unrolling_id(node->get_static_function_id(), label.get_id());
-  return unrolling_config.find(unrolling_id);
+  return unrolling_config.find(
+      UniqueLabel(node->get_static_function_id(), label.get_id()));
 }
 
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
@@ -2259,6 +2423,19 @@ void BaseDatapath::parse_config(std::string& bench,
       };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());
+    } else if (!type.compare("pipeline")) {
+      char function_name[256], label_or_line_num[64];
+      sscanf(rest_line.c_str(), "%[^,],%[^,]\n", function_name,
+             label_or_line_num);
+      Function& function = srcManager.insert<Function>(function_name);
+      Label& label = srcManager.insert<Label>(label_or_line_num);
+      UniqueLabel pipeline_id(function, label);
+      if (pipeline_config.find(pipeline_id) == pipeline_config.end()) {
+        pipeline_config.insert(pipeline_id);
+      } else {
+        std::cerr << "Duplicate pipeline directive for " << function_name << "/"
+                  << label_or_line_num << ", ignoring.\n";
+      }
     } else if (!type.compare("cycle_time")) {
       // Update the global cycle time parameter.
       cycleTime = stof(rest_line);

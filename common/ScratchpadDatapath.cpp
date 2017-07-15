@@ -47,6 +47,7 @@ void ScratchpadDatapath::globalOptimizationPass() {
   treeHeightReduction();
   // Must do loop pipelining last; after all the data/control dependences are
   // fixed
+  perLoopPipelining();
   loopPipelining();
 }
 

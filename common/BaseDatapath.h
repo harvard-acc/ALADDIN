@@ -249,6 +249,7 @@ class BaseDatapath {
   const std::multimap<unsigned, SrcTypes::UniqueLabel>& getLabelMap() {
     return labelmap;
   }
+  SrcTypes::UniqueLabel getUniqueLabel(ExecNode* node);
   void addCallArgumentMapping(DynamicVariable& callee_reg_id,
                               DynamicVariable& caller_reg_id);
   DynamicVariable getCallerRegID(DynamicVariable& reg_id);
@@ -361,6 +362,7 @@ class BaseDatapath {
   void loopFlatten();
   void loopUnrolling();
   void loopPipelining();
+  void perLoopPipelining();
   void storeBuffer();
   void removeSharedLoads();
   void removeRepeatedStores();
@@ -479,6 +481,7 @@ class BaseDatapath {
    * flatten if factor is zero.
    * it maps loop labels to unrolling factor. */
   unrolling_config_t unrolling_config;
+  std::unordered_set<SrcTypes::UniqueLabel> pipeline_config;
   /* complete, block, cyclic, and cache partition share partition_config */
   partition_config_t partition_config;
 
