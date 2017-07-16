@@ -2355,8 +2355,10 @@ void BaseDatapath::parse_config(std::string& bench,
   while (!config_file.eof()) {
     wholeline.clear();
     std::getline(config_file, wholeline);
-    if (wholeline.size() == 0)
-      break;
+    if (wholeline.size() == 0)  // Empty line.
+      continue;
+    if (wholeline[0] == '#')  // Comment.
+      continue;
     std::string type, rest_line;
     int pos_end_tag = wholeline.find(",");
     if (pos_end_tag == -1)
