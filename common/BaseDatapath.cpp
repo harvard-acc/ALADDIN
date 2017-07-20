@@ -342,8 +342,8 @@ void BaseDatapath::removeInductionDependence() {
     node->set_inductive(false);
     if (!node->has_vertex() || node->is_memory_op())
       continue;
-    src_id_t node_instid = node->get_static_inst_id();
-    if (srcManager.get<Instruction>(node_instid).is_inductive()) {
+    Instruction* node_inst = node->get_static_inst();
+    if (node_inst->is_inductive()) {
       node->set_inductive(true);
       if (node->is_int_add_op())
         node->set_microop(LLVM_IR_IndexAdd);
@@ -477,8 +477,8 @@ void BaseDatapath::loopPipelining() {
       // check whether the previous branch is the same loop or not
       if (prev_branch_n != nullptr) {
         if ((br_node->get_line_num() == prev_branch_n->get_line_num()) &&
-            (br_node->get_static_function_id() ==
-             prev_branch_n->get_static_function_id()) &&
+            (br_node->get_static_function() ==
+             prev_branch_n->get_static_function()) &&
             first_node->get_line_num() == prev_first_n->get_line_num()) {
           found = true;
         }
@@ -1436,8 +1436,7 @@ void BaseDatapath::updatePerCycleActivity(
        ++node_it) {
     ExecNode* node = node_it->second;
     // TODO: On every iteration, this could be a bottleneck.
-    std::string func_id =
-        srcManager.get<Function>(node->get_static_function_id()).get_name();
+    std::string func_id = node->get_static_function()->get_name();
     auto max_it = func_max_activity.find(func_id);
     assert(max_it != func_max_activity.end());
 
@@ -2194,10 +2193,9 @@ void BaseDatapath::initBaseAddress() {
         if (parent_microop == LLVM_IR_GetElementPtr ||
             parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
-          DynamicVariable var = parent_node->get_dynamic_variable();
-          var = getCallerRegID(var);
-          node->set_array_label(
-              srcManager.get<Variable>(var.get_variable_id()).get_name());
+          DynamicVariable dynvar = parent_node->get_dynamic_variable();
+          dynvar = getCallerRegID(dynvar);
+          node->set_array_label(dynvar.get_variable()->get_name());
           curr_vertex = source(*in_edge_it, graph_);
           node_microop = parent_microop;
           found_parent = true;
@@ -2277,11 +2275,11 @@ SrcTypes::UniqueLabel BaseDatapath::getUniqueLabel(ExecNode* node) {
   // file), we have to fallback on using line numbers.
   auto range = labelmap.equal_range(node->get_line_num());
   for (auto it = range.first; it != range.second; ++it) {
-    if (it->second.get_function_id() != node->get_static_function_id())
+    if (it->second.get_function() != node->get_static_function())
       continue;
     return it->second;
   }
-  return UniqueLabel(SrcTypes::InvalidId, SrcTypes::InvalidId);
+  return UniqueLabel(nullptr, nullptr);
 }
 
 unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
@@ -2289,9 +2287,10 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   auto config_it = unrolling_config.find(unrolling_id);
   if (config_it != unrolling_config.end())
     return config_it;
-  Label label(node->get_line_num());
+  // TODO: Revisit this with the UniqueLabel pointer refactor.
+  Label* label = srcManager.insert<Label>(std::to_string(node->get_line_num()));
   return unrolling_config.find(
-      UniqueLabel(node->get_static_function_id(), label.get_id()));
+      UniqueLabel(node->get_static_function(), label));
 }
 
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
@@ -2369,8 +2368,8 @@ void BaseDatapath::parse_config(std::string& bench,
       char function_name[256], label_or_line_num[64];
       sscanf(
           rest_line.c_str(), "%[^,],%[^,]\n", function_name, label_or_line_num);
-      Function& function = srcManager.insert<Function>(function_name);
-      Label& label = srcManager.insert<Label>(label_or_line_num);
+      Function* function = srcManager.insert<Function>(function_name);
+      Label* label = srcManager.insert<Label>(label_or_line_num);
       UniqueLabel unrolling_id(function, label);
       unrolling_config[unrolling_id] = 0;
     } else if (!type.compare("unrolling")) {
@@ -2378,8 +2377,8 @@ void BaseDatapath::parse_config(std::string& bench,
       int factor;
       sscanf(rest_line.c_str(), "%[^,],%[^,],%d\n", function_name,
              label_or_line_num, &factor);
-      Function& function = srcManager.insert<Function>(function_name);
-      Label& label = srcManager.insert<Label>(label_or_line_num);
+      Function* function = srcManager.insert<Function>(function_name);
+      Label* label = srcManager.insert<Label>(label_or_line_num);
       UniqueLabel unrolling_id(function, label);
       unrolling_config[unrolling_id] = factor;
     } else if (!type.compare("partition")) {
@@ -2429,8 +2428,8 @@ void BaseDatapath::parse_config(std::string& bench,
       char function_name[256], label_or_line_num[64];
       sscanf(rest_line.c_str(), "%[^,],%[^,]\n", function_name,
              label_or_line_num);
-      Function& function = srcManager.insert<Function>(function_name);
-      Label& label = srcManager.insert<Label>(label_or_line_num);
+      Function* function = srcManager.insert<Function>(function_name);
+      Label* label = srcManager.insert<Label>(label_or_line_num);
       UniqueLabel pipeline_id(function, label);
       if (pipeline_config.find(pipeline_id) == pipeline_config.end()) {
         pipeline_config.insert(pipeline_id);

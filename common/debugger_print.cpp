@@ -51,32 +51,30 @@ void DebugNodePrinter::printSourceInfo() {
     out << "  Line number: " << line_num << "\n";
 
   // What function does this node belong to?
-  SrcTypes::Function func =
-      srcManager.get<SrcTypes::Function>(node->get_static_function_id());
-  if (func != InvalidFunction) {
-    out << "  Parent function: " << func.get_name() << "\n";
+  SrcTypes::Function* func = node->get_static_function();
+  if (func) {
+    out << "  Parent function: " << func->get_name() << "\n";
     out << "  Dynamic invocation count: " << node->get_dynamic_invocation()
         << "\n";
   }
 
-  if (line_num != -1 && func != InvalidFunction) {
+  if (line_num != -1 && func) {
     const std::multimap<unsigned, UniqueLabel>& labelmap =
         acc->getLabelMap();
     auto label_range = labelmap.equal_range(line_num);
     for (auto it = label_range.first; it != label_range.second; ++it) {
-      if (it->second.get_function_id() == func.get_id()) {
-        src_id_t label_id = it->second.get_label_id();
-        Label label = srcManager.get<Label>(label_id);
-        out << "  Code label: " << label.get_name() << "\n";
+      if (it->second.get_function() == func) {
+        Label* label = it->second.get_label();
+        out << "  Code label: " << label->get_name() << "\n";
         break;
       }
     }
   }
 
   // Print information about the variables involved, if info exists.
-  Variable var = srcManager.get<Variable>(node->get_variable_id());
-  if (var != InvalidVariable)
-    out << "  Variable: " << var.str() << "\n";
+  Variable* var = node->get_variable();
+  if (var)
+    out << "  Variable: " << var->str() << "\n";
 }
 
 void DebugNodePrinter::printMemoryOp() {
@@ -115,14 +113,12 @@ void DebugNodePrinter::printCall() {
     } catch (const std::out_of_range& e) {
     }
 
-    SrcTypes::Function curr_func =
-        srcManager.get<SrcTypes::Function>(node->get_static_function_id());
+    SrcTypes::Function* curr_func = node->get_static_function();
     out << "  Called function: ";
     if (called_node) {
-      SrcTypes::Function called_func = srcManager.get<SrcTypes::Function>(
-          called_node->get_static_function_id());
-      if (called_func != curr_func && called_func != InvalidFunction)
-        out << called_func.get_name() << "\n";
+      SrcTypes::Function* called_func = called_node->get_static_function();
+      if (called_func && called_func != curr_func)
+        out << called_func->get_name() << "\n";
       else
         out << "Unable to determine.\n";
     } else {
@@ -183,22 +179,18 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
     const std::string& loop_name) {
   using namespace SrcTypes;
 
-  src_id_t label_id = srcManager.get_id<Label>(loop_name);
-  if (label_id == InvalidId)
-    return LOOP_NOT_FOUND;
-
-  Label label = srcManager.get<Label>(label_id);
+  Label* label = srcManager.get<Label>(loop_name);
   std::vector<std::pair<UniqueLabel, unsigned>> candidates;
 
   const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
   for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
     const UniqueLabel& unique_label = it->second;
-    if (unique_label.get_label_id() == label.get_id())
+    if (unique_label.get_label() == label)
       candidates.push_back(std::make_pair(unique_label, it->first));
   }
 
   if (candidates.size() == 0) {
-    selected_label = std::make_pair(UniqueLabel(InvalidId, InvalidId), 0);
+    selected_label = std::make_pair(UniqueLabel(nullptr, nullptr), 0);
     return LOOP_NOT_FOUND;
   } else if (candidates.size() == 1) {
     selected_label = candidates[0];
@@ -211,9 +203,8 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
            "abort.\n";
     for (unsigned i = 0; i < candidates.size(); i++) {
       UniqueLabel& candidate_label = candidates[i].first;
-      const SrcTypes::Function& func =
-          srcManager.get<SrcTypes::Function>(candidate_label.get_function_id());
-      out << "  " << i + 1 << ": " << func.get_name() << "\n";
+      const SrcTypes::Function* func = candidate_label.get_function();
+      out << "  " << i + 1 << ": " << func->get_name() << "\n";
     }
     out << "\n";
     int selection = getUserSelection(candidates.size());
@@ -282,7 +273,7 @@ std::list<DebugLoopPrinter::node_pair_t> DebugLoopPrinter::findLoopBoundaries() 
     ExecNode* node = acc->getNodeFromNodeId(loop_bound.node_id);
     if (!node->is_isolated() &&
         node->get_line_num() == line_num &&
-        node->get_static_function_id() == label.get_function_id()) {
+        node->get_static_function() == label.get_function()) {
       if (!is_loop_executing) {
         is_loop_executing = true;
         loop_start = node;
@@ -333,10 +324,9 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
               << "\" were found!\n";
     return;
   }
-  const SrcTypes::Function& func =
-      srcManager.get<SrcTypes::Function>(selected_label.first.get_function_id());
+  SrcTypes::Function* func = selected_label.first.get_function();
   out << "Loop \"" << loop_name << "\"\n"
-      << "  Function: " << func.get_name() << "\n"
+      << "  Function: " << func->get_name() << "\n"
       << "  Line number: " << selected_label.second << "\n";
 
   std::list<node_pair_t> loop_bound_nodes = findLoopBoundaries();

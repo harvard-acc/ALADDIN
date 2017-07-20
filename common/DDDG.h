@@ -134,7 +134,7 @@ class DDDG {
                                     size_t size,
                                     unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
-  const SrcTypes::Variable& get_array_real_var(const std::string& array_name);
+  SrcTypes::Variable* get_array_real_var(const std::string& array_name);
 
   SrcTypes::DynamicFunction curr_dynamic_function;
 
@@ -144,7 +144,7 @@ class DDDG {
   std::string curr_bblock;
   ExecNode* curr_node;
 
-  SrcTypes::Function callee_function;
+  SrcTypes::Function* callee_function;
   SrcTypes::DynamicFunction callee_dynamic_function;
 
   bool last_parameter;

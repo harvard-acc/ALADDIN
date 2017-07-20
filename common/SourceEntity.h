@@ -9,6 +9,7 @@
  * and a variable could have the same C name but would still have different ids.
  */
 
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -22,15 +23,22 @@ using src_id_t = uint32_t;
 // An ID that should never appear.
 extern const src_id_t InvalidId;
 
+class SourceManager;
+
 // Common base class for all basic source code entities.
 //
 // Defines a name and id field and requires that child classes implement an
 // set_id() function. All comparisons are done by comparing these IDs.
 class SourceEntity {
- public:
+  // Only the SourceManager will be allowed to construct these objects, thereby
+  // letting us guarantee uniqueness and the ability to compare pointers.
+  friend SourceManager;
+
+ protected:
   SourceEntity() : name("") {}
   SourceEntity(std::string _name) : name(_name) {}
 
+ public:
   src_id_t get_id() const { return id; }
   const std::string& get_name() const { return name; }
 
@@ -50,12 +58,15 @@ class SourceEntity {
 
 // A function in the source code.
 class Function : public SourceEntity {
- public:
+  friend SourceManager;
+
+ protected:
   Function() : SourceEntity(), invocations(-1) {}
   Function(std::string _name) : SourceEntity(_name), invocations(-1) {
     set_id();
   }
 
+ public:
   void increment_invocations() { invocations++; }
   unsigned long get_invocations() const { return invocations; }
   virtual std::string str() const {
@@ -82,9 +93,13 @@ class Function : public SourceEntity {
 //
 // This could refer to a register or an array.
 class Variable : public SourceEntity {
- public:
+  friend SourceManager;
+
+ protected:
   Variable() : SourceEntity() {}
   Variable(std::string _name) : SourceEntity(_name) { set_id(); }
+
+ public:
   virtual std::string str() const {
     std::stringstream str;
     str << "Variable(\"" << name << "\", id=" << id << ")";
@@ -102,12 +117,16 @@ class Variable : public SourceEntity {
 //
 // The format of the specifier is determined by LLVM-Tracer.
 class Instruction : public SourceEntity {
- public:
+  friend SourceManager;
+
+ protected:
   Instruction() : SourceEntity(), inductive(false) {}
   Instruction(std::string name) : SourceEntity(name) {
     set_id();
     inductive = (name.find("indvars") != std::string::npos);
   }
+
+ public:
   virtual std::string str() const {
     std::stringstream str;
     str << "Instruction(\"" << name << "\", id=" << id << ")";
@@ -127,12 +146,16 @@ class Instruction : public SourceEntity {
 
 // The label of a labeled statement.
 class Label : public SourceEntity {
- public:
+  friend SourceManager;
+
+ protected:
   Label() : SourceEntity() {}
   Label(std::string name) : SourceEntity(name) { set_id(); }
   Label(unsigned line_num) : SourceEntity(std::to_string(line_num)) {
     set_id();
   }
+
+ public:
   virtual std::string str() const {
     std::stringstream str;
     str << "Label(\"" << name << "\", id=" << id << ")";
@@ -147,24 +170,24 @@ class Label : public SourceEntity {
 };
 
 // A label that belongs to a function.
+// TODO: Make this a SourceEntity that replaces the plain Label class.
 class UniqueLabel {
   public:
-    UniqueLabel() : func_id(-1), label_id(-1) {}
-    UniqueLabel(Function& f, Label& l)
-        : func_id(f.get_id()), label_id(l.get_id()) {}
-    UniqueLabel(src_id_t _func_id, src_id_t _label_id)
-        : func_id(_func_id), label_id(_label_id) {}
+   UniqueLabel() : function(nullptr), label(nullptr) {}
+   UniqueLabel(Function* f, Label* l) : function(f), label(l) {}
 
-    bool operator==(const UniqueLabel& other) const {
-      return (func_id == other.func_id && label_id == other.label_id);
+   explicit operator bool() const { return (function && label); }
+
+   bool operator==(const UniqueLabel& other) const {
+     return (*function == *other.function && *label == *other.label);
     }
 
-    src_id_t get_function_id() const { return func_id; }
-    src_id_t get_label_id() const { return label_id; }
+    Function* get_function() const { return function; }
+    Label* get_label() const { return label; }
 
    private:
-    src_id_t func_id;
-    src_id_t label_id;
+    Function* function;
+    Label* label;
 };
 
 };  // namespace SrcTypes
@@ -173,7 +196,12 @@ class UniqueLabel {
 namespace std {
 template <> struct hash<SrcTypes::UniqueLabel> {
   size_t operator()(const SrcTypes::UniqueLabel& l) const {
-    return (l.get_function_id() ^ (l.get_label_id() << 1) >> 1);
+    if (l) {
+      SrcTypes::src_id_t func_id = l.get_function()->get_id();
+      SrcTypes::src_id_t label_id = l.get_label()->get_id();
+      return (func_id ^ (label_id << 1) >> 1);
+    }
+    return SrcTypes::InvalidId;
   }
 };
 

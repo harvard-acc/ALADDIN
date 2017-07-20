@@ -16,23 +16,22 @@ SCENARIO("Test Dynamic Method Name w/ aes", "[aes]") {
     WHEN("DDDG is generated.") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
-      SrcTypes::SourceManager& srcManager = acc->get_source_manager();
 
       THEN("The unique static node id should match.") {
-        REQUIRE(acc->getNodeFromNodeId(0)->get_dynamic_instruction().str(
-                    srcManager) == "aes256_encrypt_ecb-0-0-4");
-        REQUIRE(acc->getNodeFromNodeId(325)->get_dynamic_instruction().str(
-                    srcManager) == "aes256_encrypt_ecb-0-7-0");
-        REQUIRE(acc->getNodeFromNodeId(326)->get_dynamic_instruction().str(
-                    srcManager) == "aes_expandEncKey-0-1");
-        REQUIRE(acc->getNodeFromNodeId(664)->get_dynamic_instruction().str(
-                    srcManager) == "aes256_encrypt_ecb-0-7-0");
-        REQUIRE(acc->getNodeFromNodeId(665)->get_dynamic_instruction().str(
-                    srcManager) == "aes_expandEncKey-1-1");
-        REQUIRE(acc->getNodeFromNodeId(2699)->get_dynamic_instruction().str(
-                    srcManager) == "aes256_encrypt_ecb-0-9-0");
-        REQUIRE(acc->getNodeFromNodeId(2700)->get_dynamic_instruction().str(
-                    srcManager) == "aes_addRoundKey_cpy-0-0-5");
+        REQUIRE(acc->getNodeFromNodeId(0)->get_dynamic_instruction().str() ==
+                "aes256_encrypt_ecb-0-0-4");
+        REQUIRE(acc->getNodeFromNodeId(325)->get_dynamic_instruction().str() ==
+                "aes256_encrypt_ecb-0-7-0");
+        REQUIRE(acc->getNodeFromNodeId(326)->get_dynamic_instruction().str() ==
+                "aes_expandEncKey-0-1");
+        REQUIRE(acc->getNodeFromNodeId(664)->get_dynamic_instruction().str() ==
+                "aes256_encrypt_ecb-0-7-0");
+        REQUIRE(acc->getNodeFromNodeId(665)->get_dynamic_instruction().str() ==
+                "aes_expandEncKey-1-1");
+        REQUIRE(acc->getNodeFromNodeId(2699)->get_dynamic_instruction().str() ==
+                "aes256_encrypt_ecb-0-9-0");
+        REQUIRE(acc->getNodeFromNodeId(2700)->get_dynamic_instruction().str() ==
+                "aes_addRoundKey_cpy-0-0-5");
       }
     }
   }

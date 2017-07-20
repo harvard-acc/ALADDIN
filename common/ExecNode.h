@@ -78,8 +78,8 @@ class ExecNode {
         line_num(-1), start_execution_cycle(0), complete_execution_cycle(0),
         num_parents(0), isolated(true), inductive(false), dynamic_mem_op(false),
         double_precision(false), array_label(""), partition_index(0),
-        time_before_execution(0.0), mem_access(nullptr), static_inst_id(-1),
-        static_function_id(-1), variable_id(-1), vertex_assigned(false) {}
+        time_before_execution(0.0), mem_access(nullptr), static_inst(nullptr),
+        static_function(nullptr), variable(nullptr), vertex_assigned(false) {}
 
   ~ExecNode() {
     if (mem_access)
@@ -100,10 +100,10 @@ class ExecNode {
   /* Accessors. */
   unsigned int get_node_id() const { return node_id; }
   uint8_t get_microop() { return microop; }
-  src_id_t get_static_function_id() { return static_function_id; }
-  src_id_t get_variable_id() { return variable_id; }
+  SrcTypes::Function* get_static_function() { return static_function; }
+  SrcTypes::Variable* get_variable() { return variable; }
+  SrcTypes::Instruction* get_static_inst() { return static_inst; }
   unsigned int get_dynamic_invocation() { return dynamic_invocation; }
-  src_id_t get_static_inst_id() { return static_inst_id; }
   int get_line_num() { return line_num; }
   int get_start_execution_cycle() { return start_execution_cycle; }
   int get_complete_execution_cycle() { return complete_execution_cycle; }
@@ -124,14 +124,14 @@ class ExecNode {
 
   /* Setters. */
   void set_microop(uint8_t microop) { this->microop = microop; }
-  void set_variable_id(src_id_t id) { variable_id = id; }
-  void set_static_function_id(src_id_t func_id) {
-    static_function_id = func_id;
+  void set_variable(SrcTypes::Variable* var) { variable = var; }
+  void set_static_function(SrcTypes::Function* func) {
+    static_function = func;
   }
   void set_dynamic_invocation(unsigned int invocation) {
     dynamic_invocation = invocation;
   }
-  void set_static_inst_id(src_id_t id) { static_inst_id = id; }
+  void set_static_inst(SrcTypes::Instruction* inst) { static_inst = inst; }
   void set_line_num(int line) { line_num = line; }
   void set_start_execution_cycle(int cycle) { start_execution_cycle = cycle; }
   void set_complete_execution_cycle(int cycle) {
@@ -176,17 +176,17 @@ class ExecNode {
   void set_time_before_execution(float time) { time_before_execution = time; }
 
   SrcTypes::DynamicFunction get_dynamic_function() {
-    return SrcTypes::DynamicFunction(static_function_id, dynamic_invocation);
+    return SrcTypes::DynamicFunction(static_function, dynamic_invocation);
   }
 
   SrcTypes::DynamicInstruction get_dynamic_instruction() {
     SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
-    return SrcTypes::DynamicInstruction(dynfunc, static_inst_id);
+    return SrcTypes::DynamicInstruction(dynfunc, static_inst);
   }
 
   SrcTypes::DynamicVariable get_dynamic_variable() {
     SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
-    return SrcTypes::DynamicVariable(dynfunc, variable_id);
+    return SrcTypes::DynamicVariable(dynfunc, variable);
   }
 
   /* Increment/decrement. */
@@ -626,12 +626,12 @@ class ExecNode {
   /* Loop depth of the basic block this node belongs to. */
   unsigned loop_depth;
 
-  /* ID of the static instruction that generated this node. */
-  src_id_t static_inst_id;
-  /* ID of the function this node belongs to. */
-  src_id_t static_function_id;
-  /* ID of the variable this node refers to. */
-  src_id_t variable_id;
+  /* The static instruction that generated this node. */
+  SrcTypes::Instruction* static_inst;
+  /* The function this node belongs to. */
+  SrcTypes::Function* static_function;
+  /* The variable this node refers to. */
+  SrcTypes::Variable* variable;
 
  private:
   /* True if the node has been assigned a vertex, false otherwise. */

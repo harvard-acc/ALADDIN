@@ -23,6 +23,7 @@ DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
   prev_bblock = "-1";
   curr_bblock = "-1";
   current_loop_depth = 0;
+  callee_function = nullptr;
 }
 
 int DDDG::num_edges() {
@@ -99,12 +100,12 @@ void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
 // was originally declared, so we have to backtrace dynamic variable references
 // until we find the original one.
 //
-// Return a reference to that Variable.
-const Variable& DDDG::get_array_real_var(const std::string& array_name) {
-  Variable var = srcManager.get<Variable>(array_name);
+// Return a pointer to that Variable.
+Variable* DDDG::get_array_real_var(const std::string& array_name) {
+  Variable* var = srcManager.get<Variable>(array_name);
   DynamicVariable dyn_var(curr_dynamic_function, var);
   DynamicVariable real_dyn_var = datapath->getCallerRegID(dyn_var);
-  const Variable& real_var = srcManager.get<Variable>(real_dyn_var.get_variable_id());
+  Variable* real_var = real_dyn_var.get_variable();
   return real_var;
 }
 
@@ -115,8 +116,8 @@ void DDDG::parse_labelmap_line(std::string line) {
   sscanf(line.c_str(), "%[^/]/%s %d", function_name, label_name, &line_number);
   label_name[255] = '\0';  // Just in case...
   function_name[255] = '\0';
-  Function& function = srcManager.insert<Function>(function_name);
-  Label& label = srcManager.insert<Label>(label_name);
+  Function* function = srcManager.insert<Function>(function_name);
+  Label* label = srcManager.insert<Label>(label_name);
   UniqueLabel unique_label(function, label);
   labelmap.insert(std::make_pair(line_number, unique_label));
 }
@@ -147,13 +148,13 @@ void DDDG::parse_instruction_line(std::string line) {
   assert(current_loop_depth < 1000 &&
          "Loop depth is much higher than expected!");
 
-  Function& curr_function =
+  Function* curr_function =
       srcManager.insert<Function>(curr_static_function);
-  Instruction& curr_inst = srcManager.insert<Instruction>(curr_instid);
+  Instruction* curr_inst = srcManager.insert<Instruction>(curr_instid);
   curr_node = datapath->insertNode(current_node_id, microop);
   curr_node->set_line_num(line_num);
-  curr_node->set_static_inst_id(curr_inst.get_id());
-  curr_node->set_static_function_id(curr_function.get_id());
+  curr_node->set_static_inst(curr_inst);
+  curr_node->set_static_function(curr_function);
   curr_node->set_loop_depth(current_loop_depth);
   datapath->addFunctionName(curr_static_function);
 
@@ -161,14 +162,13 @@ void DDDG::parse_instruction_line(std::string line) {
   bool curr_func_found = false;
 
   if (!active_method.empty()) {
-    const Function& prev_function =
-        srcManager.get<Function>(active_method.top().get_function_id());
-    unsigned prev_counts = prev_function.get_invocations();
+    Function* prev_function = active_method.top().get_function();
+    unsigned prev_counts = prev_function->get_invocations();
     if (curr_function == prev_function) {
       // calling itself
       if (prev_microop == LLVM_IR_Call && callee_function == curr_function) {
-        curr_function.increment_invocations();
-        func_invocation_count = curr_function.get_invocations();
+        curr_function->increment_invocations();
+        func_invocation_count = curr_function->get_invocations();
         active_method.push(DynamicFunction(curr_function));
         curr_dynamic_function = active_method.top();
       } else {
@@ -182,8 +182,8 @@ void DDDG::parse_instruction_line(std::string line) {
   }
   if (!curr_func_found) {
     // This would only be true on a call.
-    curr_function.increment_invocations();
-    func_invocation_count = curr_function.get_invocations();
+    curr_function->increment_invocations();
+    func_invocation_count = curr_function->get_invocations();
     active_method.push(DynamicFunction(curr_function));
     curr_dynamic_function = active_method.top();
   }
@@ -241,13 +241,15 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
       callee_function = srcManager.insert<Function>(label);
-    callee_dynamic_function =
-        DynamicFunction(callee_function, callee_function.get_invocations() + 1);
+    if (callee_function) {
+      callee_dynamic_function = DynamicFunction(
+          callee_function, callee_function->get_invocations() + 1);
+    }
   }
   last_parameter = 1;
   last_call_source = -1;
   if (is_reg) {
-    Variable& variable = srcManager.insert<Variable>(label);
+    Variable* variable = srcManager.insert<Variable>(label);
     DynamicVariable unique_reg_ref(curr_dynamic_function, variable);
     if (curr_microop == LLVM_IR_Call) {
       unique_reg_in_caller_func = unique_reg_ref;
@@ -278,8 +280,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
     if (param_tag == 1 && curr_microop == LLVM_IR_Load) {
       // The label is the name of the register that holds the address.
       const std::string& reg_name = parameter_label_per_inst.back();
-      src_id_t var_id = srcManager.get_id<Variable>(reg_name);
-      curr_node->set_variable_id(var_id);
+      Variable* var = srcManager.get<Variable>(reg_name);
+      curr_node->set_variable(var);
       curr_node->set_array_label(reg_name);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_Store) {
       // 1st arg of store is the address, and the 2nd arg is the value, but the
@@ -310,19 +312,19 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
 
       // The label is the name of the register that holds the address.
       const std::string& reg_name = parameter_label_per_inst[0];
-      src_id_t var_id = srcManager.get_id<Variable>(reg_name);
-      curr_node->set_variable_id(var_id);
+      Variable* var = srcManager.get<Variable>(reg_name);
+      curr_node->set_variable(var);
       curr_node->set_array_label(reg_name);
     } else if (param_tag == 1 && curr_microop == LLVM_IR_GetElementPtr) {
       Addr base_address = parameter_value_per_inst.back();
       const std::string& base_label = parameter_label_per_inst.back();
       // The variable id should be set to the current perceived array name,
       // since that's how dependencies are locally enforced.
-      src_id_t var_id = srcManager.get_id<Variable>(base_label);
-      curr_node->set_variable_id(var_id);
+      Variable* var = srcManager.get<Variable>(base_label);
+      curr_node->set_variable(var);
       // Only GEPs have an array label we can use to update the base address.
-      const Variable& real_array = get_array_real_var(base_label);
-      const std::string& real_name = real_array.get_name();
+      Variable* real_array = get_array_real_var(base_label);
+      const std::string& real_name = real_array->get_name();
       curr_node->set_array_label(real_name);
       datapath->addArrayBaseAddress(real_name, base_address);
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
@@ -349,7 +351,7 @@ void DDDG::parse_result(std::string line) {
   if (curr_node->is_fp_op() && (size == 64))
     curr_node->set_double_precision(true);
   assert(is_reg);
-  Variable& var = srcManager.insert<Variable>(label_str);
+  Variable* var = srcManager.insert<Variable>(label_str);
   DynamicVariable unique_reg_ref(curr_dynamic_function, var);
   auto reg_it = register_last_written.find(unique_reg_ref);
   if (reg_it != register_last_written.end())
@@ -358,7 +360,7 @@ void DDDG::parse_result(std::string line) {
     register_last_written[unique_reg_ref] = current_node_id;
 
   if (curr_microop == LLVM_IR_Alloca) {
-    curr_node->set_variable_id(srcManager.get_id<Variable>(label_str));
+    curr_node->set_variable(srcManager.get<Variable>(label_str));
     curr_node->set_array_label(label_str);
     datapath->addArrayBaseAddress(label_str, ((Addr)value) & ADDR_MASK);
   } else if (curr_microop == LLVM_IR_Load) {
@@ -421,16 +423,21 @@ void DDDG::parse_forward(std::string line) {
   double value;
   char label[256];
 
+  // DMA and trig operations are not actually treated as called functions by
+  // Aladdin, so there is no need to add any register name mappings.
+  if (curr_node->is_dma_op() || curr_node->is_trig_op())
+    return;
+
   sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
   assert(is_reg);
 
-  assert(curr_node->is_call_op() || curr_node->is_dma_op() || curr_node->is_trig_op());
-  Variable& var = srcManager.insert<Variable>(label);
+  assert(curr_node->is_call_op());
+  Variable* var = srcManager.insert<Variable>(label);
   DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
-  if (unique_reg_in_caller_func != InvalidDynamicVariable) {
+  if (unique_reg_in_caller_func) {
     datapath->addCallArgumentMapping(unique_reg_ref, unique_reg_in_caller_func);
-    unique_reg_in_caller_func = InvalidDynamicVariable;
+    unique_reg_in_caller_func = DynamicVariable();
   }
   auto reg_it = register_last_written.find(unique_reg_ref);
   int tmp_written_inst = current_node_id;
