@@ -92,6 +92,27 @@ src_id_t SourceManager::get_id<Label>(const std::string& name) {
   return get_id(name, lname_to_id);
 }
 
+// BasicBlock overloads.
+template<>
+BasicBlock* SourceManager::get<BasicBlock>(const std::string& name) {
+  return get_source_entity<BasicBlock>(name, bname_to_id, basicblocks);
+}
+
+template<>
+BasicBlock* SourceManager::get<BasicBlock>(src_id_t id) {
+  return get_source_entity<BasicBlock>(id, basicblocks);
+}
+
+template<>
+BasicBlock* SourceManager::insert<BasicBlock>(std::string name) {
+    return add_or_get_source_entity<BasicBlock>(name, bname_to_id, basicblocks);
+}
+
+template<>
+src_id_t SourceManager::get_id<BasicBlock>(const std::string& name) {
+  return get_id(name, bname_to_id);
+}
+
 // Keeping the implementations of str() and dump() in the .cpp file is more
 // likely to prevent the functions from being inlined (and thus not usable from
 // the debugger).

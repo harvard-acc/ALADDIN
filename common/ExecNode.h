@@ -103,6 +103,7 @@ class ExecNode {
   SrcTypes::Function* get_static_function() { return static_function; }
   SrcTypes::Variable* get_variable() { return variable; }
   SrcTypes::Instruction* get_static_inst() { return static_inst; }
+  SrcTypes::BasicBlock* get_basic_block() { return basic_block; }
   unsigned int get_dynamic_invocation() { return dynamic_invocation; }
   int get_line_num() { return line_num; }
   int get_start_execution_cycle() { return start_execution_cycle; }
@@ -127,6 +128,9 @@ class ExecNode {
   void set_variable(SrcTypes::Variable* var) { variable = var; }
   void set_static_function(SrcTypes::Function* func) {
     static_function = func;
+  }
+  void set_basic_block(SrcTypes::BasicBlock* bblock) {
+    basic_block = bblock;
   }
   void set_dynamic_invocation(unsigned int invocation) {
     dynamic_invocation = invocation;
@@ -632,6 +636,8 @@ class ExecNode {
   SrcTypes::Function* static_function;
   /* The variable this node refers to. */
   SrcTypes::Variable* variable;
+  /* The basic block this node refers to. */
+  SrcTypes::BasicBlock* basic_block;
 
  private:
   /* True if the node has been assigned a vertex, false otherwise. */

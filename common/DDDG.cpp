@@ -124,7 +124,7 @@ void DDDG::parse_labelmap_line(std::string line) {
 
 void DDDG::parse_instruction_line(std::string line) {
   char curr_static_function[256];
-  char instid[256], bblockid[256];
+  char instid[256], bblockid[256], bblockname[256];
   int line_num;
   int microop;
   sscanf(line.c_str(),
@@ -142,7 +142,7 @@ void DDDG::parse_instruction_line(std::string line) {
   curr_instid = instid;
 
   // Update the current loop depth.
-  sscanf(bblockid, "%*[^:]:%u", &current_loop_depth);
+  sscanf(bblockid, "%[^:]:%u", bblockname, &current_loop_depth);
   // If the loop depth is greater than 1000 within this function, we've
   // probably done something wrong.
   assert(current_loop_depth < 1000 &&
@@ -151,10 +151,12 @@ void DDDG::parse_instruction_line(std::string line) {
   Function* curr_function =
       srcManager.insert<Function>(curr_static_function);
   Instruction* curr_inst = srcManager.insert<Instruction>(curr_instid);
+  BasicBlock* basicblock = srcManager.insert<BasicBlock>(bblockname);
   curr_node = datapath->insertNode(current_node_id, microop);
   curr_node->set_line_num(line_num);
   curr_node->set_static_inst(curr_inst);
   curr_node->set_static_function(curr_function);
+  curr_node->set_basic_block(basicblock);
   curr_node->set_loop_depth(current_loop_depth);
   datapath->addFunctionName(curr_static_function);
 

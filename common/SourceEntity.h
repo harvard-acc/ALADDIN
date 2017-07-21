@@ -169,6 +169,27 @@ class Label : public SourceEntity {
   }
 };
 
+class BasicBlock : public SourceEntity {
+  friend SourceManager;
+
+ protected:
+  BasicBlock() : SourceEntity() {}
+  BasicBlock(std::string name) : SourceEntity(name) { set_id(); }
+
+ public:
+  virtual std::string str() const {
+    std::stringstream str;
+    str << "BasicBlock(\"" << name << "\", id=" << id << ")";
+    return str.str();
+  }
+
+ private:
+  virtual void set_id() {
+    std::hash<std::string> hash;
+    id = hash("B_" + name);
+  }
+};
+
 // A label that belongs to a function.
 // TODO: Make this a SourceEntity that replaces the plain Label class.
 class UniqueLabel {

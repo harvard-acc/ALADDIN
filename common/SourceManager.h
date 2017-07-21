@@ -107,10 +107,12 @@ class SourceManager {
   std::map<src_id_t, Variable*> variables;
   std::map<src_id_t, Instruction*> instructions;
   std::map<src_id_t, Label*> labels;
+  std::map<src_id_t, BasicBlock*> basicblocks;
   src_id_map_t fname_to_id;
   src_id_map_t vname_to_id;
   src_id_map_t iname_to_id;
   src_id_map_t lname_to_id;
+  src_id_map_t bname_to_id;
 };
 
 template<> Function* SourceManager::get<Function>(src_id_t id);
