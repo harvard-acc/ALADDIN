@@ -31,93 +31,97 @@ namespace SrcTypes {
 // the added or retrieved objects.
 class SourceManager {
  public:
-  SourceManager() {}
+  SourceManager() {
+    name_to_id["F"] = src_id_map_t();
+    name_to_id["V"] = src_id_map_t();
+    name_to_id["I"] = src_id_map_t();
+    name_to_id["L"] = src_id_map_t();
+    name_to_id["B"] = src_id_map_t();
+  }
+
+  ~SourceManager() {
+    for (auto pair : source_entities) {
+      delete pair.second;
+    }
+    source_entities.clear();
+    name_to_id.clear();
+  }
+
+  /* Access a SourceEntity of type T by name or id.
+   *
+   * If such an object does not exist, then a nullptr is returned.
+   */
+  template <class T>
+  T* get(const std::string& name) {
+    std::string prefix = get_type_prefix<T>();
+    src_id_map_t& _map = name_to_id.at(prefix);
+    auto it = _map.find(name);
+    if (it == _map.end())
+      return nullptr;
+    src_id_t id = it->second;
+    // No need to check for existence here. If a mapping exists from name to
+    // id, then there must be an object by that id.
+    return static_cast<T*>(source_entities.at(id));
+  }
+
+  template <class T>
+  T* get(src_id_t id) {
+    auto it = source_entities.find(id);
+    if (it == source_entities.end())
+      return nullptr;
+    return static_cast<T*>(it->second);
+  }
 
   /* Access and/or insert the SourceEntity of type T and the given name.
    *
    * If such an object does not exist, it is inserted first. A pointer to the
    * object is returned.
    */
-  template <class T> T* insert(std::string name);
+  template <class T>
+  T* insert(std::string name) {
+    T* obj = get<T>(name);
+    if (obj)
+      return obj;
 
-  /* Access a SourceEntity of type T by name or id.
-   *
-   * If such an object does not exist, then an out of range exception is
-   * thrown.
-   */
-  template <class T> T* get(const std::string& name);
-  template <class T> T* get(src_id_t id);
+    std::string prefix = get_type_prefix<T>();
+    T* entity = new T(name);
+    src_id_t id = entity->get_id();
+    name_to_id.at(prefix)[name] = id;
+    source_entities[id] = entity;
+    return entity;
+  }
 
   /* Get the id of a SourceEntity of type T by name. */
-  template <class T> src_id_t get_id(const std::string& name);
-
-  /* Get a description of the SourceEntity by this id. */
-  std::string __attribute__((noinline)) str(src_id_t id);
-
-  /* Print a description of the SourceEntity by this id. */
-  void __attribute__((noinline)) dump(src_id_t id);
+  template <class T>
+  src_id_t get_id(const std::string& name) {
+    std::string prefix = get_type_prefix<T>();
+    src_id_map_t& _map = name_to_id[prefix];
+    auto it = _map.find(name);
+    if (it == _map.end())
+      return it->second;
+    return InvalidId;
+  }
 
  private:
   using src_id_map_t = std::map<std::string, src_id_t>;
 
+  /* Return a unique prefix for a SourceEntity type.
+   *
+   * This is used to distinguish the same name for different SourceEntity
+   * types.
+   */
   template <class T>
-  T* add_or_get_source_entity(std::string& name,
-                              src_id_map_t& name_to_id,
-                              std::map<src_id_t, T*>& id_to_entity) {
-    auto it = name_to_id.find(name);
-    if (it == name_to_id.end()) {
-      T* entity = new T(name);
-      name_to_id[name] = entity->get_id();
-      id_to_entity[entity->get_id()] = entity;
-      return entity;
-    } else {
-      return id_to_entity[it->second];
-    }
-  }
+  std::string get_type_prefix();
 
-  template <class T>
-  T* get_source_entity(const std::string& name,
-                       src_id_map_t& name_to_id,
-                       std::map<src_id_t, T*>& id_to_entity) {
-    auto it = name_to_id.find(name);
-    if (it != name_to_id.end())
-      return id_to_entity.at(it->second);
-    return nullptr;
-  }
+  // A unified map from ID to SourceEntity.
+  //
+  // All IDs for valid SourceEntity objects are guaranteed to be unique, even
+  // across types.
+  std::map<src_id_t, SourceEntity*> source_entities;
 
-  template <class T>
-  T* get_source_entity(src_id_t id, std::map<src_id_t, T*>& id_to_entity) {
-    auto it = id_to_entity.find(id);
-    if (it != id_to_entity.end())
-      return it->second;
-    return nullptr;
-  }
-
-  src_id_t get_id(const std::string& name, src_id_map_t& _map) {
-    auto it = _map.find(name);
-    if (it == _map.end())
-      return InvalidId;
-    return it->second;
-  }
-
-  // Different object types are stored in separate containers so that lookups
-  // can be performed directly by id or name, without needing to append any
-  // string prefixes.
-  std::map<src_id_t, Function*> functions;
-  std::map<src_id_t, Variable*> variables;
-  std::map<src_id_t, Instruction*> instructions;
-  std::map<src_id_t, Label*> labels;
-  std::map<src_id_t, BasicBlock*> basicblocks;
-  src_id_map_t fname_to_id;
-  src_id_map_t vname_to_id;
-  src_id_map_t iname_to_id;
-  src_id_map_t lname_to_id;
-  src_id_map_t bname_to_id;
+  // First key is a name prefix indicating the type.
+  std::map<std::string, src_id_map_t> name_to_id;
 };
-
-template<> Function* SourceManager::get<Function>(src_id_t id);
-template<> Variable* SourceManager::get<Variable>(src_id_t id);
-template<> Instruction* SourceManager::get<Instruction>(src_id_t id);
 
 };
 #endif
