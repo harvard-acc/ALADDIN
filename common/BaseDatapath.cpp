@@ -61,6 +61,27 @@ bool BaseDatapath::buildDddg() {
   if (current_trace_off == DDDG::END_OF_TRACE)
     return false;
 
+  // The config file is parsed before the trace, so we don't have line number
+  // information yet. After parsing the trace, update the unrolling and
+  // pipelining config maps with line numbers.
+  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+    const UniqueLabel& label_with_num = it->second;
+    UniqueLabel key(label_with_num.get_function(), label_with_num.get_label(), 0);
+
+    auto unroll_it = unrolling_config.find(key);
+    if (unroll_it != unrolling_config.end()) {
+      unsigned factor = unroll_it->second;
+      unrolling_config.erase(unroll_it);
+      unrolling_config[label_with_num] = factor;
+    }
+
+    auto pipeline_it = pipeline_config.find(key);
+    if (pipeline_it != pipeline_config.end()) {
+      pipeline_config.erase(pipeline_it);
+      pipeline_config.insert(label_with_num);
+    }
+  }
+
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
   std::cout << "-------------------------------" << std::endl;
@@ -1331,6 +1352,53 @@ void BaseDatapath::findMinRankNodes(ExecNode** node1,
       min_rank = node_rank;
     }
   }
+}
+
+std::list<node_pair_t> BaseDatapath::findLoopBoundaries(
+    const UniqueLabel& loop_label) {
+  using namespace SrcTypes;
+  std::list<node_pair_t> loop_boundaries;
+  bool is_loop_executing = false;
+  int current_loop_depth = -1;
+
+  ExecNode* loop_start;
+
+  // The loop boundaries provided by the accelerator are in a linear list with
+  // no structure. We need to identify the start and end of each unrolled loop
+  // section and add the corresponding pair of nodes to loop_boundaries.
+  //
+  // The last loop bound node is one past the last node, so we'll ignore it.
+  for (auto it = loopBound.begin(); it != --loopBound.end(); ++it) {
+    const DynLoopBound& loop_bound = *it;
+    ExecNode* node = exec_nodes[loop_bound.node_id];
+    if (!node->is_isolated() &&
+        node->get_line_num() == loop_label.get_line_number() &&
+        node->get_static_function() == loop_label.get_function()) {
+      if (!is_loop_executing) {
+        if (loop_bound.target_loop_depth > node->get_loop_depth()) {
+          is_loop_executing = true;
+          loop_start = node;
+          current_loop_depth = loop_bound.target_loop_depth;
+        }
+      } else {
+        if (loop_bound.target_loop_depth == current_loop_depth) {
+          // We're repeating an iteration of the same loop body.
+          loop_boundaries.push_back(std::make_pair(loop_start, node));
+          loop_start = node;
+        } else if (loop_bound.target_loop_depth < current_loop_depth) {
+          // We've left the loop.
+          loop_boundaries.push_back(std::make_pair(loop_start, node));
+          is_loop_executing = false;
+          loop_start = NULL;
+        } else if (loop_bound.target_loop_depth > current_loop_depth) {
+          // We've entered an inner loop nest. We're not interested in the
+          // inner loop nest.
+          continue;
+        }
+      }
+    }
+  }
+  return loop_boundaries;
 }
 
 void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {

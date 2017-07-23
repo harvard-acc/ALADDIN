@@ -252,53 +252,6 @@ int DebugLoopPrinter::getUserSelection(int max_option) {
   }
 }
 
-std::list<DebugLoopPrinter::node_pair_t> DebugLoopPrinter::findLoopBoundaries() {
-  using namespace SrcTypes;
-  const UniqueLabel& label = selected_label.first;
-  const unsigned line_num = selected_label.second;
-  const std::vector<DynLoopBound>& all_loop_bounds = acc->getLoopBoundaries();
-  std::list<node_pair_t> loop_boundaries;
-  bool is_loop_executing = false;
-  int current_loop_depth = -1;
-
-  ExecNode* loop_start;
-
-  // The loop boundaries provided by the accelerator are in a linear list with
-  // no structure. We need to identify the start and end of each unrolled loop
-  // section and add the corresponding pair of nodes to loop_boundaries.
-  //
-  // The last loop bound node is one past the last node, so we'll ignore it.
-  for (auto it = all_loop_bounds.begin(); it != --all_loop_bounds.end(); ++it) {
-    const DynLoopBound& loop_bound = *it;
-    ExecNode* node = acc->getNodeFromNodeId(loop_bound.node_id);
-    if (!node->is_isolated() &&
-        node->get_line_num() == line_num &&
-        node->get_static_function() == label.get_function()) {
-      if (!is_loop_executing) {
-        is_loop_executing = true;
-        loop_start = node;
-        current_loop_depth = loop_bound.target_loop_depth;
-      } else {
-        if (loop_bound.target_loop_depth == current_loop_depth) {
-          // We're repeating an iteration of the same loop body.
-          loop_boundaries.push_back(std::make_pair(loop_start, node));
-          loop_start = node;
-        } else if (loop_bound.target_loop_depth < current_loop_depth) {
-          // We've left the loop.
-          loop_boundaries.push_back(std::make_pair(loop_start, node));
-          is_loop_executing = false;
-          loop_start = NULL;
-        } else if (loop_bound.target_loop_depth > current_loop_depth) {
-          // We've entered an inner loop nest. We're not interested in the
-          // inner loop nest.
-          continue;
-        }
-      }
-    }
-  }
-  return loop_boundaries;
-}
-
 // TODO: New strategy: rather than go branch to branch, go
 // branch->next-non-isolated-node to branch.
 int DebugLoopPrinter::computeLoopLatency(

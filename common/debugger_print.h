@@ -63,15 +63,7 @@ class DebugLoopPrinter {
   /* Get a numeric selection from the user, from 1 to max_option. */
   int getUserSelection(int max_option);
 
-  /* Return pairs of nodes that demarcate the start and end of a loop boundary.
-   *
-   * The loop is identified by the class member selected_label.
-   */
-  std::list<node_pair_t> findLoopBoundaries();
-
   /* Compute the max latency of the loops bounded by loop_bound_nodes.
-   *
-   * loop_bound_nodes is the result of findLoopBoundaries().
    */
   int computeLoopLatency(const std::list<node_pair_t>& loop_bound_nodes);
 

@@ -278,7 +278,8 @@ class BaseDatapath {
   std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
 
   ExecNode* getNextNode(unsigned node_id);
-  const std::vector<DynLoopBound>& getLoopBoundaries() { return loopBound; }
+  /* Return pairs of nodes that demarcate the start and end of a loop iteraton. */
+  std::list<node_pair_t> findLoopBoundaries(const SrcTypes::UniqueLabel& loop_label);
 
   // For unit tests.
   int getUnrolledLoopBoundary(unsigned int region_id) {
