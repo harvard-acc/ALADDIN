@@ -43,5 +43,7 @@ namespace SrcTypes {
 typedef std::unordered_map<SrcTypes::UniqueLabel, unsigned> unrolling_config_t;
 typedef std::set<SrcTypes::UniqueLabel> pipeline_config_t;
 typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
+class ExecNode;
+typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
 
 #endif

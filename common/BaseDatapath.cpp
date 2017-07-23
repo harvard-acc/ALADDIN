@@ -580,7 +580,7 @@ void BaseDatapath::perLoopPipelining() {
       const DynLoopBound& dyn_loop_bound = *bound_it;
       ExecNode* curr_node = exec_nodes.at(dyn_loop_bound.node_id);
       UniqueLabel this_label = getUniqueLabel(curr_node);
-      if (loop == this_label)
+      if (this_label && loop == this_label)
         current_loop_bounds.push_back(curr_node->get_node_id());
     }
 
@@ -2281,7 +2281,7 @@ SrcTypes::UniqueLabel BaseDatapath::getUniqueLabel(ExecNode* node) {
       continue;
     return it->second;
   }
-  return UniqueLabel(nullptr, nullptr);
+  return UniqueLabel();
 }
 
 unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
@@ -2292,7 +2292,7 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   // TODO: Revisit this with the UniqueLabel pointer refactor.
   Label* label = srcManager.insert<Label>(std::to_string(node->get_line_num()));
   return unrolling_config.find(
-      UniqueLabel(node->get_static_function(), label));
+      UniqueLabel(node->get_static_function(), label, node->get_line_num()));
 }
 
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {

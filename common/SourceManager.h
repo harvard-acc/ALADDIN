@@ -1,5 +1,5 @@
-#ifndef _SOURCE_CODE_STRUCTS_H_
-#define _SOURCE_CODE_STRUCTS_H_
+#ifndef _SOURCE_MANAGER_H_
+#define _SOURCE_MANAGER_H_
 
 /* Manager and storage for language constructs.
  *

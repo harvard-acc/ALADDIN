@@ -34,8 +34,6 @@ class DebugNodePrinter {
 
 class DebugLoopPrinter {
  public:
-  typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
-
   DebugLoopPrinter(ScratchpadDatapath* _acc, std::ostream& _out)
       : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {}
 
@@ -77,8 +75,8 @@ class DebugLoopPrinter {
    */
   int computeLoopLatency(const std::list<node_pair_t>& loop_bound_nodes);
 
-  // Pair of UniqueLabel and the line number.
-  std::pair<SrcTypes::UniqueLabel, unsigned> selected_label;
+  /* The loop to print. */
+  SrcTypes::UniqueLabel selected_label;
   ScratchpadDatapath* acc;
   std::ostream& out;
   SrcTypes::SourceManager& srcManager;

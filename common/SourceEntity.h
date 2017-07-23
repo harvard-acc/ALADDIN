@@ -193,22 +193,27 @@ class BasicBlock : public SourceEntity {
 // A label that belongs to a function.
 // TODO: Make this a SourceEntity that replaces the plain Label class.
 class UniqueLabel {
-  public:
-   UniqueLabel() : function(nullptr), label(nullptr) {}
-   UniqueLabel(Function* f, Label* l) : function(f), label(l) {}
+ public:
+  UniqueLabel() : function(nullptr), label(nullptr), line_number(0) {}
+  UniqueLabel(Function* f, Label* l) : function(f), label(l), line_number(0) {}
+  UniqueLabel(Function* f, Label* l, unsigned _line_num)
+      : function(f), label(l), line_number(_line_num) {}
 
-   explicit operator bool() const { return (function && label); }
+  explicit operator bool() const { return (function && label); }
 
-   bool operator==(const UniqueLabel& other) const {
-     return (*function == *other.function && *label == *other.label);
-    }
+  bool operator==(const UniqueLabel& other) const {
+    return (*function == *other.function && *label == *other.label &&
+            line_number == other.line_number);
+  }
 
-    Function* get_function() const { return function; }
-    Label* get_label() const { return label; }
+  Function* get_function() const { return function; }
+  Label* get_label() const { return label; }
+  unsigned get_line_number() const { return line_number; }
 
-   private:
-    Function* function;
-    Label* label;
+ private:
+  Function* function;
+  Label* label;
+  unsigned line_number;
 };
 
 };  // namespace SrcTypes

@@ -180,17 +180,17 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
   using namespace SrcTypes;
 
   Label* label = srcManager.get<Label>(loop_name);
-  std::vector<std::pair<UniqueLabel, unsigned>> candidates;
+  std::vector<UniqueLabel> candidates;
 
   const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
   for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
     const UniqueLabel& unique_label = it->second;
     if (unique_label.get_label() == label)
-      candidates.push_back(std::make_pair(unique_label, it->first));
+      candidates.push_back(unique_label);
   }
 
   if (candidates.size() == 0) {
-    selected_label = std::make_pair(UniqueLabel(nullptr, nullptr), 0);
+    selected_label = UniqueLabel();
     return LOOP_NOT_FOUND;
   } else if (candidates.size() == 1) {
     selected_label = candidates[0];
@@ -202,7 +202,7 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
         << "Please select one by entering the number, or press <Enter> to "
            "abort.\n";
     for (unsigned i = 0; i < candidates.size(); i++) {
-      UniqueLabel& candidate_label = candidates[i].first;
+      const UniqueLabel& candidate_label = candidates[i];
       const SrcTypes::Function* func = candidate_label.get_function();
       out << "  " << i + 1 << ": " << func->get_name() << "\n";
     }
@@ -302,7 +302,7 @@ std::list<DebugLoopPrinter::node_pair_t> DebugLoopPrinter::findLoopBoundaries() 
 // TODO: New strategy: rather than go branch to branch, go
 // branch->next-non-isolated-node to branch.
 int DebugLoopPrinter::computeLoopLatency(
-    const std::list<DebugLoopPrinter::node_pair_t>& loop_bound_nodes) {
+    const std::list<node_pair_t>& loop_bound_nodes) {
   int max_latency = 0;
   for (auto it = loop_bound_nodes.begin(); it != loop_bound_nodes.end(); ++it) {
     ExecNode* first = it->first;
@@ -324,12 +324,13 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
               << "\" were found!\n";
     return;
   }
-  SrcTypes::Function* func = selected_label.first.get_function();
+  SrcTypes::Function* func = selected_label.get_function();
   out << "Loop \"" << loop_name << "\"\n"
       << "  Function: " << func->get_name() << "\n"
-      << "  Line number: " << selected_label.second << "\n";
+      << "  Line number: " << selected_label.get_line_number() << "\n";
 
-  std::list<node_pair_t> loop_bound_nodes = findLoopBoundaries();
+  std::list<node_pair_t> loop_bound_nodes =
+      acc->findLoopBoundaries(selected_label);
   out << "  Loop boundaries: ";
   if (loop_bound_nodes.empty()) {
     out << "None.\n";

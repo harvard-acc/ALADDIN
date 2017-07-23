@@ -118,7 +118,7 @@ void DDDG::parse_labelmap_line(std::string line) {
   function_name[255] = '\0';
   Function* function = srcManager.insert<Function>(function_name);
   Label* label = srcManager.insert<Label>(label_name);
-  UniqueLabel unique_label(function, label);
+  UniqueLabel unique_label(function, label, line_number);
   labelmap.insert(std::make_pair(line_number, unique_label));
 }
 
