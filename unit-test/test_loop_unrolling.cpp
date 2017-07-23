@@ -119,8 +119,8 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
     WHEN("Test loopUnrolling()") {
       acc->loopUnrolling();
       THEN("Unrolled loop boundary should match the expectations.") {
-        REQUIRE(acc->getUnrolledLoopBoundary(0) == 0);
-        REQUIRE(acc->getUnrolledLoopBoundary(1) == 1); //call break
+        REQUIRE(acc->getUnrolledLoopBoundary(0) == 0); // call break
+        REQUIRE(acc->getUnrolledLoopBoundary(1) == 1);
         REQUIRE(acc->getUnrolledLoopBoundary(2) == 369);
         REQUIRE(acc->getUnrolledLoopBoundary(3) == 737);
         REQUIRE(acc->getUnrolledLoopBoundary(4) == 1105);
@@ -130,12 +130,14 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
         REQUIRE(acc->getUnrolledLoopBoundary(8) == 1545);
         REQUIRE(acc->getUnrolledLoopBoundary(9) == 1613);
         REQUIRE(acc->getUnrolledLoopBoundary(10) == 1681);
-        REQUIRE(acc->getUnrolledLoopBoundary(11) == 1734);  // call break
-        REQUIRE(acc->getUnrolledLoopBoundary(12) == 1735);
-        REQUIRE(acc->getUnrolledLoopBoundary(13) == 2095);
-        REQUIRE(acc->getUnrolledLoopBoundary(14) == 2455);
-        REQUIRE(acc->getUnrolledLoopBoundary(15) == 2815);
-        REQUIRE(acc->getUnrolledLoopBoundary(16) == 3175);
+        REQUIRE(acc->getUnrolledLoopBoundary(11) == 1732);
+        REQUIRE(acc->getUnrolledLoopBoundary(12) == 1734);  // call break
+        REQUIRE(acc->getUnrolledLoopBoundary(13) == 1735);
+        REQUIRE(acc->getUnrolledLoopBoundary(14) == 2095);
+        REQUIRE(acc->getUnrolledLoopBoundary(15) == 2455);
+        REQUIRE(acc->getUnrolledLoopBoundary(16) == 2815);
+        REQUIRE(acc->getUnrolledLoopBoundary(17) == 3175);
+        REQUIRE(acc->getUnrolledLoopBoundary(18) == 3178);  // end
       }
       THEN("Branch nodes inside unrolled iterations are isolated.") {
         REQUIRE(acc->getNumOfConnectedNodes(93) == 0);
@@ -154,7 +156,7 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
            "the current unrolled iterations.") {
         REQUIRE(acc->doesEdgeExist(11, 369) == 1);
         REQUIRE(acc->doesEdgeExist(379, 737) == 1);
-        REQUIRE(acc->doesEdgeExist(1726, 1734) == 1);
+        REQUIRE(acc->doesEdgeExist(1726, 1732) == 1);
         REQUIRE(acc->doesEdgeExist(2447, 2455) == 1);
       }
     }

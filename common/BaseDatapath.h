@@ -119,10 +119,10 @@ struct RQEntryComp {
 struct LoopBoundDescriptor {
   // Static properties.
 
+  // The target basic block of this branch/call node.
+  SrcTypes::BasicBlock* basic_block;
   // Either branch or call.
   unsigned microop;
-  // Line number.
-  unsigned line_num;
   // How many function calls deep is this loop (from the top level function).
   unsigned call_depth;
   // The loop depth of the TARGET of this branch. We care not about the depth
@@ -132,22 +132,22 @@ struct LoopBoundDescriptor {
   // How many times have we iterated this loop?
   int dyn_invocations;
 
-  LoopBoundDescriptor(unsigned _microop,
-                      unsigned _line_num,
+  LoopBoundDescriptor(SrcTypes::BasicBlock* _basic_block,
+                      unsigned _microop,
                       unsigned _loop_depth,
                       unsigned _call_depth)
-      : microop(_microop), line_num(_line_num), call_depth(_call_depth),
+      : basic_block(_basic_block), microop(_microop), call_depth(_call_depth),
         loop_depth(_loop_depth), dyn_invocations(-1) {}
 
   // Returns true if @other is a branch that exits from this loop.
   bool exitBrIs(const LoopBoundDescriptor& other) {
-    return (microop == other.microop && line_num == other.line_num &&
-            call_depth == other.call_depth && loop_depth > other.loop_depth);
+    return (microop == other.microop && call_depth == other.call_depth &&
+            loop_depth > other.loop_depth);
   }
 
   // Do not include dynamic properties in the equality check.
   bool operator==(const LoopBoundDescriptor& other) {
-    return (microop == other.microop && line_num == other.line_num &&
+    return (basic_block == other.basic_block && microop == other.microop &&
             call_depth == other.call_depth);
   }
 
@@ -277,7 +277,7 @@ class BaseDatapath {
 
   std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
 
-  unsigned getNextNodeLoopDepth(unsigned node_id);
+  ExecNode* getNextNode(unsigned node_id);
   const std::vector<DynLoopBound>& getLoopBoundaries() { return loopBound; }
 
   // For unit tests.

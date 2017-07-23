@@ -11,7 +11,6 @@ using namespace SrcTypes;
 
 std::ostream& operator<<(std::ostream& os, const LoopBoundDescriptor& obj) {
   os << "LoopBoundDescriptor(microop = " << obj.microop
-     << ", line number = " << obj.line_num
      << ", loop_depth = " << obj.loop_depth
      << ", call depth = " << obj.call_depth
      << ", dyn_invocations = " << obj.dyn_invocations
@@ -752,8 +751,10 @@ void BaseDatapath::loopUnrolling() {
     if (ready_mode && node->is_dma_load())
       continue;
     unsigned node_id = node->get_node_id();
-    unsigned target_loop_depth = getNextNodeLoopDepth(node_id);
-    DynLoopBound dyn_bound(node_id, target_loop_depth);
+    ExecNode* next_node = getNextNode(node_id);
+    if (!next_node)
+      continue;
+    DynLoopBound dyn_bound(node_id, next_node->get_loop_depth());
     if (!first) {
       // prev_branch should not be anything but a branch node.
       if (node->is_branch_op()) {
@@ -805,8 +806,9 @@ void BaseDatapath::loopUnrolling() {
       } else {  // unrolling the branch
         // This is the loop descriptor we're trying to find in the loop nest
         // stack.
-        LoopBoundDescriptor loop_id(node->get_microop(), node->get_line_num(),
-                                    target_loop_depth, curr_call_depth);
+        LoopBoundDescriptor loop_id(
+            next_node->get_basic_block(), node->get_microop(),
+            next_node->get_loop_depth(), curr_call_depth);
         // Once we've found the loop descriptor, use this pointer to the top of
         // the stack to update the invocations count.
         LoopBoundDescriptor* curr_loop = nullptr;
@@ -2332,13 +2334,13 @@ std::vector<unsigned> BaseDatapath::getChildNodes(unsigned int node_id) {
   return connectedNodes;
 }
 
-unsigned BaseDatapath::getNextNodeLoopDepth(unsigned node_id) {
+ExecNode* BaseDatapath::getNextNode(unsigned node_id) {
   auto it = exec_nodes.find(node_id);
   assert(it != exec_nodes.end());
   auto next_it = std::next(it);
   if (next_it == exec_nodes.end())
-    return 0;
-  return next_it->second->get_loop_depth();
+    return nullptr;
+  return next_it->second;
 }
 
 // readConfigs
