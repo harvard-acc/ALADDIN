@@ -37,6 +37,7 @@ class SourceEntity {
  protected:
   SourceEntity() : name("") {}
   SourceEntity(std::string _name) : name(_name) {}
+  virtual ~SourceEntity() {}
 
  public:
   src_id_t get_id() const { return id; }
