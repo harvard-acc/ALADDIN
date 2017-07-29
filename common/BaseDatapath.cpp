@@ -595,23 +595,15 @@ void BaseDatapath::perLoopPipelining() {
   //     a. Change the source to the FNIN of the previous iteration.
   for (const UniqueLabel& loop : pipeline_config) {
     // Step 1.
-    std::list<unsigned> current_loop_bounds;
-    for (auto bound_it = loopBound.begin(); bound_it != --loopBound.end();
-         ++bound_it) {
-      const DynLoopBound& dyn_loop_bound = *bound_it;
-      ExecNode* curr_node = exec_nodes.at(dyn_loop_bound.node_id);
-      UniqueLabel this_label = getUniqueLabel(curr_node);
-      if (this_label && loop == this_label)
-        current_loop_bounds.push_back(curr_node->get_node_id());
-    }
+    std::list<node_pair_t> current_loop_bounds = findLoopBoundaries(loop);
 
     // Step 2.
     std::map<unsigned, unsigned> first_non_isolated_nodes;
     for (auto bound_it = current_loop_bounds.begin(),
               end_it = current_loop_bounds.end();
-         bound_it != end_it;) {
-      unsigned curr_bound_node_id = *bound_it;
-      unsigned next_bound_node_id = *(++bound_it);
+         bound_it != end_it; ++bound_it) {
+      unsigned curr_bound_node_id = bound_it->first->get_node_id();
+      unsigned next_bound_node_id = bound_it->second->get_node_id();
       auto it = exec_nodes.find(curr_bound_node_id);
       // Find the FNIN after this boundary node (so, don't consider the
       // boundary node itself).
@@ -1371,7 +1363,8 @@ std::list<node_pair_t> BaseDatapath::findLoopBoundaries(
   for (auto it = loopBound.begin(); it != --loopBound.end(); ++it) {
     const DynLoopBound& loop_bound = *it;
     ExecNode* node = exec_nodes[loop_bound.node_id];
-    if (!node->is_isolated() &&
+    Vertex vertex = node->get_vertex();
+    if (boost::degree(vertex, graph_) > 0 &&
         node->get_line_num() == loop_label.get_line_number() &&
         node->get_static_function() == loop_label.get_function()) {
       if (!is_loop_executing) {

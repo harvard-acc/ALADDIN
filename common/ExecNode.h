@@ -606,7 +606,12 @@ class ExecNode {
   /* Corresponding Boost Vertex descriptor. If set_vertex() is never called,
    * then it is default constructor, and vertex_assigned will be false. */
   Vertex vertex;
-  /*True if this node is isolated (no parents or children). */
+  /* True if this node is isolated (no parents or children). 
+   *
+   * NOTE: This property is NOT safe to check before calling
+   * prepareForScheduling(), because it is initialized to true for all nodes.
+   * Instead, use boost::degree(node->get_vertex, graph_).
+   */
   bool isolated;
   /* True if this node is inductive or has only inductive parents. */
   bool inductive;
