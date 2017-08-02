@@ -211,6 +211,14 @@ class UniqueLabel {
   Label* get_label() const { return label; }
   unsigned get_line_number() const { return line_number; }
 
+  std::string str() const {
+    std::stringstream str;
+    str << "UniqueLabel(function=\"" << function->get_name()
+        << "\", label=\"" << label->get_name() << "\", line_number="
+        << line_number << ")";
+    return str.str();
+  }
+
  private:
   Function* function;
   Label* label;
