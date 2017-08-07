@@ -89,10 +89,9 @@ Sleep_tx::Sleep_tx(
 
 }
 
-double Sleep_tx::compute_penalty()
+void Sleep_tx::compute_penalty()
 {
 	//V_delta = VDD - VCCmin nothing to do with threshold of sleep tx. Although it might be OK to use sleep tx to control the V_delta
-	double c_load;
 	double p_to_n_sz_ratio = pmos_to_nmos_sz_ratio(false, false, true);
 
 	if (is_footer)

@@ -43,6 +43,7 @@ Source('aladdin_tlb.cc')
 Source('aladdin_sys_connection.cpp')
 Source('aladdin_sys_constants.cpp')
 Source('HybridDatapath.cpp')
+Source('pybind_aladdin.cpp')
 
 DebugFlag('Aladdin')
 DebugFlag('HybridDatapath')

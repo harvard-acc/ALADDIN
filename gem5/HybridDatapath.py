@@ -6,6 +6,9 @@ from m5.proxy import *
 class HybridDatapath(MemObject):
   type = "HybridDatapath"
   cxx_header = "aladdin/gem5/HybridDatapath.h"
+  # MemObject is assumed to be a parent.
+  cxx_bases = ["ScratchpadDatapath"]
+
   benchName = Param.String("Aladdin accelerator name.")
   outputPrefix = Param.String("Aladdin output prefix.")
   traceFileName = Param.String("Aladdin Input Trace File")
@@ -79,12 +82,11 @@ class HybridDatapath(MemObject):
     else:
       self.spad_port = bus.slave
 
-  def addPrivateL1Dcache(self, system, cache, bus, dwc = None) :
-    self.cache = cache
-    self.cache_port = cache.cpu_side
+  def addPrivateL1Dcache(self, system, bus, dwc = None) :
+    self.cache_port = self.cache.cpu_side
 
     if self.recordMemoryTrace:
       monitor_name = "cache_monitor"
-      self.connectThroughMonitor(monitor_name, cache.mem_side, bus.slave)
+      self.connectThroughMonitor(monitor_name, self.cache.mem_side, bus.slave)
     else:
       self.cache.mem_side = bus.slave

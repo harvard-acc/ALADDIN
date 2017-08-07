@@ -12,7 +12,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --mem-size=4GB \
   --mem-type=DDR3_1600_8x8  \
   --sys-clock=1GHz \
-  --cpu-type=detailed \
+  --cpu-type=DerivO3CPU \
   --caches \
   -c ${bmk_home}/test_mmap \
-  > stdout.gz
+  | gzip -c stdout.gz

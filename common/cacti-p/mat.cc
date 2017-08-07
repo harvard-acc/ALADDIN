@@ -341,7 +341,7 @@ Mat::Mat(const DynamicParameter & dyn_p)
   //power-gating circuit
   bool is_footer = false;
   double Isat_subarray = 2* simplified_nmos_Isat(g_tp.sram.cell_nmos_w, is_dram, true);//only one wordline active in a subarray 2 means two inverters in an SRAM cell
-  double detalV_array, deltaV_wl, deltaV_floatingBL;
+  double detalV_array;
   double c_wakeup_array;
 
   if (!(is_fa || pure_cam) && g_ip->power_gating)

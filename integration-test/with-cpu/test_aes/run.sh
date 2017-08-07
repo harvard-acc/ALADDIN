@@ -12,11 +12,11 @@ ${gem5_dir}/build/X86/gem5.opt \
   --mem-size=4GB \
   --mem-type=DDR3_1600_8x8  \
   --sys-clock=1GHz \
-  --cpu-type=detailed \
+  --cpu-type=DerivO3CPU \
   --caches \
   --cacheline_size=64 \
   --enable_prefetchers \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c aes \
   -o "input.data check.data" \
-  > stdout.gz
+  | gzip -c stdout.gz

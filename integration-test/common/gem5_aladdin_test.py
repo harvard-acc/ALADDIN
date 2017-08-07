@@ -22,7 +22,7 @@ DEFAULT_POST_SCRIPT_ARGS = {
   "mem-size": "4GB",
   "mem-type": "DDR3_1600_8x8",
   "sys-clock": "1GHz",
-  "cpu-type": "detailed",
+  "cpu-type": "DerivO3CPU",
   "caches": True,
   "enable_prefetchers": True,
 }

@@ -858,7 +858,7 @@ void
 CactiWire::wire_dvs_update()
 {
 
-	double i, j, del;
+	double del;
 	powerDef pow;
 	pow = wire_model(global.area.w, global.area.h, &del);
 	global.delay = del;
