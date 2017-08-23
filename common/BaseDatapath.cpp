@@ -55,32 +55,33 @@ bool BaseDatapath::buildDddg() {
   dddg = new DDDG(this, trace_file);
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
-  if (labelmap.size() == 0)
+  if (labelmap.size() == 0) {
     labelmap = dddg->get_labelmap();
+    // The config file is parsed before the trace, so we don't have line number
+    // information yet. After parsing the trace, update the unrolling and
+    // pipelining config maps with line numbers.
+    for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+      const UniqueLabel& label_with_num = it->second;
+      UniqueLabel key(
+          label_with_num.get_function(), label_with_num.get_label(), 0);
+
+      auto unroll_it = unrolling_config.find(key);
+      if (unroll_it != unrolling_config.end()) {
+        unsigned factor = unroll_it->second;
+        unrolling_config.erase(unroll_it);
+        unrolling_config[label_with_num] = factor;
+      }
+
+      auto pipeline_it = pipeline_config.find(key);
+      if (pipeline_it != pipeline_config.end()) {
+        pipeline_config.erase(pipeline_it);
+        pipeline_config.insert(label_with_num);
+      }
+    }
+  }
   delete dddg;
   if (current_trace_off == DDDG::END_OF_TRACE)
     return false;
-
-  // The config file is parsed before the trace, so we don't have line number
-  // information yet. After parsing the trace, update the unrolling and
-  // pipelining config maps with line numbers.
-  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
-    const UniqueLabel& label_with_num = it->second;
-    UniqueLabel key(label_with_num.get_function(), label_with_num.get_label(), 0);
-
-    auto unroll_it = unrolling_config.find(key);
-    if (unroll_it != unrolling_config.end()) {
-      unsigned factor = unroll_it->second;
-      unrolling_config.erase(unroll_it);
-      unrolling_config[label_with_num] = factor;
-    }
-
-    auto pipeline_it = pipeline_config.find(key);
-    if (pipeline_it != pipeline_config.end()) {
-      pipeline_config.erase(pipeline_it);
-      pipeline_config.insert(label_with_num);
-    }
-  }
 
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
@@ -2350,10 +2351,11 @@ unrolling_config_t::iterator BaseDatapath::getUnrollFactor(ExecNode* node) {
   auto config_it = unrolling_config.find(unrolling_id);
   if (config_it != unrolling_config.end())
     return config_it;
-  // TODO: Revisit this with the UniqueLabel pointer refactor.
   Label* label = srcManager.insert<Label>(std::to_string(node->get_line_num()));
+  // TODO: Line numbers are no longer actually used as a standalone identifier,
+  // so don't specify it. That field can be removed in the future.
   return unrolling_config.find(
-      UniqueLabel(node->get_static_function(), label, node->get_line_num()));
+      UniqueLabel(node->get_static_function(), label));
 }
 
 std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
