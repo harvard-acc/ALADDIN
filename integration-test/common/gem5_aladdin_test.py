@@ -236,8 +236,13 @@ class Gem5AladdinTest(unittest.TestCase):
 
     sim_script = "%s/configs/aladdin/aladdin_se.py" % self.workspace
 
-    combined_sim_script_args = ["--%s=%s" % (param, value)
-            for (param, value) in self.sim_script_args.iteritems()]
+    combined_sim_script_args = []
+    for param, value in self.sim_script_args.iteritems():
+      if isinstance(value, bool):
+        combined_sim_script_args.append("--%s" % param)
+      else:
+        combined_sim_script_args.append("--%s=%s" % (param, value))
+
     for param, value in DEFAULT_POST_SCRIPT_ARGS.iteritems():
       if param not in self.sim_script_args:
         if type(value) == bool:
@@ -264,8 +269,7 @@ class Gem5AladdinTest(unittest.TestCase):
            "%(sim_script)s \\\n"
            "%(sim_script_args)s \\\n"
            "%(sim_bin)s %(sim_opt)s \\\n"
-           "> %(run_dir)s/stdout.gz \\\n"
-           "2> %(run_dir)s/stdout.gz") % {
+           "2>&1 | gzip -c > %(run_dir)s/stdout.gz") % {
         "binary": binary,
         "debug_flags": debug_flags,
         "out_dir": out_dir,
@@ -304,7 +308,9 @@ class Gem5AladdinTest(unittest.TestCase):
       if not stat:
         continue
       stat_name = stat[0]
-      stat_value = float(stat[1])
+      # Don't check histogram stats.
+      if stat[1] != "|":
+        stat_value = float(stat[1])
       if expected_stats and not stat_name in expected_stats:
         continue
       parsed_stats[stat_name] = float(stat_value)
