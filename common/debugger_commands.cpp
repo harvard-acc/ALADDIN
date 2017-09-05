@@ -146,8 +146,8 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   }
 
   int root_node = -1;
-  bool show_branch_children = false;  // Default
-  int max_nodes = 100;  // Default.
+  bool show_branch_children = true;  // Default
+  int max_nodes = 300;  // Default.
 
   CommandTokens args_tokens(++command_tokens.begin(), command_tokens.end());
   CommandArgs args;
@@ -210,12 +210,12 @@ HandlerRet cmd_help(const CommandTokens& tokens,
             << "\n"
             << "  graph root=[node-id]            : Dump the DDDG in BFS fashion, with node-id as the root.\n"
             << "    Optional arguments:\n"
-            << "      max_nodes=M              : Graph up to M nodes.\n"
+            << "      max_nodes=M              : Graph up to M nodes. Default: 300.\n"
             << "      show_branch_children=1/0 : Include edges to the children of all branch and call nodes.\n"
-            << "           By default, we exclude (0). Set to 1 to include.\n"
-            << "           Branch and call nodes tend to have a lot of child dependent nodes that are\n"
-            << "           usually not dependent on each other (e.g. different iterations of the same or\n"
-            << "           different loop), so by default, we exclude them to keep the output cleaner\n"
+            << "           By default, include (1). Set to 0 to exclude.\n"
+            << "           Branch and call nodes tend to have a lot of child dependent nodes that may\n"
+            << "           not be dependent on each other (e.g. different iterations of the same or\n"
+            << "           different loop), so you can exclude them to keep the output cleaner.\n"
             << "\n"
             << "  continue                           : Continue executing Aladdin\n"
             << "  quit                               : Quit the debugger.\n";
