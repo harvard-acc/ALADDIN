@@ -1,0 +1,8 @@
+cycle_time,1
+pipelining,0
+partition,complete,input0,32
+partition,complete,input1,32
+partition,complete,result,320,4
+unrolling,rmw_fusion,outer,1
+unrolling,rmw_fusion,inner,1
+pipeline,rmw_fusion,outer

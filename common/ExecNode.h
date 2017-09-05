@@ -73,17 +73,18 @@ class ExecNode {
    typedef SrcTypes::src_id_t src_id_t;
 
  public:
-  ExecNode(unsigned int _node_id, uint8_t _microop)
-      : node_id(_node_id), microop(_microop), dynamic_invocation(0),
-        line_num(-1), start_execution_cycle(0), complete_execution_cycle(0),
-        num_parents(0), isolated(true), inductive(false), dynamic_mem_op(false),
-        double_precision(false), array_label(""), partition_index(0),
-        time_before_execution(0.0), mem_access(nullptr), static_inst(nullptr),
-        static_function(nullptr), variable(nullptr), vertex_assigned(false) {}
+   ExecNode(unsigned int _node_id, uint8_t _microop)
+       : node_id(_node_id), microop(_microop), dynamic_invocation(0),
+         line_num(-1), start_execution_cycle(0), complete_execution_cycle(0),
+         num_parents(0), isolated(true), inductive(false),
+         dynamic_mem_op(false), double_precision(false), array_label(""),
+         partition_index(0), time_before_execution(0.0), mem_access(nullptr),
+         static_inst(nullptr), static_function(nullptr), variable(nullptr),
+         vertex_assigned(false) {}
 
-  ~ExecNode() {
-    if (mem_access)
-      delete mem_access;
+   ~ExecNode() {
+     if (mem_access)
+       delete mem_access;
   }
   /* Compare two nodes based only on their node ids. */
   bool operator<(const ExecNode& other) const {
@@ -606,7 +607,7 @@ class ExecNode {
   /* Corresponding Boost Vertex descriptor. If set_vertex() is never called,
    * then it is default constructor, and vertex_assigned will be false. */
   Vertex vertex;
-  /* True if this node is isolated (no parents or children). 
+  /* True if this node is isolated (no parents or children).
    *
    * NOTE: This property is NOT safe to check before calling
    * prepareForScheduling(), because it is initialized to true for all nodes.

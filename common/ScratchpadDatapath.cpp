@@ -45,6 +45,7 @@ void ScratchpadDatapath::globalOptimizationPass() {
   storeBuffer();
   removeRepeatedStores();
   treeHeightReduction();
+  fuseRegLoadStores();
   // Must do loop pipelining last; after all the data/control dependences are
   // fixed
   perLoopPipelining();
@@ -331,8 +332,9 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
         bool curr_zero_latency = (node->is_memory_op())
                                      ? false
                                      : (node->fu_node_latency(cycleTime) == 0);
-        if ((child_zero_latency || curr_zero_latency) &&
-            edge_parid != CONTROL_EDGE) {
+        if (edge_parid == REGISTER_EDGE ||
+            ((child_zero_latency || curr_zero_latency) &&
+             edge_parid != CONTROL_EDGE)) {
           executingQueue.push_back(child_node);
         } else if (child_node->is_memory_op() || node->is_memory_op() ||
                    child_node->is_fp_op() || node->is_fp_op()) {

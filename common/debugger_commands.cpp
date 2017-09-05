@@ -16,13 +16,13 @@
 #include "debugger_commands.h"
 
 void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
-  std::unordered_map<Vertex, unsigned> vertexToMicroop;
+  std::unordered_map<Vertex, ExecNode*> vertexToNode;
   BGL_FORALL_VERTICES(v, graph, Graph) {
     ExecNode* node = acc->getNodeFromNodeId(get(boost::vertex_node_id, graph, v));
-    vertexToMicroop[v] = node->get_microop();
+    vertexToNode[v] = node;
   }
   std::ofstream out(graph_name + "_graph.dot", std::ofstream::out);
-  write_graphviz(out, graph, make_microop_label_writer(vertexToMicroop, graph));
+  write_graphviz(out, graph, make_microop_label_writer(vertexToNode, graph));
 }
 
 void reconstruct_graph(Graph* new_graph,

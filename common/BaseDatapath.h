@@ -36,6 +36,7 @@
 #include "DynamicEntity.h"
 
 #define MEMORY_EDGE -1
+#define REGISTER_EDGE 5
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
 
@@ -196,23 +197,23 @@ struct summary_data_t {
 
 /* Custom graphviz label writer that outputs the node id and microop of the vertex.
  *
- * Create a map from Vertex to microop and call make_microop_label_writer()
- * with this map. The micro-op is not a Boost property of the Vertex, which is
- * why the Boost-supplied label writer class is insufficient.
+ * Create a map from Vertex to the ExecNode object and call
+ * make_microop_label_writer() with this map. This lets us output as much
+ * information about each node as we want in the graph.
  */
 template <class Map, class Graph>
 class microop_label_writer {
  public:
-  microop_label_writer(Map _vertexToMicroop, Graph& _graph)
-      : vertexToMicroop(_vertexToMicroop), graph(_graph) {}
+  microop_label_writer(Map _vertexToNode, Graph& _graph)
+      : vertexToNode(_vertexToNode), graph(_graph) {}
   void operator()(std::ostream& out, const Vertex& v) {
-    unsigned node_id = get(boost::vertex_node_id, graph, v);
-    ExecNode* node = new ExecNode(node_id, vertexToMicroop[v]);
-    out << "[label=\"" << node_id << "\\n(" << node->get_microop_name() << ")\"]";
+    ExecNode* node = vertexToNode[v];
+    out << "[label=\"" << node->get_node_id() << "\\n("
+        << node->get_microop_name() << ")\"]";
   }
 
  private:
-  Map vertexToMicroop;
+  Map vertexToNode;
   Graph graph;
 };
 
@@ -307,7 +308,7 @@ class BaseDatapath {
     return exec_nodes.find(node_id) != exec_nodes.end();
   }
 
-  ExecNode* getNodeFromVertex(Vertex& vertex) {
+  ExecNode* getNodeFromVertex(const Vertex& vertex) {
     unsigned node_id = vertexToName[vertex];
     return exec_nodes.at(node_id);
   }
@@ -368,6 +369,7 @@ class BaseDatapath {
   void removeSharedLoads();
   void removeRepeatedStores();
   void treeHeightReduction();
+  void fuseRegLoadStores();
 
 #ifdef USE_DB
   // Specify the experiment to be associated with this simulation. Calling this

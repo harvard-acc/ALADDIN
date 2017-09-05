@@ -22,6 +22,14 @@ LogicalArray::LogicalArray(std::string _base_name,
    * calculations. */
   size_t part_size = ceil(
       ((float)total_size/word_size) / num_partitions) * word_size;
+
+  if (total_size == 0 || part_size == 0) {
+    std::cerr << "ERROR: Logical array " << base_name
+              << " has invalid size! Total size: " << total_size
+              << ", partition size: " << part_size << std::endl;
+    exit(1);
+  }
+
   uca_org_t cacti_result = cactiWrapper(part_size, word_size, num_ports);
   // set read/write/leak/area per partition
   // power in mW, energy in pJ, area in mm2

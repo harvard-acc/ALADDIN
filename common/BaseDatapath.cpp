@@ -320,7 +320,8 @@ void BaseDatapath::cleanLeafNodes() {
     int node_microop = node->get_microop();
     if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph_) &&
         node_microop != LLVM_IR_SilentStore && node_microop != LLVM_IR_Store &&
-        node_microop != LLVM_IR_Ret && !node->is_branch_op() && !node->is_dma_store()) {
+        node_microop != LLVM_IR_Ret && !node->is_branch_op() &&
+        !node->is_dma_store()) {
       to_remove_nodes.push_back(node_id);
       // iterate its parents
       in_edge_iter in_edge_it, in_edge_end;
@@ -902,6 +903,79 @@ void BaseDatapath::loopUnrolling() {
   updateGraphWithIsolatedNodes(to_remove_nodes);
   cleanLeafNodes();
 }
+
+void BaseDatapath::fuseRegLoadStores() {
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "  Fuse register loads/stores   " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+
+  // A value stored in a register does not need to take one cycle for a "Load"
+  // before it can be used. Similarly, a value being written to a register does
+  // not require an entire cycle, as long as whatever is producing the value
+  // completes before the required setup time of the clock edge. But LLVM will
+  // emit load and store IR instructions for all arrays as it does not know
+  // that some arrays are not actually SRAM structures. For completely partitioned
+  // arrays, convert the memory dependence edge between loads, the consuming
+  // node, and the store into a special register dependence edge. This tells
+  // the scheduler to schedule the two nodes on the same cycle.
+
+  std::vector<newEdge> to_add_edges;
+  std::set<Edge> to_remove_edges;
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+
+  for (auto& node_pair : exec_nodes) {
+    ExecNode* node = node_pair.second;
+    if (!node->is_load_op() && !node->is_store_op())
+      continue;
+    auto part_it = partition_config.find(node->get_array_label());
+    if (part_it == partition_config.end() ||
+        part_it->second.partition_type != complete)
+      continue;
+
+    if (node->is_load_op()) {
+      Vertex load_vertex = node->get_vertex();
+      out_edge_iter out_edge_it, out_edge_end;
+      for (boost::tie(out_edge_it, out_edge_end) = out_edges(load_vertex, graph_);
+           out_edge_it != out_edge_end;
+           ++out_edge_it) {
+        if (edge_to_parid[*out_edge_it] == CONTROL_EDGE)
+          continue;
+
+        Vertex target_vertex = target(*out_edge_it, graph_);
+        ExecNode* target_node = getNodeFromVertex(target_vertex);
+        // A register load cannot be fused with another load operation.
+        if (target_node->is_load_op())
+          continue;
+
+        to_remove_edges.insert(*out_edge_it);
+        to_add_edges.push_back({ node, target_node, REGISTER_EDGE });
+      }
+    } else if (node->is_store_op()) {
+      Vertex store_vertex = node->get_vertex();
+      in_edge_iter in_edge_it, in_edge_end;
+      for (boost::tie(in_edge_it, in_edge_end) = in_edges(store_vertex, graph_);
+           in_edge_it != in_edge_end;
+           ++in_edge_it) {
+        if (edge_to_parid[*in_edge_it] == CONTROL_EDGE)
+          continue;
+
+        Vertex source_vertex = source(*in_edge_it, graph_);
+        ExecNode* source_node = getNodeFromVertex(source_vertex);
+        // A register store cannot be fused with another store operation.
+        if (source_node->is_store_op())
+          continue;
+
+        to_remove_edges.insert(*in_edge_it);
+        to_add_edges.push_back({ source_node, node, REGISTER_EDGE });
+      }
+    }
+  }
+
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
+  cleanLeafNodes();
+}
+
 /*
  * Read: loop_bound, flattenConfig, graph, actualAddress
  * Modify: graph_
@@ -1413,8 +1487,7 @@ void BaseDatapath::updateGraphWithIsolatedNodes(
   }
 }
 
-void BaseDatapath::updateGraphWithIsolatedEdges(
-    std::set<Edge>& to_remove_edges) {
+void BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges) {
   std::cout << "  Removing " << to_remove_edges.size() << " edges.\n";
   for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it != E;
        ++it)
@@ -1543,9 +1616,9 @@ void BaseDatapath::updatePerCycleActivity(
           fp_fu_activity.trig += 1;
         }
       }
-    } else if (node->is_int_mul_op())
+    } else if (node->is_int_mul_op()) {
       curr_fu_activity.mul += 1;
-    else if (node->is_int_add_op()) {
+    } else if (node->is_int_add_op()) {
       curr_fu_activity.add += 1;
       num_adds_so_far += 1;
     } else if (node->is_shifter_op()) {
@@ -1555,11 +1628,11 @@ void BaseDatapath::updatePerCycleActivity(
       curr_fu_activity.bit += 1;
       num_bits_so_far += 1;
     } else if (node->is_load_op()) {
-      std::string array_label = node->get_array_label();
+      const std::string& array_label = node->get_array_label();
       if (mem_activity.find(array_label) != mem_activity.end())
         mem_activity.at(array_label).at(node_level).read += 1;
     } else if (node->is_store_op()) {
-      std::string array_label = node->get_array_label();
+      const std::string& array_label = node->get_array_label();
       if (mem_activity.find(array_label) != mem_activity.end())
         mem_activity.at(array_label).at(node_level).write += 1;
     }
@@ -2053,10 +2126,10 @@ void BaseDatapath::prepareForScheduling() {
 }
 
 void BaseDatapath::dumpGraph(std::string graph_name) {
-  std::unordered_map<Vertex, unsigned> vertexToMicroop;
+  std::unordered_map<Vertex, ExecNode*> vertexToMicroop;
   BGL_FORALL_VERTICES(v, graph_, Graph) {
-    vertexToMicroop[v] =
-        exec_nodes.at(get(boost::vertex_node_id, graph_, v))->get_microop();
+    ExecNode* node = exec_nodes.at(get(boost::vertex_node_id, graph_, v));
+    vertexToMicroop[v] = node;
   }
   std::ofstream out(
       graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
@@ -2199,8 +2272,9 @@ void BaseDatapath::updateChildren(ExecNode* node) {
         bool curr_zero_latency = (node->is_memory_op())
                                      ? false
                                      : (node->fu_node_latency(cycleTime) == 0);
-        if ((child_zero_latency || curr_zero_latency) &&
-            edge_parid != CONTROL_EDGE) {
+        if (edge_parid == REGISTER_EDGE ||
+            ((child_zero_latency || curr_zero_latency) &&
+             edge_parid != CONTROL_EDGE)) {
           executingQueue.push_back(child_node);
         } else {
           if (child_node->is_store_op())
