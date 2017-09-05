@@ -59,6 +59,39 @@ HandlerRet cmd_print_loop(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
+HandlerRet cmd_print_edge(const CommandTokens& command_tokens,
+                          Command* subcmd_list,
+                          ScratchpadDatapath* acc) {
+  if (command_tokens.size() < 3) {
+    std::cerr << "ERROR: Need to specify source and target node ids!\n";
+    return HANDLER_ERROR;
+  }
+  unsigned src_node_id = 0xdeadbeef;
+  unsigned tgt_node_id = 0xdeadbeef;
+  try {
+    src_node_id = std::stoi(command_tokens[1], NULL, 10);
+    tgt_node_id = std::stoi(command_tokens[2], NULL, 10);
+  } catch (const std::invalid_argument& e) {
+    std::cerr << "ERROR: Invalid node id! Must be a nonnegative integer.\n";
+    return HANDLER_ERROR;
+  }
+
+  if (!acc->doesNodeExist(src_node_id)) {
+    std::cerr << "ERROR: Source node " << src_node_id << " does not exist!\n";
+    return HANDLER_ERROR;
+  }
+  if (!acc->doesNodeExist(tgt_node_id)) {
+    std::cerr << "ERROR: Target node " << tgt_node_id << " does not exist!\n";
+    return HANDLER_ERROR;
+  }
+  ExecNode* source = acc->getNodeFromNodeId(src_node_id);
+  ExecNode* target = acc->getNodeFromNodeId(tgt_node_id);
+  DebugEdgePrinter printer(source, target, acc, std::cout);
+  printer.printAll();
+
+  return HANDLER_SUCCESS;
+}
+
 HandlerRet cmd_print_node(const CommandTokens& command_tokens,
                           Command* subcmd_list,
                           ScratchpadDatapath* acc) {

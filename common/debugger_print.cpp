@@ -172,6 +172,58 @@ void DebugNodePrinter::printExecutionStats() {
 }
 
 //-------------------
+// DebugEdgePrinter
+//-------------------
+
+void DebugEdgePrinter::printAll() {
+  printSourceInfo();
+  printTargetInfo();
+  printEdgeInfo();
+}
+
+void DebugEdgePrinter::printSourceInfo() {
+  out << "  Source node " << source_node->get_node_id() << ": "
+      << source_node->get_microop_name() << "\n";
+}
+
+void DebugEdgePrinter::printTargetInfo() {
+  out << "  Target node " << target_node->get_node_id() << ": "
+      << target_node->get_microop_name() << "\n";
+}
+
+void DebugEdgePrinter::printEdgeInfo() {
+  if (acc->doesEdgeExist(source_node, target_node)) {
+    Edge e = boost::edge(source_node->get_vertex(),
+                         target_node->get_vertex(),
+                         acc->getGraph())
+                 .first;
+    int edge_weight = get(boost::edge_name, acc->getGraph())[e];
+    out << "  Edge type: ";
+    switch (edge_weight) {
+      case (uint8_t)MEMORY_EDGE:
+        out << "Memory dependence (original)";
+        break;
+      case 1:
+        out << "Memory dependence (load)";
+        break;
+      case 2:
+        out << "Memory dependence (store)";
+        break;
+      case CONTROL_EDGE:
+        out << "Control dependence";
+        break;
+      default:
+        out << edge_weight;
+        break;
+    }
+    out << "\n";
+
+  } else {
+    out << "  No edge between these two nodes found!\n";
+  }
+}
+
+//-------------------
 // DebugLoopPrinter
 //-------------------
 

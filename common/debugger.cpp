@@ -41,6 +41,7 @@ const Command COMMANDS_END = {"", NULL, NULL};
 
 Command subcmd_print[] = {
   {"node", cmd_print_node, NULL},
+  {"edge", cmd_print_edge, NULL},
   {"loop", cmd_print_loop, NULL},
   COMMANDS_END,
 };

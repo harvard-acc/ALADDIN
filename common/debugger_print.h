@@ -32,6 +32,28 @@ class DebugNodePrinter {
   SrcTypes::SourceManager& srcManager;
 };
 
+class DebugEdgePrinter {
+ public:
+  DebugEdgePrinter(ExecNode* _source_node,
+                   ExecNode* _target_node,
+                   ScratchpadDatapath* _acc,
+                   std::ostream& _out)
+      : source_node(_source_node), target_node(_target_node), acc(_acc),
+        out(_out), srcManager(acc->get_source_manager()) {}
+
+  void printAll();
+  void printSourceInfo();
+  void printTargetInfo();
+  void printEdgeInfo();
+
+ private:
+  ExecNode* source_node;
+  ExecNode* target_node;
+  ScratchpadDatapath* acc;
+  std::ostream& out;
+  SrcTypes::SourceManager& srcManager;
+};
+
 class DebugLoopPrinter {
  public:
   DebugLoopPrinter(ScratchpadDatapath* _acc, std::ostream& _out)
