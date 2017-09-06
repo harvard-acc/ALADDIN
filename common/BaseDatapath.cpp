@@ -1200,7 +1200,7 @@ void BaseDatapath::removeRepeatedStores() {
       else {
         // remove this store, unless it is a dynamic store which cannot be
         // statically disambiguated.
-        if (node->is_dynamic_mem_op()) {
+        if (!node->is_dynamic_mem_op()) {
           if (boost::out_degree(node->get_vertex(), graph_) == 0) {
             node->set_microop(LLVM_IR_SilentStore);
           } else {
