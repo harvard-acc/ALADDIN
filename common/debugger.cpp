@@ -241,14 +241,18 @@ int main(int argc, const char* argv[]) {
 
   // Build the graph.
   acc->buildDddg();
-  acc->globalOptimizationPass();
-  acc->prepareForScheduling();
 
   // Begin interactive mode.
   HandlerRet ret = interactive_mode(acc);
-  if (ret == QUIT) {
+  if (ret == QUIT)
     goto exit;
-  }
+
+  acc->globalOptimizationPass();
+  acc->prepareForScheduling();
+
+  ret = interactive_mode(acc);
+  if (ret == QUIT)
+    goto exit;
 
   // Scheduling
   execution_status = SCHEDULING;
