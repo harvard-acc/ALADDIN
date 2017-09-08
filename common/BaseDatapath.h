@@ -364,8 +364,16 @@ class BaseDatapath {
   std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
 
   ExecNode* getNextNode(unsigned node_id);
+
   /* Return pairs of nodes that demarcate the start and end of a loop iteraton. */
   std::list<node_pair_t> findLoopBoundaries(const SrcTypes::UniqueLabel& loop_label);
+
+  /* Return the bounding nodes of function invocations.
+   *
+   * For each pair, the first element is the Call node that invokes the given
+   * function, and the second element is the Return node of this invocation.
+   */
+  std::list<node_pair_t> findFunctionBoundaries(SrcTypes::Function* func);
 
   // For unit tests.
   int getUnrolledLoopBoundary(unsigned int region_id) {

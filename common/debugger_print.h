@@ -7,6 +7,13 @@
 #include "ScratchpadDatapath.h"
 #include "SourceManager.h"
 
+// Formatted print out of pairs of node ids.
+//
+// Prints up up to 80 pairs in rows of 4 columns each.
+void print_node_pair_list(std::list<node_pair_t> pairs,
+                          std::string row_header,
+                          std::ostream& out);
+
 class DebugNodePrinter {
  public:
   DebugNodePrinter(ExecNode* _node,
@@ -91,6 +98,31 @@ class DebugLoopPrinter {
 
   /* The loop to print. */
   SrcTypes::UniqueLabel selected_label;
+  ScratchpadDatapath* acc;
+  std::ostream& out;
+  SrcTypes::SourceManager& srcManager;
+};
+
+class DebugFunctionPrinter {
+ public:
+  DebugFunctionPrinter(std::string _function_name,
+                       ScratchpadDatapath* _acc,
+                       std::ostream& _out)
+      : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {
+    function = srcManager.get<SrcTypes::Function>(_function_name);
+    function_boundaries = acc->findFunctionBoundaries(function);
+  }
+
+  void printAll();
+  void printBasic();
+  void printFunctionBoundaries();
+  void printLoops();
+  void printExecutionStats();
+  int computeFunctionLatency();
+
+ private:
+  SrcTypes::Function* function;
+  std::list<node_pair_t> function_boundaries;
   ScratchpadDatapath* acc;
   std::ostream& out;
   SrcTypes::SourceManager& srcManager;

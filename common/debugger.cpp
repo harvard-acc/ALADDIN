@@ -43,6 +43,7 @@ Command subcmd_print[] = {
   {"node", cmd_print_node, NULL},
   {"edge", cmd_print_edge, NULL},
   {"loop", cmd_print_loop, NULL},
+  {"function", cmd_print_function, NULL},
   COMMANDS_END,
 };
 

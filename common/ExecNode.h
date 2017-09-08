@@ -283,6 +283,10 @@ class ExecNode {
     return (microop == LLVM_IR_Call);
   }
 
+  bool is_ret_op() {
+    return (microop == LLVM_IR_Ret);
+  }
+
   bool is_index_op() {
     if (microop == LLVM_IR_IndexAdd)
       return true;

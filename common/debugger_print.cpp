@@ -17,6 +17,37 @@
 #include "debugger.h"
 #include "debugger_print.h"
 
+void print_node_pair_list(std::list<node_pair_t> pairs,
+                          std::string row_header,
+                          std::ostream& out) {
+  const unsigned kMaxPrintsPerRow = 4;
+  const unsigned kMaxPrints = kMaxPrintsPerRow * 20;
+  unsigned num_prints = 0;
+  auto pair_it = pairs.begin();
+  out << "  " << row_header;
+  if (pairs.empty()) {
+    out << "\n";
+    return;
+  }
+  while (pair_it != pairs.end() && num_prints < kMaxPrints) {
+    for (unsigned i = 0; i < kMaxPrintsPerRow; i++) {
+      if (pair_it != pairs.end()) {
+        out << "[" << pair_it->first->get_node_id() << ", "
+            << pair_it->second->get_node_id() << "]  ";
+        ++pair_it;
+        num_prints++;
+      } else {
+        break;
+      }
+    }
+    out << "\n";
+    if (pair_it != pairs.end())
+      out << std::string(row_header.size() + 2, ' ');
+  }
+  if (kMaxPrints < pairs.size())
+    out << "... (and " << pairs.size() - kMaxPrints << " more).\n";
+}
+
 //-------------------
 // DebugNodePrinter
 //-------------------
@@ -228,6 +259,81 @@ void DebugEdgePrinter::printEdgeInfo() {
   }
 }
 
+//------------------------
+// DebugFunctionPrinter
+//------------------------
+
+void DebugFunctionPrinter::printAll() {
+  if (!function) {
+    out << "No such function found!\n";
+    return;
+  }
+  printBasic();
+  printLoops();
+  printFunctionBoundaries();
+  // printExecutionStats();
+}
+
+void DebugFunctionPrinter::printLoops() {
+  using namespace SrcTypes;
+  const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
+  std::list<Label*> loops;
+
+  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+    if (it->second.get_function() == function)
+      loops.push_back(it->second.get_label());
+  }
+
+  out << "  Loops: ";
+  if (loops.empty()) {
+    out << "\n";
+    return;
+  }
+  for (auto it = loops.begin(); it != loops.end(); ++it) {
+    out << (*it)->get_name() << "\n";
+    if (it != --loops.end())
+      out << "         ";
+  }
+}
+
+void DebugFunctionPrinter::printBasic() {
+  out << "Function:  " << function->get_name() << "\n";
+}
+
+void DebugFunctionPrinter::printFunctionBoundaries() {
+  print_node_pair_list(function_boundaries, "Invocations: ", out);
+}
+
+void DebugFunctionPrinter::printExecutionStats() {
+  out << "  Latency: ";
+  if (execution_status == PRESCHEDULING) {
+    out << "Not available before scheduling.\n";
+  } else {
+    int latency = computeFunctionLatency();
+    out << latency << " cycles";
+    if (execution_status == SCHEDULING)
+      out << " (may change as scheduling continues).\n";
+    else
+      out << "\n";
+  }
+}
+
+// TODO: This doesn't actually work because Return nodes are isolated and
+// cannot be used to directly compute latency.
+int DebugFunctionPrinter::computeFunctionLatency() {
+  int max_latency = 0;
+  for (auto it = function_boundaries.begin(); it != function_boundaries.end();
+       ++it) {
+    ExecNode* first = it->first;
+    ExecNode* second = it->second;
+    int latency = second->get_complete_execution_cycle() -
+                  first->get_complete_execution_cycle();
+    if (latency > max_latency)
+      max_latency = latency;
+  }
+  return max_latency;
+}
+
 //-------------------
 // DebugLoopPrinter
 //-------------------
@@ -236,10 +342,11 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
     const std::string& loop_name) {
   using namespace SrcTypes;
 
-  Label* label = srcManager.get<Label>(loop_name);
+  SrcTypes::Label* label = srcManager.get<SrcTypes::Label>(loop_name);
   std::vector<UniqueLabel> candidates;
 
-  const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
+  const std::multimap<unsigned, SrcTypes::UniqueLabel>& labelmap =
+      acc->getLabelMap();
   for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
     const UniqueLabel& unique_label = it->second;
     if (unique_label.get_label() == label)

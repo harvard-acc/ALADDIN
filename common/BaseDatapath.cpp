@@ -1537,6 +1537,27 @@ std::list<node_pair_t> BaseDatapath::findLoopBoundaries(
   return loop_boundaries;
 }
 
+std::list<node_pair_t> BaseDatapath::findFunctionBoundaries(
+    SrcTypes::Function* func) {
+  std::list<node_pair_t> boundaries;
+  if (!func)
+    return boundaries;
+
+  node_pair_t current_bound;
+  for (auto& node_id_pair : exec_nodes) {
+    ExecNode* node = node_id_pair.second;
+    if (node->is_call_op()) {
+      ExecNode* next_node = getNextNode(node->get_node_id());
+      if (next_node->get_static_function() == func)
+        current_bound.first = node;
+    } else if (node->is_ret_op() && node->get_static_function() == func) {
+      current_bound.second = node;
+      boundaries.push_back(current_bound);
+    }
+  }
+  return boundaries;
+}
+
 void BaseDatapath::updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges) {
   std::cout << "  Adding " << to_add_edges.size() << " new edges.\n";
   for (auto it = to_add_edges.begin(); it != to_add_edges.end(); ++it) {

@@ -45,6 +45,20 @@ void reconstruct_graph(Graph* new_graph,
   boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
 }
 
+HandlerRet cmd_print_function(const CommandTokens& command_tokens,
+                              Command* subcmd_list,
+                              ScratchpadDatapath* acc) {
+  if (command_tokens.size() < 2) {
+    std::cerr << "ERROR: Need to specify a function to print!\n";
+    return HANDLER_ERROR;
+  }
+  std::string function_name = command_tokens[1];
+  DebugFunctionPrinter printer(function_name, acc, std::cout);
+  printer.printAll();
+
+  return HANDLER_SUCCESS;
+}
+
 HandlerRet cmd_print_loop(const CommandTokens& command_tokens,
                           Command* subcmd_list,
                           ScratchpadDatapath* acc) {
@@ -207,6 +221,8 @@ HandlerRet cmd_help(const CommandTokens& tokens,
             << "         the correct one. Details include the average latency of the loop and a list of\n"
             << "         the branch nodes that correspond to this loop header. Technically, this will\n"
             << "         work for any labeled statement, but the loop statistics would not be present.\n"
+            << "  print function [function-name]  : Print details about this function\n"
+            << "  print edge [node-0] [node-1]    : Print details about edges between the two nodes.\n"
             << "\n"
             << "  graph root=[node-id]            : Dump the DDDG in BFS fashion, with node-id as the root.\n"
             << "    Optional arguments:\n"
