@@ -452,7 +452,6 @@ class BaseDatapath {
   void removePhiNodes();
   void memoryAmbiguation();
   void removeAddressCalculation();
-  void removeBranchEdges();
   void nodeStrengthReduction();
   void loopFlatten();
   void loopUnrolling();
