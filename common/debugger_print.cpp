@@ -83,7 +83,12 @@ void DebugNodePrinter::printMemoryOp() {
     out << "  Memory access to array " << node->get_array_label() << "\n"
         << "    Addr:  0x" << std::hex << mem_access->vaddr << "\n"
         << "    Partition: " << node->get_partition_index() << "\n"
-        << "    Size:  " << std::dec << mem_access->size << "\n";
+        << "    Size:  " << std::dec << mem_access->size << "\n"
+        << "    Dynamic op:  ";
+    if (node->is_dynamic_mem_op())
+      out << "Yes\n";
+    else
+      out << "No\n";
     out << "    Value: ";
     if (mem_access->is_float && mem_access->size == 4)
       out << FP2BitsConverter::ConvertBitsToFloat(mem_access->value);

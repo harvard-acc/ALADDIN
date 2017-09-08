@@ -1,0 +1,11 @@
+cycle_time,10
+pipelining,0
+partition,complete,input0,32,4
+partition,complete,input1,32,4
+partition,complete,result,320,4
+unrolling,test_independent,outer,1
+unrolling,test_independent,inner,8
+unrolling,test_indirect,outer,1
+unrolling,test_indirect,inner,8
+unrolling,test_loop_carried,outer,1
+unrolling,test_loop_carried,inner,8

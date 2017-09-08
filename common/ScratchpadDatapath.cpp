@@ -34,7 +34,6 @@ void ScratchpadDatapath::globalOptimizationPass() {
   /* memoryAmbiguation() should execute after removeInductionDependence()
    * because it needs induction_nodes. */
   removeInductionDependence();
-  memoryAmbiguation();
   // Base address must be initialized next.
   initBaseAddress();
   completePartition();
@@ -44,6 +43,7 @@ void ScratchpadDatapath::globalOptimizationPass() {
   removeSharedLoads();
   storeBuffer();
   removeRepeatedStores();
+  memoryAmbiguation();
   treeHeightReduction();
   fuseRegLoadStores();
   // Must do loop pipelining last; after all the data/control dependences are

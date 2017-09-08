@@ -48,7 +48,7 @@ class DynamicFunction {
   }
 
   // Convert to a string representation (which is the old DDDG format).
-  std::string str() {
+  std::string str() const {
     std::stringstream oss;
     oss << function->get_name() << "-" << iteration;
     return oss.str();
@@ -94,7 +94,7 @@ class DynamicVariable {
   Variable* get_variable() const { return variable; }
 
   // Convert to a string representation (which is the old DDDG format).
-  std::string str() {
+  std::string str() const {
     Function* func = dyn_func.get_function();
     std::stringstream oss;
     oss << func->get_name() << "-" << dyn_func.get_iteration() << "-"
@@ -132,7 +132,7 @@ class DynamicInstruction {
     return *this;
   }
 
-  std::string str() {
+  std::string str() const {
     std::stringstream oss;
     oss << dyn_func.str() << "-" << instruction->get_name();
     return oss.str();
