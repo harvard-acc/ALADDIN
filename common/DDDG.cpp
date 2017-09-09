@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+#include <boost/tokenizer.hpp>
+
 #include "BaseDatapath.h"
 #include "DDDG.h"
 #include "DynamicEntity.h"
@@ -111,15 +113,31 @@ Variable* DDDG::get_array_real_var(const std::string& array_name) {
 
 // Parse line from the labelmap section.
 void DDDG::parse_labelmap_line(std::string line) {
-  char label_name[256], function_name[256];
+  char label_name[256], function_name[256], callers[256];
   int line_number;
-  sscanf(line.c_str(), "%[^/]/%s %d", function_name, label_name, &line_number);
+  int num_matches = sscanf(line.c_str(),
+                           "%[^/]/%s %d inline %[^\n]",
+                           function_name,
+                           label_name,
+                           &line_number,
+                           callers);
   label_name[255] = '\0';  // Just in case...
   function_name[255] = '\0';
   Function* function = srcManager.insert<Function>(function_name);
   Label* label = srcManager.insert<Label>(label_name);
   UniqueLabel unique_label(function, label, line_number);
   labelmap.insert(std::make_pair(line_number, unique_label));
+  if (num_matches == 4) {
+    boost::char_separator<char> sep(" ");
+    std::string temp(callers);
+    boost::tokenizer<boost::char_separator<char>> tok(temp, sep);
+    for (auto it = tok.begin(); it != tok.end(); ++it) {
+      std::string caller_name = *it;
+      Function* caller_func = srcManager.insert<Function>(caller_name);
+      UniqueLabel inlined_label(caller_func, label);
+      labelmap.insert(std::make_pair(line_number, inlined_label));
+    }
+  }
 }
 
 void DDDG::parse_instruction_line(std::string line) {
