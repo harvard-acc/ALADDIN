@@ -248,6 +248,12 @@ void DebugEdgePrinter::printEdgeInfo() {
       case CONTROL_EDGE:
         out << "Control dependence";
         break;
+      case REGISTER_EDGE:
+        out << "Register dependence";
+        break;
+      case FUSED_BRANCH_EDGE:
+        out << "Fused branch dependence";
+        break;
       default:
         out << edge_weight;
         break;

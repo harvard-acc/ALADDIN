@@ -1043,6 +1043,67 @@ void BaseDatapath::fuseRegLoadStores() {
   cleanLeafNodes();
 }
 
+void BaseDatapath::findBranchChain(ExecNode* root,
+                                   std::list<ExecNode*>& branch_chain,
+                                   std::set<Edge>& to_remove_edges) {
+
+  if (boost::out_degree(root->get_vertex(), graph_) != 1)
+    return;
+  out_edge_iter out_edge_it, out_edge_end;
+  for (boost::tie(out_edge_it, out_edge_end) =
+           out_edges(root->get_vertex(), graph_);
+       out_edge_it != out_edge_end;
+       ++out_edge_it) {
+    Vertex target_vertex = target(*out_edge_it, graph_);
+    ExecNode* target_node = getNodeFromVertex(target_vertex);
+    if (target_node->is_branch_op() || target_node->is_call_op()) {
+      branch_chain.push_back(target_node);
+      to_remove_edges.insert(*out_edge_it);
+      findBranchChain(target_node, branch_chain, to_remove_edges);
+    }
+  }
+}
+
+void BaseDatapath::fuseConsecutiveBranches() {
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << "   Fuse consecutive branches   " << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+
+  // Aladdin enforces control dependences for all branch nodes. But sometimes
+  // we will see multiple branch nodes consecutively, particularly in the case
+  // of multiply nested loops and preheader basic blocks. This can introduce a
+  // significant amount of additional latency. This optimization assumes that
+  // an FSM can always determine in a single cycle which loop nest to execute
+  // next and fuses consecutive branch nodes together.
+
+  EdgeNameMap edge_to_parid = get(boost::edge_name, graph_);
+  std::set<Edge> to_remove_edges;
+  std::vector<newEdge> to_add_edges;
+
+  std::list<Vertex> topo_nodes;
+  boost::topological_sort(graph_, std::front_inserter(topo_nodes));
+
+  for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
+    Vertex vertex = *vi;
+    ExecNode* node = getNodeFromVertex(vertex);
+    if (!(node->is_branch_op() || node->is_call_op()))
+      continue;
+    if (boost::out_degree(vertex, graph_) != 1)
+      continue;
+
+    std::list<ExecNode*> branch_chain{ node };
+    findBranchChain(node, branch_chain, to_remove_edges);
+    if (branch_chain.size() > 1) {
+      for (auto it = branch_chain.begin(); it != --branch_chain.end();)
+        to_add_edges.push_back({ *it, *(++it), FUSED_BRANCH_EDGE });
+    }
+  }
+
+  updateGraphWithIsolatedEdges(to_remove_edges);
+  updateGraphWithNewEdges(to_add_edges);
+  cleanLeafNodes();
+}
+
 /*
  * Read: loop_bound, flattenConfig, graph, actualAddress
  * Modify: graph_
@@ -2361,7 +2422,7 @@ void BaseDatapath::updateChildren(ExecNode* node) {
         bool curr_zero_latency = (node->is_memory_op())
                                      ? false
                                      : (node->fu_node_latency(cycleTime) == 0);
-        if (edge_parid == REGISTER_EDGE ||
+        if (edge_parid == REGISTER_EDGE || edge_parid == FUSED_BRANCH_EDGE ||
             ((child_zero_latency || curr_zero_latency) &&
              edge_parid != CONTROL_EDGE)) {
           executingQueue.push_back(child_node);

@@ -37,6 +37,7 @@
 
 #define MEMORY_EDGE -1
 #define REGISTER_EDGE 5
+#define FUSED_BRANCH_EDGE 6
 #define CONTROL_EDGE 11
 #define PIPE_EDGE 12
 
@@ -462,6 +463,7 @@ class BaseDatapath {
   void removeRepeatedStores();
   void treeHeightReduction();
   void fuseRegLoadStores();
+  void fuseConsecutiveBranches();
 
 #ifdef USE_DB
   // Specify the experiment to be associated with this simulation. Calling this
@@ -491,6 +493,10 @@ class BaseDatapath {
       ExecNode* current_node,
       SrcTypes::Function* current_func,
       EdgeNameMap& edge_to_parid);
+
+  void findBranchChain(ExecNode* root,
+                       std::list<ExecNode*>& branch_chain,
+                       std::set<Edge>& to_remove_edges);
 
   // Configuration parsing and handling.
   void parse_config(std::string& bench, std::string& config_file);
