@@ -330,12 +330,8 @@ class BaseDatapath {
   // Change graph.
   void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
   ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setLabelMap(std::multimap<unsigned, SrcTypes::UniqueLabel>& _labelmap) {
-    labelmap = _labelmap;
-  }
-  const std::multimap<unsigned, SrcTypes::UniqueLabel>& getLabelMap() {
-    return labelmap;
-  }
+  void setLabelMap(labelmap_t& _labelmap) { labelmap = _labelmap; }
+  const labelmap_t& getLabelMap() { return labelmap; }
   SrcTypes::UniqueLabel getUniqueLabel(ExecNode* node);
   void addCallArgumentMapping(DynamicVariable& callee_reg_id,
                               DynamicVariable& caller_reg_id);
@@ -501,6 +497,10 @@ class BaseDatapath {
   // Configuration parsing and handling.
   void parse_config(std::string& bench, std::string& config_file);
 
+  // Update unrolling/pipelining directives with labelmap information.
+  void updateUnrollingPipeliningWithLabelInfo(
+      const inline_labelmap_t& inline_labelmap);
+
   // Returns the unrolling factor for the loop bounded at this node.
   unrolling_config_t::iterator getUnrollFactor(ExecNode* node);
 
@@ -629,7 +629,7 @@ class BaseDatapath {
   std::map<unsigned int, ExecNode*> exec_nodes;
 
   // Maps line numbers to labels.
-  std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap;
+  labelmap_t labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<DynLoopBound> loopBound;

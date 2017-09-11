@@ -45,5 +45,7 @@ typedef std::set<SrcTypes::UniqueLabel> pipeline_config_t;
 typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
 class ExecNode;
 typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
+typedef std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap_t;
+typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel> inline_labelmap_t;
 
 #endif

@@ -134,8 +134,12 @@ void DDDG::parse_labelmap_line(std::string line) {
     for (auto it = tok.begin(); it != tok.end(); ++it) {
       std::string caller_name = *it;
       Function* caller_func = srcManager.insert<Function>(caller_name);
-      UniqueLabel inlined_label(caller_func, label);
+      UniqueLabel inlined_label(caller_func, label, line_number);
       labelmap.insert(std::make_pair(line_number, inlined_label));
+      // Add the inlined labels to another map so that we can associate any
+      // unrolling/pipelining directives declared on the original labels with
+      // them.
+      inline_labelmap[inlined_label] = unique_label;
     }
   }
 }

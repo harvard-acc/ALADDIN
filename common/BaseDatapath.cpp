@@ -57,29 +57,10 @@ bool BaseDatapath::buildDddg() {
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   if (labelmap.size() == 0) {
     labelmap = dddg->get_labelmap();
-    // The config file is parsed before the trace, so we don't have line number
-    // information yet. After parsing the trace, update the unrolling and
-    // pipelining config maps with line numbers.
-    for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
-      const UniqueLabel& label_with_num = it->second;
-      UniqueLabel key(
-          label_with_num.get_function(), label_with_num.get_label(), 0);
-
-      auto unroll_it = unrolling_config.find(key);
-      if (unroll_it != unrolling_config.end()) {
-        unsigned factor = unroll_it->second;
-        unrolling_config.erase(unroll_it);
-        unrolling_config[label_with_num] = factor;
-      }
-
-      auto pipeline_it = pipeline_config.find(key);
-      if (pipeline_it != pipeline_config.end()) {
-        pipeline_config.erase(pipeline_it);
-        pipeline_config.insert(label_with_num);
-      }
-    }
+    updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
   }
   delete dddg;
+
   if (current_trace_off == DDDG::END_OF_TRACE)
     return false;
 
@@ -94,6 +75,45 @@ bool BaseDatapath::buildDddg() {
 
   num_cycles = 0;
   return true;
+}
+
+void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
+    const inline_labelmap_t& inline_labelmap) {
+  // The config file is parsed before the trace, so we don't have line number
+  // information yet. After parsing the trace, update the unrolling and
+  // pipelining config maps with line numbers.
+  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+    const UniqueLabel& label_with_num = it->second;
+    UniqueLabel label_without_num(
+        label_with_num.get_function(), label_with_num.get_label(), 0);
+
+    auto unroll_it = unrolling_config.find(label_without_num);
+    if (unroll_it != unrolling_config.end()) {
+      unsigned factor = unroll_it->second;
+      unrolling_config.erase(unroll_it);
+      unrolling_config[label_with_num] = factor;
+    }
+
+    auto pipeline_it = pipeline_config.find(label_without_num);
+    if (pipeline_it != pipeline_config.end()) {
+      pipeline_config.erase(pipeline_it);
+      pipeline_config.insert(label_with_num);
+    }
+  }
+
+  // Update the unrolling/pipelining configurations for inlined labels.
+  for (auto it = inline_labelmap.begin(); it != inline_labelmap.end(); ++it) {
+    const UniqueLabel& inlined_label = it->first;
+    const UniqueLabel& orig_label = it->second;
+
+    auto unroll_it = unrolling_config.find(orig_label);
+    if (unroll_it != unrolling_config.end())
+      unrolling_config[inlined_label] = unroll_it->second;
+
+    auto pipeline_it = pipeline_config.find(orig_label);
+    if (pipeline_it != pipeline_config.end())
+      pipeline_config.insert(inlined_label);
+  }
 }
 
 void BaseDatapath::clearDatapath() {

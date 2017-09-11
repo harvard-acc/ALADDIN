@@ -111,9 +111,8 @@ class DDDG {
   int num_of_control_dependency();
   void output_dddg();
   size_t build_initial_dddg(size_t trace_off, size_t trace_size);
-  std::multimap<unsigned, SrcTypes::UniqueLabel> get_labelmap() {
-    return labelmap;
-  }
+  labelmap_t get_labelmap() { return labelmap; }
+  inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
 
  private:
   void parse_instruction_line(std::string line);
@@ -181,7 +180,11 @@ class DDDG {
   // Line number mapping to function and label name. If there are multiple
   // source files, there could be multiple function/labels with the same line
   // number.
-  std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap;
+  labelmap_t labelmap;
+  // Maps a label in an inlined function to the original function in which it
+  // was written.
+  inline_labelmap_t inline_labelmap;
+
   // keep track of currently executed methods
   std::stack<SrcTypes::DynamicFunction> active_method;
   // manage methods
