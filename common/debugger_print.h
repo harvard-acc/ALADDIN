@@ -128,4 +128,22 @@ class DebugFunctionPrinter {
   SrcTypes::SourceManager& srcManager;
 };
 
+class DebugCyclePrinter {
+ public:
+  DebugCyclePrinter(int _cycle,
+                    int _max_nodes,
+                    ScratchpadDatapath* _acc,
+                    std::ostream& _out)
+      : cycle(_cycle), max_nodes(_max_nodes), acc(_acc), out(_out) {}
+
+  void printAll();
+  std::list<ExecNode*> findNodesExecutedinCycle();
+
+ private:
+  int cycle;
+  int max_nodes;
+  ScratchpadDatapath* acc;
+  std::ostream& out;
+};
+
 #endif

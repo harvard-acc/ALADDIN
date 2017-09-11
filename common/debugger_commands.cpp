@@ -47,6 +47,35 @@ void reconstruct_graph(Graph* new_graph,
   boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
 }
 
+HandlerRet cmd_print_cycle(const CommandTokens& command_tokens,
+                           Command* subcmd_list,
+                           ScratchpadDatapath* acc) {
+
+  if (command_tokens.size() < 2) {
+    std::cerr << "ERROR: Need to specify a cycle to print activity for!\n";
+    return HANDLER_ERROR;
+  }
+  int cycle = -1;
+  int max_nodes = 300;  // Default.
+  try {
+    cycle = std::stoi(command_tokens[1], NULL, 10);
+  } catch (const std::invalid_argument& e) {
+    std::cerr << "ERROR: Invalid cycle! Must be a nonnegative integer.\n";
+    return HANDLER_ERROR;
+  }
+
+  CommandTokens args_tokens(++command_tokens.begin(), command_tokens.end());
+  CommandArgs args;
+  if (parse_command_args(args_tokens, args) != 0)
+    return HANDLER_ERROR;
+  if (args.find("max_nodes") != args.end())
+    max_nodes = args["max_nodes"];
+
+  DebugCyclePrinter printer(cycle, max_nodes, acc, std::cout);
+  printer.printAll();
+  return HANDLER_SUCCESS;
+}
+
 HandlerRet cmd_print_function(const CommandTokens& command_tokens,
                               Command* subcmd_list,
                               ScratchpadDatapath* acc) {
@@ -233,6 +262,9 @@ HandlerRet cmd_help(const CommandTokens& tokens,
             << "         work for any labeled statement, but the loop statistics would not be present.\n"
             << "  print function [function-name]  : Print details about this function\n"
             << "  print edge [node-0] [node-1]    : Print details about edges between the two nodes.\n"
+            << "  print cycle [cycle]             : Print which nodes were executing at this cycle.\n"
+            << "    Optional arguments:\n"
+            << "      max_nodes=M                 : Print up to M nodes. Default: 300.\n"
             << "\n"
             << "  graph root=[node-id]            : Dump the DDDG in BFS fashion, with node-id as the root.\n"
             << "    Optional arguments:\n"

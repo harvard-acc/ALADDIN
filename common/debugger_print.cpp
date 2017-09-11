@@ -341,6 +341,58 @@ int DebugFunctionPrinter::computeFunctionLatency() {
 }
 
 //-------------------
+// DebugCyclePrinter
+//-------------------
+
+std::list<ExecNode*> DebugCyclePrinter::findNodesExecutedinCycle() {
+  const Graph& graph = acc->getGraph();
+  std::list<ExecNode*> matched_nodes;
+
+  // In many cases, a simple linear traversal through all nodes ends up being
+  // faster than a breadth-first traversal of the graph.
+  for (auto it = acc->node_begin(); it != acc->node_end(); ++it) {
+    ExecNode* curr_node = it->second;
+    if (curr_node->get_start_execution_cycle() >= cycle &&
+        curr_node->get_complete_execution_cycle() <= cycle) {
+      matched_nodes.push_back(curr_node);
+    }
+  }
+  return matched_nodes;
+}
+
+void DebugCyclePrinter::printAll() {
+  if (cycle < 0) {
+    out << "ERROR: Cycle cannot be negative.\n";
+    return;
+  }
+  if (execution_status == PRESCHEDULING) {
+    out << "ERROR: No nodes have executed yet.\n";
+    return;
+  }
+  std::list<ExecNode*> nodes = findNodesExecutedinCycle();
+  out << "Cycle " << cycle << std::endl;
+  out << "  Nodes executed at this cycle: ";
+  const unsigned kMaxNodesPerRow = 15;
+  unsigned num_in_row = 0;
+  unsigned num_nodes_printed = 0;
+  for (auto node : nodes) {
+    out << node->get_node_id() << "  ";
+    num_in_row++;
+    if (num_in_row == kMaxNodesPerRow) {
+      out << "\n                                ";
+      num_in_row = 0;
+    }
+    num_nodes_printed++;
+    if (num_nodes_printed == max_nodes) {
+      unsigned remaining_nodes = nodes.size() - max_nodes;
+      out << "(and " << remaining_nodes << " more nodes...)";
+      break;
+    }
+  }
+  out << "\n";
+}
+
+//-------------------
 // DebugLoopPrinter
 //-------------------
 

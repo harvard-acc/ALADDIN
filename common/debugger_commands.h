@@ -18,6 +18,9 @@ HandlerRet cmd_print_loop(const CommandTokens& tokens,
 HandlerRet cmd_print_function(const CommandTokens& tokens,
                               Command* subcmd_list,
                               ScratchpadDatapath* acc);
+HandlerRet cmd_print_cycle(const CommandTokens& tokens,
+                           Command* subcmd_list,
+                           ScratchpadDatapath* acc);
 HandlerRet cmd_graph(const CommandTokens& tokens,
                      Command* subcmd_list,
                      ScratchpadDatapath* acc);

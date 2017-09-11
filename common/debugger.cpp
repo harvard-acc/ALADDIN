@@ -44,6 +44,7 @@ Command subcmd_print[] = {
   {"edge", cmd_print_edge, NULL},
   {"loop", cmd_print_loop, NULL},
   {"function", cmd_print_function, NULL},
+  {"cycle", cmd_print_cycle, NULL},
   COMMANDS_END,
 };
 

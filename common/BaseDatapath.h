@@ -353,6 +353,12 @@ class BaseDatapath {
   int getNumOfConnectedNodes(unsigned int node_id) {
     return boost::degree(exec_nodes.at(node_id)->get_vertex(), graph_);
   }
+  std::map<unsigned, ExecNode*>::iterator node_begin() {
+    return exec_nodes.begin();
+  }
+  std::map<unsigned, ExecNode*>::iterator node_end() {
+    return exec_nodes.end();
+  }
   // Return all nodes with dependencies originating from OR leaving this node.
   std::vector<unsigned> getConnectedNodes(unsigned int node_id);
   std::vector<unsigned> getParentNodes(unsigned int node_id);
