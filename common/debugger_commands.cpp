@@ -28,7 +28,8 @@ void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
 void reconstruct_graph(Graph* new_graph,
                        ScratchpadDatapath* acc,
                        unsigned root_node_id,
-                       unsigned maxnodes,
+                       unsigned num_nodes,
+                       int max_node_id,
                        bool show_branch_children) {
   const Graph &g = acc->getGraph();
   ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
@@ -39,7 +40,8 @@ void reconstruct_graph(Graph* new_graph,
                       &existing_nodes,
                       acc,
                       root_vertex,
-                      maxnodes,
+                      num_nodes,
+                      max_node_id,
                       show_branch_children,
                       &num_nodes_visited);
   boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
@@ -161,7 +163,8 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
 
   int root_node = -1;
   bool show_branch_children = true;  // Default
-  int max_nodes = 300;  // Default.
+  int num_nodes = 300;  // Default.
+  int max_node_id = -1;  // Default.
 
   CommandTokens args_tokens(++command_tokens.begin(), command_tokens.end());
   CommandArgs args;
@@ -175,8 +178,10 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
     return HANDLER_ERROR;
   }
 
-  if (args.find("max_nodes") != args.end())
-    max_nodes = args["max_nodes"];
+  if (args.find("num_nodes") != args.end())
+    num_nodes = args["num_nodes"];
+  if (args.find("max_node_id") != args.end())
+    max_node_id = args["max_node_id"];
   if (args.find("show_branch_children") != args.end())
     show_branch_children = args["show_branch_children"];
 
@@ -186,7 +191,12 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   }
   Graph subgraph;
   try {
-    reconstruct_graph(&subgraph, acc, root_node, max_nodes, show_branch_children);
+    reconstruct_graph(&subgraph,
+                      acc,
+                      root_node,
+                      num_nodes,
+                      max_node_id,
+                      show_branch_children);
   } catch (const bfs_finished &e) {
     // Nothing to do.
   }
@@ -226,7 +236,8 @@ HandlerRet cmd_help(const CommandTokens& tokens,
             << "\n"
             << "  graph root=[node-id]            : Dump the DDDG in BFS fashion, with node-id as the root.\n"
             << "    Optional arguments:\n"
-            << "      max_nodes=M              : Graph up to M nodes. Default: 300.\n"
+            << "      num_nodes=M              : Graph up to M nodes. Default: 300.\n"
+            << "      max_node_id=N            : Don't show any nodes greater than this ID. Default: unlimited.\n"
             << "      show_branch_children=1/0 : Include edges to the children of all branch and call nodes.\n"
             << "           By default, include (1). Set to 0 to exclude.\n"
             << "           Branch and call nodes tend to have a lot of child dependent nodes that may\n"

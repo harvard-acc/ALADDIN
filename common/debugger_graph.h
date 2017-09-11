@@ -26,17 +26,18 @@ class NodeVisitor : public boost::default_bfs_visitor {
               std::map<unsigned, Vertex>* _existing_nodes,
               ScratchpadDatapath* _acc,
               Vertex _root_vertex,
-              unsigned maxnodes,
+              unsigned _num_nodes,
+              unsigned _max_node_id,
               bool _show_branch_children,
               unsigned* _num_nodes_visited)
       : new_graph(_subgraph), existing_nodes(_existing_nodes), acc(_acc),
-        root_vertex(_root_vertex), max_nodes(maxnodes),
-        show_branch_children(_show_branch_children),
+        root_vertex(_root_vertex), num_nodes(_num_nodes),
+        max_node_id(_max_node_id), show_branch_children(_show_branch_children),
         num_nodes_visited(_num_nodes_visited) {}
 
-  // Insert a vertex with node_id if we aren't above the max_nodes limit.
+  // Insert a vertex with node_id if we aren't above the num_nodes limit.
   Vertex insert_vertex(unsigned node_id) const {
-    if (*num_nodes_visited >= max_nodes)
+    if (*num_nodes_visited >= num_nodes)
       throw bfs_finished();
 
     return add_vertex(VertexProperty(node_id), *new_graph);
@@ -54,6 +55,9 @@ class NodeVisitor : public boost::default_bfs_visitor {
     } else {
       new_vertex = existing_nodes->at(node_id);
     }
+
+    if (max_node_id != -1 && node_id > max_node_id)
+      return;
 
     // If this node is a branch/call, don't print its children (unless this
     // node is the root of the BFS or if we explicitly ask for them). These
@@ -109,7 +113,8 @@ class NodeVisitor : public boost::default_bfs_visitor {
   Graph* new_graph;
   ScratchpadDatapath* acc;
   Vertex root_vertex;
-  unsigned max_nodes;
+  unsigned num_nodes;
+  unsigned max_node_id;
   bool show_branch_children;
   unsigned* num_nodes_visited;
 };
