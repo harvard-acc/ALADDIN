@@ -516,10 +516,6 @@ class BaseDatapath {
   void updateRegStats();
 
   // Scheduling
-  void addMemReadyNode(unsigned node_id, float latency_so_far);
-  void addNonMemReadyNode(unsigned node_id, float latency_so_far);
-  int fireMemNodes();
-  int fireNonMemNodes();
   void copyToExecutingQueue();
   void initExecutingQueue();
   virtual void markNodeStarted(ExecNode* node);
