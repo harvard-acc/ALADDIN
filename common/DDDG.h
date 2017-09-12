@@ -192,6 +192,9 @@ class DDDG {
   uint_to_uint address_last_written;
   // DMA nodes that have been seen since the last DMA fence.
   std::list<unsigned> last_dma_nodes;
+  // All nodes seen since the last Ret instruction.
+  std::list<unsigned> nodes_since_last_ret;
+  ExecNode* last_ret;
   // This points to the SourceManager object inside a BaseDatapath object.
   SrcTypes::SourceManager& srcManager;
 };

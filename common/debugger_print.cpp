@@ -277,7 +277,7 @@ void DebugFunctionPrinter::printAll() {
   printBasic();
   printLoops();
   printFunctionBoundaries();
-  // printExecutionStats();
+  printExecutionStats();
 }
 
 void DebugFunctionPrinter::printLoops() {
@@ -324,8 +324,6 @@ void DebugFunctionPrinter::printExecutionStats() {
   }
 }
 
-// TODO: This doesn't actually work because Return nodes are isolated and
-// cannot be used to directly compute latency.
 int DebugFunctionPrinter::computeFunctionLatency() {
   int max_latency = 0;
   for (auto it = function_boundaries.begin(); it != function_boundaries.end();

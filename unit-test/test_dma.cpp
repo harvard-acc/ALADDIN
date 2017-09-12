@@ -122,26 +122,26 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
         REQUIRE(acc->getNumOfConnectedNodes(dmaStore4) > 0);
       }
       THEN("The loads in the memcpy are only connected to dmaLoads, GEPs, "
-           "and stores.") {
+           "stores, and the final return node.") {
         for (unsigned node_id = firstLoopLoad; node_id < dmaStore1;
              node_id += 8) {
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 3);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 4);
           REQUIRE(acc->doesEdgeExist(dmaLoad1, node_id) == true);
           REQUIRE(acc->doesEdgeExist(dmaLoad2, node_id) == false);
         }
         for (unsigned node_id = secondLoopLoad; node_id < dmaStore2;
              node_id += 8) {
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 3);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 4);
           REQUIRE(acc->doesEdgeExist(dmaLoad2, node_id) == true);
           REQUIRE(acc->doesEdgeExist(dmaLoad1, node_id) == false);
           REQUIRE(acc->doesEdgeExist(node_id, dmaStore1) == false);
         }
       }
       THEN("The stores in the memcpy are only connected to dmaStores, GEPs, "
-           "and loads.") {
+           "loads, and the final return node.") {
         for (unsigned node_id = firstLoopStore; node_id < dmaStore1;
              node_id += 8) {
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 3);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 4);
           REQUIRE(acc->doesEdgeExist(node_id, dmaStore1) == true);
           REQUIRE(acc->doesEdgeExist(node_id, dmaStore2) == false);
           REQUIRE(acc->doesEdgeExist(dmaLoad1, node_id) == false);
@@ -149,7 +149,7 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
         }
         for (unsigned node_id = secondLoopStore; node_id < dmaStore2;
              node_id += 8) {
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 3);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 4);
           REQUIRE(acc->doesEdgeExist(node_id, dmaStore2) == true);
           REQUIRE(acc->doesEdgeExist(dmaLoad1, node_id) == false);
           REQUIRE(acc->doesEdgeExist(dmaLoad2, node_id) == false);
@@ -170,19 +170,19 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
           "The loads in the memcpy are connected to two more branch nodes.") {
         for (unsigned node_id = firstLoopLoad; node_id < dmaStore1;
              node_id += 8)
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 5);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 6);
         for (unsigned node_id = secondLoopLoad; node_id < dmaStore2;
              node_id += 8)
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 5);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 6);
       }
       THEN("The stores in the memcpy are also connected to two more "
            "branches.") {
         for (unsigned node_id = firstLoopStore; node_id < dmaStore1;
              node_id += 8)
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 5);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 6);
         for (unsigned node_id = secondLoopStore; node_id < dmaStore2;
              node_id += 8)
-          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 5);
+          REQUIRE(acc->getNumOfConnectedNodes(node_id) == 6);
       }
     }
   }

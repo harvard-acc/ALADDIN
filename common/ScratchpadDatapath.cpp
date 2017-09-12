@@ -334,8 +334,9 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
                                      ? false
                                      : (node->fu_node_latency(cycleTime) == 0);
         if (edge_parid == REGISTER_EDGE || edge_parid == FUSED_BRANCH_EDGE ||
-            node->is_call_op() || ((child_zero_latency || curr_zero_latency) &&
-                                   edge_parid != CONTROL_EDGE)) {
+            node->is_call_op() || node->is_ret_op() ||
+            ((child_zero_latency || curr_zero_latency) &&
+             edge_parid != CONTROL_EDGE)) {
           executingQueue.push_back(child_node);
         } else if (child_node->is_memory_op() || node->is_memory_op() ||
                    child_node->is_fp_op() || node->is_fp_op()) {

@@ -833,7 +833,7 @@ void BaseDatapath::loopUnrolling() {
     ExecNode* node = node_it->second;
     if (!node->has_vertex())
       continue;
-    if (node->get_microop() == LLVM_IR_Ret) {
+    if (node->is_ret_op()) {
       curr_call_depth--;
       // Clear all loop nests from the stack in case we return from an inner
       // loop.

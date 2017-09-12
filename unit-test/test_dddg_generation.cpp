@@ -17,7 +17,7 @@ SCENARIO("Test DDDG Generation w/ Triad", "[triad]") {
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
         REQUIRE(acc->getNumOfNodes() == 1538);
-        REQUIRE(acc->getNumOfEdges() == 1791);
+        REQUIRE(acc->getNumOfEdges() == 3328);
       }
     }
   }
@@ -35,7 +35,7 @@ SCENARIO("Test DDDG Generation w/ Reduction", "[reduction]") {
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
         REQUIRE(acc->getNumOfNodes() == 1026);
-        REQUIRE(acc->getNumOfEdges() == 1151);
+        REQUIRE(acc->getNumOfEdges() == 2175);
       }
     }
   }
@@ -53,7 +53,7 @@ SCENARIO("Test DDDG Generation w/ Pp_scan", "[pp_scan]") {
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
         REQUIRE(acc->getNumOfNodes() == 3178);
-        REQUIRE(acc->getNumOfEdges() == 4630);
+        REQUIRE(acc->getNumOfEdges() == 7807);
       }
     }
   }
@@ -71,7 +71,7 @@ SCENARIO("Test DDDG Generation w/ aes", "[aes]") {
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
         REQUIRE(acc->getNumOfNodes() == 14822);
-        REQUIRE(acc->getNumOfEdges() == 21373);
+        REQUIRE(acc->getNumOfEdges() == 35774);
       }
     }
   }

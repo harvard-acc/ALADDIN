@@ -26,6 +26,7 @@ DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
   curr_bblock = "-1";
   current_loop_depth = 0;
   callee_function = nullptr;
+  last_ret = nullptr;
 }
 
 int DDDG::num_edges() {
@@ -184,6 +185,21 @@ void DDDG::parse_instruction_line(std::string line) {
 
   int func_invocation_count = 0;
   bool curr_func_found = false;
+
+  // Enforce dependences on function call boundaries.
+  // Another function cannot be called until all previous nodes in the current
+  // function have finished, and a function must execute all nodes before nodes
+  // in the parent function can execute. The only exceptions are DMA nodes.
+  if (curr_node->is_ret_op() || curr_node->is_call_op()) {
+    for (auto node_id : nodes_since_last_ret)
+      insert_control_dependence(node_id, current_node_id);
+    nodes_since_last_ret.clear();
+    if (last_ret && last_ret != curr_node)
+      insert_control_dependence(last_ret->get_node_id(), current_node_id);
+    last_ret = curr_node;
+  } else if (!curr_node->is_dma_op()) {
+    nodes_since_last_ret.push_back(current_node_id);
+  }
 
   if (!active_method.empty()) {
     Function* prev_function = active_method.top().get_function();
