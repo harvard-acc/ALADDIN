@@ -1661,7 +1661,7 @@ void BaseDatapath::updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges)
   std::cout << "  Removing " << to_remove_edges.size() << " edges.\n";
   for (auto it = to_remove_edges.begin(), E = to_remove_edges.end(); it != E;
        ++it)
-    remove_edge(*it, graph_);
+    remove_edge(source(*it, graph_), target(*it, graph_), graph_);
 }
 
 /*
