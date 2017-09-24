@@ -2731,6 +2731,15 @@ void BaseDatapath::parse_config(std::string& bench,
       partition_config[array_label] = {
         cache, none, size, wordsize, p_factor, addr
       };
+    } else if (!type.compare("acp")) {
+      unsigned size = 0, p_factor = 0, wordsize = 0;
+      char array_label[256];
+      sscanf(rest_line.c_str(), "%[^,],%d\n", array_label, &size);
+      std::string p_type(type);
+      long long int addr = 0;
+      partition_config[array_label] = {
+        acp, none, size, wordsize, p_factor, addr
+      };
     } else if (!type.compare("pipelining")) {
       pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("pipeline")) {

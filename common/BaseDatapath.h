@@ -79,6 +79,7 @@ enum MemoryType {
   spad,
   reg,
   cache,
+  acp,
 };
 
 struct partitionEntry {

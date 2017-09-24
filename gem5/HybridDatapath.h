@@ -49,12 +49,18 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   virtual MasterPort& getCachePort() {
     return cachePort;
   };
+  virtual MasterPort& getAcpPort() {
+    return acpPort;
+  };
   MasterID getSpadMasterId() {
     return spadMasterId;
   };
   MasterID getCacheMasterId() {
     return cacheMasterId;
   };
+  MasterID getAcpMasterId() {
+    return acpMasterId;
+  }
 
   /**
    * Get a master port on this CPU. All CPUs have a data and
@@ -135,14 +141,106 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 #endif
 
  private:
-  // typedef uint32_t FlagsType;
+  /* This port has to accept snoops but it doesn't need to do anything. See
+   * arch/arm/table_walker.hh
+   */
+  class SpadPort : public DmaPort {
+   public:
+    SpadPort(HybridDatapath* dev, System* s, unsigned _max_req,
+             unsigned _chunk_size, unsigned _numChannels,
+             bool _invalidateOnDmaStore)
+        : DmaPort(dev, s, _max_req, _chunk_size,
+                  _numChannels, _invalidateOnDmaStore),
+          max_req(_max_req), datapath(dev) {}
+    // Maximum DMA requests that can be queued.
+    const unsigned max_req;
+
+   protected:
+    virtual bool recvTimingResp(PacketPtr pkt);
+    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
+    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
+    virtual bool isSnooping() const { return true; }
+    HybridDatapath* datapath;
+  };
+
+  // Port for cache coherent memory accesses. This implementation does not
+  // support functional or atomic accesses.
+  class CachePort : public MasterPort {
+   public:
+    CachePort(HybridDatapath* dev, const std::string& name)
+        : MasterPort(dev->name() + "." + name, dev), datapath(dev),
+          retryPkt(nullptr) {}
+
+    bool inRetry() const { return retryPkt != NULL; }
+    void setRetryPkt(PacketPtr pkt) { retryPkt = pkt; }
+    void clearRetryPkt() { retryPkt = NULL; }
+
+   protected:
+    virtual bool recvTimingResp(PacketPtr pkt);
+    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
+    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
+    virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
+    virtual void recvReqRetry();
+    virtual void recvRespRetry() {}
+    virtual bool isSnooping() const { return true; }
+
+    HybridDatapath* datapath;
+    PacketPtr retryPkt;
+  };
+
+  // ACP is connected to the L2 cache, but since there is no other caching
+  // agent to which it is attached (unlike the CachePort), it cannot accept
+  // snoops.
+  class AcpPort : public CachePort {
+    // Inherit parent constructors.
+    using CachePort::CachePort;
+
+   protected:
+    // The ACP port does not snoop transactions. If it did, then it could be
+    // considered the "holder" of cache lines, when in fact the L2 is still the
+    // holder.
+    virtual bool isSnooping() const { return false; }
+  };
+
+  class DatapathSenderState : public Packet::SenderState {
+   public:
+    DatapathSenderState(unsigned _node_id, bool _is_ctrl_signal = false)
+        : node_id(_node_id), is_ctrl_signal(_is_ctrl_signal) {}
+
+    /* Aladdin node that triggered the memory access. */
+    unsigned node_id;
+
+    /* Flag that determines whether a packet received on a data port is a
+     * control signal accessed through memory (which needs to be handled
+     * differently) or an ordinary memory access.
+     */
+    bool is_ctrl_signal;
+  };
+
+  class DmaEvent : public Event {
+   private:
+    HybridDatapath* datapath;
+    /* To track which DMA request is returned. */
+    unsigned dma_node_id;
+
+   public:
+    /** Constructor */
+    DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id);
+    /** Process a dma event */
+    void process();
+    /** Returns the description of the tick event. */
+    const char* description() const;
+    unsigned get_node_id() { return dma_node_id; }
+  };
 
   /* All possible types of memory operations supported by Aladdin. */
   enum MemoryOpType {
     Register,
     Scratchpad,
     Cache,
-    Dma
+    Dma,
+    ACP,
+    NumMemoryOpTypes,
   };
 
   /* Returns the memory op type for this node.
@@ -188,6 +286,18 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   bool handleCacheMemoryOp(ExecNode* node);
 
+  /* Handle an ACP memory access and return true if the data has returned.
+   *
+   * ACP requests share the same cache queue as local cache requests, but
+   * unlike local cache requests, there is no translation latency since ACP
+   * uses physical addresses.
+   *
+   * This function handles the various behavorial stages of an ACP access.
+   * The mechanics of actually performing the access are delegated to worker
+   * functions.
+   */
+  bool handleAcpMemoryOp(ExecNode* node);
+
   /* Prints the ids of all nodes currently on the executing queue.
    *
    * Useful for debugging deadlocks.
@@ -214,87 +324,24 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   bool issueTLBRequestInvisibly(Addr addr, unsigned size, bool isLoad, unsigned node_id);
   PacketPtr createTLBRequestPacket(Addr addr, unsigned size, bool isLoad, unsigned node_id);
 
-  // Cache access functions.
-  bool issueCacheRequest(Addr addr,
-                         unsigned size,
-                         bool isLoad,
-                         unsigned node_id,
-                         uint64_t value);
+  // Cache/ACP access functions.
+  bool issueCacheRequest(Addr addr, unsigned size, bool isLoad,
+                         unsigned node_id, uint64_t value);
+  bool issueAcpRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id,
+                       uint64_t value);
+
+  // A helper function for issuing either cache or ACP requests.
+  bool issueCacheOrAcpRequest(MemoryOpType op_type, Addr addr, unsigned size,
+                              bool isLoad, unsigned node_id, uint64_t value);
+
+  // For ACP: Request ownership of a cache line.
+  bool issueOwnershipRequest(Addr addr, unsigned size, unsigned node_id);
+
+  // Request completion routine for both cache and ACP.
   void completeCacheRequest(PacketPtr pkt);
 
   // Marks a node as started and increments a stats counter.
   virtual void markNodeStarted(ExecNode* node);
-
-  /* This port has to accept snoops but it doesn't need to do anything. See
-   * arch/arm/table_walker.hh
-   */
-  class SpadPort : public DmaPort {
-   public:
-    SpadPort(HybridDatapath* dev, System* s, unsigned _max_req,
-             unsigned _chunk_size, unsigned _numChannels,
-             bool _invalidateOnDmaStore)
-        : DmaPort(dev, s, _max_req, _chunk_size,
-                  _numChannels, _invalidateOnDmaStore),
-          max_req(_max_req), datapath(dev) {}
-    // Maximum DMA requests that can be queued.
-    const unsigned max_req;
-
-   protected:
-    virtual bool recvTimingResp(PacketPtr pkt);
-    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
-    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
-    virtual bool isSnooping() const { return true; }
-    HybridDatapath* datapath;
-  };
-
-  // Port for cache coherent memory accesses. This implementation does not
-  // support functional or atomic accesses.
-  class CachePort : public MasterPort {
-   public:
-    CachePort(HybridDatapath* dev)
-        : MasterPort(dev->name() + ".cache_port", dev), datapath(dev) {}
-
-   protected:
-    virtual bool recvTimingResp(PacketPtr pkt);
-    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
-    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
-    virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
-    virtual void recvReqRetry();
-    virtual void recvRespRetry() {}
-    virtual bool isSnooping() const { return true; }
-    HybridDatapath* datapath;
-  };
-
-  class DatapathSenderState : public Packet::SenderState {
-   public:
-    DatapathSenderState(unsigned _node_id, bool _is_ctrl_signal = false)
-        : node_id(_node_id), is_ctrl_signal(_is_ctrl_signal) {}
-
-    /* Aladdin node that triggered the memory access. */
-    unsigned node_id;
-
-    /* Flag that determines whether a packet received on a data port is a
-     * control signal accessed through memory (which needs to be handled
-     * differently) or an ordinary memory access.
-     */
-    bool is_ctrl_signal;
-  };
-
-  class DmaEvent : public Event {
-   private:
-    HybridDatapath* datapath;
-    /* To track which DMA request is returned. */
-    unsigned dma_node_id;
-
-   public:
-    /** Constructor */
-    DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id);
-    /** Process a dma event */
-    void process();
-    /** Returns the description of the tick event. */
-    const char* description() const;
-    unsigned get_node_id() { return dma_node_id; }
-  };
 
   /* Stores status information about memory nodes currently in flight.
    *
@@ -324,6 +371,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   CachePort cachePort;
   MasterID cacheMasterId;
 
+  // ACP port to the system's L2 cache.
+  AcpPort acpPort;
+  MasterID acpMasterId;
+
   // Tracks outstanding cache access nodes.
   MemoryQueue cache_queue;
 
@@ -345,9 +396,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Although Aladdin will print this anyways, registering the stat will make
   // it show up in stats.txt.
   Stats::Scalar acc_sim_cycles;
-
-  // True if the cache's MSHRs are full.
-  bool isCacheBlocked;
 
   // If True, this exits the sim loop at the end of each accelerator
   // invocation so that stats can be dumped. The simulation script will
@@ -376,9 +424,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Accelerator TLB implementation.
   AladdinTLB dtb;
-
-  // Retry packet for cache accesses.
-  PacketPtr retryPkt;
 
   // If true, then successive DMA nodes are pipelined to overlap transferring
   // data of one DMA transaction with the setup latency of the next. If false,

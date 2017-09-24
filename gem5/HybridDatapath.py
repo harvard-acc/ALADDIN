@@ -60,9 +60,12 @@ class HybridDatapath(MemObject):
       False, "Dump m5 stats after each accelerator invocation.")
   recordMemoryTrace = Param.Bool(
       False, "Record memory traffic going to/from the accelerator.")
+  enableAcp = Param.Bool(
+      False, "Connect the datapath's ACP port to the system L2.")
 
   spad_port = MasterPort("HybridDatapath DMA port")
   cache_port = MasterPort("HybridDatapath cache coherent port")
+  acp_port = MasterPort("HybridDatapath ACP port")
 
   # HACK: We don't have a scratchpad object. Currently we just connect the
   # scratchpad port inside datapath directly to the memory bus.
@@ -82,7 +85,7 @@ class HybridDatapath(MemObject):
     else:
       self.spad_port = bus.slave
 
-  def addPrivateL1Dcache(self, system, bus, dwc = None) :
+  def addPrivateL1Dcache(self, system, bus, dwc = None):
     self.cache_port = self.cache.cpu_side
 
     if self.recordMemoryTrace:
@@ -90,3 +93,6 @@ class HybridDatapath(MemObject):
       self.connectThroughMonitor(monitor_name, self.cache.mem_side, bus.slave)
     else:
       self.cache.mem_side = bus.slave
+
+  def connectAcpPort(self, tol2bus):
+    self.acp_port = tol2bus.slave

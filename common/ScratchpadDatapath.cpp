@@ -118,7 +118,7 @@ void ScratchpadDatapath::scratchpadPartition() {
        ++part_it) {
     PartitionType p_type = part_it->second.partition_type;
     MemoryType m_type = part_it->second.memory_type;
-    if (p_type == complete || m_type == cache)
+    if (p_type == complete || m_type == cache || m_type == acp)
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
@@ -149,8 +149,8 @@ void ScratchpadDatapath::scratchpadPartition() {
     if (part_it != partition_config.end()) {
       PartitionType p_type = part_it->second.partition_type;
       MemoryType m_type = part_it->second.memory_type;
-      /* continue if it's complete partition or cache*/
-      if (p_type == complete || m_type == cache)
+      /* continue if it's complete partition, cache, or acp. */
+      if (p_type == complete || m_type == cache || m_type == acp)
         continue;
       assert(p_type == block || p_type == cyclic);
 
