@@ -19,7 +19,7 @@ class StandaloneAesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3466)
+    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3227)
 
   def runTest(self):
     self.runAndValidate()
@@ -38,7 +38,7 @@ class AesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 10181)
+    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9875)
 
   def runTest(self):
     self.runAndValidate()
@@ -134,7 +134,7 @@ class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_array_func_arg_datapath.sim_cycles", 827)
+    self.addExpectedStatResult("system.test_array_func_arg_datapath.sim_cycles", 723)
 
   def runTest(self):
     self.runAndValidate()
@@ -150,7 +150,7 @@ class MultipleInvocationsTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_multiple_invocations_datapath.sim_cycles", 1456)
+    self.addExpectedStatResult("system.test_multiple_invocations_datapath.sim_cycles", 1781)
 
   def runTest(self):
     self.runAndValidate()
