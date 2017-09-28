@@ -107,10 +107,9 @@ HybridDatapath::~HybridDatapath() {
     system->deregisterAccelerator(accelerator_id);
 }
 
-void HybridDatapath::clearDatapath(bool flush_tlb) {
+void HybridDatapath::clearDatapath() {
   ScratchpadDatapath::clearDatapath();
-  dtb.resetCounters();
-  resetCounters(flush_tlb);
+  dtb.clear();
 }
 
 void HybridDatapath::resetCounters() {
@@ -119,13 +118,13 @@ void HybridDatapath::resetCounters() {
   acp_loads = 0;
   acp_stores = 0;
   dma_setup_cycles = 0;
-  if (flush_tlb)
-    dtb.clear();
+  dtb.resetCounters();
 }
 
-void HybridDatapath::clearDatapath() { clearDatapath(false); }
-
 void HybridDatapath::initializeDatapath(int delay) {
+  // Don't reset stats - the user can reset them manually through the CPU
+  // interface or by setting the --enable-stats-dump flag.
+  ScratchpadDatapath::clearDatapath();
   bool dddg_built = buildDddg();
   if (!dddg_built) {
     exitSimulation();
@@ -139,8 +138,6 @@ void HybridDatapath::initializeDatapath(int delay) {
   startDatapathScheduling(delay);
   if (ready_mode)
     scratchpad->resetReadyBits();
-  dtb.resetCounters();
-  resetCounters(false);
 }
 
 void HybridDatapath::startDatapathScheduling(int delay) {
@@ -335,7 +332,7 @@ bool HybridDatapath::step() {
 
       // In case there are more invocations to run, we will immediately
       // reschedule for initialization.
-      clearDatapath(false);
+      clearDatapath();
       schedule(reinitializeEvent, clockEdge(Cycles(1)));
     } else {
       exitSimulation();
@@ -357,11 +354,13 @@ void HybridDatapath::exitSimulation() {
       exitSimLoop(exit_reason);
     }
     sendFinishedSignal();
-    // clearDatapath(false);
+    // Don't clear the datapath right now, since that will destroy stats. Delay
+    // clearing the datapath until it gets reinitialized on the next
+    // invocation.
   }
 }
 
-HybridDatapath::MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
+MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
   if (node->is_dma_op())
     return Dma;
 
@@ -501,6 +500,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
             "cache queue is full.\n",
             node_id);
     return false;
+  } else {
+    entry->type = Cache;
   }
 
   // At this point, we have a valid entry.
@@ -598,7 +599,10 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
             "cache queue is full.\n",
             node_id);
     return false;
+  } else {
+    entry->type = ACP;
   }
+
   if (entry->status == Invalid)
     entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
 

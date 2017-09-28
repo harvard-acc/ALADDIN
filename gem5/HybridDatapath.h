@@ -37,11 +37,16 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Build, optimize, register and prepare datapath for scheduling.
   virtual void initializeDatapath(int delay = 1);
+
+  // Deletes all datapath state, including the TLB, but does not reset stats.
+  virtual void clearDatapath();
+
+  // Resets all stats.
+  // NOTE: This is usually done through the Python configuration scripts.
+  void resetCounters();
+
   // Start scheduling datapath
   void startDatapathScheduling(int delay = 1);
-  virtual void clearDatapath();
-  void resetCounters(bool flush_tlb);
-  void clearDatapath(bool flush_tlb);
 
   virtual MasterPort& getDataPort() {
     return spadPort;
@@ -239,16 +244,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     unsigned get_node_id() { return dma_node_id; }
   };
 
-  /* All possible types of memory operations supported by Aladdin. */
-  enum MemoryOpType {
-    Register,
-    Scratchpad,
-    Cache,
-    Dma,
-    ACP,
-    NumMemoryOpTypes,
-  };
-
   /* Error codes for attempts to issue a packet. */
   enum IssueResult {
     Accepted,       // Packet was accepted.
@@ -322,7 +317,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   void retireReturnedMemQEntries();
 
   // Wrapper for initializeDatapath() to match EventWrapper interface.
-  void reinitializeDatapath() { initializeDatapath(1); }
+  //
+  // This is only used in standalone mode (when the datapath must reinitialize
+  // itself instead of waiting for the CPU to invoke it again).
+  void reinitializeDatapath() {
+    ScratchpadDatapath::clearDatapath();
+    initializeDatapath(1);
+  }
 
   // DMA access functions.
   void delayedDmaIssue();  // Used to postpone a call to issueDmaRequest().

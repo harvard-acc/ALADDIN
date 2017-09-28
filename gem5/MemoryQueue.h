@@ -23,13 +23,25 @@ enum MemAccessStatus {
   Returned
 };
 
+/* All possible types of memory operations supported by Aladdin. */
+enum MemoryOpType {
+  Register,
+  Scratchpad,
+  Cache,
+  Dma,
+  ACP,
+  NumMemoryOpTypes,
+};
+
 class MemoryQueueEntry {
  public:
   MemoryQueueEntry() {
     status = Invalid;
     paddr = 0x0;
+    type = NumMemoryOpTypes;
   }
 
+  MemoryOpType type;
   MemAccessStatus status;  // Current status of the request.
   Addr paddr;              // Physical address, returned by the TLB.
 };
