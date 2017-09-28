@@ -113,9 +113,11 @@ void HybridDatapath::clearDatapath(bool flush_tlb) {
   resetCounters(flush_tlb);
 }
 
-void HybridDatapath::resetCounters(bool flush_tlb) {
-  loads = 0;
-  stores = 0;
+void HybridDatapath::resetCounters() {
+  dcache_loads = 0;
+  dcache_stores = 0;
+  acp_loads = 0;
+  acp_stores = 0;
   dma_setup_cycles = 0;
   if (flush_tlb)
     dtb.clear();
@@ -1031,9 +1033,19 @@ void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
             "setting %s cache queue entry for vaddr %#x to Returned.\n",
             isLoad ? "load" : "store",
             vaddr);
-    // TODO: This should not increment for ACP accesses.
-    Stats::Scalar& mem_stat = isLoad ? loads : stores;
-    mem_stat++;
+    Stats::Scalar* mem_stat;
+    switch (entry->type) {
+      case Cache:
+        mem_stat = isLoad ? &dcache_loads : &dcache_stores;
+        break;
+      case ACP:
+        mem_stat = isLoad ? &acp_loads : &acp_stores;
+        break;
+      default:
+        panic("Unexpected memory operation type trying to update the cacne "
+              "queue!");
+    }
+    (*mem_stat)++;
   } else if (entry->status == WaitingForOwnership) {
     entry->status = ReadyToIssue;
     DPRINTF(HybridDatapath,
@@ -1141,11 +1153,17 @@ void HybridDatapath::resetCacheCounters() {
 void HybridDatapath::regStats() {
   using namespace Stats;
   DPRINTF(HybridDatapath, "Registering stats.\n");
-  loads.name("system." + datapath_name + ".total_loads")
+  dcache_loads.name("system." + datapath_name + ".total_dcache_loads")
       .desc("Total number of dcache loads")
       .flags(total | nonan);
-  stores.name("system." + datapath_name + ".total_stores")
+  dcache_stores.name("system." + datapath_name + ".total_dcache_stores")
       .desc("Total number of dcache stores.")
+      .flags(total | nonan);
+  acp_loads.name("system." + datapath_name + ".total_acp_loads")
+      .desc("Total number of ACP loads")
+      .flags(total | nonan);
+  acp_stores.name("system." + datapath_name + ".total_acp_stores")
+      .desc("Total number of ACP stores.")
       .flags(total | nonan);
   dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
       .desc("Total number of cycles spent on setting up DMA transfers.")
@@ -1234,9 +1252,9 @@ void HybridDatapath::getAverageCachePower(unsigned int cycles,
   float avg_cache_pwr, avg_cache_leak, avg_cache_ac_pwr;
   float avg_tlb_pwr, avg_tlb_leak, avg_tlb_ac_pwr;
 
-  avg_cache_ac_pwr =
-      (loads.value() * cache_readEnergy + stores.value() * cache_writeEnergy) /
-      (cycles * cycleTime);
+  avg_cache_ac_pwr = (dcache_loads.value() * cache_readEnergy +
+                      dcache_stores.value() * cache_writeEnergy) /
+                     (cycles * cycleTime);
   avg_cache_leak = cache_leakagePower;
   avg_cache_pwr = avg_cache_ac_pwr + avg_cache_leak;
 

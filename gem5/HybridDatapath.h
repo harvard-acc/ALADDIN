@@ -429,8 +429,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    * track total loads and stores, regardless of whether they hit or miss.
    * Simulations confirm that they agree with GEM5's cache stats.
    */
-  Stats::Scalar loads;
-  Stats::Scalar stores;
+  Stats::Scalar dcache_loads;
+  Stats::Scalar dcache_stores;
+
+  // Number of loads and stores issued by ACP.
+  Stats::Scalar acp_loads;
+  Stats::Scalar acp_stores;
 
   // Total cycles spent on DMA setup.
   Stats::Scalar dma_setup_cycles;
