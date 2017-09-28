@@ -36,10 +36,13 @@ class MemoryQueueEntry {
 
 class MemoryQueue {
  public:
-  MemoryQueue(int _size, int _bandwidth, std::string _cacti_config)
+  MemoryQueue(int _size,
+              int _bandwidth,
+              int _cache_line_size,
+              std::string _cacti_config)
       : issuedThisCycle(0), size(_size), bandwidth(_bandwidth),
-        cacti_config(_cacti_config), readEnergy(0), writeEnergy(0),
-        leakagePower(0), area(0) {}
+        cache_line_size(_cache_line_size), cacti_config(_cacti_config),
+        readEnergy(0), writeEnergy(0), leakagePower(0), area(0) {}
 
   void initStats(std::string _name) {
     name = _name;
@@ -66,21 +69,18 @@ class MemoryQueue {
     return false;
   }
 
-  MemoryQueueEntry* findMatch(Addr vaddr) {
-    if (ops.find(vaddr) != ops.end())
-      return ops[vaddr];
-    return nullptr;
+  MemoryQueueEntry* findMatch(Addr vaddr, bool merge) {
+    vaddr = merge ? toCacheLineAddr(vaddr) : vaddr;
+    return findMatch(vaddr);
   }
 
-  MemoryQueueEntry* allocateEntry(Addr vaddr) {
-    if (!isFull()) {
-      ops[vaddr] = new MemoryQueueEntry();
-      return ops[vaddr];
-    }
-    return nullptr;
+  MemoryQueueEntry* allocateEntry(Addr vaddr, bool merge) {
+    vaddr = merge ? toCacheLineAddr(vaddr) : vaddr;
+    return allocateEntry(vaddr);
   }
 
-  void deallocateEntry(Addr vaddr) {
+  void deallocateEntry(Addr vaddr, bool merge) {
+    vaddr = merge ? toCacheLineAddr(vaddr) : vaddr;
     remove(vaddr);
   }
 
@@ -157,13 +157,29 @@ class MemoryQueue {
     std::cout << std::dec;
   }
 
-  Stats::Scalar readStats;
-  Stats::Scalar writeStats;
-  size_t issuedThisCycle;  // Requests issued in the current cycle.
+ protected:
+  MemoryQueueEntry* findMatch(Addr vaddr) {
+    if (ops.find(vaddr) != ops.end())
+      return ops[vaddr];
+    return nullptr;
+  }
+
+  MemoryQueueEntry* allocateEntry(Addr vaddr) {
+    if (!isFull()) {
+      ops[vaddr] = new MemoryQueueEntry();
+      return ops[vaddr];
+    }
+    return nullptr;
+  }
+
+  Addr toCacheLineAddr(Addr addr) {
+    return (addr / cache_line_size) * cache_line_size;
+  }
 
  private:
   const int size;         // Size of the queue.
   const int bandwidth;    // Max requests per cycle.
+  const int cache_line_size;
   const std::string cacti_config;  // CACTI config file.
   std::string name;  // Specifies whether this is a load or store queue.
 
@@ -171,6 +187,10 @@ class MemoryQueue {
   float writeEnergy;
   float leakagePower;
   float area;
+
+  Stats::Scalar readStats;
+  Stats::Scalar writeStats;
+  size_t issuedThisCycle;  // Requests issued in the current cycle.
 
   // Maps address to the associated memory operation status.
   std::map<Addr, MemoryQueueEntry*> ops;

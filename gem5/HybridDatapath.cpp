@@ -51,9 +51,10 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
       acpMasterId(params->system->getMasterId(name() + ".acp")),
       cache_queue(params->cacheQueueSize,
                   params->cacheBandwidth,
+                  system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
       enable_stats_dump(params->enableStatsDump), cacheSize(params->cacheSize),
-      cacti_cfg(params->cactiCacheConfig), cacheLineSize(params->cacheLineSize),
+      cacti_cfg(params->cactiCacheConfig), cacheLineSize(system->cacheLineSize()),
       cacheHitLatency(params->cacheHitLatency), cacheAssoc(params->cacheAssoc),
       cache_readEnergy(0), cache_writeEnergy(0), cache_leakagePower(0),
       cache_area(0), dtb(this,
@@ -489,10 +490,9 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
 
-  Addr aligned_vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
-  MemoryQueueEntry* entry = cache_queue.findMatch(aligned_vaddr);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   if (!entry)
-    entry = cache_queue.allocateEntry(aligned_vaddr);
+    entry = cache_queue.allocateEntry(vaddr, isLoad);
   if (!entry) {
     DPRINTF(HybridDatapathVerbose,
             "Unable to service new cache request for node %d: "
@@ -580,18 +580,15 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
 
   // For loads: we don't need to ask for ownership at all. Instead, we collapse
   // simultaneous requests to the same cache line (aka an MSHR).
-  // TODO: Make this optimization centralized (in the MemoryQueue?) - right now
-  // we have to handle it independently everywhere, which is a huge pain.
   //
   // For stores: we issue separate ownership requests for each request.
   // TODO: Add an optimization pass to merge consecutive stores to the same
   // cache line, as long as none of them cross cache line boundaries.
   // TODO: ACP is only supposed to accept 2 different transaction sizes (16
   // bytes and 64 bytes), not arbitrary burst lengths.
-  Addr aligned_vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
-  MemoryQueueEntry* entry = cache_queue.findMatch(aligned_vaddr);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   if (!entry)
-    entry = cache_queue.allocateEntry(aligned_vaddr);
+    entry = cache_queue.allocateEntry(vaddr, isLoad);
   if (!entry) {
     DPRINTF(HybridDatapathVerbose,
             "Unable to service new ACP request for node %d: "
@@ -854,8 +851,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
   unsigned node_id = state->node_id;
   ExecNode* node = exec_nodes.at(node_id);
   bool isLoad = node->is_load_op();
-  vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
-  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(!entry || entry->status != Translating,
            "Unable to find matching cache queue entry!");
 
@@ -1003,8 +999,6 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
 }
 
 // TODO: Refactor this so that we have to do less work to get the vaddr!
-// TODO: Remove the node that issued the request from the list of matching
-// nodes. A cache entry can only be retired when all nodes have been removed.
 void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
@@ -1015,10 +1009,9 @@ void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
           pkt->print());
 
   bool isLoad = (pkt->cmd == MemCmd::ReadResp);
-  vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
-  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(!entry, "Did not find a cache queue entry for vaddr %#x\n", vaddr);
   if (entry->status == WaitingFromCache) {
     entry->status = Returned;
@@ -1044,13 +1037,11 @@ void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
   MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
   Addr vaddr = mem_access->vaddr;
 
-  // TODO: Ugh, another issue with mixing trace and simulation addresses.
   // If we receive a ReadExReq or ReadExReq, that means that the trace vaddr
   // associated with the request was for a STORE, and stores do not (currently)
   // get merged into a single cache queue entry.
-  if (pkt->cmd == MemCmd::ReadReq || pkt->cmd == MemCmd::ReadResp)
-    vaddr = toCacheLineAddr(vaddr);
-  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  bool isLoad = pkt->cmd == MemCmd::ReadReq || pkt->cmd == MemCmd::ReadResp;
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(entry->status != Retry,
            "%s called with packet %s, which is not in retry!\n", __func__,
            pkt->print());
