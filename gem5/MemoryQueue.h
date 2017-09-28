@@ -23,14 +23,15 @@ enum MemAccessStatus {
   Returned
 };
 
-struct MemoryQueueEntry {
-  MemAccessStatus status;  // Current status of the request.
-  Addr paddr;              // Physical address, returned by the TLB.
-
+class MemoryQueueEntry {
+ public:
   MemoryQueueEntry() {
     status = Invalid;
     paddr = 0x0;
   }
+
+  MemAccessStatus status;  // Current status of the request.
+  Addr paddr;              // Physical address, returned by the TLB.
 };
 
 class MemoryQueue {
@@ -59,24 +60,33 @@ class MemoryQueue {
 
   bool insert(Addr vaddr) {
     if (!isFull() && !contains(vaddr)) {
-      ops[vaddr] = MemoryQueueEntry();
+      ops[vaddr] = new MemoryQueueEntry();
       return true;
     }
     return false;
   }
 
-  void remove(Addr vaddr) { ops.erase(vaddr); }
-
-  void setStatus(Addr vaddr, MemAccessStatus status) {
-    assert(contains(vaddr));
-    ops[vaddr].status = status;
+  MemoryQueueEntry* findMatch(Addr vaddr) {
+    if (ops.find(vaddr) != ops.end())
+      return ops[vaddr];
+    return nullptr;
   }
 
-  MemAccessStatus getStatus(Addr vaddr) { return ops[vaddr].status; }
+  MemoryQueueEntry* allocateEntry(Addr vaddr) {
+    if (!isFull()) {
+      ops[vaddr] = new MemoryQueueEntry();
+      return ops[vaddr];
+    }
+    return nullptr;
+  }
 
-  void setPhysicalAddress(Addr vaddr, Addr paddr) {
-    assert(contains(vaddr));
-    ops[vaddr].paddr = paddr;
+  void deallocateEntry(Addr vaddr) {
+    remove(vaddr);
+  }
+
+  void remove(Addr vaddr) {
+    delete ops[vaddr];
+    ops.erase(vaddr);
   }
 
   void incrementIssuedThisCycle() {
@@ -93,7 +103,8 @@ class MemoryQueue {
    */
   void retireReturnedEntries() {
     for (auto it = ops.begin(); it != ops.end(); /* no increment */) {
-      if (it->second.status == Returned)
+      MemoryQueueEntry* entry = it->second;
+      if (entry->status == Returned)
         ops.erase(it++);  // Must be post-increment!
       else
         ++it;
@@ -141,7 +152,7 @@ class MemoryQueue {
   void printContents() {
     std::cout << std::hex;
     for (auto it = ops.begin(); it != ops.end(); it++) {
-      std::cout << "0x" << it->first << ": " << it->second.status << "\n";
+      std::cout << "0x" << it->first << ": " << it->second->status << "\n";
     }
     std::cout << std::dec;
   }
@@ -162,7 +173,7 @@ class MemoryQueue {
   float area;
 
   // Maps address to the associated memory operation status.
-  std::map<Addr, MemoryQueueEntry> ops;
+  std::map<Addr, MemoryQueueEntry*> ops;
 };
 
 #endif

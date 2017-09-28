@@ -136,6 +136,8 @@ void HybridDatapath::initializeDatapath(int delay) {
   startDatapathScheduling(delay);
   if (ready_mode)
     scratchpad->resetReadyBits();
+  dtb.resetCounters();
+  resetCounters(false);
 }
 
 void HybridDatapath::startDatapathScheduling(int delay) {
@@ -352,7 +354,7 @@ void HybridDatapath::exitSimulation() {
       exitSimLoop(exit_reason);
     }
     sendFinishedSignal();
-    clearDatapath(false);
+    // clearDatapath(false);
   }
 }
 
@@ -466,9 +468,16 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
-  MemAccessStatus inflight_mem_op = Invalid;
-  MemAccess* mem_access = node->get_mem_access();
   unsigned node_id = node->get_node_id();
+  if (!cache_queue.canIssue()) {
+    DPRINTF(HybridDatapathVerbose,
+            "Unable to service cache request for node %d: "
+            "out of cache queue bandwidth.\n",
+            node_id);
+    return false;
+  }
+
+  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
   bool isLoad = node->is_load_op();
 
   // If Aladdin is executing standalone, then the actual addresses that are
@@ -480,36 +489,27 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
 
-  if (cache_queue.contains(vaddr))
-    inflight_mem_op = cache_queue.getStatus(vaddr);
+  Addr aligned_vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
+  MemoryQueueEntry* entry = cache_queue.findMatch(aligned_vaddr);
+  if (!entry)
+    entry = cache_queue.allocateEntry(aligned_vaddr);
+  if (!entry) {
+    DPRINTF(HybridDatapathVerbose,
+            "Unable to service new cache request for node %d: "
+            "cache queue is full.\n",
+            node_id);
+    return false;
+  }
 
-  Stats::Scalar& mem_stat = isLoad ? loads : stores;
-  if (inflight_mem_op == Invalid || inflight_mem_op == Retry) {
-    // This is either the first time we're seeing this node (Invalid), or we
-    // are retrying this node after a TLB miss. We'll enqueue it - if it
-    // already exists in the cache_queue, a duplicate won't be added.
-    if (inflight_mem_op == Invalid && cache_queue.isFull()) {
-      DPRINTF(HybridDatapathVerbose,
-              "Unable to service new cache request for %#x: "
-              "cache queue is full.\n", vaddr);
-      return false;
-    }
-    if (!cache_queue.canIssue()) {
-      DPRINTF(HybridDatapathVerbose,
-              "Unable to service cache request for %#x: "
-              "out of cache queue bandwidth.\n", vaddr);
-      return false;
-    }
+  // At this point, we have a valid entry.
 
-    if (cache_queue.insert(vaddr))
-      mem_stat++;
-
+  if (entry->status == Invalid || entry->status == Retry) {
     int size = mem_access->size;
     if (dtb.canRequestTranslation() &&
         issueTLBRequestTiming(vaddr, size, isLoad, node_id)) {
       markNodeStarted(node);
       dtb.incrementRequestCounter();
-      cache_queue.setStatus(vaddr, Translating);
+      entry->status = Translating;
       DPRINTF(HybridDatapath,
               "node:%d, vaddr = %x, is translating\n",
               node_id,
@@ -519,30 +519,33 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
               node->get_node_id());
     }
     return false;
-  } else if (inflight_mem_op == Translated) {
+  } else if (entry->status == Translated) {
     Addr paddr = mem_access->paddr;
     int size = mem_access->size;
     uint64_t value = mem_access->value;
 
-    if (issueCacheRequest(paddr, size, isLoad, node_id, value)) {
-      cache_queue.setStatus(vaddr, WaitingFromCache);
+    IssueResult result = issueCacheRequest(paddr, size, isLoad, node_id, value);
+    if (result == Accepted) {
+      entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
       DPRINTF(HybridDatapath,
               "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
               node_id,
               vaddr,
               paddr);
+    } else if (result == WillRetry) {
+      entry->status = Retry;
     }
     return false;
-  } else if (inflight_mem_op == Returned) {
+  } else if (entry->status == Returned) {
     // Memory ops that have returned will be freed at the end of the cycle.
     return true;
-  } else if (inflight_mem_op == Translating) {
+  } else if (entry->status == Translating) {
     DPRINTF(HybridDatapathVerbose,
             "Node %d is still waiting for TLB response.\n",
             node->get_node_id());
     return false;
-  } else if (inflight_mem_op == WaitingFromCache) {
+  } else if (entry->status == WaitingFromCache) {
     DPRINTF(HybridDatapathVerbose,
             "Node %d is still waiting for cache response.\n",
             node->get_node_id());
@@ -553,84 +556,111 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
-  MemAccessStatus inflight_mem_op = Invalid;
-  MemAccess* mem_access = node->get_mem_access();
   unsigned node_id = node->get_node_id();
+  if (!cache_queue.canIssue()) {
+    DPRINTF(HybridDatapathVerbose, "Unable to service ACP request for node %d: "
+                                   "out of cache queue bandwidth.\n",
+            node_id);
+    return false;
+  }
+
+  MemAccess* mem_access = node->get_mem_access();
   bool isLoad = node->is_load_op();
 
+  // TODO: Use the simulation virtual address. This is the TRACE address, so if
+  // we are going to compute aligned addresses, then the trace needs to be
+  // generated with aligned addresses too. That's probably not an onerous
+  // requirement, but we should not depend on the trace address for anything
+  // performance related.
   Addr vaddr = mem_access->vaddr;
   uint64_t value = mem_access->value;
   int size = mem_access->size;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
 
-  // TODO: We need to collapse multiple ownership requests into a single
-  // request (with an MSHR-like structure) and allow ACP requests to hit in
-  // this structure under limited circumstances.
-  Addr aligned_vaddr = vaddr;
-
-  if (!cache_queue.contains(aligned_vaddr)) {
-    if (cache_queue.isFull()) {
-      DPRINTF(HybridDatapathVerbose,
-              "Unable to service new ACP request for %#x: "
-              "cache queue is full.\n", vaddr);
-      return false;
-    }
-    if (!cache_queue.canIssue()) {
-      DPRINTF(HybridDatapathVerbose,
-              "Unable to service ACP request for %#x: "
-              "out of cache queue bandwidth.\n", vaddr);
-      return false;
-    }
-
-    cache_queue.insert(aligned_vaddr);
-
-    if (isLoad) {
-      cache_queue.setStatus(aligned_vaddr, ReadyToIssue);
-    } else {
-      cache_queue.setStatus(aligned_vaddr, ReadyToRequestOwnership);
-    }
+  // For loads: we don't need to ask for ownership at all. Instead, we collapse
+  // simultaneous requests to the same cache line (aka an MSHR).
+  // TODO: Make this optimization centralized (in the MemoryQueue?) - right now
+  // we have to handle it independently everywhere, which is a huge pain.
+  //
+  // For stores: we issue separate ownership requests for each request.
+  // TODO: Add an optimization pass to merge consecutive stores to the same
+  // cache line, as long as none of them cross cache line boundaries.
+  // TODO: ACP is only supposed to accept 2 different transaction sizes (16
+  // bytes and 64 bytes), not arbitrary burst lengths.
+  Addr aligned_vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
+  MemoryQueueEntry* entry = cache_queue.findMatch(aligned_vaddr);
+  if (!entry)
+    entry = cache_queue.allocateEntry(aligned_vaddr);
+  if (!entry) {
+    DPRINTF(HybridDatapathVerbose,
+            "Unable to service new ACP request for node %d: "
+            "cache queue is full.\n",
+            node_id);
+    return false;
   }
+  if (entry->status == Invalid)
+    entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
 
-  // ACP works with physical addresses, which the trace cannot possibly have,
-  // so to model this faithfully, we perform the address translation in zero
-  // time.
   if (mem_access->paddr == 0) {
+    // ACP works with physical addresses, which the trace cannot possibly have,
+    // so to model this faithfully, we perform the address translation in zero
+    // time. Make sure we use the original virtual address.
+    // TODO: Don't set the mem access data inside this function - instead, just
+    // return the translation.
     issueTLBRequestInvisibly(vaddr, size, isLoad, node_id);
     markNodeStarted(node);
   }
-  inflight_mem_op = cache_queue.getStatus(aligned_vaddr);
-  Addr paddr = mem_access->paddr;
 
-  if (inflight_mem_op == ReadyToRequestOwnership) {
-    if (issueOwnershipRequest(paddr, size, node_id)) {
-      cache_queue.setStatus(aligned_vaddr, WaitingForOwnership);
+  // TODO: Either eliminate the paddr field in MemoryQueueEntry or the
+  // the paddr field in MemAccess.
+  Addr paddr = mem_access->paddr;
+  if (entry->status == ReadyToRequestOwnership) {
+    IssueResult result = issueOwnershipRequest(paddr, size, node_id);
+    if (result == Accepted) {
+      entry->status = WaitingForOwnership;
+      cache_queue.incrementIssuedThisCycle();
       DPRINTF(HybridDatapath, "node:%d, vaddr = 0x%x, paddr = 0x%x is waiting "
                               "to acquire ownership\n",
               node_id, vaddr, paddr);
+    } else if (result == WillRetry) {
+      // The port will retry the packet.
+      entry->status = Retry;
+    } else {
+      // The datapath will do the retry, so nothing needs to be done.
     }
     return false;
-  } else if (inflight_mem_op == ReadyToIssue) {
-    if (issueAcpRequest(paddr, size, isLoad, node_id, value)) {
-      cache_queue.setStatus(aligned_vaddr, WaitingFromCache);
+  } else if (entry->status == ReadyToIssue) {
+    IssueResult result = issueAcpRequest(paddr, size, isLoad, node_id, value);
+    if (result == Accepted) {
+      entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
       DPRINTF(
           HybridDatapath,
           "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache via ACP\n",
           node_id, vaddr, paddr);
+    } else if (result == WillRetry) {
+      entry->status = Retry;
     }
     return false;
-  } else if (inflight_mem_op == Returned) {
-    // Memory ops that have returned will be freed at the end of the cycle.
-    return true;
-  } else if (inflight_mem_op == WaitingFromCache) {
+  } else if (entry->status == WaitingFromCache) {
     DPRINTF(HybridDatapathVerbose,
             "Node %d is still waiting for L2 cache response.\n",
-            node->get_node_id());
+            node_id);
     return false;
-  } else if (inflight_mem_op == WaitingForOwnership) {
-    // cache_queue.setStatus(aligned_vaddr, ReadyToIssue);
+  } else if (entry->status == WaitingForOwnership) {
+    DPRINTF(HybridDatapathVerbose,
+            "Node %d is still waiting to acquire ownership.\n",
+            node_id);
     return false;
+  } else if (entry->status == Retry) {
+    DPRINTF(HybridDatapathVerbose,
+            "Node %d is waiting to be retried.\n",
+            node_id);
+    return false;
+  } else if (entry->status == Returned) {
+    // Memory ops that have returned will be freed at the end of the cycle.
+    return true;
   } else {
     panic("Invalid memory status for ACP operation.");
   }
@@ -730,19 +760,19 @@ void HybridDatapath::sendFinishedSignal() {
 
 void HybridDatapath::CachePort::recvReqRetry() {
   assert(inRetry());
+  assert(retryPkt->isRequest());
   DPRINTF(HybridDatapath, "recvReqRetry for paddr: %#x \n", retryPkt->getAddr());
   if (sendTimingReq(retryPkt)) {
     DPRINTF(HybridDatapathVerbose, "Retry pass!\n");
-    retryPkt = nullptr;
+    datapath->updateCacheRequestStatusOnRetry(retryPkt);
+    clearRetryPkt();
   } else {
     DPRINTF(HybridDatapathVerbose, "Still blocked!\n");
   }
 }
 
 bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
-  DPRINTF(HybridDatapath,
-          "recvTimingResp for address: %#x %s\n",
-          pkt->getAddr(),
+  DPRINTF(HybridDatapath, "%s: for address: %#x %s\n", __func__, pkt->getAddr(),
           pkt->cmdString());
   if (pkt->isError()) {
     DPRINTF(HybridDatapath,
@@ -752,22 +782,23 @@ bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
   if (!state->is_ctrl_signal) {
-    datapath->completeCacheRequest(pkt);
+    datapath->updateCacheRequestStatusOnResp(pkt);
   } else {
     DPRINTF(HybridDatapath,
             "recvTimingResp for control signal access: %#x\n",
             pkt->getAddr());
-    delete state;
-    delete pkt->req;
-    delete pkt;
   }
+  delete state;
+  delete pkt->req;
+  delete pkt;
+
   return true;
 }
 
 bool HybridDatapath::issueTLBRequestTiming(
-    Addr addr, unsigned size, bool isLoad, unsigned node_id) {
-  DPRINTF(HybridDatapath, "issueTLBRequestTiming for trace addr:%#x\n", addr);
-  PacketPtr data_pkt = createTLBRequestPacket(addr, size, isLoad, node_id);
+    Addr trace_addr, unsigned size, bool isLoad, unsigned node_id) {
+  DPRINTF(HybridDatapath, "%s for trace addr:%#x\n", __func__, trace_addr);
+  PacketPtr data_pkt = createTLBRequestPacket(trace_addr, size, isLoad, node_id);
 
   // TLB access
   if (dtb.translateTiming(data_pkt))
@@ -790,11 +821,11 @@ bool HybridDatapath::issueTLBRequestInvisibly(
 }
 
 PacketPtr HybridDatapath::createTLBRequestPacket(
-    Addr addr, unsigned size, bool isLoad, unsigned node_id) {
+    Addr trace_addr, unsigned size, bool isLoad, unsigned node_id) {
   Request* req = NULL;
   Flags<Packet::FlagsType> flags = 0;
   // Constructor for physical request only
-  req = new Request(addr, size, flags, getCacheMasterId());
+  req = new Request(trace_addr, size, flags, getCacheMasterId());
 
   MemCmd command;
   if (isLoad)
@@ -816,28 +847,32 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
   AladdinTLB::TLBSenderState* state =
       dynamic_cast<AladdinTLB::TLBSenderState*>(pkt->senderState);
   DPRINTF(HybridDatapath,
-          "completeTLBRequest for paddr:%#x %s\n",
+          "completeTLBRequest for paddr: %#x %s\n",
           pkt->getAddr(),
           pkt->cmdString());
-  Addr vaddr = pkt->getAddr();
+  Addr vaddr = pkt->getAddr();  // The trace address.
   unsigned node_id = state->node_id;
   ExecNode* node = exec_nodes.at(node_id);
-  assert(cache_queue.contains(vaddr) && cache_queue.getStatus(vaddr) == Translating);
+  bool isLoad = node->is_load_op();
+  vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  panic_if(!entry || entry->status != Translating,
+           "Unable to find matching cache queue entry!");
 
   /* If the TLB missed, we need to retry the complete instruction, as the dcache
-   * state may have changed during the waiting time, so we go to Retry
+   * state may have changed during the waiting time, so we go to Invalid
    * instead of Translated. The next translation request should hit.
    */
   if (was_miss) {
-    cache_queue.setStatus(vaddr, Retry);
+    entry->status = Invalid;
   } else {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
     Addr paddr = *pkt->getPtr<Addr>();
     MemAccess* mem_access = node->get_mem_access();
     mem_access->paddr = paddr;
-    cache_queue.setStatus(vaddr, Translated);
-    cache_queue.setPhysicalAddress(vaddr, paddr);
+    entry->status = Translated;
+    entry->paddr = paddr;
     DPRINTF(HybridDatapath,
             "node:%d was translated, vaddr = %x, paddr = %x\n",
             node_id,
@@ -849,30 +884,30 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
   delete pkt;
 }
 
-bool HybridDatapath::issueCacheRequest(
+HybridDatapath::IssueResult HybridDatapath::issueCacheRequest(
     Addr paddr, unsigned size, bool isLoad, unsigned node_id, uint64_t value) {
-  DPRINTF(HybridDatapath, "issueCacheRequest for paddr:%#x\n", paddr);
   return issueCacheOrAcpRequest(Cache, paddr, size, isLoad, node_id, value);
 }
 
-bool HybridDatapath::issueAcpRequest(
+HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(
     Addr paddr, unsigned size, bool isLoad, unsigned node_id, uint64_t value) {
-  DPRINTF(HybridDatapath, "issueAcpRequest for paddr:%#x\n", paddr);
   return issueCacheOrAcpRequest(ACP, paddr, size, isLoad, node_id, value);
 }
 
-bool HybridDatapath::issueCacheOrAcpRequest(MemoryOpType op_type,
-                                            Addr paddr,
-                                            unsigned size,
-                                            bool isLoad,
-                                            unsigned node_id,
-                                            uint64_t value) {
+HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
+    MemoryOpType op_type,
+    Addr paddr,
+    unsigned size,
+    bool isLoad,
+    unsigned node_id,
+    uint64_t value) {
   using namespace SrcTypes;
   CachePort& port = op_type == Cache ? cachePort : acpPort;
 
   if (port.inRetry()) {
-    DPRINTF(HybridDatapathVerbose, "Port is blocked. Will retry.\n");
-    return false;
+    DPRINTF(HybridDatapathVerbose, "%s: %s port in retry.\n",
+            op_type == Cache ? Cache : ACP, __func__);
+    return DidNotAttempt;
   }
 
   MasterID id = op_type == Cache ? getCacheMasterId() : getAcpMasterId();
@@ -901,37 +936,28 @@ bool HybridDatapath::issueCacheOrAcpRequest(MemoryOpType op_type,
   data_pkt->senderState = state;
 
   if (!port.sendTimingReq(data_pkt)) {
-    // blocked, retry
     assert(!port.inRetry());
+    assert(data_pkt->isRequest());
     port.setRetryPkt(data_pkt);
-    DPRINTF(HybridDatapathVerbose, "Port is blocked. Will retry later...\n");
-  } else {
-    if (isLoad)
-      DPRINTF(HybridDatapath,
-              "Node id %d load from paddr %#x issued to cache!\n",
-              node_id, paddr);
-    else {
-      DPRINTF(HybridDatapath, "Node id %d store of value %#x to paddr %#x "
-                              "issued to cache!\n",
-              node_id, value, paddr);
-    }
+    DPRINTF(HybridDatapathVerbose, "%s port is blocked. Will retry node %d.\n",
+            op_type == Cache ? "Cache" : "ACP", node_id);
+    return WillRetry;
   }
-
-  return true;
+  return Accepted;
 }
 
-bool HybridDatapath::issueOwnershipRequest(Addr paddr,
-                                           unsigned size,
-                                           unsigned node_id) {
+HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
+    Addr paddr, unsigned size, unsigned node_id) {
   using namespace SrcTypes;
 
   if (acpPort.inRetry()) {
-    DPRINTF(HybridDatapathVerbose, "Port is blocked. Will retry.\n");
-    return false;
+    DPRINTF(HybridDatapathVerbose, "ACP port is blocked. Will retry node %d.\n",
+            node_id);
+    return DidNotAttempt;
   }
 
   // In order to obtain ownership of a cache line, we need an aligned access.
-  paddr = (paddr / cacheLineSize) * cacheLineSize;
+  paddr = toCacheLineAddr(paddr);
   size = cacheLineSize;
 
   Request* req = NULL;
@@ -967,54 +993,87 @@ bool HybridDatapath::issueOwnershipRequest(Addr paddr,
     assert(!acpPort.inRetry());
     acpPort.setRetryPkt(data_pkt);
     DPRINTF(HybridDatapathVerbose, "ACP is blocked. Will retry later...\n");
-  } else {
-    DPRINTF(HybridDatapath,
-            "Node id %d invalidation of paddr %#x issued to cache.\n",
-            node_id, paddr);
+    return WillRetry;
   }
+  DPRINTF(HybridDatapath,
+          "Node id %d invalidation of paddr %#x issued to cache.\n", node_id,
+          paddr);
 
-  return true;
+  return Accepted;
 }
 
-/* Data that is returned gets written back into the memory queue.
- * Note that due to our trace driven execution framework, we don't actually
- * care about the dynamic data returned by a load. We only care that a store
- * successfully writes the value into the cache.
- */
-void HybridDatapath::completeCacheRequest(PacketPtr pkt) {
+// TODO: Refactor this so that we have to do less work to get the vaddr!
+// TODO: Remove the node that issued the request from the list of matching
+// nodes. A cache entry can only be retired when all nodes have been removed.
+void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
-  Addr paddr = pkt->getAddr();  // Packet address is physical.
-  DPRINTF(HybridDatapath,
-          "completeCacheRequest for node_id %d, paddr:%#x %s\n",
-          node_id,
-          paddr,
-          pkt->cmdString());
-
-  bool isLoad = (pkt->cmd == MemCmd::ReadResp);
   MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
   Addr vaddr = mem_access->vaddr;
-  // vaddr = (vaddr / cacheLineSize) * cacheLineSize;
+  DPRINTF(HybridDatapath, "%s for node_id %d, %s\n", __func__, node_id,
+          pkt->print());
+
+  bool isLoad = (pkt->cmd == MemCmd::ReadResp);
+  vaddr = isLoad ? toCacheLineAddr(vaddr) : vaddr;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
-  MemAccessStatus curr_status = cache_queue.getStatus(vaddr);
-  if (curr_status == WaitingFromCache) {
-    cache_queue.setStatus(vaddr, Returned);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  panic_if(!entry, "Did not find a cache queue entry for vaddr %#x\n", vaddr);
+  if (entry->status == WaitingFromCache) {
+    entry->status = Returned;
     DPRINTF(HybridDatapath,
-            "setting %s cache_queue entry for vaddr %#x to Returned.\n",
+            "setting %s cache queue entry for vaddr %#x to Returned.\n",
             isLoad ? "load" : "store",
             vaddr);
-  } else if (curr_status == WaitingForOwnership) {
-    cache_queue.setStatus(vaddr, ReadyToIssue);
+    // TODO: This should not increment for ACP accesses.
+    Stats::Scalar& mem_stat = isLoad ? loads : stores;
+    mem_stat++;
+  } else if (entry->status == WaitingForOwnership) {
+    entry->status = ReadyToIssue;
     DPRINTF(HybridDatapath,
-            "setting cache_queue entry for address %#x to ReadyToIssue.\n",
+            "setting cache queue entry for address %#x to ReadyToIssue.\n",
             vaddr);
   }
+}
 
-  delete state;
-  delete pkt->req;
-  delete pkt;
+void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
+  DatapathSenderState* state =
+      dynamic_cast<DatapathSenderState*>(pkt->senderState);
+  unsigned node_id = state->node_id;
+  MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
+  Addr vaddr = mem_access->vaddr;
+
+  // TODO: Ugh, another issue with mixing trace and simulation addresses.
+  // If we receive a ReadExReq or ReadExReq, that means that the trace vaddr
+  // associated with the request was for a STORE, and stores do not (currently)
+  // get merged into a single cache queue entry.
+  if (pkt->cmd == MemCmd::ReadReq || pkt->cmd == MemCmd::ReadResp)
+    vaddr = toCacheLineAddr(vaddr);
+  MemoryQueueEntry* entry = cache_queue.findMatch(vaddr);
+  panic_if(entry->status != Retry,
+           "%s called with packet %s, which is not in retry!\n", __func__,
+           pkt->print());
+
+  // This packet could be either a request or a response! After calling
+  // sendTimingReq(), the original packet could have already been transformed
+  // into a response, but the response is not meant to be handled until
+  // recvTimingResp() is called (potentially after some delay).
+  switch (pkt->cmd.toInt()) {
+    case MemCmd::ReadExReq:
+    case MemCmd::ReadExResp:
+      entry->status = WaitingForOwnership;
+      break;
+    case MemCmd::ReadReq:
+    case MemCmd::ReadResp:
+    case MemCmd::WriteReq:
+    case MemCmd::WriteResp:
+      entry->status = WaitingFromCache;
+      break;
+    default:
+      panic("%s called with an unexpected packet %s\n",
+            __func__, pkt->print());
+  }
 }
 
 /* Receiving response from DMA. */

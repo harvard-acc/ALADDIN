@@ -243,6 +243,14 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     NumMemoryOpTypes,
   };
 
+  /* Error codes for attempts to issue a packet. */
+  enum IssueResult {
+    Accepted,       // Packet was accepted.
+    DidNotAttempt,  // Port was already blocked, so could not issue.
+    WillRetry,      // Port will retry this packet.
+    NumIssueResultTypes,
+  };
+
   /* Returns the memory op type for this node.
    *
    * The memory op type depends on the datapath's particular configuration,
@@ -325,20 +333,37 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   PacketPtr createTLBRequestPacket(Addr addr, unsigned size, bool isLoad, unsigned node_id);
 
   // Cache/ACP access functions.
-  bool issueCacheRequest(Addr addr, unsigned size, bool isLoad,
-                         unsigned node_id, uint64_t value);
-  bool issueAcpRequest(Addr addr, unsigned size, bool isLoad, unsigned node_id,
-                       uint64_t value);
+  IssueResult issueCacheRequest(
+      Addr addr, unsigned size, bool isLoad, unsigned node_id, uint64_t value);
+  IssueResult issueAcpRequest(
+      Addr addr, unsigned size, bool isLoad, unsigned node_id, uint64_t value);
 
   // A helper function for issuing either cache or ACP requests.
-  bool issueCacheOrAcpRequest(MemoryOpType op_type, Addr addr, unsigned size,
-                              bool isLoad, unsigned node_id, uint64_t value);
+  IssueResult issueCacheOrAcpRequest(MemoryOpType op_type,
+                                           Addr addr,
+                                           unsigned size,
+                                           bool isLoad,
+                                           unsigned node_id,
+                                           uint64_t value);
 
   // For ACP: Request ownership of a cache line.
-  bool issueOwnershipRequest(Addr addr, unsigned size, unsigned node_id);
+  IssueResult issueOwnershipRequest(Addr addr, unsigned size, unsigned node_id);
 
-  // Request completion routine for both cache and ACP.
-  void completeCacheRequest(PacketPtr pkt);
+  // Update the status of a cache request after receiving a response.
+  //
+  // This terminates the lifetime of the packet and response.
+  void updateCacheRequestStatusOnResp(PacketPtr pkt);
+
+  // Update the status of a retried cache request.
+  //
+  // This does not deallocate the packet, since all we know is that the
+  // packet has been successfully sent, but the receiver may opt to reuse the
+  // packet object for the response.
+  void updateCacheRequestStatusOnRetry(PacketPtr pkt);
+
+  Addr toCacheLineAddr(Addr addr) {
+    return (addr / cacheLineSize) * cacheLineSize;
+  }
 
   // Marks a node as started and increments a stats counter.
   virtual void markNodeStarted(ExecNode* node);
