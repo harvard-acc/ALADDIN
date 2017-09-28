@@ -204,11 +204,17 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   class DatapathSenderState : public Packet::SenderState {
    public:
-    DatapathSenderState(unsigned _node_id, bool _is_ctrl_signal = false)
-        : node_id(_node_id), is_ctrl_signal(_is_ctrl_signal) {}
+    DatapathSenderState(bool _is_ctrl_signal)
+        : node_id(-1), vaddr(0), is_ctrl_signal(_is_ctrl_signal) {}
+
+    DatapathSenderState(unsigned _node_id, Addr _vaddr)
+        : node_id(_node_id), vaddr(_vaddr), is_ctrl_signal(false) {}
 
     /* Aladdin node that triggered the memory access. */
     unsigned node_id;
+
+    /* Virtual (trace) address for this memory access. */
+    Addr vaddr;
 
     /* Flag that determines whether a packet received on a data port is a
      * control signal accessed through memory (which needs to be handled
@@ -333,21 +339,34 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   PacketPtr createTLBRequestPacket(Addr addr, unsigned size, bool isLoad, unsigned node_id);
 
   // Cache/ACP access functions.
-  IssueResult issueCacheRequest(
-      Addr addr, unsigned size, bool isLoad, unsigned node_id, uint64_t value);
-  IssueResult issueAcpRequest(
-      Addr addr, unsigned size, bool isLoad, unsigned node_id, uint64_t value);
+  IssueResult issueCacheRequest(Addr vaddr,
+                                Addr paddr,
+                                unsigned size,
+                                bool isLoad,
+                                unsigned node_id,
+                                uint64_t value);
+
+  IssueResult issueAcpRequest(Addr vaddr,
+                              Addr paddr,
+                              unsigned size,
+                              bool isLoad,
+                              unsigned node_id,
+                              uint64_t value);
 
   // A helper function for issuing either cache or ACP requests.
   IssueResult issueCacheOrAcpRequest(MemoryOpType op_type,
-                                           Addr addr,
-                                           unsigned size,
-                                           bool isLoad,
-                                           unsigned node_id,
-                                           uint64_t value);
+                                     Addr vaddr,
+                                     Addr paddr,
+                                     unsigned size,
+                                     bool isLoad,
+                                     unsigned node_id,
+                                     uint64_t value);
 
   // For ACP: Request ownership of a cache line.
-  IssueResult issueOwnershipRequest(Addr addr, unsigned size, unsigned node_id);
+  IssueResult issueOwnershipRequest(Addr vaddr,
+                                    Addr paddr,
+                                    unsigned size,
+                                    unsigned node_id);
 
   // Update the status of a cache request after receiving a response.
   //

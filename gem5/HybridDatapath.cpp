@@ -524,7 +524,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     int size = mem_access->size;
     uint64_t value = mem_access->value;
 
-    IssueResult result = issueCacheRequest(paddr, size, isLoad, node_id, value);
+    IssueResult result =
+        issueCacheRequest(vaddr, paddr, size, isLoad, node_id, value);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
@@ -613,7 +614,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   // the paddr field in MemAccess.
   Addr paddr = mem_access->paddr;
   if (entry->status == ReadyToRequestOwnership) {
-    IssueResult result = issueOwnershipRequest(paddr, size, node_id);
+    IssueResult result = issueOwnershipRequest(vaddr, paddr, size, node_id);
     if (result == Accepted) {
       entry->status = WaitingForOwnership;
       cache_queue.incrementIssuedThisCycle();
@@ -628,7 +629,8 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     }
     return false;
   } else if (entry->status == ReadyToIssue) {
-    IssueResult result = issueAcpRequest(paddr, size, isLoad, node_id, value);
+    IssueResult result =
+        issueAcpRequest(vaddr, paddr, size, isLoad, node_id, value);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
@@ -743,7 +745,7 @@ void HybridDatapath::sendFinishedSignal() {
   MemCmd::Command cmd = MemCmd::WriteReq;
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);
-  DatapathSenderState* state = new DatapathSenderState(-1, true);
+  DatapathSenderState* state = new DatapathSenderState(true);
   pkt->senderState = state;
 
   if (!cachePort.sendTimingReq(pkt)) {
@@ -880,18 +882,29 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
   delete pkt;
 }
 
-HybridDatapath::IssueResult HybridDatapath::issueCacheRequest(
-    Addr paddr, unsigned size, bool isLoad, unsigned node_id, uint64_t value) {
-  return issueCacheOrAcpRequest(Cache, paddr, size, isLoad, node_id, value);
+HybridDatapath::IssueResult HybridDatapath::issueCacheRequest(Addr vaddr,
+                                                              Addr paddr,
+                                                              unsigned size,
+                                                              bool isLoad,
+                                                              unsigned node_id,
+                                                              uint64_t value) {
+  return issueCacheOrAcpRequest(
+      Cache, vaddr, paddr, size, isLoad, node_id, value);
 }
 
-HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(
-    Addr paddr, unsigned size, bool isLoad, unsigned node_id, uint64_t value) {
-  return issueCacheOrAcpRequest(ACP, paddr, size, isLoad, node_id, value);
+HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(Addr vaddr,
+                                                            Addr paddr,
+                                                            unsigned size,
+                                                            bool isLoad,
+                                                            unsigned node_id,
+                                                            uint64_t value) {
+  return issueCacheOrAcpRequest(
+      ACP, vaddr, paddr, size, isLoad, node_id, value);
 }
 
 HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
     MemoryOpType op_type,
+    Addr vaddr,
     Addr paddr,
     unsigned size,
     bool isLoad,
@@ -928,7 +941,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
   PacketPtr data_pkt = new Packet(req, command);
   data_pkt->dataStatic(data);
 
-  DatapathSenderState* state = new DatapathSenderState(node_id);
+  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
   data_pkt->senderState = state;
 
   if (!port.sendTimingReq(data_pkt)) {
@@ -943,7 +956,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
 }
 
 HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
-    Addr paddr, unsigned size, unsigned node_id) {
+    Addr vaddr, Addr paddr, unsigned size, unsigned node_id) {
   using namespace SrcTypes;
 
   if (acpPort.inRetry()) {
@@ -979,7 +992,7 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   MemCmd command = MemCmd::ReadExReq;
 
   PacketPtr data_pkt = new Packet(req, command);
-  DatapathSenderState* state = new DatapathSenderState(node_id);
+  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
   data_pkt->senderState = state;
   uint8_t* data = new uint8_t[size];
   data_pkt->dataDynamic<uint8_t>(data);
@@ -998,19 +1011,18 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   return Accepted;
 }
 
-// TODO: Refactor this so that we have to do less work to get the vaddr!
 void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
   unsigned node_id = state->node_id;
-  MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
-  Addr vaddr = mem_access->vaddr;
+  Addr vaddr = state->vaddr;
+  if (isExecuteStandalone())
+    vaddr &= ADDR_MASK;
+
   DPRINTF(HybridDatapath, "%s for node_id %d, %s\n", __func__, node_id,
           pkt->print());
 
   bool isLoad = (pkt->cmd == MemCmd::ReadResp);
-  if (isExecuteStandalone())
-    vaddr &= ADDR_MASK;
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(!entry, "Did not find a cache queue entry for vaddr %#x\n", vaddr);
   if (entry->status == WaitingFromCache) {
@@ -1033,9 +1045,7 @@ void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
 void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
   DatapathSenderState* state =
       dynamic_cast<DatapathSenderState*>(pkt->senderState);
-  unsigned node_id = state->node_id;
-  MemAccess* mem_access = exec_nodes.at(node_id)->get_mem_access();
-  Addr vaddr = mem_access->vaddr;
+  Addr vaddr = state->vaddr;
 
   // If we receive a ReadExReq or ReadExReq, that means that the trace vaddr
   // associated with the request was for a STORE, and stores do not (currently)
