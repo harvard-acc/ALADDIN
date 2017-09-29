@@ -2409,6 +2409,7 @@ bool BaseDatapath::step() {
 void BaseDatapath::markNodeStarted(ExecNode* node) {
   node->set_start_execution_cycle(num_cycles);
 }
+
 // Marks a node as completed and advances the executing queue iterator.
 void BaseDatapath::markNodeCompleted(
     std::list<ExecNode*>::iterator& executingQueuePos, int& advance_to) {

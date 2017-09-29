@@ -523,7 +523,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     }
     return false;
   } else if (entry->status == Translated) {
-    Addr paddr = mem_access->paddr;
+    Addr paddr = entry->paddr;
     int size = mem_access->size;
     uint64_t value = mem_access->value;
 
@@ -606,19 +606,18 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   if (entry->status == Invalid)
     entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
 
-  if (mem_access->paddr == 0) {
+  if (entry->paddr == 0) {
     // ACP works with physical addresses, which the trace cannot possibly have,
     // so to model this faithfully, we perform the address translation in zero
     // time. Make sure we use the original virtual address.
     AladdinTLBResponse translation =
         getAddressTranslation(vaddr, size, isLoad, node_id);
-    mem_access->paddr = translation.paddr;
-    markNodeStarted(node);
+    entry->paddr = translation.paddr;
   }
+  if (!node->started())
+    markNodeStarted(node);
 
-  // TODO: Either eliminate the paddr field in MemoryQueueEntry or the
-  // the paddr field in MemAccess.
-  Addr paddr = mem_access->paddr;
+  Addr paddr = entry->paddr;
   if (entry->status == ReadyToRequestOwnership) {
     IssueResult result = issueOwnershipRequest(vaddr, paddr, size, node_id);
     if (result == Accepted) {
@@ -716,7 +715,6 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    */
   AladdinTLBResponse translation = getAddressTranslation(
       isLoad ? src_vaddr : dst_vaddr, size, isLoad, node_id);
-  mem_access->paddr = translation.paddr;
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
     scratchpad->readData(array_label, src_vaddr, size, data);
@@ -724,7 +722,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
   spadPort.dmaAction(
-      cmd, mem_access->paddr, size, dma_event, data, 0, flags);
+      cmd, translation.paddr, size, dma_event, data, 0, flags);
 }
 
 /* Mark the DMA request node as having completed. */
@@ -875,8 +873,6 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
     Addr paddr = pkt->getPtr<AladdinTLBResponse>()->paddr;
-    MemAccess* mem_access = node->get_mem_access();
-    mem_access->paddr = paddr;
     entry->status = Translated;
     entry->paddr = paddr;
     DPRINTF(HybridDatapath,

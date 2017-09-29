@@ -24,12 +24,10 @@
 // Stores basic information about a typical memory access.
 class MemAccess {
   public:
-    MemAccess() : vaddr(0), paddr(0), size(0), is_float(false), value(0) {}
+    MemAccess() : vaddr(0), size(0), is_float(false), value(0) {}
 
     // Address read from the trace.
     Addr vaddr;
-    // Physical address (used for caches only).
-    Addr paddr;
     // Size of the memory access in bytes.
     size_t size;
     // Is floating-point value or not.
@@ -75,7 +73,7 @@ class ExecNode {
  public:
    ExecNode(unsigned int _node_id, uint8_t _microop)
        : node_id(_node_id), microop(_microop), dynamic_invocation(0),
-         line_num(-1), start_execution_cycle(0), complete_execution_cycle(0),
+         line_num(-1), start_execution_cycle(-1), complete_execution_cycle(-1),
          num_parents(0), isolated(true), inductive(false),
          dynamic_mem_op(false), double_precision(false), array_label(""),
          partition_index(0), time_before_execution(0.0), mem_access(nullptr),
@@ -107,8 +105,14 @@ class ExecNode {
   SrcTypes::BasicBlock* get_basic_block() { return basic_block; }
   unsigned int get_dynamic_invocation() { return dynamic_invocation; }
   int get_line_num() { return line_num; }
-  int get_start_execution_cycle() { return start_execution_cycle; }
-  int get_complete_execution_cycle() { return complete_execution_cycle; }
+  bool started() const { return start_execution_cycle != -1; }
+  bool completed() const { return complete_execution_cycle != -1; }
+  int get_start_execution_cycle() {
+    return !started() ? 0 : start_execution_cycle;
+  }
+  int get_complete_execution_cycle() {
+    return !completed() ? 0 : complete_execution_cycle;
+  }
   int get_num_parents() { return num_parents; }
   Vertex get_vertex() { return vertex; }
   bool is_isolated() { return isolated; }
