@@ -610,9 +610,9 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     // ACP works with physical addresses, which the trace cannot possibly have,
     // so to model this faithfully, we perform the address translation in zero
     // time. Make sure we use the original virtual address.
-    // TODO: Don't set the mem access data inside this function - instead, just
-    // return the translation.
-    issueTLBRequestInvisibly(vaddr, size, isLoad, node_id);
+    AladdinTLBResponse translation =
+        getAddressTranslation(vaddr, size, isLoad, node_id);
+    mem_access->paddr = translation.paddr;
     markNodeStarted(node);
   }
 
@@ -712,8 +712,9 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    * from the accelerator, which can't know physical addresses without a
    * translation.
    */
-  issueTLBRequestInvisibly(dst_vaddr, size, isLoad, node_id);
-  Addr dst_paddr = mem_access->paddr;
+  AladdinTLBResponse translation =
+      getAddressTranslation(dst_vaddr, size, isLoad, node_id);
+  mem_access->paddr = translation.paddr;
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
     scratchpad->readData(array_label, src_vaddr, size, data);
@@ -721,7 +722,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
   spadPort.dmaAction(
-      cmd, dst_paddr, size, dma_event, data, 0, flags);
+      cmd, mem_access->paddr, size, dma_event, data, 0, flags);
 }
 
 /* Mark the DMA request node as having completed. */
@@ -815,36 +816,35 @@ bool HybridDatapath::issueTLBRequestTiming(
   }
 }
 
-bool HybridDatapath::issueTLBRequestInvisibly(
-    Addr addr, unsigned size, bool isLoad, unsigned node_id) {
+AladdinTLBResponse HybridDatapath::getAddressTranslation(Addr addr,
+                                                         unsigned size,
+                                                         bool isLoad,
+                                                         unsigned node_id) {
   PacketPtr data_pkt = createTLBRequestPacket(addr, size, isLoad, node_id);
   dtb.translateInvisibly(data_pkt);
-  // data_pkt now contains the translated address.
-  ExecNode* node = exec_nodes.at(node_id);
-  node->get_mem_access()->paddr = *data_pkt->getPtr<Addr>();
-  return true;
+  // data_pkt->data now contains the translated address. Make a local copy and
+  // return it.
+  AladdinTLBResponse translation = *data_pkt->getPtr<AladdinTLBResponse>();
+
+  delete data_pkt->req;
+  delete data_pkt->senderState;
+  delete data_pkt;
+  return translation;
 }
 
 PacketPtr HybridDatapath::createTLBRequestPacket(
     Addr trace_addr, unsigned size, bool isLoad, unsigned node_id) {
-  Request* req = NULL;
   Flags<Packet::FlagsType> flags = 0;
   // Constructor for physical request only
-  req = new Request(trace_addr, size, flags, getCacheMasterId());
-
-  MemCmd command;
-  if (isLoad)
-    command = MemCmd::ReadReq;
-  else
-    command = MemCmd::WriteReq;
+  Request* req = new Request(trace_addr, size, flags, getCacheMasterId());
+  MemCmd command = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
   PacketPtr data_pkt = new Packet(req, command);
 
-  Addr* translation = new Addr;
-  *translation = 0x0;  // Signifies no translation.
-  data_pkt->dataStatic<Addr>(translation);
-
+  AladdinTLBResponse* translation = new AladdinTLBResponse();
   AladdinTLB::TLBSenderState* state = new AladdinTLB::TLBSenderState(node_id);
+  data_pkt->dataStatic<AladdinTLBResponse>(translation);
   data_pkt->senderState = state;
+
   return data_pkt;
 }
 
@@ -872,7 +872,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
   } else {
     // Translations are actually the complete memory address, not just the page
     // number, because of the trace to virtual address translation.
-    Addr paddr = *pkt->getPtr<Addr>();
+    Addr paddr = pkt->getPtr<AladdinTLBResponse>()->paddr;
     MemAccess* mem_access = node->get_mem_access();
     mem_access->paddr = paddr;
     entry->status = Translated;

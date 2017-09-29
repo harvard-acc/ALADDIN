@@ -46,5 +46,6 @@ Source('HybridDatapath.cpp')
 Source('pybind_aladdin.cpp')
 
 DebugFlag('Aladdin')
+DebugFlag('AladdinTLB')
 DebugFlag('HybridDatapath')
 DebugFlag('HybridDatapathVerbose')

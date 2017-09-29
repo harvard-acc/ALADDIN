@@ -334,10 +334,29 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                       unsigned dma_size,
                                       bool is_dma_load);
 
-  // Virtual address translation.
+  // Issue a virtual address translation timing request.
   bool issueTLBRequestTiming(Addr addr, unsigned size, bool isLoad, unsigned node_id);
-  bool issueTLBRequestInvisibly(Addr addr, unsigned size, bool isLoad, unsigned node_id);
-  PacketPtr createTLBRequestPacket(Addr addr, unsigned size, bool isLoad, unsigned node_id);
+
+  // Return the address translation of this trace address immediately.
+  //
+  // Sometimes, we don't want to pay the latency cost of a TLB access. For
+  // example, DMA/ACP accesses assume the use of physical addresses, but the
+  // trace has no way of getting physical addresses, so a zero-latency TLB access
+  // must be used to model this behavior.
+  //
+  // Returns:
+  //   An AladdinTLBResponse object, containing the the simulation's vaddr and
+  //   paddr corresponding to this trace address.
+  AladdinTLBResponse getAddressTranslation(Addr trace_addr,
+                                           unsigned size,
+                                           bool isLoad,
+                                           unsigned node_id);
+
+  // Create a TLB request packet.
+  PacketPtr createTLBRequestPacket(Addr addr,
+                                   unsigned size,
+                                   bool isLoad,
+                                   unsigned node_id);
 
   // Cache/ACP access functions.
   IssueResult issueCacheRequest(Addr vaddr,

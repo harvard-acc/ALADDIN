@@ -72,7 +72,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     # Result depends mostly on cache queue size and bandwidth.
-    self.addExpectedStatResult("system.test_load_store_datapath.sim_cycles", 3059)
+    self.addExpectedStatResult("system.test_load_store_datapath.sim_cycles", 3076)
 
   def runTest(self):
     self.runAndValidate()

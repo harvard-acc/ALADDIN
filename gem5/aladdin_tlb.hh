@@ -36,14 +36,24 @@ class AladdinTLBEntry {
   }
 };
 
+/* The Aladdin TLB will respond with both the virtual and physical addresses of
+ * the simulation, because the datapath only has trace addresses.
+ */
+struct AladdinTLBResponse {
+  AladdinTLBResponse() : vaddr(0), paddr(0) {}
+  AladdinTLBResponse(Addr _vaddr, Addr _paddr) : vaddr(_vaddr), paddr(_paddr) {}
+
+  Addr vaddr;
+  Addr paddr;
+};
+
 class BaseTLBMemory {
 
  public:
   virtual ~BaseTLBMemory() {}
   virtual void clear() = 0;
   virtual bool lookup(Addr vpn, Addr& ppn, bool set_mru = true) = 0;
-  /* Inserts a translation into the TLB.
-   */
+  // Inserts a translation into the TLB.
   virtual void insert(Addr vpn, Addr ppn) = 0;
   // Name of the TLB structure for printing traces.
 };
@@ -259,7 +269,12 @@ class AladdinTLB {
    */
   bool translateInvisibly(PacketPtr pkt);
 
-  /* Translate a trace virtual address to a simulated virtual address. */
+  /* Translate a trace virtual address to a simulated virtual address. 
+   *
+   * Returns:
+   *   A pair of the virtual page number and page offset for this trace
+   *   address.
+   */
   std::pair<Addr, Addr> translateTraceToSimVirtual(PacketPtr pkt);
 
   bool canRequestTranslation();

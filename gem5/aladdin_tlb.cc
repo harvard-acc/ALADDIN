@@ -6,7 +6,9 @@
 
 #include "aladdin_tlb.hh"
 #include "HybridDatapath.h"
-#include "debug/HybridDatapath.hh"
+
+#include "debug/AladdinTLB.hh"
+
 /*hack, to fix*/
 #define MIN_CACTI_SIZE 64
 
@@ -75,13 +77,13 @@ void AladdinTLB::outStandingWalkReturnEvent::process() {
   // otherwise, just use ppn=vpn.
   Addr ppn;
   if (tlb->infiniteBackupTLB.find(vpn) != tlb->infiniteBackupTLB.end()) {
-    DPRINTF(HybridDatapath, "TLB miss was resolved in the backup TLB.\n");
+    DPRINTF(AladdinTLB, "TLB miss was resolved in the backup TLB.\n");
     ppn = tlb->infiniteBackupTLB[vpn];
   } else {
-    DPRINTF(HybridDatapath, "TLB miss was not resolved in the backup TLB.\n");
+    DPRINTF(AladdinTLB, "TLB miss was not resolved in the backup TLB.\n");
     ppn = vpn;
   }
-  DPRINTF(HybridDatapath, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
+  DPRINTF(AladdinTLB, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
   tlb->insert(vpn, ppn);
 
   auto range = tlb->missQueue.equal_range(vpn);
@@ -133,12 +135,12 @@ std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
     Addr trace_req_vaddr = pkt->req->getPaddr();
     Addr array_offset = trace_req_vaddr - base_trace_addr;
     vaddr = base_sim_vaddr + array_offset;
-    DPRINTF(HybridDatapath,
+    DPRINTF(AladdinTLB,
             "Accessing array %s at node id %d with base address %#x.\n",
             array_name.c_str(),
             state->node_id,
             base_sim_vaddr);
-    DPRINTF(HybridDatapath, "Translating vaddr %#x.\n", vaddr);
+    DPRINTF(AladdinTLB, "Translating vaddr %#x.\n", vaddr);
     page_offset = vaddr % pageBytes;
     vpn = vaddr - page_offset;
   }
@@ -156,8 +158,9 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
     else
       ppn = vpn;
   }
-  *(pkt->getPtr<Addr>()) = ppn + page_offset;
-  DPRINTF(HybridDatapath, "Translated vpn %#x -> ppn %#x.\n", vpn, ppn);
+  AladdinTLBResponse* translation = pkt->getPtr<AladdinTLBResponse>();
+  translation->vaddr = vpn + page_offset;
+  translation->paddr = ppn + page_offset;
   return true;
 }
 
@@ -170,18 +173,20 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
 
   reads++;  // Both TLB hits and misses perform a read.
   if (tlbMemory->lookup(vpn, ppn)) {
-    DPRINTF(HybridDatapath, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
+    DPRINTF(AladdinTLB, "TLB hit. Phys addr %#x.\n", ppn + page_offset);
     hits++;
     hitQueue.push_back(pkt);
     deHitQueueEvent* hq = new deHitQueueEvent(this);
     datapath->schedule(hq, datapath->clockEdge(hitLatency));
     // Due to the complexity of translating trace to virtual address, return
     // the complete address, not just the page number.
-    *(pkt->getPtr<Addr>()) = ppn + page_offset;
+    AladdinTLBResponse* translation = pkt->getPtr<AladdinTLBResponse>();
+    translation->paddr = ppn + page_offset;
+    translation->vaddr = vpn + page_offset;
     return true;
   } else {
     // TLB miss! Let the TLB handle the walk, etc
-    DPRINTF(HybridDatapath, "TLB miss for addr %#x\n", vaddr);
+    DPRINTF(AladdinTLB, "TLB miss for addr %#x\n", vaddr);
 
     if (missQueue.find(vpn) == missQueue.end()) {
       if (numOutStandingWalks != 0 &&
@@ -191,12 +196,12 @@ bool AladdinTLB::translateTiming(PacketPtr pkt) {
       outStandingWalkReturnEvent* mq = new outStandingWalkReturnEvent(this);
       datapath->schedule(mq, datapath->clockEdge(missLatency));
       numOccupiedMissQueueEntries++;
-      DPRINTF(HybridDatapath,
+      DPRINTF(AladdinTLB,
               "Allocated TLB miss entry for addr %#x, page %#x\n",
               vaddr,
               vpn);
     } else {
-      DPRINTF(HybridDatapath,
+      DPRINTF(AladdinTLB,
               "Collapsed into existing miss entry for page %#x\n",
               vpn);
     }
@@ -244,7 +249,7 @@ void AladdinTLB::regStats(std::string accelerator_name) {
 }
 
 void AladdinTLB::computeCactiResults() {
-  DPRINTF(HybridDatapath, "Invoking CACTI for TLB power and area estimates.\n");
+  DPRINTF(AladdinTLB, "Invoking CACTI for TLB power and area estimates.\n");
   uca_org_t cacti_result = cacti_interface(cacti_cfg);
   if (numEntries >= MIN_CACTI_SIZE) {
     readEnergy = cacti_result.power.readOp.dynamic * 1e12;
@@ -312,7 +317,7 @@ void TLBMemory::insert(Addr vpn, Addr ppn) {
   }
   assert(entry);
   if (!entry->free) {
-    DPRINTF(HybridDatapath, "Evicting entry for vpn %#x\n", entry->vpn);
+    DPRINTF(AladdinTLB, "Evicting entry for vpn %#x\n", entry->vpn);
   }
 
   entry->vpn = vpn;
