@@ -1,10 +1,6 @@
-/* Test stores performed in the kernel.
+/* Test stores performed through ACP.
  *
- * The values stored should be able to be loaded by the CPU after the kernel is
- * finished.
- *
- * Performance is dependent on the relationship between the unrolling factor of
- * the inner loop and cache queue size/bandwidth.
+ * The values stored should be visible to the CPU.
  */
 
 #include <stdio.h>

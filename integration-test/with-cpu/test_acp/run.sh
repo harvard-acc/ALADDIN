@@ -3,8 +3,8 @@
 bmk_home=${ALADDIN_HOME}/integration-test/with-cpu/test_acp
 gem5_dir=${ALADDIN_HOME}/../..
 
-${gem5_dir}/build/X86/gem5.debug \
-  --debug-flags=HybridDatapath,HybridDatapathVerbose,Aladdin,SnoopFilter,CoherentXBar,Cache \
+${gem5_dir}/build/X86/gem5.opt \
+  --debug-flags=HybridDatapath,Aladdin \
   --outdir=${bmk_home}/outputs \
   --stats-db-file=stats.db \
   ${gem5_dir}/configs/aladdin/aladdin_se.py \

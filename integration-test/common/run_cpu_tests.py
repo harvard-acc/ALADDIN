@@ -38,7 +38,7 @@ class AesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9707)
+    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9714)
 
   def runTest(self):
     self.runAndValidate()
@@ -168,6 +168,22 @@ class ArrayMultidimIndexingTest(gat.Gem5AladdinTest):
   def setExpectedResults(self):
     # No need to check for simulated cycles. This is a functionality test only.
     return
+
+  def runTest(self):
+    self.runAndValidate()
+
+class AcpTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_acp"))
+    self.setSimBin("test_acp")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 6754)
 
   def runTest(self):
     self.runAndValidate()

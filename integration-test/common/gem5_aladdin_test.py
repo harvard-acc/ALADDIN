@@ -333,4 +333,8 @@ class Gem5AladdinTest(unittest.TestCase):
     statistics = self.parseGem5Stats(expected_stats=expected_stats)
 
     for stat, value in self.expected_results.iteritems():
-      self.assertTrue(abs((statistics[stat] - value)/value) < SIM_TICKS_ERROR)
+      delta = SIM_TICKS_ERROR * value;
+      self.assertAlmostEqual(
+          statistics[stat], value, delta=delta,
+          msg="Got %d, expected %d: Difference is more than %d%% of "
+          "the expected value" % (statistics[stat], value, SIM_TICKS_ERROR * 100))
