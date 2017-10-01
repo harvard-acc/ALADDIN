@@ -7,14 +7,19 @@
 #include "DatabaseDeps.h"
 #include "ScratchpadDatapath.h"
 
+#include "graph_opts/all_graph_opts.h"
+
 ScratchpadDatapath::ScratchpadDatapath(std::string bench,
                                        std::string trace_file,
                                        std::string config_file)
-    : BaseDatapath(bench, trace_file, config_file) {
+    : BaseDatapath(bench, trace_file, config_file),
+      cycle_time(user_params.cycle_time) {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "      Setting ScratchPad       " << std::endl;
   std::cout << "-------------------------------" << std::endl;
-  scratchpad = new Scratchpad(num_ports, cycleTime, ready_mode);
+  scratchpad = new Scratchpad(user_params.scratchpad_ports,
+                              user_params.cycle_time,
+                              user_params.ready_mode);
   scratchpadCanService = true;
 }
 
@@ -67,10 +72,10 @@ void ScratchpadDatapath::initBaseAddress() {
     ExecNode* node = getNodeFromVertex(curr_vertex);
     if (!node->is_memory_op())
       continue;
-    std::string part_name = node->get_array_label();
-    if (partition_config.find(part_name) == partition_config.end()) {
+    const std::string& part_name = node->get_array_label();
+    if (user_params.partition.find(part_name) == user_params.partition.end()) {
       std::cerr << "Unknown partition : " << part_name
-                << "@inst: " << node->get_node_id() << std::endl;
+                << " at node: " << node->get_node_id() << std::endl;
       exit(-1);
     }
   }
@@ -80,19 +85,21 @@ void ScratchpadDatapath::initBaseAddress() {
  * Modify scratchpad
  */
 void ScratchpadDatapath::completePartition() {
-  if (!partition_config.size())
+  if (!user_params.partition.size())
     return;
 
   std::cout << "-------------------------------" << std::endl;
   std::cout << "        Mem to Reg Conv        " << std::endl;
   std::cout << "-------------------------------" << std::endl;
 
-  for (auto it = partition_config.begin(); it != partition_config.end(); ++it) {
+  for (auto it = user_params.partition.begin();
+       it != user_params.partition.end();
+       ++it) {
     PartitionType p_type = it->second.partition_type;
     if (p_type == complete) {
       std::string array_label = it->first;
       unsigned size = it->second.array_size;
-      registers.createRegister(array_label, size, cycleTime);
+      registers.createRegister(array_label, size, cycle_time);
     }
   }
 }
@@ -103,7 +110,7 @@ void ScratchpadDatapath::completePartition() {
 void ScratchpadDatapath::scratchpadPartition() {
   // read the partition config file to get the address range
   // <base addr, <type, part_factor> >
-  if (!partition_config.size())
+  if (!user_params.partition.size())
     return;
 
   std::cout << "-------------------------------" << std::endl;
@@ -113,8 +120,8 @@ void ScratchpadDatapath::scratchpadPartition() {
 
   bool spad_partition = false;
   // set scratchpad
-  for (auto part_it = partition_config.begin();
-       part_it != partition_config.end();
+  for (auto part_it = user_params.partition.begin();
+       part_it != user_params.partition.end();
        ++part_it) {
     PartitionType p_type = part_it->second.partition_type;
     MemoryType m_type = part_it->second.memory_type;
@@ -145,8 +152,8 @@ void ScratchpadDatapath::scratchpadPartition() {
       continue;
     const std::string& base_label = node->get_array_label();
 
-    auto part_it = partition_config.find(base_label);
-    if (part_it != partition_config.end()) {
+    auto part_it = user_params.partition.find(base_label);
+    if (part_it != user_params.partition.end()) {
       PartitionType p_type = part_it->second.partition_type;
       MemoryType m_type = part_it->second.memory_type;
       /* continue if it's complete partition, cache, or acp. */
@@ -158,7 +165,8 @@ void ScratchpadDatapath::scratchpadPartition() {
       long long int abs_addr = mem_access->vaddr;
       unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
-      node->set_partition_index(scratchpad->getPartitionIndex(base_label, abs_addr));
+      node->set_partition_index(
+          scratchpad->getPartitionIndex(base_label, abs_addr));
     }
   }
 #ifdef DEBUG
@@ -244,7 +252,7 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   // bottom nodes first
   std::map<unsigned, float> alap_finish_time;
   for (auto node_it : exec_nodes)
-    alap_finish_time[node_it.first] = num_cycles * cycleTime;
+    alap_finish_time[node_it.first] = num_cycles * cycle_time;
 
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = vertexToName[*vi];
@@ -252,22 +260,22 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
     if (node->is_isolated())
       continue;
     float alap_start_execution_time =
-        node->get_start_execution_cycle() * cycleTime;
+        node->get_start_execution_cycle() * cycle_time;
     /* Do not reschedule memory ops and branch ops.*/
     if (!node->is_memory_op() && !node->is_branch_op()) {
       float alap_complete_execution_time = alap_finish_time.at(node_id);
-      int new_cycle = floor(alap_complete_execution_time / cycleTime) - 1;
+      int new_cycle = floor(alap_complete_execution_time / cycle_time) - 1;
       if (new_cycle > node->get_complete_execution_cycle()) {
         node->set_complete_execution_cycle(new_cycle);
         if (node->is_fp_op()) {
           node->set_start_execution_cycle(
               new_cycle - node->fp_node_latency_in_cycles() + 1);
           alap_start_execution_time =
-              node->get_start_execution_cycle() * cycleTime;
+              node->get_start_execution_cycle() * cycle_time;
         } else {
           node->set_start_execution_cycle(new_cycle);
           alap_start_execution_time =
-              alap_complete_execution_time - node->fu_node_latency(cycleTime);
+              alap_complete_execution_time - node->fu_node_latency(cycle_time);
         }
       }
     }
@@ -288,7 +296,7 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
  * The difference compared to the BaseDatapath::updateChildren() is that this
  * implementation considers functional units packing, where multiple functional
  * units can be packed into the same cycles if their overall critical path delay
- * is smaller than cycleTime.
+ * is smaller than cycle_time.
 
  * One thing here is that we only pack multiple functional units into one cycle,
  * but not pack memory operations and functional units together, since memory
@@ -301,14 +309,14 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   if (node->is_memory_op() || node->is_fp_op()) {
     /*No packing for both memory ops and floating point ops. Children can only
      * start at the cycle after. */
-    latency_after_current_node = (num_cycles + 1) * cycleTime;
+    latency_after_current_node = (num_cycles + 1) * cycle_time;
   } else {
-    if (node->get_time_before_execution() > num_cycles * cycleTime) {
+    if (node->get_time_before_execution() > num_cycles * cycle_time) {
       latency_after_current_node =
-          node->fu_node_latency(cycleTime) + node->get_time_before_execution();
+          node->fu_node_latency(cycle_time) + node->get_time_before_execution();
     } else {
       latency_after_current_node =
-          node->fu_node_latency(cycleTime) + num_cycles * cycleTime;
+          node->fu_node_latency(cycle_time) + num_cycles * cycle_time;
     }
   }
   Vertex curr_vertex = node->get_vertex();
@@ -329,10 +337,10 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
         bool child_zero_latency =
             (child_node->is_memory_op())
                 ? false
-                : (child_node->fu_node_latency(cycleTime) == 0);
+                : (child_node->fu_node_latency(cycle_time) == 0);
         bool curr_zero_latency = (node->is_memory_op())
                                      ? false
-                                     : (node->fu_node_latency(cycleTime) == 0);
+                                     : (node->fu_node_latency(cycle_time) == 0);
         if (edge_parid == REGISTER_EDGE || edge_parid == FUSED_BRANCH_EDGE ||
             node->is_call_op() || node->is_ret_op() ||
             ((child_zero_latency || curr_zero_latency) &&
@@ -352,8 +360,8 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
             readyToExecuteQueue.push_back(child_node);
           } else {
             float after_child_time = child_node->get_time_before_execution() +
-                                     child_node->fu_node_latency(cycleTime);
-            if (after_child_time < (num_cycles + 1) * cycleTime)
+                                     child_node->fu_node_latency(cycle_time);
+            if (after_child_time < (num_cycles + 1) * cycle_time)
               executingQueue.push_back(child_node);
             else
               readyToExecuteQueue.push_back(child_node);

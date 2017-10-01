@@ -17,6 +17,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <list>
 #include <set>
 #include <stdint.h>
@@ -34,17 +35,15 @@
 #include "Scratchpad.h"
 #include "SourceManager.h"
 #include "DynamicEntity.h"
+#include "user_config.h"
 
-#define MEMORY_EDGE -1
-#define REGISTER_EDGE 5
-#define FUSED_BRANCH_EDGE 6
-#define CONTROL_EDGE 11
-#define PIPE_EDGE 12
+#include "graph_analysis_utils.h"
 
 struct memActivity {
   unsigned read;
   unsigned write;
 };
+
 struct funcActivity {
   unsigned mul;
   unsigned add;
@@ -75,184 +74,10 @@ struct funcActivity {
 
 class Scratchpad;
 
-enum MemoryType {
-  spad,
-  reg,
-  cache,
-  acp,
-};
-
-struct partitionEntry {
-  MemoryType memory_type;
-  PartitionType partition_type;
-  unsigned array_size;  // num of bytes
-  unsigned wordsize;    // in bytes
-  unsigned part_factor;
-  long long int base_addr;
-};
 struct regEntry {
   int size;
   int reads;
   int writes;
-};
-struct callDep {
-  std::string caller;
-  std::string callee;
-  int callInstID;
-};
-struct newEdge {
-  ExecNode* from;
-  ExecNode* to;
-  int parid;
-};
-struct RQEntry {
-  unsigned node_id;
-  mutable float latency_so_far;
-  mutable bool valid;
-};
-
-struct RQEntryComp {
-  bool operator()(const RQEntry& left, const RQEntry& right) const {
-    return left.node_id < right.node_id;
-  }
-};
-
-// A loop boundary node is defined by static properties of the node and the
-// current call and loop nesting level.
-struct LoopBoundDescriptor {
-  // Static properties.
-
-  // The target basic block of this branch/call node.
-  SrcTypes::BasicBlock* basic_block;
-  // Either branch or call.
-  unsigned microop;
-  // How many function calls deep is this loop (from the top level function).
-  unsigned call_depth;
-  // The loop depth of the TARGET of this branch. We care not about the depth
-  // of the branch itself, but where it is going to take us.
-  unsigned loop_depth;
-
-  // How many times have we iterated this loop?
-  int dyn_invocations;
-
-  LoopBoundDescriptor(SrcTypes::BasicBlock* _basic_block,
-                      unsigned _microop,
-                      unsigned _loop_depth,
-                      unsigned _call_depth)
-      : basic_block(_basic_block), microop(_microop), call_depth(_call_depth),
-        loop_depth(_loop_depth), dyn_invocations(-1) {}
-
-  // Returns true if @other is a branch that exits from this loop.
-  bool exitBrIs(const LoopBoundDescriptor& other) {
-    return (microop == other.microop && call_depth == other.call_depth &&
-            loop_depth > other.loop_depth);
-  }
-
-  // Do not include dynamic properties in the equality check.
-  bool operator==(const LoopBoundDescriptor& other) {
-    return (basic_block == other.basic_block && microop == other.microop &&
-            call_depth == other.call_depth);
-  }
-
-  bool operator!=(const LoopBoundDescriptor& other) {
-    return !(*this == other);
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, const LoopBoundDescriptor& obj);
-};
-
-/* A dynamic loop boundary is identified by a branch/call node and a target
- * loop depth. */
-struct DynLoopBound {
-  unsigned node_id;
-  unsigned target_loop_depth;
-  DynLoopBound(unsigned _node_id, unsigned _target_loop_depth)
-      : node_id(_node_id), target_loop_depth(_target_loop_depth) {}
-};
-
-/* A class to represent the sources of a memory address generation.
- *
- * An address to a memory operation is composed of a set of inductive operands
- * and a set of noninductive operands. A group of memory operations is
- * considered independent if they share the same set of non-inductive operands
- * and have the same number of inductive operands. Example:
- *
- *   for (int i = 0; i < 8; i++) {
- *     array[base + i] = some value;
- *     array[base][i] = some value;
- *   }
- *
- * This class wraps the underlying containers to hide the choice of
- * implementation from the user.
- */
-class MemoryAddrSources {
- public:
-  MemoryAddrSources() {}
-
-  void add_noninductive(ExecNode* node) {
-    noninductive.push_back(node);
-  }
-
-  void add_inductive(ExecNode* node) {
-    inductive.push_back(node);
-  }
-
-  void merge(MemoryAddrSources&& other) {
-    noninductive.merge(other.noninductive);
-    inductive.merge(other.inductive);
-  }
-
-  bool empty() const {
-    return noninductive.empty() && inductive.empty();
-  }
-
-  void print_noninductive() const {
-    std::cout << "Noninductive: [ ";
-    for (auto node : noninductive) {
-      std::cout << node->get_node_id() << " ";
-    }
-    std::cout << "]\n";
-  }
-
-  void print_inductive() const {
-    std::cout << "Inductive:    [ ";
-    for (auto node : inductive) {
-      std::cout << node->get_node_id() << " ";
-    }
-    std::cout << "]\n";
-  }
-
-  // Eliminate any duplicates and sort the nodes by node id, so that we can
-  // then do a direct comparison between different MemoryAddrSources objects.
-  void sort_and_uniquify() {
-    auto compare = [](const ExecNode* n1, const ExecNode* n2) {
-      return n1->get_node_id() < n2->get_node_id();
-    };
-    noninductive.sort(compare);
-    noninductive.unique();
-    inductive.sort(compare);
-    inductive.unique();
-  }
-
-  // Returns true if this MemoryAddrSources object is independent of other, as
-  // defined above.
-  bool is_independent_of(const MemoryAddrSources& other, bool first=false) {
-    bool is_independent = (noninductive == other.noninductive);
-    // The first one may not have an IndexAdd node (since it uses the initial
-    // value of the induction variable), so we only need to compare the
-    // noninductive values.
-    if (!first) {
-      // We have to have at least one inductive node (otherwise the memory
-      // addresses would actually be the same).
-      is_independent &=
-          (inductive.size() > 0 && inductive.size() == other.inductive.size());
-    }
-    return is_independent;
-  }
-
- private:
-  std::list<ExecNode*> noninductive;
-  std::list<ExecNode*> inductive;
 };
 
 // Data to print out to file, stdout, or database.
@@ -334,14 +159,18 @@ class BaseDatapath {
   void setLabelMap(labelmap_t& _labelmap) { labelmap = _labelmap; }
   const labelmap_t& getLabelMap() { return labelmap; }
   SrcTypes::UniqueLabel getUniqueLabel(ExecNode* node);
+
+  // XXX: DDDG needs these functions as well. Separate this dependency (maybe a
+  // composition of call argument map)?
   void addCallArgumentMapping(DynamicVariable& callee_reg_id,
                               DynamicVariable& caller_reg_id);
   DynamicVariable getCallerRegID(DynamicVariable& reg_id);
+
   virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
 
-  bool isReadyMode() const { return ready_mode; }
+  bool isReadyMode() const { return user_params.ready_mode; }
 
   // Accessing graph stats.
   const Graph& getGraph() { return graph_; }
@@ -354,12 +183,8 @@ class BaseDatapath {
   int getNumOfConnectedNodes(unsigned int node_id) {
     return boost::degree(exec_nodes.at(node_id)->get_vertex(), graph_);
   }
-  std::map<unsigned, ExecNode*>::iterator node_begin() {
-    return exec_nodes.begin();
-  }
-  std::map<unsigned, ExecNode*>::iterator node_end() {
-    return exec_nodes.end();
-  }
+  ExecNodeMap::iterator node_begin() { return exec_nodes.begin(); }
+  ExecNodeMap::iterator node_end() { return exec_nodes.end(); }
   // Return all nodes with dependencies originating from OR leaving this node.
   std::vector<unsigned> getConnectedNodes(unsigned int node_id);
   std::vector<unsigned> getParentNodes(unsigned int node_id);
@@ -367,12 +192,12 @@ class BaseDatapath {
 
   std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
 
+  // XXX: We already have this as a free-standing function. Remove.
   ExecNode* getNextNode(unsigned node_id);
 
-  /* Return pairs of nodes that demarcate the start and end of a loop iteraton. */
-  std::list<node_pair_t> findLoopBoundaries(const SrcTypes::UniqueLabel& loop_label);
-
-  /* Return the bounding nodes of function invocations.
+  /* XXX: Make this a free-standing function.
+   *
+   * Return the bounding nodes of function invocations.
    *
    * For each pair, the first element is the Call node that invokes the given
    * function, and the second element is the Return node of this invocation.
@@ -390,12 +215,17 @@ class BaseDatapath {
     return exec_nodes.at(node_id)->get_partition_index();
   }
   long long int getBaseAddress(std::string label) {
-    return partition_config.at(label).base_addr;
+    return user_params.partition.at(label).base_addr;
   }
+  // XXX: These have duplicates in the base graph opt class, but they are
+  // heavily used by the unit tests and the debugger.
   bool doesEdgeExist(ExecNode* from, ExecNode* to) {
     if (from != nullptr && to != nullptr)
       return doesEdgeExistVertex(from->get_vertex(), to->get_vertex());
     return false;
+  }
+  bool doesEdgeExistVertex(Vertex from, Vertex to) {
+    return edge(from, to, graph_).second;
   }
   // This is kept for unit testing reasons only.
   bool doesEdgeExist(unsigned int from, unsigned int to) {
@@ -411,15 +241,16 @@ class BaseDatapath {
   }
   ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes.at(node_id); }
   partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
+  // XXX: Currently only used for unit tests.
   int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
 
   /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
-    auto part_it = partition_config.find(label);
+    auto part_it = user_params.partition.find(label);
     // Add checking for zero to handle DMA operations where we only use
     // base_addr to find the label name.
-    if (part_it != partition_config.end() && part_it->second.base_addr == 0) {
+    if (part_it != user_params.partition.end() && part_it->second.base_addr == 0) {
       part_it->second.base_addr = addr;
     }
   }
@@ -442,9 +273,9 @@ class BaseDatapath {
   }
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
-    // Don't clear partition_config - it only gets read once.
-    for (auto part_it = partition_config.begin();
-         part_it != partition_config.end();
+    // Don't clear user_params.partition - it only gets read once.
+    for (auto part_it = user_params.partition.begin();
+         part_it != user_params.partition.end();
          ++part_it)
       part_it->second.base_addr = 0;
   }
@@ -476,30 +307,18 @@ class BaseDatapath {
 #endif
 
  protected:
-  // Graph transformation helpers.
-  void findMinRankNodes(ExecNode** node1,
-                        ExecNode** node2,
-                        std::map<ExecNode*, unsigned>& rank_map);
-  void cleanLeafNodes();
-  bool doesEdgeExistVertex(Vertex from, Vertex to) {
-    return edge(from, to, graph_).second;
+  template <typename T>
+  std::unique_ptr<T> getGraphOpt() {
+    return std::unique_ptr<T>(new T(exec_nodes,
+                                    graph_,
+                                    loopBound,
+                                    vertexToName,
+                                    labelmap,
+                                    srcManager,
+                                    call_argument_map,
+                                    user_params));
   }
 
-  // Locate all sources of a GEP node.
-  //
-  // Starting from @current_node (which is initially the GEP node), recursively
-  // examine each parent. Within the function @current_func, record all parents
-  // that are either loads and index adds and return a MemoryAddrSources object.
-  // If no such parents are found, return the oldest ancestor that is a
-  // non-inductive compute op.
-  MemoryAddrSources findMemoryAddrSources(
-      ExecNode* current_node,
-      SrcTypes::Function* current_func,
-      EdgeNameMap& edge_to_parid);
-
-  void findBranchChain(ExecNode* root,
-                       std::list<ExecNode*>& branch_chain,
-                       std::set<Edge>& to_remove_edges);
 
   // Configuration parsing and handling.
   void parse_config(std::string& bench, std::string& config_file);
@@ -508,17 +327,10 @@ class BaseDatapath {
   void updateUnrollingPipeliningWithLabelInfo(
       const inline_labelmap_t& inline_labelmap);
 
-  // Returns the unrolling factor for the loop bounded at this node.
-  unrolling_config_t::iterator getUnrollFactor(ExecNode* node);
-
   // State initialization.
   virtual void initBaseAddress();
   void initMethodID(std::vector<int>& methodid);
 
-  // Graph updates.
-  void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
-  void updateGraphWithNewEdges(std::vector<newEdge>& to_add_edges);
-  void updateGraphWithIsolatedNodes(std::vector<unsigned>& to_remove_nodes);
   virtual void updateChildren(ExecNode* node);
   void updateRegStats();
 
@@ -590,21 +402,14 @@ class BaseDatapath {
 
   std::string benchName;
   int num_cycles;
-  float cycleTime;
 
-  bool pipelining;
-  /* Unrolling and flattening share unrolling_config;
-   * flatten if factor is zero.
-   * it maps loop labels to unrolling factor. */
-  unrolling_config_t unrolling_config;
-  std::unordered_set<SrcTypes::UniqueLabel> pipeline_config;
-  /* complete, block, cyclic, and cache partition share partition_config */
-  partition_config_t partition_config;
+  // All options that can be specified by the user are contained here.
+  UserConfigParams user_params;
 
   SrcTypes::SourceManager srcManager;
 
   /* Stores the register name mapping between caller and callee functions. */
-  std::unordered_map<DynamicVariable, DynamicVariable> call_argument_map;
+  call_arg_map_t call_argument_map;
 
   /* True if the summarized results should be stored to a database, false
    * otherwise */
@@ -629,7 +434,7 @@ class BaseDatapath {
   Registers registers;
 
   // Complete list of all execution nodes and their properties.
-  std::map<unsigned int, ExecNode*> exec_nodes;
+  ExecNodeMap exec_nodes;
 
   // Maps line numbers to labels.
   labelmap_t labelmap;
@@ -646,12 +451,6 @@ class BaseDatapath {
   gzFile trace_file;
   size_t current_trace_off;
   size_t trace_size;
-
-  // Scratchpad config.
-  /* True if ready-bit Scratchpad is used. */
-  bool ready_mode;
-  /* Num of read/write ports per partition. */
-  unsigned num_ports;
 };
 
 #endif

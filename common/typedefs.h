@@ -9,6 +9,7 @@
 #include <boost/graph/properties.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <unordered_map>
+#include <unordered_set>
 
 typedef uint64_t Addr;
 
@@ -36,16 +37,22 @@ typedef boost::property_map<Graph, boost::edge_name_t>::type EdgeNameMap;
 typedef boost::property_map<Graph, boost::vertex_node_id_t>::type VertexNameMap;
 
 // Other convenience typedefs.
-class partitionEntry;
+class PartitionEntry;
+class ExecNode;
 namespace SrcTypes {
   class UniqueLabel;
+  class DynamicVariable;
 };
+
 typedef std::unordered_map<SrcTypes::UniqueLabel, unsigned> unrolling_config_t;
-typedef std::set<SrcTypes::UniqueLabel> pipeline_config_t;
-typedef std::unordered_map<std::string, partitionEntry> partition_config_t;
-class ExecNode;
-typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
+typedef std::unordered_set<SrcTypes::UniqueLabel> pipeline_config_t;
+typedef std::unordered_map<std::string, PartitionEntry> partition_config_t;
 typedef std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap_t;
-typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel> inline_labelmap_t;
+typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel>
+    inline_labelmap_t;
+typedef std::unordered_map<SrcTypes::DynamicVariable, SrcTypes::DynamicVariable>
+    call_arg_map_t;
+typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
+typedef std::map<unsigned, ExecNode*> ExecNodeMap;
 
 #endif

@@ -38,6 +38,8 @@ class ScratchpadDatapath : public BaseDatapath {
   bool scratchpadCanService;
   /* Stores number of cycles left for multi-cycle nodes currently in flight. */
   std::map<unsigned, unsigned> inflight_multicycle_nodes;
+  // To streamline code.
+  const float cycle_time;
 };
 
 #endif

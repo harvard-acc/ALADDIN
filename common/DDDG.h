@@ -14,6 +14,12 @@
 #include "opcode_func.h"
 #include "SourceManager.h"
 
+#define MEMORY_EDGE -1
+#define REGISTER_EDGE 5
+#define FUSED_BRANCH_EDGE 6
+#define CONTROL_EDGE 11
+#define PIPE_EDGE 12
+
 struct reg_edge_t {
   unsigned sink_node;
   int par_id;

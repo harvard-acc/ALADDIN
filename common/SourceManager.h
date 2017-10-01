@@ -52,9 +52,9 @@ class SourceManager {
    * If such an object does not exist, then a nullptr is returned.
    */
   template <class T>
-  T* get(const std::string& name) {
+  T* get(const std::string& name) const {
     std::string prefix = get_type_prefix<T>();
-    src_id_map_t& _map = name_to_id.at(prefix);
+    const src_id_map_t& _map = name_to_id.at(prefix);
     auto it = _map.find(name);
     if (it == _map.end())
       return nullptr;
@@ -111,7 +111,7 @@ class SourceManager {
    * types.
    */
   template <class T>
-  std::string get_type_prefix();
+  std::string get_type_prefix() const;
 
   // A unified map from ID to SourceEntity.
   //

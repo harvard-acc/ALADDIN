@@ -10,9 +10,7 @@
 #include "power_func.h"
 #include "generic_func.h"
 #include "typedefs.h"
-
-// None is used if an array is stored in a cache.
-enum PartitionType { block, cyclic, complete, none };
+#include "user_config.h"
 
 /* This defines a Partition class for each partitioned scratchpad. */
 class Partition {
