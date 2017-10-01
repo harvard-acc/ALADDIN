@@ -120,7 +120,7 @@ class ExecNode {
   bool is_dynamic_mem_op() { return dynamic_mem_op; }
   bool is_double_precision() { return double_precision; }
   bool has_vertex() { return vertex_assigned; }
-  std::string get_array_label() { return array_label; }
+  const std::string& get_array_label() { return array_label; }
   unsigned get_partition_index() { return partition_index; }
   bool has_array_label() { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }

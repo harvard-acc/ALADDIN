@@ -2216,7 +2216,7 @@ void BaseDatapath::writeBaseAddress() {
   for (auto it = exec_nodes.begin(), E = exec_nodes.end(); it != E; ++it) {
     char original_label[256];
     int partition_id;
-    std::string partitioned_label = it->second->get_array_label();
+    const std::string& partitioned_label = it->second->get_array_label();
     if (partitioned_label.empty())
       continue;
     int num_fields = sscanf(

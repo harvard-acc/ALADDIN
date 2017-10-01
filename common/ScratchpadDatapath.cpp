@@ -143,7 +143,7 @@ void ScratchpadDatapath::scratchpadPartition() {
       continue;
     if (boost::degree(node->get_vertex(), graph_) == 0)
       continue;
-    std::string base_label = node->get_array_label();
+    const std::string& base_label = node->get_array_label();
 
     auto part_it = partition_config.find(base_label);
     if (part_it != partition_config.end()) {
@@ -183,7 +183,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
     ExecNode* node = *it;
     bool executed = false;
     if (node->is_memory_op()) {
-      std::string array_name = node->get_array_label();
+      const std::string& array_name = node->get_array_label();
       unsigned array_name_index = node->get_partition_index();
       if (registers.has(array_name)) {
         markNodeStarted(node);
