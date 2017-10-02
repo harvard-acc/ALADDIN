@@ -6,6 +6,14 @@
 #include "common/DDDG.h"
 #include "common/DynamicEntity.h"
 
+// Memory ambiguation.
+//
+// Aladdin has perfect knowledge of all memory addresses, so all memory
+// dependences are known to be true dependences. But there are some
+// memory addresses that cannot be determined statically; these are true
+// data-dependent memory accesses. This pass identifies such memory operations,
+// marks them as dynamic operations, and in certain cases, will serialize them.
+
 using namespace SrcTypes;
 
 std::string MemoryAmbiguationOpt::getCenteredName(size_t size) {

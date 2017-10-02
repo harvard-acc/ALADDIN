@@ -2,6 +2,13 @@
 
 #include "common/DDDG.h"
 
+// Per loop pipelining.
+//
+// This follows a similar implementation strategy as the global pipelining
+// pass. The difference is that the global pipelining pass attempts to pipeline
+// every loop discovered, whereas this pass only pipelines loops the user
+// specifies.  These two passes cannot be used simultaneously.
+
 using namespace SrcTypes;
 
 std::string PerLoopPipelining::getCenteredName(size_t size) {

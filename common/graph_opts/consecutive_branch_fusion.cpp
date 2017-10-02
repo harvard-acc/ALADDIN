@@ -2,18 +2,20 @@
 
 #include "common/DDDG.h"
 
+// Consecutive branch fusion.
+//
+// Aladdin enforces control dependences for all branch nodes. But sometimes we
+// will see multiple branch nodes consecutively, particularly in the case of
+// multiply nested loops and preheader basic blocks. This can introduce a
+// significant amount of additional latency. This optimization assumes that an
+// FSM can always determine in a single cycle which loop nest to execute next
+// and fuses consecutive branch nodes together.
+
 std::string ConsecutiveBranchFusion::getCenteredName(size_t size) {
   return "   Fuse consecutive branches   ";
 }
 
 void ConsecutiveBranchFusion::optimize() {
-  // Aladdin enforces control dependences for all branch nodes. But sometimes
-  // we will see multiple branch nodes consecutively, particularly in the case
-  // of multiply nested loops and preheader basic blocks. This can introduce a
-  // significant amount of additional latency. This optimization assumes that
-  // an FSM can always determine in a single cycle which loop nest to execute
-  // next and fuses consecutive branch nodes together.
-
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
   std::set<Edge> to_remove_edges;
   std::vector<NewEdge> to_add_edges;

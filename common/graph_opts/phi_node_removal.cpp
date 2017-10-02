@@ -1,5 +1,11 @@
 #include "phi_node_removal.h"
 
+// Phi node removal.
+//
+// Phi nodes are useful in static compiler analysis but do not need to be
+// accounted for during simulation. Remove all phi nodes and attach the phi
+// node's parent to all of its children.
+
 std::string PhiNodeRemoval::getCenteredName(size_t size) {
   return "  Remove PHI and Convert Nodes ";
 }

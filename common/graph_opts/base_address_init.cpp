@@ -1,5 +1,11 @@
 #include "base_address_init.h"
 
+// Base address and array label initialization.
+//
+// For every memory access node, find the node that generated the memory
+// address and assign the variable name storing the value as the current node's
+// array label.
+
 using namespace SrcTypes;
 
 std::string BaseAddressInit::getCenteredName(size_t size) {

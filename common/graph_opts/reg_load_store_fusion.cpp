@@ -2,20 +2,23 @@
 
 #include "common/DDDG.h"
 
+// Register load-store fusion.
+//
+// A value stored in a register does not need to take one cycle for a "Load"
+// before it can be used. Similarly, a value being written to a register does
+// not require an entire cycle, as long as whatever is producing the value
+// completes before the required setup time of the clock edge. But LLVM will
+// emit load and store IR instructions for all arrays as it does not know
+// that some arrays are not actually SRAM structures. For completely partitioned
+// arrays, convert the memory dependence edge between loads, the consuming
+// node, and the store into a special register dependence edge. This tells
+// the scheduler to schedule the two nodes on the same cycle.
+
 std::string RegLoadStoreFusion::getCenteredName(size_t size) {
   return "  Fuse register loads/stores   ";
 }
 
 void RegLoadStoreFusion::optimize() {
-  // A value stored in a register does not need to take one cycle for a "Load"
-  // before it can be used. Similarly, a value being written to a register does
-  // not require an entire cycle, as long as whatever is producing the value
-  // completes before the required setup time of the clock edge. But LLVM will
-  // emit load and store IR instructions for all arrays as it does not know
-  // that some arrays are not actually SRAM structures. For completely partitioned
-  // arrays, convert the memory dependence edge between loads, the consuming
-  // node, and the store into a special register dependence edge. This tells
-  // the scheduler to schedule the two nodes on the same cycle.
 
   std::vector<NewEdge> to_add_edges;
   std::set<Edge> to_remove_edges;

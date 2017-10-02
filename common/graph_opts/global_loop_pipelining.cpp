@@ -1,6 +1,16 @@
 #include "global_loop_pipelining.h"
 #include "common/DDDG.h"
 
+// Global loop pipelining.
+//
+// After loop unrolling, we define strict control dependences between basic
+// block, where all the instructions in the following basic block depend on the
+// prev branch instruction. To support loop pipelining, which allows the next
+// iteration starting without waiting until the prev iteration finish, we move
+// the control dependences between last branch node in the prev basic block and
+// instructions in the next basic block to the first non isolated instruction
+// in the prev basic block and instructions in the next basic block...
+
 std::string GlobalLoopPipelining::getCenteredName(size_t size) {
   return "         Loop Pipelining        ";
 }
@@ -26,15 +36,6 @@ void GlobalLoopPipelining::optimize() {
   vertex_iter vi, vi_end;
   std::set<Edge> to_remove_edges;
   std::vector<NewEdge> to_add_edges;
-
-  // After loop unrolling, we define strict control dependences between basic
-  // block, where all the instructions in the following basic block depend on
-  // the prev branch instruction. To support loop pipelining, which allows the
-  // next iteration starting without waiting until the prev iteration finish,
-  // we move the control dependences between last branch node in the prev basic
-  // block and instructions in the next basic block to first non isolated
-  // instruction in the prev basic block and instructions in the next basic
-  // block...
 
   // first_non_isolated_node stores mappings between a loop boundary and its
   // first non isolated node.

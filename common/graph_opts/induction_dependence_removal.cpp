@@ -1,6 +1,16 @@
 #include "induction_dependence_removal.h"
 #include "common/DDDG.h"
 
+// Induction dependence removal.
+//
+// This pass marks certain nodes as inductive. Inductive nodes are either nodes
+// that only depend on induction variables or those for which all parents are
+// inductive.
+//
+// For inductive nodes, depending on the opcode, we can also convert them to
+// different opcodes as an additional optimization (for example, multiplication
+// to shift).
+
 using namespace SrcTypes;
 
 std::string InductionDependenceRemoval::getCenteredName(size_t size) {
