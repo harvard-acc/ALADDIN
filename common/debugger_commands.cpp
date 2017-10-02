@@ -31,7 +31,7 @@ void reconstruct_graph(Graph* new_graph,
                        unsigned num_nodes,
                        int max_node_id,
                        bool show_branch_children) {
-  const Graph &g = acc->getGraph();
+  const Graph &g = acc->getProgram().graph;
   ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
   Vertex root_vertex = root_node->get_vertex();
   unsigned num_nodes_visited = 0;

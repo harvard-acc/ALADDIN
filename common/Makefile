@@ -6,7 +6,7 @@ HAS_READLINE ?= 0
 
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
                      Registers.o Partition.o LogicalArray.o ReadyPartition.o \
-                     SourceManager.o
+                     SourceManager.o Program.o
 
 GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/memory_ambiguation.o \
@@ -23,7 +23,7 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/per_loop_pipelining.o \
 									graph_opts/global_loop_pipelining.o
 
-UTILS_OBJS = file_func.o generic_func.o power_func.o graph_analysis_utils.o
+UTILS_OBJS = file_func.o generic_func.o power_func.o
 DEBUGGER_OBJS = debugger_print.o debugger_commands.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS) $(GRAPH_OPTS_OBJS)
@@ -46,7 +46,7 @@ CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
 CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -Icacti-p \
-					-Igraph_opts -I$(ALADDIN_HOME)
+					-I$(ALADDIN_HOME)
 LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex -lpthread
 
 ifeq ($(HAS_READLINE),1)

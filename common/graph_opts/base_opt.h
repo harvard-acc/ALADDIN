@@ -5,24 +5,27 @@
 #include <vector>
 
 #include "common/ExecNode.h"
+#include "common/Program.h"
 #include "common/opcode_func.h"
 #include "common/typedefs.h"
 #include "common/user_config.h"
-#include "common/graph_analysis_utils.h"
 
 class BaseAladdinOpt {
  public:
-  BaseAladdinOpt(ExecNodeMap& _exec_nodes,
-                 Graph& _graph,
-                 std::vector<DynLoopBound>& _loop_bounds,
-                 const VertexNameMap& _vertex_to_name,
-                 const labelmap_t& _labelmap,
+  // Construct an optimization object.
+  //
+  // Ensure that the constructor argument @program is NOT const qualified and
+  // that all elements in the initializer list use this non-const Program
+  // reference. This lets us use a mixture of const and non-const Program
+  // fields while keeping a const reference to Program for its helper
+  // functions.
+  BaseAladdinOpt(Program& _program,
                  const SrcTypes::SourceManager& _src_manager,
-                 const call_arg_map_t& _call_argument_map,
                  const UserConfigParams& _user_params)
-      : exec_nodes(_exec_nodes), graph(_graph), loop_bounds(_loop_bounds),
-        vertex_to_name(_vertex_to_name), labelmap(_labelmap),
-        src_manager(_src_manager), call_argument_map(_call_argument_map),
+      : program(_program), exec_nodes(_program.nodes), graph(_program.graph),
+        loop_bounds(_program.loop_bounds),
+        vertex_to_name(_program.vertex_to_name), labelmap(_program.labelmap),
+        src_manager(_src_manager), call_argument_map(_program.call_arg_map),
         user_params(_user_params) {}
 
   void run();
@@ -36,6 +39,7 @@ class BaseAladdinOpt {
     int parid;
   };
 
+  // XXX: These are accessible from program.
   ExecNode* getNodeFromVertex(Vertex vertex);
   bool doesEdgeExist(ExecNode* from, ExecNode* to);
   bool doesEdgeExist(Vertex from, Vertex to);
@@ -48,6 +52,8 @@ class BaseAladdinOpt {
   void updateGraphWithIsolatedEdges(std::set<Edge>& to_remove_edges);
   void cleanLeafNodes();
 
+  const Program& program;
+
   // Mutable properties of nodes, loops, and graphs.
   ExecNodeMap& exec_nodes;
   Graph& graph;
@@ -59,7 +65,7 @@ class BaseAladdinOpt {
   // Source information.
   const labelmap_t& labelmap;
   const SrcTypes::SourceManager& src_manager;
-  const call_arg_map_t& call_argument_map;
+  const CallArgMap& call_argument_map;
 
   // User configuration settings.
   const UserConfigParams& user_params;

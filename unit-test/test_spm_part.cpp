@@ -14,6 +14,7 @@ SCENARIO("Test scratchpadPartition w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -21,30 +22,30 @@ SCENARIO("Test scratchpadPartition w/ Triad", "[triad]") {
     WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0' or '*-1'.") {
-        REQUIRE(acc->getBaseAddressLabel(3).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(5).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(9).compare("c") == 0);
-        REQUIRE(acc->getPartitionIndex(3) == 0);
-        REQUIRE(acc->getPartitionIndex(5) == 0);
-        REQUIRE(acc->getPartitionIndex(9) == 0);
-        REQUIRE(acc->getBaseAddressLabel(15).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(17).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(21).compare("c") == 0);
-        REQUIRE(acc->getPartitionIndex(15) == 1);
-        REQUIRE(acc->getPartitionIndex(17) == 1);
-        REQUIRE(acc->getPartitionIndex(21) == 1);
-        REQUIRE(acc->getBaseAddressLabel(27).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(29).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(33).compare("c") == 0);
-        REQUIRE(acc->getPartitionIndex(27) == 0);
-        REQUIRE(acc->getPartitionIndex(29) == 0);
-        REQUIRE(acc->getPartitionIndex(33) == 0);
-        REQUIRE(acc->getBaseAddressLabel(1491).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1493).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1497).compare("c") == 0);
-        REQUIRE(acc->getPartitionIndex(1491) == 0);
-        REQUIRE(acc->getPartitionIndex(1493) == 0);
-        REQUIRE(acc->getPartitionIndex(1497) == 0);
+        REQUIRE(prog.getBaseAddressLabel(3).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(5).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(9).compare("c") == 0);
+        REQUIRE(prog.nodes.at(3)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(5)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(9)->get_partition_index() == 0);
+        REQUIRE(prog.getBaseAddressLabel(15).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(17).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(21).compare("c") == 0);
+        REQUIRE(prog.nodes.at(15)->get_partition_index() == 1);
+        REQUIRE(prog.nodes.at(17)->get_partition_index() == 1);
+        REQUIRE(prog.nodes.at(21)->get_partition_index() == 1);
+        REQUIRE(prog.getBaseAddressLabel(27).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(29).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(33).compare("c") == 0);
+        REQUIRE(prog.nodes.at(27)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(29)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(33)->get_partition_index() == 0);
+        REQUIRE(prog.getBaseAddressLabel(1491).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1493).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1497).compare("c") == 0);
+        REQUIRE(prog.nodes.at(1491)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(1493)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(1497)->get_partition_index() == 0);
       }
     }
   }
@@ -58,6 +59,7 @@ SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -65,16 +67,16 @@ SCENARIO("Test scratchpadPartition w/ Reduction", "[reduction]") {
     WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
-        REQUIRE(acc->getBaseAddressLabel(4).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(12).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(20).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(28).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1020).compare("in") == 0);
-        REQUIRE(acc->getPartitionIndex(4) == 0);
-        REQUIRE(acc->getPartitionIndex(12) == 1);
-        REQUIRE(acc->getPartitionIndex(20) == 2);
-        REQUIRE(acc->getPartitionIndex(28) == 3);
-        REQUIRE(acc->getPartitionIndex(1020) == 3);
+        REQUIRE(prog.getBaseAddressLabel(4).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(12).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(20).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(28).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1020).compare("in") == 0);
+        REQUIRE(prog.nodes.at(4)->get_partition_index() == 0);
+        REQUIRE(prog.nodes.at(12)->get_partition_index() == 1);
+        REQUIRE(prog.nodes.at(20)->get_partition_index() == 2);
+        REQUIRE(prog.nodes.at(28)->get_partition_index() == 3);
+        REQUIRE(prog.nodes.at(1020)->get_partition_index() == 3);
       }
     }
   }
@@ -88,6 +90,7 @@ SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -95,26 +98,26 @@ SCENARIO("Test scratchpadPartition w/ pp_scan", "[pp_scan]") {
     WHEN("Test scratchpadPartition()") {
       acc->scratchpadPartition();
       THEN("The baseAddress of memory operations should be '*-0/1/2/3'.") {
-        REQUIRE(acc->getBaseAddressLabel(11).compare("bucket") == 0);
-        REQUIRE(acc->getPartitionIndex(11) == 0);
-        REQUIRE(acc->getBaseAddressLabel(13).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(15).compare("bucket") == 0);
-        REQUIRE(acc->getPartitionIndex(13) == 1);
-        REQUIRE(acc->getPartitionIndex(15) == 1);
-        REQUIRE(acc->getBaseAddressLabel(1463).compare("bucket") == 0);
-        REQUIRE(acc->getPartitionIndex(1463) == 2);
-        REQUIRE(acc->getBaseAddressLabel(1465).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1467).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1488).compare("bucket") == 0);
-        REQUIRE(acc->getPartitionIndex(1465) == 3);
-        REQUIRE(acc->getPartitionIndex(1467) == 3);
-        REQUIRE(acc->getPartitionIndex(1488) == 3);
-        REQUIRE(acc->getBaseAddressLabel(1491).compare("sum") == 0);
-        REQUIRE(acc->getPartitionIndex(1491) == 1);
-        REQUIRE(acc->getBaseAddressLabel(3169).compare("bucket") == 0);
-        REQUIRE(acc->getPartitionIndex(3169) == 3);
-        REQUIRE(acc->getBaseAddressLabel(3167).compare("sum") == 0);
-        REQUIRE(acc->getPartitionIndex(3167) == 3);
+        REQUIRE(prog.getBaseAddressLabel(11).compare("bucket") == 0);
+        REQUIRE(prog.nodes.at(11)->get_partition_index() == 0);
+        REQUIRE(prog.getBaseAddressLabel(13).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(15).compare("bucket") == 0);
+        REQUIRE(prog.nodes.at(13)->get_partition_index() == 1);
+        REQUIRE(prog.nodes.at(15)->get_partition_index() == 1);
+        REQUIRE(prog.getBaseAddressLabel(1463).compare("bucket") == 0);
+        REQUIRE(prog.nodes.at(1463)->get_partition_index() == 2);
+        REQUIRE(prog.getBaseAddressLabel(1465).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1467).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1488).compare("bucket") == 0);
+        REQUIRE(prog.nodes.at(1465)->get_partition_index() == 3);
+        REQUIRE(prog.nodes.at(1467)->get_partition_index() == 3);
+        REQUIRE(prog.nodes.at(1488)->get_partition_index() == 3);
+        REQUIRE(prog.getBaseAddressLabel(1491).compare("sum") == 0);
+        REQUIRE(prog.nodes.at(1491)->get_partition_index() == 1);
+        REQUIRE(prog.getBaseAddressLabel(3169).compare("bucket") == 0);
+        REQUIRE(prog.nodes.at(3169)->get_partition_index() == 3);
+        REQUIRE(prog.getBaseAddressLabel(3167).compare("sum") == 0);
+        REQUIRE(prog.nodes.at(3167)->get_partition_index() == 3);
       }
     }
   }

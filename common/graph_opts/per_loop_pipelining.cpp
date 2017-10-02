@@ -40,8 +40,8 @@ void PerLoopPipelining::optimize() {
   //     a. Change the source to the FNIN of the previous iteration.
   for (const UniqueLabel& loop : user_params.pipeline) {
     // Step 1.
-    std::list<node_pair_t> current_loop_bounds =
-        findLoopBoundaries(graph, loop_bounds, exec_nodes, loop);
+    std::list<cnode_pair_t> current_loop_bounds =
+        program.findLoopBoundaries(loop);
 
     // Step 2.
     std::map<unsigned, unsigned> first_non_isolated_nodes;

@@ -17,7 +17,7 @@
 #include "debugger.h"
 #include "debugger_print.h"
 
-void print_node_pair_list(std::list<node_pair_t> pairs,
+void print_node_pair_list(std::list<cnode_pair_t> pairs,
                           std::string row_header,
                           std::ostream& out) {
   const unsigned kMaxPrintsPerRow = 4;
@@ -91,7 +91,7 @@ void DebugNodePrinter::printSourceInfo() {
 
   if (line_num != -1 && func) {
     const std::multimap<unsigned, UniqueLabel>& labelmap =
-        acc->getLabelMap();
+        acc->getProgram().labelmap;
     auto label_range = labelmap.equal_range(line_num);
     for (auto it = label_range.first; it != label_range.second; ++it) {
       if (it->second.get_function() == func) {
@@ -164,7 +164,8 @@ void DebugNodePrinter::printCall() {
 }
 
 void DebugNodePrinter::printChildren() {
-  std::vector<unsigned> childNodes = acc->getChildNodes(node->get_node_id());
+  std::vector<unsigned> childNodes =
+      acc->getProgram().getChildNodes(node->get_node_id());
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
     ExecNode* node = acc->getNodeFromNodeId(child_node);
@@ -175,7 +176,8 @@ void DebugNodePrinter::printChildren() {
 }
 
 void DebugNodePrinter::printParents() {
-  std::vector<unsigned> parentNodes = acc->getParentNodes(node->get_node_id());
+  std::vector<unsigned> parentNodes =
+      acc->getProgram().getParentNodes(node->get_node_id());
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
     ExecNode* node = acc->getNodeFromNodeId(parent_node);
@@ -231,9 +233,9 @@ void DebugEdgePrinter::printEdgeInfo() {
   if (acc->doesEdgeExist(source_node, target_node)) {
     Edge e = boost::edge(source_node->get_vertex(),
                          target_node->get_vertex(),
-                         acc->getGraph())
+                         acc->getProgram().graph)
                  .first;
-    int edge_weight = get(boost::edge_name, acc->getGraph())[e];
+    int edge_weight = get(boost::edge_name, acc->getProgram().graph)[e];
     out << "  Edge type: ";
     switch (edge_weight) {
       case (uint8_t)MEMORY_EDGE:
@@ -282,7 +284,8 @@ void DebugFunctionPrinter::printAll() {
 
 void DebugFunctionPrinter::printLoops() {
   using namespace SrcTypes;
-  const std::multimap<unsigned, UniqueLabel>& labelmap = acc->getLabelMap();
+  const std::multimap<unsigned, UniqueLabel>& labelmap =
+      acc->getProgram().labelmap;
   std::list<Label*> loops;
 
   for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
@@ -328,8 +331,8 @@ int DebugFunctionPrinter::computeFunctionLatency() {
   int max_latency = 0;
   for (auto it = function_boundaries.begin(); it != function_boundaries.end();
        ++it) {
-    ExecNode* first = it->first;
-    ExecNode* second = it->second;
+    const ExecNode* first = it->first;
+    const ExecNode* second = it->second;
     int latency = second->get_complete_execution_cycle() -
                   first->get_complete_execution_cycle();
     if (latency > max_latency)
@@ -342,14 +345,14 @@ int DebugFunctionPrinter::computeFunctionLatency() {
 // DebugCyclePrinter
 //-------------------
 
-std::list<ExecNode*> DebugCyclePrinter::findNodesExecutedinCycle() {
-  const Graph& graph = acc->getGraph();
-  std::list<ExecNode*> matched_nodes;
+std::list<const ExecNode*> DebugCyclePrinter::findNodesExecutedinCycle() {
+  const Graph& graph = acc->getProgram().graph;
+  std::list<const ExecNode*> matched_nodes;
 
   // In many cases, a simple linear traversal through all nodes ends up being
   // faster than a breadth-first traversal of the graph.
   for (auto it = acc->node_begin(); it != acc->node_end(); ++it) {
-    ExecNode* curr_node = it->second;
+    const ExecNode* curr_node = it->second;
     if (curr_node->get_start_execution_cycle() >= cycle &&
         curr_node->get_complete_execution_cycle() <= cycle) {
       matched_nodes.push_back(curr_node);
@@ -367,7 +370,7 @@ void DebugCyclePrinter::printAll() {
     out << "ERROR: No nodes have executed yet.\n";
     return;
   }
-  std::list<ExecNode*> nodes = findNodesExecutedinCycle();
+  std::list<const ExecNode*> nodes = findNodesExecutedinCycle();
   out << "Cycle " << cycle << std::endl;
   out << "  Nodes executed at this cycle: ";
   const unsigned kMaxNodesPerRow = 15;
@@ -402,7 +405,7 @@ DebugLoopPrinter::LoopIdentifyStatus DebugLoopPrinter::identifyLoop(
   std::vector<UniqueLabel> candidates;
 
   const std::multimap<unsigned, SrcTypes::UniqueLabel>& labelmap =
-      acc->getLabelMap();
+      acc->getProgram().labelmap;
   for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
     const UniqueLabel& unique_label = it->second;
     if (unique_label.get_label() == label)
@@ -475,11 +478,11 @@ int DebugLoopPrinter::getUserSelection(int max_option) {
 // TODO: New strategy: rather than go branch to branch, go
 // branch->next-non-isolated-node to branch.
 int DebugLoopPrinter::computeLoopLatency(
-    const std::list<node_pair_t>& loop_bound_nodes) {
+    const std::list<cnode_pair_t>& loop_bound_nodes) {
   int max_latency = 0;
   for (auto it = loop_bound_nodes.begin(); it != loop_bound_nodes.end(); ++it) {
-    ExecNode* first = it->first;
-    ExecNode* second = it->second;
+    const ExecNode* first = it->first;
+    const ExecNode* second = it->second;
     int latency = second->get_complete_execution_cycle() -
                   first->get_complete_execution_cycle();
     if (latency > max_latency)
@@ -502,8 +505,8 @@ void DebugLoopPrinter::printLoop(const std::string &loop_name) {
       << "  Function: " << func->get_name() << "\n"
       << "  Line number: " << selected_label.get_line_number() << "\n";
 
-  std::list<node_pair_t> loop_bound_nodes =
-      acc->findLoopBoundaries(selected_label);
+  std::list<cnode_pair_t> loop_bound_nodes =
+      acc->getProgram().findLoopBoundaries(selected_label);
   out << "  Loop boundaries: ";
   if (loop_bound_nodes.empty()) {
     out << "None.\n";

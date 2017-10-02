@@ -27,6 +27,7 @@ SCENARIO("Test memory ambiguation with independent stores", "[mem_amb_indep]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->globalOptimizationPass();
     // Two outer loop iterations worth of stores.
@@ -35,9 +36,9 @@ SCENARIO("Test memory ambiguation with independent stores", "[mem_amb_indep]") {
     WHEN("After memory ambiguation") {
       THEN("Stores should not have any dependences") {
         for (unsigned i = 0; i < stores.size() - 1; i++) {
-          REQUIRE(acc->getNodeFromNodeId(stores[i])->is_store_op());
-          REQUIRE(acc->getNodeFromNodeId(stores[i+1])->is_store_op());
-          REQUIRE_FALSE(acc->doesEdgeExist(stores[i], stores[i+1]));
+          REQUIRE(prog.nodes.at(stores[i])->is_store_op());
+          REQUIRE(prog.nodes.at(stores[i+1])->is_store_op());
+          REQUIRE_FALSE(prog.edgeExists(stores[i], stores[i+1]));
         }
       }
     }
@@ -62,6 +63,7 @@ SCENARIO("Test memory ambiguation with independent stores", "[mem_amb_indep]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->globalOptimizationPass();
     // Two outer loop iterations worth of stores.
@@ -71,9 +73,9 @@ SCENARIO("Test memory ambiguation with independent stores", "[mem_amb_indep]") {
     WHEN("After memory ambiguation") {
       THEN("All stores should be serialized") {
         for (unsigned i = 0; i < stores.size() - 1; i++) {
-          REQUIRE(acc->getNodeFromNodeId(stores[i])->is_store_op());
-          REQUIRE(acc->getNodeFromNodeId(stores[i+1])->is_store_op());
-          REQUIRE(acc->doesEdgeExist(stores[i], stores[i+1]));
+          REQUIRE(prog.nodes.at(stores[i])->is_store_op());
+          REQUIRE(prog.nodes.at(stores[i+1])->is_store_op());
+          REQUIRE(prog.edgeExists(stores[i], stores[i+1]));
         }
       }
     }

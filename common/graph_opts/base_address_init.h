@@ -8,9 +8,6 @@ class BaseAddressInit : public BaseAladdinOpt {
   using BaseAladdinOpt::BaseAladdinOpt;
   virtual void optimize();
   virtual std::string getCenteredName(size_t size);
-
- protected:
-  SrcTypes::DynamicVariable getCallerRegID(SrcTypes::DynamicVariable& reg_id);
 };
 
 #endif

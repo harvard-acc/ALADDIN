@@ -50,9 +50,8 @@ typedef std::unordered_map<std::string, PartitionEntry> partition_config_t;
 typedef std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap_t;
 typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel>
     inline_labelmap_t;
-typedef std::unordered_map<SrcTypes::DynamicVariable, SrcTypes::DynamicVariable>
-    call_arg_map_t;
 typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
+typedef std::pair<const ExecNode*, const ExecNode*> cnode_pair_t;
 typedef std::map<unsigned, ExecNode*> ExecNodeMap;
 
 #endif

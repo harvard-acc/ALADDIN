@@ -14,6 +14,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    const Program& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -22,13 +23,13 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     WHEN("Test loopFlatten()") {
       acc->loopFlatten();
       THEN("Loop increments become LLVM_IR_Move.") {
-        REQUIRE(acc->getMicroop(16) == LLVM_IR_Move);
-        REQUIRE(acc->getMicroop(28) == LLVM_IR_Move);
-        REQUIRE(acc->getMicroop(40) == LLVM_IR_Move);
+        REQUIRE(prog.nodes.at(16)->get_microop() == LLVM_IR_Move);
+        REQUIRE(prog.nodes.at(28)->get_microop() == LLVM_IR_Move);
+        REQUIRE(prog.nodes.at(40)->get_microop() == LLVM_IR_Move);
       }
       THEN("Branch nodes for flatten loops are isolated.") {
-        REQUIRE(acc->getNumOfConnectedNodes(18) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(30) == 0);
+        REQUIRE(prog.getNumConnectedNodes(18) == 0);
+        REQUIRE(prog.getNumConnectedNodes(30) == 0);
       }
     }
   }

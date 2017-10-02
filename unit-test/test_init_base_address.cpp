@@ -13,6 +13,7 @@ SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -20,12 +21,12 @@ SCENARIO("Test initBaseAddress w/ c[i]=a[i] case", "[equal]") {
       acc->initBaseAddress();
       THEN("The baseAddress of memory operations should be either "
            "'a', 'b' or 'c' for Triad.") {
-        REQUIRE(acc->getBaseAddressLabel(3).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(5).compare("c") == 0);
-        REQUIRE(acc->getBaseAddressLabel(11).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(13).compare("c") == 0);
-        REQUIRE(acc->getBaseAddressLabel(19).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(21).compare("c") == 0);
+        REQUIRE(prog.getBaseAddressLabel(3).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(5).compare("c") == 0);
+        REQUIRE(prog.getBaseAddressLabel(11).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(13).compare("c") == 0);
+        REQUIRE(prog.getBaseAddressLabel(19).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(21).compare("c") == 0);
       }
     }
   }
@@ -40,6 +41,7 @@ SCENARIO("Test initBaseAddress w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -47,12 +49,12 @@ SCENARIO("Test initBaseAddress w/ Triad", "[triad]") {
       acc->initBaseAddress();
       THEN("The baseAddress of memory operations should be either "
            "'a', 'b' or 'c' for Triad.") {
-        REQUIRE(acc->getBaseAddressLabel(3).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(5).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(9).compare("c") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1491).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1493).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1497).compare("c") == 0);
+        REQUIRE(prog.getBaseAddressLabel(3).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(5).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(9).compare("c") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1491).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1493).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1497).compare("c") == 0);
       }
     }
   }
@@ -66,6 +68,7 @@ SCENARIO("Test initBaseAddress w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -73,9 +76,9 @@ SCENARIO("Test initBaseAddress w/ Reduction", "[reduction]") {
       acc->initBaseAddress();
       THEN("The baseAddress of memory operations should be 'in' for "
            "Reduction.") {
-        REQUIRE(acc->getBaseAddressLabel(4).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(12).compare("in") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1020).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(4).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(12).compare("in") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1020).compare("in") == 0);
       }
     }
   }
@@ -89,6 +92,7 @@ SCENARIO("Test initBaseAddress w/ Pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -96,16 +100,16 @@ SCENARIO("Test initBaseAddress w/ Pp_scan", "[pp_scan]") {
       acc->initBaseAddress();
       THEN("The baseAddress of memory operations should be 'bucket' or 'sum' "
            "for pp_scan.") {
-        REQUIRE(acc->getBaseAddressLabel(11).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(13).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(15).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1463).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1465).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1467).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1488).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(1491).compare("sum") == 0);
-        REQUIRE(acc->getBaseAddressLabel(3169).compare("bucket") == 0);
-        REQUIRE(acc->getBaseAddressLabel(3167).compare("sum") == 0);
+        REQUIRE(prog.getBaseAddressLabel(11).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(13).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(15).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1463).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1465).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1467).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1488).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(1491).compare("sum") == 0);
+        REQUIRE(prog.getBaseAddressLabel(3169).compare("bucket") == 0);
+        REQUIRE(prog.getBaseAddressLabel(3167).compare("sum") == 0);
       }
     }
   }
@@ -120,6 +124,7 @@ SCENARIO("Test initBaseAddress w/ sort-radix", "[sort-radix]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -128,12 +133,12 @@ SCENARIO("Test initBaseAddress w/ sort-radix", "[sort-radix]") {
       THEN("In the 1st update(): global b -> local b, global a -> local a.\n\
            In the 2nd update(): global a -> local b, global b -> local a.\n\
            In the 3rd update(): global b -> local b, global a -> local a.") {
-        REQUIRE(acc->getBaseAddressLabel(97169).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(97180).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(240417).compare("b") == 0);
-        REQUIRE(acc->getBaseAddressLabel(240428).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(383665).compare("a") == 0);
-        REQUIRE(acc->getBaseAddressLabel(383676).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(97169).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(97180).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(240417).compare("b") == 0);
+        REQUIRE(prog.getBaseAddressLabel(240428).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(383665).compare("a") == 0);
+        REQUIRE(prog.getBaseAddressLabel(383676).compare("b") == 0);
       }
     }
   }

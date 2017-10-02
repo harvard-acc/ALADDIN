@@ -12,15 +12,6 @@ std::string BaseAddressInit::getCenteredName(size_t size) {
   return "       Init Base Address       ";
 }
 
-DynamicVariable BaseAddressInit::getCallerRegID(DynamicVariable& reg_id) {
-  auto it = call_argument_map.find(reg_id);
-  while (it != call_argument_map.end()) {
-    reg_id = it->second;
-    it = call_argument_map.find(reg_id);
-  }
-  return reg_id;
-}
-
 void BaseAddressInit::optimize() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
@@ -57,7 +48,7 @@ void BaseAddressInit::optimize() {
             parent_microop == LLVM_IR_Load || parent_microop == LLVM_IR_Store) {
           // remove address calculation directly
           DynamicVariable dynvar = parent_node->get_dynamic_variable();
-          dynvar = getCallerRegID(dynvar);
+          dynvar = call_argument_map.lookup(dynvar);
           const std::string& label = dynvar.get_variable()->get_name();
           node->set_array_label(label);
           curr_vertex = source(*in_edge_it, graph);

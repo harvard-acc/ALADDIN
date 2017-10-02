@@ -16,7 +16,8 @@ TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
             test_loop_unrolling.o test_rm_induction_var.o test_rm_phi.o \
             test_spm_part.o test_store_buffer.o \
             test_tree_height_reduction.o test_loop_flatten.o \
-            test_dma.o test_reg_load_store_fusion.o test_memory_ambiguation.o
+            test_dma.o test_reg_load_store_fusion.o test_memory_ambiguation.o \
+
 TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)

@@ -13,14 +13,15 @@ SCENARIO("Test removePhiNodes w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(acc->getNumOfConnectedNodes(13) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(25) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1525) == 0);
+        REQUIRE(prog.getNumConnectedNodes(13) == 0);
+        REQUIRE(prog.getNumConnectedNodes(25) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1525) == 0);
       }
     }
   }
@@ -34,15 +35,16 @@ SCENARIO("Test removePhiNodes w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(acc->getNumOfConnectedNodes(1) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(10) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1009) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1018) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1) == 0);
+        REQUIRE(prog.getNumConnectedNodes(10) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1009) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1018) == 0);
       }
     }
   }
@@ -56,17 +58,18 @@ SCENARIO("Test removePhiNodes w/ Pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(acc->getNumOfConnectedNodes(2) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(19) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1478) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1495) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1736) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(3163) == 0);
+        REQUIRE(prog.getNumConnectedNodes(2) == 0);
+        REQUIRE(prog.getNumConnectedNodes(19) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1478) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1495) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1736) == 0);
+        REQUIRE(prog.getNumConnectedNodes(3163) == 0);
       }
     }
   }

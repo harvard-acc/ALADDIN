@@ -14,6 +14,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removeInductionDependence();
     acc->removePhiNodes();
@@ -23,27 +24,27 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
     acc->loopUnrolling();
     WHEN("before storeBuffer()") {
       THEN("Loads are dependent on previous stores w/ the same addresses.") {
-        REQUIRE(acc->doesEdgeExist(15, 23) == 1);
-        REQUIRE(acc->doesEdgeExist(27, 35) == 1);
-        REQUIRE(acc->doesEdgeExist(1491, 1498) == 1);
+        REQUIRE(prog.edgeExists(15, 23) == 1);
+        REQUIRE(prog.edgeExists(27, 35) == 1);
+        REQUIRE(prog.edgeExists(1491, 1498) == 1);
       }
       THEN("Loads have children.") {
-        REQUIRE(acc->doesEdgeExist(23, 26) == 1);
-        REQUIRE(acc->doesEdgeExist(35, 38) == 1);
-        REQUIRE(acc->doesEdgeExist(1498, 1506) == 1);
+        REQUIRE(prog.edgeExists(23, 26) == 1);
+        REQUIRE(prog.edgeExists(35, 38) == 1);
+        REQUIRE(prog.edgeExists(1498, 1506) == 1);
       }
     }
     WHEN("Test storeBuffer()") {
       acc->storeBuffer();
       THEN("Loads are isolated.") {
-        REQUIRE(acc->getNumOfConnectedNodes(23) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(35) == 0);
-        REQUIRE(acc->getNumOfConnectedNodes(1498) == 0);
+        REQUIRE(prog.getNumConnectedNodes(23) == 0);
+        REQUIRE(prog.getNumConnectedNodes(35) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1498) == 0);
       }
       THEN("Loads' children are now store parents' children.") {
-        REQUIRE(acc->doesEdgeExist(14, 26) == 1);
-        REQUIRE(acc->doesEdgeExist(26, 38) == 1);
-        REQUIRE(acc->doesEdgeExist(1489, 1506) == 1);
+        REQUIRE(prog.edgeExists(14, 26) == 1);
+        REQUIRE(prog.edgeExists(26, 38) == 1);
+        REQUIRE(prog.edgeExists(1489, 1506) == 1);
       }
     }
   }

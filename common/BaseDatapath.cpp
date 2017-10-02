@@ -42,13 +42,10 @@ BaseDatapath::~BaseDatapath() {
 
 bool BaseDatapath::buildDddg() {
   DDDG* dddg;
-  dddg = new DDDG(this, trace_file);
+  dddg = new DDDG(this, &program, trace_file);
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
-  if (labelmap.size() == 0) {
-    labelmap = dddg->get_labelmap();
-    updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
-  }
+  updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
   delete dddg;
 
   if (current_trace_off == DDDG::END_OF_TRACE)
@@ -57,11 +54,11 @@ bool BaseDatapath::buildDddg() {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
   std::cout << "-------------------------------" << std::endl;
-  numTotalNodes = exec_nodes.size();
-  beginNodeId = exec_nodes.begin()->first;
-  endNodeId = (--exec_nodes.end())->first + 1;
+  numTotalNodes = program.nodes.size();
+  beginNodeId = program.nodes.begin()->first;
+  endNodeId = (--program.nodes.end())->first + 1;
 
-  vertexToName = get(boost::vertex_node_id, graph_);
+  program.createVertexMap();
 
   num_cycles = 0;
   return true;
@@ -72,7 +69,7 @@ void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
   // The config file is parsed before the trace, so we don't have line number
   // information yet. After parsing the trace, update the unrolling and
   // pipelining config maps with line numbers.
-  for (auto it = labelmap.begin(); it != labelmap.end(); ++it) {
+  for (auto it = program.labelmap.begin(); it != program.labelmap.end(); ++it) {
     const UniqueLabel& label_with_num = it->second;
     UniqueLabel label_without_num(
         label_with_num.get_function(), label_with_num.get_label(), 0);
@@ -107,45 +104,11 @@ void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
 }
 
 void BaseDatapath::clearDatapath() {
-  clearExecNodes();
+  program.clear();
   clearFunctionName();
   clearArrayBaseAddress();
-  clearLoopBound();
   clearRegStats();
-  graph_.clear();
   registers.clear();
-  call_argument_map.clear();
-}
-
-void BaseDatapath::addDddgEdge(unsigned int from,
-                               unsigned int to,
-                               uint8_t parid) {
-  if (from != to) {
-    add_edge(exec_nodes.at(from)->get_vertex(), exec_nodes.at(to)->get_vertex(),
-             EdgeProperty(parid), graph_);
-  }
-}
-
-ExecNode* BaseDatapath::insertNode(unsigned node_id, uint8_t microop) {
-  exec_nodes[node_id] = new ExecNode(node_id, microop);
-  Vertex v = add_vertex(VertexProperty(node_id), graph_);
-  exec_nodes.at(node_id)->set_vertex(v);
-  assert(get(boost::vertex_node_id, graph_, v) == node_id);
-  return exec_nodes.at(node_id);
-}
-
-void BaseDatapath::addCallArgumentMapping(DynamicVariable& callee_reg_id,
-                                          DynamicVariable& caller_reg_id) {
-  call_argument_map[callee_reg_id] = caller_reg_id;
-}
-
-DynamicVariable BaseDatapath::getCallerRegID(DynamicVariable& reg_id) {
-  auto it = call_argument_map.find(reg_id);
-  while (it != call_argument_map.end()) {
-    reg_id = it->second;
-    it = call_argument_map.find(reg_id);
-  }
-  return reg_id;
 }
 
 void BaseDatapath::initBaseAddress() {
@@ -236,27 +199,6 @@ void BaseDatapath::dumpStats() {
 #endif
 }
 
-std::list<node_pair_t> BaseDatapath::findFunctionBoundaries(
-    SrcTypes::Function* func) {
-  std::list<node_pair_t> boundaries;
-  if (!func)
-    return boundaries;
-
-  node_pair_t current_bound;
-  for (auto& node_id_pair : exec_nodes) {
-    ExecNode* node = node_id_pair.second;
-    if (node->is_call_op()) {
-      ExecNode* next_node = getNextNode(node->get_node_id());
-      if (next_node->get_static_function() == func)
-        current_bound.first = node;
-    } else if (node->is_ret_op() && node->get_static_function() == func) {
-      current_bound.second = node;
-      boundaries.push_back(current_bound);
-    }
-  }
-  return boundaries;
-}
-
 /*
  * Write per cycle activity to bench_stats. The format is:
  * cycle_num,num-of-muls,num-of-adds,num-of-bitwise-ops,num-of-reg-reads,num-of-reg-writes
@@ -331,8 +273,8 @@ void BaseDatapath::updatePerCycleActivity(
    * of accelerators generated with Vivado. */
   int num_adds_so_far = 0, num_bits_so_far = 0;
   int num_shifters_so_far = 0;
-  auto bound_it = loopBound.begin();
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  auto bound_it = program.loop_bounds.begin();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     // TODO: On every iteration, this could be a bottleneck.
@@ -807,7 +749,7 @@ void BaseDatapath::writeBaseAddress() {
   file_name << benchName << "_baseAddr.gz";
   gzFile gzip_file;
   gzip_file = gzopen(file_name.str().c_str(), "w");
-  for (auto it = exec_nodes.begin(), E = exec_nodes.end(); it != E; ++it) {
+  for (auto it = program.nodes.begin(), E = program.nodes.end(); it != E; ++it) {
     char original_label[256];
     int partition_id;
     const std::string& partitioned_label = it->second->get_array_label();
@@ -827,7 +769,7 @@ void BaseDatapath::writeBaseAddress() {
 }
 
 void BaseDatapath::writeOtherStats() {
-  // First collect the data from exec_nodes.
+  // First collect the data from program.nodes.
   std::vector<int> microop;
   std::vector<int> exec_cycle;
   std::vector<bool> isolated;
@@ -835,7 +777,7 @@ void BaseDatapath::writeOtherStats() {
   exec_cycle.reserve(totalConnectedNodes);
   isolated.reserve(totalConnectedNodes);
 
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     microop.push_back(node->get_microop());
@@ -863,19 +805,19 @@ void BaseDatapath::prepareForScheduling() {
   std::cout << "      Scheduling...            " << benchName << std::endl;
   std::cout << "=============================================" << std::endl;
 
-  edgeToParid = get(boost::edge_name, graph_);
+  edgeToParid = get(boost::edge_name, program.graph);
 
-  numTotalEdges = boost::num_edges(graph_);
+  numTotalEdges = boost::num_edges(program.graph);
   executedNodes = 0;
   totalConnectedNodes = 0;
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     if (!node->has_vertex())
       continue;
     Vertex node_vertex = node->get_vertex();
-    if (boost::degree(node_vertex, graph_) != 0 || node->is_dma_op()) {
-      node->set_num_parents(boost::in_degree(node_vertex, graph_));
+    if (boost::degree(node_vertex, program.graph) != 0 || node->is_dma_op()) {
+      node->set_num_parents(boost::in_degree(node_vertex, program.graph));
       node->set_isolated(false);
       totalConnectedNodes++;
     }
@@ -891,13 +833,14 @@ void BaseDatapath::prepareForScheduling() {
 
 void BaseDatapath::dumpGraph(std::string graph_name) {
   std::unordered_map<Vertex, ExecNode*> vertexToMicroop;
-  BGL_FORALL_VERTICES(v, graph_, Graph) {
-    ExecNode* node = exec_nodes.at(get(boost::vertex_node_id, graph_, v));
+  BGL_FORALL_VERTICES(v, program.graph, Graph) {
+    ExecNode* node = program.nodes.at(get(boost::vertex_node_id, program.graph, v));
     vertexToMicroop[v] = node;
   }
   std::ofstream out(
       graph_name + "_graph.dot", std::ofstream::out | std::ofstream::app);
-  write_graphviz(out, graph_, make_microop_label_writer(vertexToMicroop, graph_));
+  write_graphviz(out, program.graph,
+                 make_microop_label_writer(vertexToMicroop, program.graph));
 }
 
 /*As Late As Possible (ALAP) rescheduling for non-memory, non-control nodes.
@@ -909,15 +852,15 @@ void BaseDatapath::dumpGraph(std::string graph_name) {
   design.*/
 int BaseDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
-  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
+  boost::topological_sort(program.graph, std::back_inserter(topo_nodes));
   // bottom nodes first
   std::map<unsigned, int> earliest_child;
-  for (auto node_id_pair : exec_nodes) {
+  for (auto node_id_pair : program.nodes) {
     earliest_child[node_id_pair.first] = num_cycles;
   }
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
-    unsigned node_id = vertexToName[*vi];
-    ExecNode* node = exec_nodes.at(node_id);
+    unsigned node_id = program.atVertex(*vi);
+    ExecNode* node = program.nodes.at(node_id);
     if (node->is_isolated())
       continue;
     if (!node->is_memory_op() && !node->is_branch_op()) {
@@ -934,9 +877,9 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
     }
 
     in_edge_iter in_i, in_end;
-    for (boost::tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end;
+    for (boost::tie(in_i, in_end) = in_edges(*vi, program.graph); in_i != in_end;
          ++in_i) {
-      int parent_id = vertexToName[source(*in_i, graph_)];
+      int parent_id = program.atVertex(source(*in_i, program.graph));
       if (earliest_child.at(parent_id) > node->get_start_execution_cycle())
         earliest_child.at(parent_id) = node->get_start_execution_cycle();
     }
@@ -946,7 +889,7 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
 
 void BaseDatapath::updateRegStats() {
   regStats.assign(num_cycles, { 0, 0, 0 });
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     if (node->is_isolated() || node->is_control_op() || node->is_index_op())
@@ -957,11 +900,11 @@ void BaseDatapath::updateRegStats() {
     Vertex node_vertex = node->get_vertex();
     out_edge_iter out_edge_it, out_edge_end;
     std::set<int> children_levels;
-    for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+    for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, program.graph);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
-      int child_id = vertexToName[target(*out_edge_it, graph_)];
-      ExecNode* child_node = exec_nodes.at(child_id);
+      int child_id = program.atVertex(target(*out_edge_it, program.graph));
+      ExecNode* child_node = program.nodes.at(child_id);
       if (child_node->is_control_op() || child_node->is_load_op())
         continue;
 
@@ -1021,11 +964,11 @@ void BaseDatapath::updateChildren(ExecNode* node) {
     return;
   Vertex node_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, graph_);
+  for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, program.graph);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
-    Vertex child_vertex = target(*out_edge_it, graph_);
-    ExecNode* child_node = getNodeFromVertex(child_vertex);
+    Vertex child_vertex = target(*out_edge_it, program.graph);
+    ExecNode* child_node = program.nodeAtVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     if (child_node->get_num_parents() > 0) {
       child_node->decr_num_parents();
@@ -1055,36 +998,12 @@ void BaseDatapath::updateChildren(ExecNode* node) {
 }
 
 void BaseDatapath::initExecutingQueue() {
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     if (node->get_num_parents() == 0 && !node->is_isolated())
       executingQueue.push_back(node);
   }
-}
-
-int BaseDatapath::shortestDistanceBetweenNodes(unsigned int from,
-                                               unsigned int to) {
-  std::list<std::pair<unsigned int, unsigned int>> queue;
-  queue.push_back({ from, 0 });
-  while (queue.size() != 0) {
-    unsigned int curr_node = queue.front().first;
-    unsigned int curr_dist = queue.front().second;
-    out_edge_iter out_edge_it, out_edge_end;
-    for (boost::tie(out_edge_it, out_edge_end) =
-             out_edges(exec_nodes.at(curr_node)->get_vertex(), graph_);
-         out_edge_it != out_edge_end;
-         ++out_edge_it) {
-      if (get(boost::edge_name, graph_, *out_edge_it) != CONTROL_EDGE) {
-        int child_id = vertexToName[target(*out_edge_it, graph_)];
-        if (child_id == to)
-          return curr_dist + 1;
-        queue.push_back({ child_id, curr_dist + 1 });
-      }
-    }
-    queue.pop_front();
-  }
-  return -1;
 }
 
 partition_config_t::iterator BaseDatapath::getArrayConfigFromAddr(Addr base_addr) {
@@ -1104,78 +1023,12 @@ partition_config_t::iterator BaseDatapath::getArrayConfigFromAddr(Addr base_addr
   return part_it;
 }
 
-SrcTypes::UniqueLabel BaseDatapath::getUniqueLabel(ExecNode* node) {
-  // We'll only find a label if the labelmap is present in the dynamic trace,
-  // but if the configuration file doesn't use labels (it's an older config
-  // file), we have to fallback on using line numbers.
-  auto range = labelmap.equal_range(node->get_line_num());
-  for (auto it = range.first; it != range.second; ++it) {
-    if (it->second.get_function() != node->get_static_function())
-      continue;
-    return it->second;
-  }
-  return UniqueLabel();
-}
-
-std::vector<unsigned> BaseDatapath::getConnectedNodes(unsigned int node_id) {
-  std::vector<unsigned> parentNodes = getParentNodes(node_id);
-  std::vector<unsigned> childNodes = getChildNodes(node_id);
-  parentNodes.insert(parentNodes.end(), childNodes.begin(), childNodes.end());
-  return parentNodes;
-}
-
-std::vector<unsigned> BaseDatapath::getParentNodes(unsigned int node_id) {
-  in_edge_iter in_edge_it, in_edge_end;
-  ExecNode* node = exec_nodes.at(node_id);
-  Vertex vertex = node->get_vertex();
-
-  std::vector<unsigned> connectedNodes;
-  for (boost::tie(in_edge_it, in_edge_end) = in_edges(vertex, graph_);
-       in_edge_it != in_edge_end;
-       ++in_edge_it) {
-    Edge edge = *in_edge_it;
-    Vertex source_vertex = source(edge, graph_);
-    connectedNodes.push_back(vertexToName[source_vertex]);
-  }
-  return connectedNodes;
-}
-
-std::vector<unsigned> BaseDatapath::getChildNodes(unsigned int node_id) {
-  out_edge_iter out_edge_it, out_edge_end;
-  ExecNode* node = exec_nodes.at(node_id);
-  Vertex vertex = node->get_vertex();
-
-  std::vector<unsigned> connectedNodes;
-  for (boost::tie(out_edge_it, out_edge_end) = out_edges(vertex, graph_);
-       out_edge_it != out_edge_end;
-       ++out_edge_it) {
-    Edge edge = *out_edge_it;
-    Vertex target_vertex = target(edge, graph_);
-    connectedNodes.push_back(vertexToName[target_vertex]);
-  }
-  return connectedNodes;
-}
-
-ExecNode* BaseDatapath::getNextNode(unsigned node_id) {
-  auto it = exec_nodes.find(node_id);
-  assert(it != exec_nodes.end());
-  auto next_it = std::next(it);
-  if (next_it == exec_nodes.end())
-    return nullptr;
-  return next_it->second;
-}
-
 // readConfigs
 void BaseDatapath::parse_config(std::string& bench,
                                 std::string& config_file_name) {
   std::ifstream config_file;
   config_file.open(config_file_name);
   std::string wholeline;
-  /*
-  pipelining = false;
-  ready_mode = false;
-  num_ports = 1;
-  */
 
   while (!config_file.eof()) {
     wholeline.clear();

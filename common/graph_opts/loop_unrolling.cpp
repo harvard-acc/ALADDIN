@@ -60,7 +60,7 @@ void LoopUnrolling::optimize() {
     if (user_params.ready_mode && node->is_dma_load())
       continue;
     unsigned node_id = node->get_node_id();
-    ExecNode* next_node = getNextNode(exec_nodes, node_id);
+    ExecNode* next_node = program.getNextNode(node_id);
     if (!next_node)
       continue;
     DynLoopBound dyn_bound(node_id, next_node->get_loop_depth());

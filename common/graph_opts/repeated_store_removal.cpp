@@ -12,6 +12,7 @@ void RepeatedStoreRemoval::optimize() {
 
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
+  unsigned removed_stores = 0;
   int node_id = exec_nodes.size() - 1;
   auto bound_it = loop_bounds.end();
   bound_it--;
@@ -38,6 +39,7 @@ void RepeatedStoreRemoval::optimize() {
         if (!node->is_dynamic_mem_op()) {
           if (boost::out_degree(node->get_vertex(), graph) == 0) {
             node->set_microop(LLVM_IR_SilentStore);
+            removed_stores++;
           } else {
             int num_of_real_children = 0;
             out_edge_iter out_edge_it, out_edge_end;
@@ -50,6 +52,7 @@ void RepeatedStoreRemoval::optimize() {
             }
             if (num_of_real_children == 0) {
               node->set_microop(LLVM_IR_SilentStore);
+              removed_stores++;
             }
           }
         }

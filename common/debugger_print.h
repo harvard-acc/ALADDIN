@@ -94,7 +94,7 @@ class DebugLoopPrinter {
 
   /* Compute the max latency of the loops bounded by loop_bound_nodes.
    */
-  int computeLoopLatency(const std::list<node_pair_t>& loop_bound_nodes);
+  int computeLoopLatency(const std::list<cnode_pair_t>& loop_bound_nodes);
 
   /* The loop to print. */
   SrcTypes::UniqueLabel selected_label;
@@ -110,7 +110,7 @@ class DebugFunctionPrinter {
                        std::ostream& _out)
       : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {
     function = srcManager.get<SrcTypes::Function>(_function_name);
-    function_boundaries = acc->findFunctionBoundaries(function);
+    function_boundaries = acc->getProgram().findFunctionBoundaries(function);
   }
 
   void printAll();
@@ -122,7 +122,7 @@ class DebugFunctionPrinter {
 
  private:
   SrcTypes::Function* function;
-  std::list<node_pair_t> function_boundaries;
+  std::list<cnode_pair_t> function_boundaries;
   ScratchpadDatapath* acc;
   std::ostream& out;
   SrcTypes::SourceManager& srcManager;
@@ -137,7 +137,7 @@ class DebugCyclePrinter {
       : cycle(_cycle), max_nodes(_max_nodes), acc(_acc), out(_out) {}
 
   void printAll();
-  std::list<ExecNode*> findNodesExecutedinCycle();
+  std::list<const ExecNode*> findNodesExecutedinCycle();
 
  private:
   int cycle;

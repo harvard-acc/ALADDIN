@@ -4,19 +4,6 @@
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
 
-int getEdgeWeight(ScratchpadDatapath* acc,
-                  Graph& graph,
-                  unsigned node_id_0,
-                  unsigned node_id_1) {
-  EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
-  ExecNode* node_0 = acc->getNodeFromNodeId(node_id_0);
-  ExecNode* node_1 = acc->getNodeFromNodeId(node_id_1);
-  auto edge_pair = edge(node_0->get_vertex(), node_1->get_vertex(), graph);
-  if (!edge_pair.second)
-    return -1;
-  return edge_to_parid[edge_pair.first];
-}
-
 /* Code:
  *
  * int result[10];
@@ -42,6 +29,7 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     acc->removePhiNodes();
     acc->removeInductionDependence();
@@ -59,23 +47,22 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
     WHEN("Before applying register load/store fusion") {
       THEN("Inner loop should contain chains of Load, Add, Store, connected by "
            "memory references.") {
-        REQUIRE(acc->getMicroop(10) == LLVM_IR_Load);
-        REQUIRE(acc->getMicroop(11) == LLVM_IR_Add);
-        REQUIRE(acc->getMicroop(12) == LLVM_IR_Store);
-        REQUIRE(acc->getMicroop(23) == LLVM_IR_Load);
-        REQUIRE(acc->getMicroop(24) == LLVM_IR_Add);
-        REQUIRE(acc->getMicroop(25) == LLVM_IR_Store);
-        REQUIRE(acc->getMicroop(49) == LLVM_IR_Load);
-        REQUIRE(acc->getMicroop(50) == LLVM_IR_Add);
-        REQUIRE(acc->getMicroop(51) == LLVM_IR_Store);
+        REQUIRE(prog.nodes.at(10)->get_microop() == LLVM_IR_Load);
+        REQUIRE(prog.nodes.at(11)->get_microop() == LLVM_IR_Add);
+        REQUIRE(prog.nodes.at(12)->get_microop() == LLVM_IR_Store);
+        REQUIRE(prog.nodes.at(23)->get_microop() == LLVM_IR_Load);
+        REQUIRE(prog.nodes.at(24)->get_microop() == LLVM_IR_Add);
+        REQUIRE(prog.nodes.at(25)->get_microop() == LLVM_IR_Store);
+        REQUIRE(prog.nodes.at(49)->get_microop() == LLVM_IR_Load);
+        REQUIRE(prog.nodes.at(50)->get_microop() == LLVM_IR_Add);
+        REQUIRE(prog.nodes.at(51)->get_microop() == LLVM_IR_Store);
 
-        Graph graph = acc->getGraph();
-        REQUIRE(getEdgeWeight(acc, graph, 10, 11) == 1);
-        REQUIRE(getEdgeWeight(acc, graph, 11, 12) == 1);
-        REQUIRE(getEdgeWeight(acc, graph, 23, 24) == 1);
-        REQUIRE(getEdgeWeight(acc, graph, 24, 25) == 1);
-        REQUIRE(getEdgeWeight(acc, graph, 49, 50) == 1);
-        REQUIRE(getEdgeWeight(acc, graph, 50, 51) == 1);
+        REQUIRE(prog.getEdgeWeight(10, 11) == 1);
+        REQUIRE(prog.getEdgeWeight(11, 12) == 1);
+        REQUIRE(prog.getEdgeWeight(23, 24) == 1);
+        REQUIRE(prog.getEdgeWeight(24, 25) == 1);
+        REQUIRE(prog.getEdgeWeight(49, 50) == 1);
+        REQUIRE(prog.getEdgeWeight(50, 51) == 1);
       }
     }
 
@@ -83,13 +70,12 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
 
     WHEN("After applying register load/store fusion") {
       THEN("Edge weights should be set to REGISTER_EDGE") {
-        Graph graph = acc->getGraph();
-        REQUIRE(getEdgeWeight(acc, graph, 10, 11) == REGISTER_EDGE);
-        REQUIRE(getEdgeWeight(acc, graph, 11, 12) == REGISTER_EDGE);
-        REQUIRE(getEdgeWeight(acc, graph, 23, 24) == REGISTER_EDGE);
-        REQUIRE(getEdgeWeight(acc, graph, 24, 25) == REGISTER_EDGE);
-        REQUIRE(getEdgeWeight(acc, graph, 49, 50) == REGISTER_EDGE);
-        REQUIRE(getEdgeWeight(acc, graph, 50, 51) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(10, 11) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(11, 12) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(23, 24) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(24, 25) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(49, 50) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(50, 51) == REGISTER_EDGE);
       }
     }
 
@@ -100,22 +86,22 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
       THEN("The load should execute one cycle before the add and the store, "
            "and the add and store should execute simultaneously") {
         unsigned node_10_time =
-            acc->getNodeFromNodeId(10)->get_complete_execution_cycle();
-        REQUIRE(acc->getNodeFromNodeId(11)->get_complete_execution_cycle() ==
-                node_10_time + 1) ;
-        REQUIRE(acc->getNodeFromNodeId(12)->get_complete_execution_cycle() ==
+            prog.nodes.at(10)->get_complete_execution_cycle();
+        REQUIRE(prog.nodes.at(11)->get_complete_execution_cycle() ==
+                node_10_time + 1);
+        REQUIRE(prog.nodes.at(12)->get_complete_execution_cycle() ==
                 node_10_time + 1);
         unsigned node_23_time =
-            acc->getNodeFromNodeId(23)->get_complete_execution_cycle();
-        REQUIRE(acc->getNodeFromNodeId(24)->get_complete_execution_cycle() ==
+            prog.nodes.at(23)->get_complete_execution_cycle();
+        REQUIRE(prog.nodes.at(24)->get_complete_execution_cycle() ==
                 node_23_time + 1);
-        REQUIRE(acc->getNodeFromNodeId(25)->get_complete_execution_cycle() ==
+        REQUIRE(prog.nodes.at(25)->get_complete_execution_cycle() ==
                 node_23_time + 1);
         unsigned node_49_time =
-            acc->getNodeFromNodeId(49)->get_complete_execution_cycle();
-        REQUIRE(acc->getNodeFromNodeId(50)->get_complete_execution_cycle() ==
+            prog.nodes.at(49)->get_complete_execution_cycle();
+        REQUIRE(prog.nodes.at(50)->get_complete_execution_cycle() ==
                 node_49_time + 1);
-        REQUIRE(acc->getNodeFromNodeId(51)->get_complete_execution_cycle() ==
+        REQUIRE(prog.nodes.at(51)->get_complete_execution_cycle() ==
                 node_49_time + 1);
       }
     }

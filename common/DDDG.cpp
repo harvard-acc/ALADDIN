@@ -12,8 +12,10 @@
 
 using namespace SrcTypes;
 
-DDDG::DDDG(BaseDatapath* _datapath, gzFile& _trace_file)
-    : datapath(_datapath), trace_file(_trace_file),
+// TODO: Eventual goal is to remove datapath as an argument entirely and rely
+// only on Program.
+DDDG::DDDG(BaseDatapath* _datapath, Program* _program, gzFile& _trace_file)
+    : datapath(_datapath), program(_program), trace_file(_trace_file),
       srcManager(_datapath->get_source_manager()) {
   num_of_reg_dep = 0;
   num_of_mem_dep = 0;
@@ -41,7 +43,7 @@ int DDDG::num_of_control_dependency() { return num_of_ctrl_dep; }
 void DDDG::output_dddg() {
   for (auto it = register_edge_table.begin(); it != register_edge_table.end();
        ++it) {
-    datapath->addDddgEdge(it->first, it->second.sink_node, it->second.par_id);
+    program->addEdge(it->first, it->second.sink_node, it->second.par_id);
   }
 
   for (auto source_it = memory_edge_table.begin();
@@ -50,7 +52,7 @@ void DDDG::output_dddg() {
     unsigned source = source_it->first;
     std::set<unsigned>& sink_list = source_it->second;
     for (unsigned sink_node : sink_list)
-      datapath->addDddgEdge(source, sink_node, MEMORY_EDGE);
+      program->addEdge(source, sink_node, MEMORY_EDGE);
   }
 
   for (auto source_it = control_edge_table.begin();
@@ -59,7 +61,7 @@ void DDDG::output_dddg() {
     unsigned source = source_it->first;
     std::set<unsigned>& sink_list = source_it->second;
     for (unsigned sink_node : sink_list)
-      datapath->addDddgEdge(source, sink_node, CONTROL_EDGE);
+      program->addEdge(source, sink_node, CONTROL_EDGE);
   }
 }
 
@@ -107,7 +109,7 @@ void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
 Variable* DDDG::get_array_real_var(const std::string& array_name) {
   Variable* var = srcManager.get<Variable>(array_name);
   DynamicVariable dyn_var(curr_dynamic_function, var);
-  DynamicVariable real_dyn_var = datapath->getCallerRegID(dyn_var);
+  DynamicVariable real_dyn_var = program->call_arg_map.lookup(dyn_var);
   Variable* real_var = real_dyn_var.get_variable();
   return real_var;
 }
@@ -127,7 +129,7 @@ void DDDG::parse_labelmap_line(std::string line) {
   Function* function = srcManager.insert<Function>(function_name);
   Label* label = srcManager.insert<Label>(label_name);
   UniqueLabel unique_label(function, label, line_number);
-  labelmap.insert(std::make_pair(line_number, unique_label));
+  program->labelmap.insert(std::make_pair(line_number, unique_label));
   if (num_matches == 4) {
     boost::char_separator<char> sep(" ");
     std::string temp(callers);
@@ -136,7 +138,7 @@ void DDDG::parse_labelmap_line(std::string line) {
       std::string caller_name = *it;
       Function* caller_func = srcManager.insert<Function>(caller_name);
       UniqueLabel inlined_label(caller_func, label, line_number);
-      labelmap.insert(std::make_pair(line_number, inlined_label));
+      program->labelmap.insert(std::make_pair(line_number, inlined_label));
       // Add the inlined labels to another map so that we can associate any
       // unrolling/pipelining directives declared on the original labels with
       // them.
@@ -175,7 +177,7 @@ void DDDG::parse_instruction_line(std::string line) {
       srcManager.insert<Function>(curr_static_function);
   Instruction* curr_inst = srcManager.insert<Instruction>(curr_instid);
   BasicBlock* basicblock = srcManager.insert<BasicBlock>(bblockname);
-  curr_node = datapath->insertNode(current_node_id, microop);
+  curr_node = program->insertNode(current_node_id, microop);
   curr_node->set_line_num(line_num);
   curr_node->set_static_inst(curr_inst);
   curr_node->set_static_function(curr_function);
@@ -340,7 +342,7 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
         // this memory ordering, because DMA loads are variable-latency
         // operations.
         int last_node_to_write = addr_it->second;
-        if (datapath->getNodeFromNodeId(last_node_to_write)->is_dma_load())
+        if (program->nodes.at(last_node_to_write)->is_dma_load())
           handle_post_write_dependency(
               mem_address, mem_size, current_node_id);
         // Now we can overwrite the last written node id.
@@ -476,7 +478,7 @@ void DDDG::parse_forward(std::string line) {
   DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
   if (unique_reg_in_caller_func) {
-    datapath->addCallArgumentMapping(unique_reg_ref, unique_reg_in_caller_func);
+    program->call_arg_map.add(unique_reg_ref, unique_reg_in_caller_func);
     unique_reg_in_caller_func = DynamicVariable();
   }
   auto reg_it = register_last_written.find(unique_reg_ref);
@@ -606,8 +608,8 @@ size_t DDDG::build_initial_dddg(size_t trace_off, size_t trace_size) {
     output_dddg();
 
     std::cout << "-------------------------------" << std::endl;
-    std::cout << "Num of Nodes: " << datapath->getNumOfNodes() << std::endl;
-    std::cout << "Num of Edges: " << datapath->getNumOfEdges() << std::endl;
+    std::cout << "Num of Nodes: " << program->getNumNodes() << std::endl;
+    std::cout << "Num of Edges: " << program->getNumEdges() << std::endl;
     std::cout << "Num of Reg Edges: " << num_of_register_dependency()
               << std::endl;
     std::cout << "Num of MEM Edges: " << num_of_memory_dependency()

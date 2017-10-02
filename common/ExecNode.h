@@ -98,35 +98,35 @@ class ExecNode {
 
   /* Accessors. */
   unsigned int get_node_id() const { return node_id; }
-  uint8_t get_microop() { return microop; }
-  SrcTypes::Function* get_static_function() { return static_function; }
-  SrcTypes::Variable* get_variable() { return variable; }
-  SrcTypes::Instruction* get_static_inst() { return static_inst; }
-  SrcTypes::BasicBlock* get_basic_block() { return basic_block; }
-  unsigned int get_dynamic_invocation() { return dynamic_invocation; }
-  int get_line_num() { return line_num; }
+  uint8_t get_microop() const { return microop; }
+  SrcTypes::Function* get_static_function() const { return static_function; }
+  SrcTypes::Variable* get_variable() const { return variable; }
+  SrcTypes::Instruction* get_static_inst() const { return static_inst; }
+  SrcTypes::BasicBlock* get_basic_block() const { return basic_block; }
+  unsigned int get_dynamic_invocation() const { return dynamic_invocation; }
+  int get_line_num() const { return line_num; }
   bool started() const { return start_execution_cycle != -1; }
   bool completed() const { return complete_execution_cycle != -1; }
-  int get_start_execution_cycle() {
+  int get_start_execution_cycle() const {
     return !started() ? 0 : start_execution_cycle;
   }
-  int get_complete_execution_cycle() {
+  int get_complete_execution_cycle() const {
     return !completed() ? 0 : complete_execution_cycle;
   }
-  int get_num_parents() { return num_parents; }
-  Vertex get_vertex() { return vertex; }
-  bool is_isolated() { return isolated; }
-  bool is_inductive() { return inductive; }
-  bool is_dynamic_mem_op() { return dynamic_mem_op; }
-  bool is_double_precision() { return double_precision; }
-  bool has_vertex() { return vertex_assigned; }
-  const std::string& get_array_label() { return array_label; }
-  unsigned get_partition_index() { return partition_index; }
-  bool has_array_label() { return (array_label.compare("") != 0); }
+  int get_num_parents() const { return num_parents; }
+  Vertex get_vertex() const { return vertex; }
+  bool is_isolated() const { return isolated; }
+  bool is_inductive() const { return inductive; }
+  bool is_dynamic_mem_op() const { return dynamic_mem_op; }
+  bool is_double_precision() const { return double_precision; }
+  bool has_vertex() const { return vertex_assigned; }
+  const std::string& get_array_label() const { return array_label; }
+  unsigned get_partition_index() const { return partition_index; }
+  bool has_array_label() const { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() { return mem_access; }
   DmaMemAccess* get_dma_mem_access() { return static_cast<DmaMemAccess*>(mem_access); }
-  unsigned get_loop_depth() { return loop_depth; }
-  float get_time_before_execution() { return time_before_execution; }
+  unsigned get_loop_depth() const { return loop_depth; }
+  float get_time_before_execution() const { return time_before_execution; }
 
   /* Setters. */
   void set_microop(uint8_t microop) { this->microop = microop; }
@@ -184,16 +184,16 @@ class ExecNode {
   void set_loop_depth(unsigned depth) { loop_depth = depth; }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
-  SrcTypes::DynamicFunction get_dynamic_function() {
+  SrcTypes::DynamicFunction get_dynamic_function() const {
     return SrcTypes::DynamicFunction(static_function, dynamic_invocation);
   }
 
-  SrcTypes::DynamicInstruction get_dynamic_instruction() {
+  SrcTypes::DynamicInstruction get_dynamic_instruction() const {
     SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
     return SrcTypes::DynamicInstruction(dynfunc, static_inst);
   }
 
-  SrcTypes::DynamicVariable get_dynamic_variable() {
+  SrcTypes::DynamicVariable get_dynamic_variable() const {
     SrcTypes::DynamicFunction dynfunc = get_dynamic_function();
     return SrcTypes::DynamicVariable(dynfunc, variable);
   }
@@ -202,19 +202,19 @@ class ExecNode {
   void decr_num_parents() { num_parents--; }
 
   /* Opcode functions. */
-  bool is_associative() {
+  bool is_associative() const {
     if (is_int_add_op() || is_fp_add_op())
       return true;
     return false;
   }
 
-  bool is_memory_op() {
+  bool is_memory_op() const {
     if (microop == LLVM_IR_Load || microop == LLVM_IR_Store)
       return true;
     return false;
   }
 
-  bool is_compute_op() {
+  bool is_compute_op() const {
     switch (microop) {
       case LLVM_IR_Add:
       case LLVM_IR_FAdd:
@@ -241,26 +241,26 @@ class ExecNode {
     }
   }
 
-  bool is_store_op() {
+  bool is_store_op() const {
     if (microop == LLVM_IR_Store)
       return true;
     return false;
   }
 
-  bool is_load_op() {
+  bool is_load_op() const {
     if (microop == LLVM_IR_Load)
       return true;
     return false;
   }
 
-  bool is_shifter_op() {
+  bool is_shifter_op() const {
     if (microop == LLVM_IR_Shl || microop == LLVM_IR_LShr ||
         microop == LLVM_IR_AShr)
       return true;
     return false;
   }
 
-  bool is_bit_op() {
+  bool is_bit_op() const {
     switch (microop) {
       case LLVM_IR_And:
       case LLVM_IR_Or:
@@ -271,33 +271,33 @@ class ExecNode {
     }
   }
 
-  bool is_control_op() {
+  bool is_control_op() const {
     if (microop == LLVM_IR_PHI)
       return true;
     return is_branch_op();
   }
 
-  bool is_branch_op() {
+  bool is_branch_op() const {
     if (microop == LLVM_IR_Br || microop == LLVM_IR_Switch)
       return true;
     return is_call_op();
   }
 
-  bool is_call_op() {
+  bool is_call_op() const {
     return (microop == LLVM_IR_Call);
   }
 
-  bool is_ret_op() {
+  bool is_ret_op() const {
     return (microop == LLVM_IR_Ret);
   }
 
-  bool is_index_op() {
+  bool is_index_op() const {
     if (microop == LLVM_IR_IndexAdd)
       return true;
     return false;
   }
 
-  bool is_convert_op() {
+  bool is_convert_op() const {
     switch (microop) {
       case LLVM_IR_Trunc:
       case LLVM_IR_ZExt:
@@ -318,14 +318,14 @@ class ExecNode {
     }
   }
 
-  bool is_dma_load() { return microop == LLVM_IR_DMALoad; }
-  bool is_dma_store() { return microop == LLVM_IR_DMAStore; }
-  bool is_dma_fence() { return microop == LLVM_IR_DMAFence; }
-  bool is_dma_op() {
+  bool is_dma_load() const { return microop == LLVM_IR_DMALoad; }
+  bool is_dma_store() const { return microop == LLVM_IR_DMAStore; }
+  bool is_dma_fence() const { return microop == LLVM_IR_DMAFence; }
+  bool is_dma_op() const {
     return is_dma_load() || is_dma_store() || is_dma_fence();
   }
 
-  bool is_int_mul_op() {
+  bool is_int_mul_op() const {
     switch (microop) {
       case LLVM_IR_Mul:
       case LLVM_IR_UDiv:  // TODO: Divides need special treatment.
@@ -338,7 +338,7 @@ class ExecNode {
     }
   }
 
-  bool is_int_add_op() {
+  bool is_int_add_op() const {
     switch (microop) {
       case LLVM_IR_Add:
       case LLVM_IR_Sub:
@@ -352,7 +352,7 @@ class ExecNode {
    * operations.
    * Node latencies for memory operations are obtained from memory models
    * (scratchpad or cache) .*/
-  float fu_node_latency(float cycle_time) {
+  float fu_node_latency(float cycle_time) const {
     if (microop == LLVM_IR_Ret)
       return cycle_time;
     if (is_fp_op())
@@ -439,9 +439,9 @@ class ExecNode {
     }
   }
 
-  bool is_multicycle_op() { return is_fp_op() || is_trig_op(); }
+  bool is_multicycle_op() const { return is_fp_op() || is_trig_op(); }
 
-  bool is_fp_op() {
+  bool is_fp_op() const {
     switch (microop) {
       case LLVM_IR_FAdd:
       case LLVM_IR_FSub:
@@ -454,7 +454,7 @@ class ExecNode {
     }
   }
 
-  bool is_fp_mul_op() {
+  bool is_fp_mul_op() const {
     switch (microop) {
       case LLVM_IR_FMul:
       case LLVM_IR_FDiv:  // TODO: Remove once we have a divider model.
@@ -465,7 +465,7 @@ class ExecNode {
     }
   }
 
-  bool is_fp_div_op() {
+  bool is_fp_div_op() const {
     switch (microop) {
       case LLVM_IR_FDiv:
         return true;
@@ -474,7 +474,7 @@ class ExecNode {
     }
   }
 
-  bool is_fp_add_op() {
+  bool is_fp_add_op() const {
     switch (microop) {
       case LLVM_IR_FAdd:
       case LLVM_IR_FSub:
@@ -484,7 +484,7 @@ class ExecNode {
     }
   }
 
-  bool is_trig_op() {
+  bool is_trig_op() const {
     switch (microop) {
       case LLVM_IR_Sine:
       case LLVM_IR_Cosine:
@@ -494,7 +494,7 @@ class ExecNode {
     }
   }
 
-  unsigned get_multicycle_latency() {
+  unsigned get_multicycle_latency() const {
     if (is_fp_op())
       return fp_node_latency_in_cycles();
     else if (is_trig_op())
@@ -502,7 +502,7 @@ class ExecNode {
     return 1;
   }
 
-  unsigned fp_node_latency_in_cycles() {
+  unsigned fp_node_latency_in_cycles() const {
     if (is_fp_div_op())
       return FP_DIV_LATENCY_IN_CYCLES;
     else if (is_fp_mul_op())
@@ -511,12 +511,12 @@ class ExecNode {
       return FP_ADD_LATENCY_IN_CYCLES;
   }
 
-  unsigned trig_node_latency_in_cycles() {
+  unsigned trig_node_latency_in_cycles() const {
     return TRIG_SINE_LATENCY_IN_CYCLES;
   }
 
 
-  std::string get_microop_name() {
+  std::string get_microop_name() const {
 
 #define LLVM_IR_OPCODE_TO_NAME(Opcode)                                         \
   case LLVM_IR_##Opcode:                                                       \

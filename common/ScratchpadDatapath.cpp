@@ -65,11 +65,11 @@ void ScratchpadDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
 
   vertex_iter vi, vi_end;
-  for (boost::tie(vi, vi_end) = vertices(graph_); vi != vi_end; ++vi) {
-    if (boost::degree(*vi, graph_) == 0)
+  for (boost::tie(vi, vi_end) = vertices(program.graph); vi != vi_end; ++vi) {
+    if (boost::degree(*vi, program.graph) == 0)
       continue;
     Vertex curr_vertex = *vi;
-    ExecNode* node = getNodeFromVertex(curr_vertex);
+    ExecNode* node = program.nodeAtVertex(curr_vertex);
     if (!node->is_memory_op())
       continue;
     const std::string& part_name = node->get_array_label();
@@ -143,12 +143,12 @@ void ScratchpadDatapath::scratchpadPartition() {
   if (!spad_partition)
     return;
 
-  for (auto node_it = exec_nodes.begin(); node_it != exec_nodes.end();
+  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;
     if (!node->is_memory_op())
       continue;
-    if (boost::degree(node->get_vertex(), graph_) == 0)
+    if (boost::degree(node->get_vertex(), program.graph) == 0)
       continue;
     const std::string& base_label = node->get_array_label();
 
@@ -248,15 +248,15 @@ void ScratchpadDatapath::stepExecutingQueue() {
 
 int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
-  boost::topological_sort(graph_, std::back_inserter(topo_nodes));
+  boost::topological_sort(program.graph, std::back_inserter(topo_nodes));
   // bottom nodes first
   std::map<unsigned, float> alap_finish_time;
-  for (auto node_it : exec_nodes)
+  for (auto node_it : program.nodes)
     alap_finish_time[node_it.first] = num_cycles * cycle_time;
 
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
-    unsigned node_id = vertexToName[*vi];
-    ExecNode* node = exec_nodes.at(node_id);
+    unsigned node_id = program.atVertex(*vi);
+    ExecNode* node = program.nodes.at(node_id);
     if (node->is_isolated())
       continue;
     float alap_start_execution_time =
@@ -281,9 +281,9 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
     }
 
     in_edge_iter in_i, in_end;
-    for (boost::tie(in_i, in_end) = in_edges(*vi, graph_); in_i != in_end;
+    for (boost::tie(in_i, in_end) = in_edges(*vi, program.graph); in_i != in_end;
          ++in_i) {
-      int parent_id = vertexToName[source(*in_i, graph_)];
+      int parent_id = program.atVertex(source(*in_i, program.graph));
       if (alap_finish_time.at(parent_id) > alap_start_execution_time)
         alap_finish_time.at(parent_id) = alap_start_execution_time;
     }
@@ -321,11 +321,11 @@ void ScratchpadDatapath::updateChildren(ExecNode* node) {
   }
   Vertex curr_vertex = node->get_vertex();
   out_edge_iter out_edge_it, out_edge_end;
-  for (boost::tie(out_edge_it, out_edge_end) = out_edges(curr_vertex, graph_);
+  for (boost::tie(out_edge_it, out_edge_end) = out_edges(curr_vertex, program.graph);
        out_edge_it != out_edge_end;
        ++out_edge_it) {
-    Vertex child_vertex = target(*out_edge_it, graph_);
-    ExecNode* child_node = getNodeFromVertex(child_vertex);
+    Vertex child_vertex = target(*out_edge_it, program.graph);
+    ExecNode* child_node = program.nodeAtVertex(child_vertex);
     int edge_parid = edgeToParid[*out_edge_it];
     float child_earliest_time = child_node->get_time_before_execution();
     if (child_earliest_time < latency_after_current_node) {

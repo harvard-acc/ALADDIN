@@ -11,6 +11,7 @@
 
 #include "ExecNode.h"
 #include "file_func.h"
+#include "Program.h"
 #include "opcode_func.h"
 #include "SourceManager.h"
 
@@ -109,7 +110,7 @@ class DDDG {
   // Indicates that we have reached the end of the trace.
   static const size_t END_OF_TRACE = std::numeric_limits<size_t>::max();
 
-  DDDG(BaseDatapath* _datapath, gzFile& _trace_file);
+  DDDG(BaseDatapath* _datapath, Program* program, gzFile& _trace_file);
   int num_edges();
   int num_nodes();
   int num_of_register_dependency();
@@ -117,7 +118,6 @@ class DDDG {
   int num_of_control_dependency();
   void output_dddg();
   size_t build_initial_dddg(size_t trace_off, size_t trace_size);
-  labelmap_t get_labelmap() { return labelmap; }
   inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
 
  private:
@@ -174,6 +174,7 @@ class DDDG {
   int last_dma_fence;
 
   BaseDatapath* datapath;
+  Program* program;
   std::string trace_file_name;
   gzFile& trace_file;
 
@@ -183,10 +184,6 @@ class DDDG {
   map_uint_to_set memory_edge_table;
   // Control edge tracking table.
   map_uint_to_set control_edge_table;
-  // Line number mapping to function and label name. If there are multiple
-  // source files, there could be multiple function/labels with the same line
-  // number.
-  labelmap_t labelmap;
   // Maps a label in an inlined function to the original function in which it
   // was written.
   inline_labelmap_t inline_labelmap;

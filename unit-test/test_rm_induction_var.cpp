@@ -13,14 +13,15 @@ SCENARIO("Test removeInductionVariable w/ Triad", "[triad]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(acc->getMicroop(10) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(22) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(1534) == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(10)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(22)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1534)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }
@@ -34,14 +35,15 @@ SCENARIO("Test removeInductionVariable w/ Reduction", "[reduction]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(acc->getMicroop(6) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(22) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(1022) == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(6)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(22)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1022)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }
@@ -55,14 +57,15 @@ SCENARIO("Test removeInductionVariable w/ Pp_scan", "[pp_scan]") {
     ScratchpadDatapath* acc;
     Scratchpad* spad;
     acc = new ScratchpadDatapath(bench, trace_file, config_file);
+    auto& prog = acc->getProgram();
     acc->buildDddg();
     WHEN("Test removeInductionDependence()") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(acc->getMicroop(28) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(1492) == LLVM_IR_IndexAdd);
-        REQUIRE(acc->getMicroop(1750) == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(28)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1492)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1750)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }

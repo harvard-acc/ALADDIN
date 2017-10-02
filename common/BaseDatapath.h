@@ -31,13 +31,12 @@
 #include "file_func.h"
 #include "opcode_func.h"
 #include "generic_func.h"
+#include "Program.h"
 #include "Registers.h"
 #include "Scratchpad.h"
 #include "SourceManager.h"
 #include "DynamicEntity.h"
 #include "user_config.h"
-
-#include "graph_analysis_utils.h"
 
 struct memActivity {
   unsigned read;
@@ -153,96 +152,22 @@ class BaseDatapath {
 
   SrcTypes::SourceManager& get_source_manager() { return srcManager; }
 
-  // Change graph.
-  void addDddgEdge(unsigned int from, unsigned int to, uint8_t parid);
-  ExecNode* insertNode(unsigned node_id, uint8_t microop);
-  void setLabelMap(labelmap_t& _labelmap) { labelmap = _labelmap; }
-  const labelmap_t& getLabelMap() { return labelmap; }
-  SrcTypes::UniqueLabel getUniqueLabel(ExecNode* node);
-
-  // XXX: DDDG needs these functions as well. Separate this dependency (maybe a
-  // composition of call argument map)?
-  void addCallArgumentMapping(DynamicVariable& callee_reg_id,
-                              DynamicVariable& caller_reg_id);
-  DynamicVariable getCallerRegID(DynamicVariable& reg_id);
-
   virtual void prepareForScheduling();
   virtual int rescheduleNodesWhenNeeded();
   void dumpGraph(std::string graph_name);
 
   bool isReadyMode() const { return user_params.ready_mode; }
 
-  // Accessing graph stats.
-  const Graph& getGraph() { return graph_; }
+  // Accessing the program.
+  const Program& getProgram() const { return program; }
+
   std::string getBenchName() { return benchName; }
-  int getNumOfNodes() { return boost::num_vertices(graph_); }
-  int getNumOfEdges() { return boost::num_edges(graph_); }
-  int getMicroop(unsigned int node_id) {
-    return exec_nodes.at(node_id)->get_microop();
-  }
-  int getNumOfConnectedNodes(unsigned int node_id) {
-    return boost::degree(exec_nodes.at(node_id)->get_vertex(), graph_);
-  }
-  ExecNodeMap::iterator node_begin() { return exec_nodes.begin(); }
-  ExecNodeMap::iterator node_end() { return exec_nodes.end(); }
-  // Return all nodes with dependencies originating from OR leaving this node.
-  std::vector<unsigned> getConnectedNodes(unsigned int node_id);
-  std::vector<unsigned> getParentNodes(unsigned int node_id);
-  std::vector<unsigned> getChildNodes(unsigned int node_id);
 
-  std::list<ExecNode*> getNodesOfMicroop(unsigned microop);
-
-  // XXX: We already have this as a free-standing function. Remove.
-  ExecNode* getNextNode(unsigned node_id);
-
-  /* XXX: Make this a free-standing function.
-   *
-   * Return the bounding nodes of function invocations.
-   *
-   * For each pair, the first element is the Call node that invokes the given
-   * function, and the second element is the Return node of this invocation.
-   */
-  std::list<node_pair_t> findFunctionBoundaries(SrcTypes::Function* func);
-
-  // For unit tests.
-  int getUnrolledLoopBoundary(unsigned int region_id) {
-    return loopBound.at(region_id).node_id;
-  }
-  std::string getBaseAddressLabel(unsigned int node_id) {
-    return exec_nodes.at(node_id)->get_array_label();
-  }
-  unsigned getPartitionIndex(unsigned int node_id) {
-    return exec_nodes.at(node_id)->get_partition_index();
-  }
   long long int getBaseAddress(std::string label) {
     return user_params.partition.at(label).base_addr;
   }
-  // XXX: These have duplicates in the base graph opt class, but they are
-  // heavily used by the unit tests and the debugger.
-  bool doesEdgeExist(ExecNode* from, ExecNode* to) {
-    if (from != nullptr && to != nullptr)
-      return doesEdgeExistVertex(from->get_vertex(), to->get_vertex());
-    return false;
-  }
-  bool doesEdgeExistVertex(Vertex from, Vertex to) {
-    return edge(from, to, graph_).second;
-  }
-  // This is kept for unit testing reasons only.
-  bool doesEdgeExist(unsigned int from, unsigned int to) {
-    return doesEdgeExist(exec_nodes.at(from), exec_nodes.at(to));
-  }
-  bool doesNodeExist(unsigned int node_id) {
-    return exec_nodes.find(node_id) != exec_nodes.end();
-  }
 
-  ExecNode* getNodeFromVertex(const Vertex& vertex) {
-    unsigned node_id = vertexToName[vertex];
-    return exec_nodes.at(node_id);
-  }
-  ExecNode* getNodeFromNodeId(unsigned node_id) { return exec_nodes.at(node_id); }
   partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
-  // XXX: Currently only used for unit tests.
-  int shortestDistanceBetweenNodes(unsigned int from, unsigned int to);
   void dumpStats();
 
   /*Set graph stats*/
@@ -266,11 +191,6 @@ class BaseDatapath {
 
   /* Clear graph stats. */
   virtual void clearDatapath();
-  void clearExecNodes() {
-    for (auto& node_pair : exec_nodes)
-      delete node_pair.second;
-    exec_nodes.clear();
-  }
   void clearFunctionName() { functionNames.clear(); }
   void clearArrayBaseAddress() {
     // Don't clear user_params.partition - it only gets read once.
@@ -279,7 +199,6 @@ class BaseDatapath {
          ++part_it)
       part_it->second.base_addr = 0;
   }
-  void clearLoopBound() { loopBound.clear(); }
   void clearRegStats() { regStats.clear(); }
 
   // Graph optimizations.
@@ -309,16 +228,8 @@ class BaseDatapath {
  protected:
   template <typename T>
   std::unique_ptr<T> getGraphOpt() {
-    return std::unique_ptr<T>(new T(exec_nodes,
-                                    graph_,
-                                    loopBound,
-                                    vertexToName,
-                                    labelmap,
-                                    srcManager,
-                                    call_argument_map,
-                                    user_params));
+    return std::unique_ptr<T>(new T(program, srcManager, user_params));
   }
-
 
   // Configuration parsing and handling.
   void parse_config(std::string& bench, std::string& config_file);
@@ -403,13 +314,12 @@ class BaseDatapath {
   std::string benchName;
   int num_cycles;
 
+  Program program;
+
   // All options that can be specified by the user are contained here.
   UserConfigParams user_params;
 
   SrcTypes::SourceManager srcManager;
-
-  /* Stores the register name mapping between caller and callee functions. */
-  call_arg_map_t call_argument_map;
 
   /* True if the summarized results should be stored to a database, false
    * otherwise */
@@ -417,9 +327,6 @@ class BaseDatapath {
   /* A string identifier for a set of related simulations. For storing results
    * into databases, this is required. */
   std::string experiment_name;
-  // boost graph.
-  Graph graph_;
-  VertexNameMap vertexToName;
   EdgeNameMap edgeToParid;
 
   // Graph node and edge attributes.
@@ -433,11 +340,6 @@ class BaseDatapath {
   // Completely partitioned arrays.
   Registers registers;
 
-  // Complete list of all execution nodes and their properties.
-  ExecNodeMap exec_nodes;
-
-  // Maps line numbers to labels.
-  labelmap_t labelmap;
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<DynLoopBound> loopBound;
