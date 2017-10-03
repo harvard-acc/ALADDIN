@@ -2,7 +2,7 @@
 
 #include "loop_unrolling.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 using namespace SrcTypes;
 

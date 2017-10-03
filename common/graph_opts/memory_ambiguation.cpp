@@ -3,8 +3,8 @@
 
 #include "memory_ambiguation.h"
 
-#include "common/DDDG.h"
-#include "common/DynamicEntity.h"
+#include "../DDDG.h"
+#include "../DynamicEntity.h"
 
 // Memory ambiguation.
 //

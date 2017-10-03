@@ -1,5 +1,5 @@
 #include "induction_dependence_removal.h"
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 // Induction dependence removal.
 //

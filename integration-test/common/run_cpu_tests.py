@@ -19,7 +19,7 @@ class StandaloneAesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3227)
+    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3333)
 
   def runTest(self):
     self.runAndValidate()

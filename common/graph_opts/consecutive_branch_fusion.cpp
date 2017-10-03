@@ -1,6 +1,6 @@
 #include "consecutive_branch_fusion.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 // Consecutive branch fusion.
 //

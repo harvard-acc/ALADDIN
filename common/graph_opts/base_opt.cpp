@@ -3,10 +3,10 @@
 
 #include "base_opt.h"
 
-#include "common/DDDG.h"
-#include "common/ExecNode.h"
-#include "common/opcode_func.h"
-#include "common/typedefs.h"
+#include "../DDDG.h"
+#include "../ExecNode.h"
+#include "../opcode_func.h"
+#include "../typedefs.h"
 
 void BaseAladdinOpt::run() {
   static const std::string boundary = "-------------------------------";

@@ -1,6 +1,6 @@
 #include "reg_load_store_fusion.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 // Register load-store fusion.
 //

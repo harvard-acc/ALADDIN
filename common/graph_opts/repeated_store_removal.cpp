@@ -1,6 +1,6 @@
 #include "repeated_store_removal.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 std::string RepeatedStoreRemoval::getCenteredName(size_t size) {
   return "    Remove Repeated Stores     ";

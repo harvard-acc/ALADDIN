@@ -78,7 +78,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
     BaseDatapath::setExperimentParameters(experiment_name);
   }
 #endif
-  BaseDatapath::cycleTime = params->cycleTime;
+  float cycle_time = params->cycleTime;
+  BaseDatapath::user_params.cycle_time = cycle_time;
   datapath_name = params->acceleratorName;
   cache_queue.initStats(datapath_name + ".cache_queue");
   system->registerAccelerator(accelerator_id, this, accelerator_deps);
@@ -98,8 +99,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    *
    * Latencies were characterized from Zynq Zedboard running at 666MHz.
    */
-  cacheLineFlushLatency = ceil((56.0 * 1.5) / BaseDatapath::cycleTime);
-  cacheLineInvalidateLatency = ceil((47.0 * 1.5) / BaseDatapath::cycleTime);
+  cacheLineFlushLatency = ceil((56.0 * 1.5) / cycle_time);
+  cacheLineInvalidateLatency = ceil((47.0 * 1.5) / cycle_time);
 }
 
 HybridDatapath::~HybridDatapath() {
@@ -136,7 +137,7 @@ void HybridDatapath::initializeDatapath(int delay) {
   acc_sim_cycles += delay;
   cachePort.clearRetryPkt();
   startDatapathScheduling(delay);
-  if (ready_mode)
+  if (isReadyMode())
     scratchpad->resetReadyBits();
 }
 
@@ -365,9 +366,9 @@ MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
     return Dma;
 
   const std::string& array_label = node->get_array_label();
-  auto it = partition_config.find(array_label);
-  if (it != partition_config.end()) {
-    partitionEntry entry = it->second;
+  auto it = user_params.partition.find(array_label);
+  if (it != user_params.partition.end()) {
+    PartitionEntry entry = it->second;
     // TODO: Combine the enums MemoryOpType and MemoryType.
     MemoryType memory_type = entry.memory_type;
     switch (memory_type) {
@@ -458,7 +459,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
     std::string array_label = node->get_array_label();
-    if (node->is_dma_load() && ready_mode)
+    if (node->is_dma_load() && isReadyMode())
       // TODO: Will be replaced by call backs from dma_device.
       scratchpad->setReadyBits(array_label);
     inflight_dma_nodes.erase(node_id);
@@ -479,7 +480,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     return false;
   }
 
-  MemAccess* mem_access = exec_nodes[node_id]->get_mem_access();
+  MemAccess* mem_access = program.nodes[node_id]->get_mem_access();
   bool isLoad = node->is_load_op();
 
   // If Aladdin is executing standalone, then the actual addresses that are
@@ -672,7 +673,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
 
 // Issue a DMA request for memory.
 void HybridDatapath::issueDmaRequest(unsigned node_id) {
-  ExecNode *node = exec_nodes.at(node_id);
+  ExecNode *node = program.nodes.at(node_id);
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
   DmaMemAccess* mem_access = node->get_dma_mem_access();
@@ -733,7 +734,7 @@ void HybridDatapath::completeDmaRequest(unsigned node_id) {
 }
 
 void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
-  assert(exec_nodes.at(node_id)->is_dma_op() &&
+  assert(program.nodes.at(node_id)->is_dma_op() &&
          "Cannot add non-DMA node to DMA issue queue!");
   DPRINTF(HybridDatapath, "Adding DMA node %d to DMA issue queue.\n", node_id);
   assert(dmaIssueQueue.find(node_id) == dmaIssueQueue.end());
@@ -857,7 +858,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
           pkt->cmdString());
   Addr vaddr = pkt->getAddr();  // The trace address.
   unsigned node_id = state->node_id;
-  ExecNode* node = exec_nodes.at(node_id);
+  ExecNode* node = program.nodes.at(node_id);
   bool isLoad = node->is_load_op();
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(!entry || entry->status != Translating,
@@ -930,7 +931,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
    * can predict memory behavior similar to how branch predictors work. We
    * don't have real PCs in aladdin so we'll just hash the unique id of the
    * node.  */
-  DynamicInstruction inst = exec_nodes.at(node_id)->get_dynamic_instruction();
+  DynamicInstruction inst = program.nodes.at(node_id)->get_dynamic_instruction();
   Addr pc = static_cast<Addr>(std::hash<DynamicInstruction>()(inst));
   Request* req = new Request(paddr, size, flags, id, curTick(), pc);
   /* The context id and thread ids are needed to pass a few assert checks in
@@ -975,7 +976,7 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
 
   Request* req = NULL;
   Flags<Packet::FlagsType> flags = 0;
-  DynamicInstruction inst = exec_nodes.at(node_id)->get_dynamic_instruction();
+  DynamicInstruction inst = program.nodes.at(node_id)->get_dynamic_instruction();
   Addr pc = static_cast<Addr>(std::hash<DynamicInstruction>()(inst));
   req = new Request(paddr, size, flags, getAcpMasterId(), curTick(), pc);
   req->setContext(context_id);
@@ -1105,7 +1106,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   assert(event != nullptr && "Packet completion event is not a DmaEvent object!");
 
   unsigned node_id = event->get_node_id();
-  ExecNode * node = datapath->getNodeFromNodeId(node_id);
+  ExecNode * node = datapath->getProgram().nodes.at(node_id);
   assert(node != nullptr && "DMA node id is invalid!");
 
   DmaMemAccess* mem_access = node->get_dma_mem_access();
@@ -1123,7 +1124,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath,
           "Receiving DMA response for node %d, address %#x with label %s and size %d.\n",
           node_id, vaddr, array_label.c_str(), size);
-  if (datapath->ready_mode)
+  if (datapath->isReadyMode())
     datapath->scratchpad->setReadyBitRange(array_label, vaddr, size);
 
   // For dmaLoads, write the data into the scratchpad.
@@ -1256,12 +1257,12 @@ void HybridDatapath::getAverageCachePower(unsigned int cycles,
 
   avg_cache_ac_pwr = (dcache_loads.value() * cache_readEnergy +
                       dcache_stores.value() * cache_writeEnergy) /
-                     (cycles * cycleTime);
+                     (cycles * user_params.cycle_time);
   avg_cache_leak = cache_leakagePower;
   avg_cache_pwr = avg_cache_ac_pwr + avg_cache_leak;
 
-  dtb.getAveragePower(
-      cycles, cycleTime, &avg_tlb_pwr, &avg_tlb_ac_pwr, &avg_tlb_leak);
+  dtb.getAveragePower(cycles, user_params.cycle_time, &avg_tlb_pwr,
+                      &avg_tlb_ac_pwr, &avg_tlb_leak);
 
   *avg_dynamic = avg_cache_ac_pwr;
   *avg_leak = avg_cache_leak;
@@ -1303,7 +1304,8 @@ void HybridDatapath::getAverageCacheQueuePower(unsigned int cycles,
                                                float* avg_power,
                                                float* avg_dynamic,
                                                float* avg_leak) {
-  cache_queue.getAveragePower(cycles, cycleTime, avg_power, avg_dynamic, avg_leak);
+  cache_queue.getAveragePower(
+      cycles, user_params.cycle_time, avg_power, avg_dynamic, avg_leak);
 }
 
 double HybridDatapath::getTotalMemArea() {

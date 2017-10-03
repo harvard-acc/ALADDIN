@@ -1,6 +1,6 @@
 #include "per_loop_pipelining.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 // Per loop pipelining.
 //

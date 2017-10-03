@@ -1,7 +1,7 @@
 #include "Program.h"
 
-#include "common/DDDG.h"
-#include "common/SourceEntity.h"
+#include "DDDG.h"
+#include "SourceEntity.h"
 
 using namespace SrcTypes;
 

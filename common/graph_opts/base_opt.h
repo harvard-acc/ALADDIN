@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "common/ExecNode.h"
-#include "common/Program.h"
-#include "common/opcode_func.h"
-#include "common/typedefs.h"
-#include "common/user_config.h"
+#include "../ExecNode.h"
+#include "../Program.h"
+#include "../opcode_func.h"
+#include "../typedefs.h"
+#include "../user_config.h"
 
 class BaseAladdinOpt {
  public:

@@ -128,7 +128,8 @@ std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
     vpn = vaddr - page_offset;
   } else {
     TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
-    std::string array_name = datapath->getBaseAddressLabel(state->node_id);
+    std::string array_name =
+        datapath->getProgram().getBaseAddressLabel(state->node_id);
     Addr base_sim_vaddr = lookupVirtualAddr(array_name);
     Addr base_trace_addr =
         static_cast<Addr>(datapath->getBaseAddress(array_name));

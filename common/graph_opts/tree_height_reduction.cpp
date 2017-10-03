@@ -1,6 +1,6 @@
 #include "tree_height_reduction.h"
 
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 std::string TreeHeightReduction::getCenteredName(size_t size) {
   return "     Tree Height Reduction     ";

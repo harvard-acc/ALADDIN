@@ -1,5 +1,5 @@
 #include "global_loop_pipelining.h"
-#include "common/DDDG.h"
+#include "../DDDG.h"
 
 // Global loop pipelining.
 //
