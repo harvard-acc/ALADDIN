@@ -143,34 +143,19 @@ class BaseDatapath {
                std::string& _config_file);
   virtual ~BaseDatapath();
 
-  // Build graph.
+  //=----------- Program building functions ------------=//
+
+  // Build the program: the DDDG and exec node data.
   //
   // Return true if the graph was built, false if not. False can happen if the
   // trace was empty.
   bool buildDddg();
-  unsigned getCurrentCycle() { return num_cycles; }
 
-  SrcTypes::SourceManager& get_source_manager() { return srcManager; }
-
-  virtual void prepareForScheduling();
-  virtual int rescheduleNodesWhenNeeded();
-  void dumpGraph(std::string graph_name);
-
-  bool isReadyMode() const { return user_params.ready_mode; }
-
-  // Accessing the program.
-  const Program& getProgram() const { return program; }
-
-  std::string getBenchName() { return benchName; }
-
-  long long int getBaseAddress(std::string label) {
-    return user_params.partition.at(label).base_addr;
+  // Add a function to the list of functions.
+  void addFunctionName(std::string func_name) {
+    functionNames.insert(func_name);
   }
 
-  partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
-  void dumpStats();
-
-  /*Set graph stats*/
   void addArrayBaseAddress(std::string label, long long int addr) {
     auto part_it = user_params.partition.find(label);
     // Add checking for zero to handle DMA operations where we only use
@@ -179,27 +164,6 @@ class BaseDatapath {
       part_it->second.base_addr = addr;
     }
   }
-  /*Return true if the func_name is added;
-    Return false if the func_name is already added.*/
-  bool addFunctionName(std::string func_name) {
-    if (functionNames.find(func_name) == functionNames.end()) {
-      functionNames.insert(func_name);
-      return true;
-    }
-    return false;
-  }
-
-  /* Clear graph stats. */
-  virtual void clearDatapath();
-  void clearFunctionName() { functionNames.clear(); }
-  void clearArrayBaseAddress() {
-    // Don't clear user_params.partition - it only gets read once.
-    for (auto part_it = user_params.partition.begin();
-         part_it != user_params.partition.end();
-         ++part_it)
-      part_it->second.base_addr = 0;
-  }
-  void clearRegStats() { regStats.clear(); }
 
   // Graph optimizations.
   void removeInductionDependence();
@@ -218,6 +182,41 @@ class BaseDatapath {
   void fuseRegLoadStores();
   void fuseConsecutiveBranches();
 
+  //=------------ Program access functions --------------=//
+
+  std::string getBenchName() { return benchName; }
+  SrcTypes::SourceManager& get_source_manager() { return srcManager; }
+  const Program& getProgram() const { return program; }
+  long long int getBaseAddress(std::string label) {
+    return user_params.partition.at(label).base_addr;
+  }
+
+  //=----------- User configuration functions ------------=//
+
+  bool isReadyMode() const { return user_params.ready_mode; }
+  partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
+
+  //=----------- Simulation/scheduling functions --------=//
+
+  unsigned getCurrentCycle() { return num_cycles; }
+  virtual void prepareForScheduling();
+  virtual int rescheduleNodesWhenNeeded();
+  void dumpGraph(std::string graph_name);
+  void dumpStats();
+
+  //=------------ Clean up functions -----------=//
+
+  virtual void clearDatapath();
+  void clearFunctionName() { functionNames.clear(); }
+  void clearArrayBaseAddress() {
+    // Don't clear user_params.partition - it only gets read once.
+    for (auto part_it = user_params.partition.begin();
+         part_it != user_params.partition.end();
+         ++part_it)
+      part_it->second.base_addr = 0;
+  }
+  void clearRegStats() { regStats.clear(); }
+
 #ifdef USE_DB
   // Specify the experiment to be associated with this simulation. Calling this
   // method will result in the summary data being written to a datbaase when the
@@ -226,10 +225,35 @@ class BaseDatapath {
 #endif
 
  protected:
+  //=------------ Pure virtual functions -------------=//
+
+  // Execute all nodes in the current cycle.
+  virtual void stepExecutingQueue() = 0;
+
+  // Run all the graph optimizations in the required order.
+  virtual void globalOptimizationPass() = 0;
+
+  // Compute total memory block area.
+  virtual double getTotalMemArea() = 0;
+
+  // Compute average memory power.
+  virtual void getAverageMemPower(unsigned int cycles,
+                                  float* avg_power,
+                                  float* avg_dynamic,
+                                  float* avg_leak) = 0;
+
+  // Return a list of all memory blocks (i.e. arrays).
+  virtual void getMemoryBlocks(std::vector<std::string>& names) = 0;
+
+  //=------------ Graph construction routines -------------=//
+
+  // Create a graph optimization object.
   template <typename T>
   std::unique_ptr<T> getGraphOpt() {
     return std::unique_ptr<T>(new T(program, srcManager, user_params));
   }
+
+  //=------------- User configuration routines -------------=//
 
   // Configuration parsing and handling.
   void parse_config(std::string& bench, std::string& config_file);
@@ -238,14 +262,19 @@ class BaseDatapath {
   void updateUnrollingPipeliningWithLabelInfo(
       const inline_labelmap_t& inline_labelmap);
 
+  //=-------------- Simulation and scheduling ----------------=/
+
   // State initialization.
   virtual void initBaseAddress();
-  void initMethodID(std::vector<int>& methodid);
 
+  // After marking a node as completed, update the state of its children.
   virtual void updateChildren(ExecNode* node);
-  void updateRegStats();
 
-  // Scheduling
+  // Compute the number of registers needed at each cycle.
+  void computeRegStats();
+
+  // Per cycle Scheduling.
+  virtual bool step();
   void copyToExecutingQueue();
   void initExecutingQueue();
   virtual void markNodeStarted(ExecNode* node);
@@ -276,14 +305,6 @@ class BaseDatapath {
       std::unordered_map<std::string, funcActivity>& func_max_activity);
   void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
-  // Memory structures.
-  virtual double getTotalMemArea() = 0;
-  virtual void getAverageMemPower(unsigned int cycles,
-                                  float* avg_power,
-                                  float* avg_dynamic,
-                                  float* avg_leak) = 0;
-  virtual void getMemoryBlocks(std::vector<std::string>& names) = 0;
-
 #ifdef USE_DB
   /* Gets the experiment id for experiment_name. If this is a new
    * experiment_name that doesn't exist in the database, it creates a new unique
@@ -307,13 +328,10 @@ class BaseDatapath {
   void writeSummaryToDatabase(summary_data_t& summary);
 #endif
 
-  virtual bool step();
-  virtual void stepExecutingQueue() = 0;
-  virtual void globalOptimizationPass() = 0;
-
   std::string benchName;
   int num_cycles;
 
+  // The accelerated program description.
   Program program;
 
   // All options that can be specified by the user are contained here.
@@ -324,9 +342,12 @@ class BaseDatapath {
   /* True if the summarized results should be stored to a database, false
    * otherwise */
   bool use_db;
+
   /* A string identifier for a set of related simulations. For storing results
    * into databases, this is required. */
   std::string experiment_name;
+
+  // The final set of edge weights after all graph optimizations have been run.
   EdgeNameMap edgeToParid;
 
   // Graph node and edge attributes.
@@ -343,13 +364,14 @@ class BaseDatapath {
   std::vector<regEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<DynLoopBound> loopBound;
-  // Scheduling.
+
   unsigned totalConnectedNodes;
   unsigned executedNodes;
+
   std::list<ExecNode*> executingQueue;
   std::list<ExecNode*> readyToExecuteQueue;
 
-  // Trace file name.
+  // Dynamic trace file name.
   gzFile trace_file;
   size_t current_trace_off;
   size_t trace_size;

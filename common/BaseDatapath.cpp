@@ -191,7 +191,7 @@ void BaseDatapath::treeHeightReduction() {
 // called in the end of the whole flow
 void BaseDatapath::dumpStats() {
   rescheduleNodesWhenNeeded();
-  updateRegStats();
+  computeRegStats();
   writePerCycleActivity();
 #ifdef DEBUG
   dumpGraph(benchName);
@@ -887,7 +887,7 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
   return num_cycles;
 }
 
-void BaseDatapath::updateRegStats() {
+void BaseDatapath::computeRegStats() {
   regStats.assign(num_cycles, { 0, 0, 0 });
   for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
