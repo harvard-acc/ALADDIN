@@ -63,7 +63,7 @@ class NodeVisitor : public boost::default_bfs_visitor {
     // node is the root of the BFS or if we explicitly ask for them). These
     // nodes tend to have a lot of children.
     if (new_vertex != root_vertex) {
-      ExecNode* node = acc->getNodeFromNodeId(node_id);
+      const ExecNode* node = acc->getProgram().nodes.at(node_id);
       if ((node->is_branch_op() || node->is_call_op()) && !show_branch_children)
         return;
     }

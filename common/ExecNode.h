@@ -123,8 +123,10 @@ class ExecNode {
   const std::string& get_array_label() const { return array_label; }
   unsigned get_partition_index() const { return partition_index; }
   bool has_array_label() const { return (array_label.compare("") != 0); }
-  MemAccess* get_mem_access() { return mem_access; }
-  DmaMemAccess* get_dma_mem_access() { return static_cast<DmaMemAccess*>(mem_access); }
+  MemAccess* get_mem_access() const { return mem_access; }
+  DmaMemAccess* get_dma_mem_access() const {
+    return static_cast<DmaMemAccess*>(mem_access);
+  }
   unsigned get_loop_depth() const { return loop_depth; }
   float get_time_before_execution() const { return time_before_execution; }
 

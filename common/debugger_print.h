@@ -14,13 +14,26 @@ void print_node_pair_list(std::list<node_pair_t> pairs,
                           std::string row_header,
                           std::ostream& out);
 
-class DebugNodePrinter {
+class DebugPrinterBase {
  public:
-  DebugNodePrinter(ExecNode* _node,
+  DebugPrinterBase(ScratchpadDatapath* _acc, std::ostream& _out)
+      : acc(_acc), prog(_acc->getProgram()),
+        srcManager(acc->get_source_manager()), out(_out) {}
+  virtual ~DebugPrinterBase() = 0;
+
+ protected:
+  ScratchpadDatapath* acc;
+  const Program& prog;
+  SrcTypes::SourceManager& srcManager;
+  std::ostream& out;
+};
+
+class DebugNodePrinter : public DebugPrinterBase {
+ public:
+  DebugNodePrinter(const ExecNode* _node,
                    ScratchpadDatapath* _acc,
                    std::ostream& _out)
-      : node(_node), acc(_acc), out(_out),
-        srcManager(acc->get_source_manager()) {}
+      : DebugPrinterBase(_acc, _out), node(_node) {}
 
   void printAll();
   void printBasic();
@@ -33,20 +46,17 @@ class DebugNodePrinter {
   void printExecutionStats();
 
  private:
-  ExecNode* node;
-  ScratchpadDatapath* acc;
-  std::ostream& out;
-  SrcTypes::SourceManager& srcManager;
+  const ExecNode* node;
 };
 
-class DebugEdgePrinter {
+class DebugEdgePrinter : public DebugPrinterBase {
  public:
-  DebugEdgePrinter(ExecNode* _source_node,
-                   ExecNode* _target_node,
+  DebugEdgePrinter(const ExecNode* _source_node,
+                   const ExecNode* _target_node,
                    ScratchpadDatapath* _acc,
                    std::ostream& _out)
-      : source_node(_source_node), target_node(_target_node), acc(_acc),
-        out(_out), srcManager(acc->get_source_manager()) {}
+      : DebugPrinterBase(_acc, _out), source_node(_source_node),
+        target_node(_target_node) {}
 
   void printAll();
   void printSourceInfo();
@@ -54,17 +64,14 @@ class DebugEdgePrinter {
   void printEdgeInfo();
 
  private:
-  ExecNode* source_node;
-  ExecNode* target_node;
-  ScratchpadDatapath* acc;
-  std::ostream& out;
-  SrcTypes::SourceManager& srcManager;
+  const ExecNode* source_node;
+  const ExecNode* target_node;
 };
 
-class DebugLoopPrinter {
+class DebugLoopPrinter : public DebugPrinterBase {
  public:
   DebugLoopPrinter(ScratchpadDatapath* _acc, std::ostream& _out)
-      : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {}
+      : DebugPrinterBase(_acc, _out) {}
 
   void printLoop(const std::string& loop_name);
   void printAllLoops();
@@ -98,17 +105,14 @@ class DebugLoopPrinter {
 
   /* The loop to print. */
   SrcTypes::UniqueLabel selected_label;
-  ScratchpadDatapath* acc;
-  std::ostream& out;
-  SrcTypes::SourceManager& srcManager;
 };
 
-class DebugFunctionPrinter {
+class DebugFunctionPrinter : public DebugPrinterBase {
  public:
   DebugFunctionPrinter(std::string _function_name,
                        ScratchpadDatapath* _acc,
                        std::ostream& _out)
-      : acc(_acc), out(_out), srcManager(acc->get_source_manager()) {
+      : DebugPrinterBase(_acc, _out) {
     function = srcManager.get<SrcTypes::Function>(_function_name);
     function_boundaries = acc->getProgram().findFunctionBoundaries(function);
   }
@@ -123,18 +127,15 @@ class DebugFunctionPrinter {
  private:
   SrcTypes::Function* function;
   std::list<cnode_pair_t> function_boundaries;
-  ScratchpadDatapath* acc;
-  std::ostream& out;
-  SrcTypes::SourceManager& srcManager;
 };
 
-class DebugCyclePrinter {
+class DebugCyclePrinter : public DebugPrinterBase {
  public:
   DebugCyclePrinter(int _cycle,
                     int _max_nodes,
                     ScratchpadDatapath* _acc,
                     std::ostream& _out)
-      : cycle(_cycle), max_nodes(_max_nodes), acc(_acc), out(_out) {}
+      : DebugPrinterBase(_acc, _out), cycle(_cycle), max_nodes(_max_nodes) {}
 
   void printAll();
   std::list<const ExecNode*> findNodesExecutedinCycle();
@@ -142,8 +143,6 @@ class DebugCyclePrinter {
  private:
   int cycle;
   int max_nodes;
-  ScratchpadDatapath* acc;
-  std::ostream& out;
 };
 
 #endif

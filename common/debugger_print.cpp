@@ -49,6 +49,12 @@ void print_node_pair_list(std::list<cnode_pair_t> pairs,
 }
 
 //-------------------
+// DebugPrinterBase
+//-------------------
+
+DebugPrinterBase::~DebugPrinterBase() {}
+
+//-------------------
 // DebugNodePrinter
 //-------------------
 
@@ -145,7 +151,7 @@ void DebugNodePrinter::printCall() {
   if (node->is_call_op()) {
     ExecNode* called_node = NULL;
     try {
-      called_node = acc->getNodeFromNodeId(node->get_node_id() + 1);
+      called_node = prog.nodes.at(node->get_node_id() + 1);
     } catch (const std::out_of_range& e) {
     }
 
@@ -168,7 +174,7 @@ void DebugNodePrinter::printChildren() {
       acc->getProgram().getChildNodes(node->get_node_id());
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
-    ExecNode* node = acc->getNodeFromNodeId(child_node);
+    ExecNode* node = prog.nodes.at(child_node);
     if (!node->is_isolated())
       out << child_node << " ";
   }
@@ -180,7 +186,7 @@ void DebugNodePrinter::printParents() {
       acc->getProgram().getParentNodes(node->get_node_id());
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
-    ExecNode* node = acc->getNodeFromNodeId(parent_node);
+    ExecNode* node = prog.nodes.at(parent_node);
     if (!node->is_isolated())
       out << parent_node << " ";
   }
@@ -230,7 +236,7 @@ void DebugEdgePrinter::printTargetInfo() {
 }
 
 void DebugEdgePrinter::printEdgeInfo() {
-  if (acc->doesEdgeExist(source_node, target_node)) {
+  if (prog.edgeExists(source_node, target_node)) {
     Edge e = boost::edge(source_node->get_vertex(),
                          target_node->get_vertex(),
                          acc->getProgram().graph)
@@ -351,7 +357,7 @@ std::list<const ExecNode*> DebugCyclePrinter::findNodesExecutedinCycle() {
 
   // In many cases, a simple linear traversal through all nodes ends up being
   // faster than a breadth-first traversal of the graph.
-  for (auto it = acc->node_begin(); it != acc->node_end(); ++it) {
+  for (auto it = prog.nodes.begin(); it != prog.nodes.end(); ++it) {
     const ExecNode* curr_node = it->second;
     if (curr_node->get_start_execution_cycle() >= cycle &&
         curr_node->get_complete_execution_cycle() <= cycle) {

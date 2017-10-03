@@ -95,7 +95,7 @@ class Program {
     return edge(from, to, graph).second;
   }
 
-  bool edgeExists(ExecNode* from, ExecNode* to) const {
+  bool edgeExists(const ExecNode* from, const ExecNode* to) const {
     if (from != nullptr && to != nullptr)
       return edgeExistsV(from->get_vertex(), to->get_vertex());
     return false;
@@ -113,8 +113,12 @@ class Program {
     return vertex_to_name[vertex];
   }
 
-  ExecNode* nodeAtVertex(const Vertex& vertex) {
-    return nodes[vertex_to_name[vertex]];
+  ExecNode* nodeAtVertex(const Vertex& vertex) const {
+    return nodes.at(vertex_to_name[vertex]);
+  }
+
+  bool nodeExists(unsigned node_id) const {
+    return nodes.find(node_id) != nodes.end();
   }
 
   //=------------ Commonly used accessors ---------------=//

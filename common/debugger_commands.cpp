@@ -16,9 +16,10 @@
 #include "debugger_commands.h"
 
 void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
-  std::unordered_map<Vertex, ExecNode*> vertexToNode;
+  std::unordered_map<Vertex, const ExecNode*> vertexToNode;
   BGL_FORALL_VERTICES(v, graph, Graph) {
-    ExecNode* node = acc->getNodeFromNodeId(get(boost::vertex_node_id, graph, v));
+    const ExecNode* node =
+        acc->getProgram().nodes.at(get(boost::vertex_node_id, graph, v));
     vertexToNode[v] = node;
   }
   std::ofstream out(graph_name + "_graph.dot", std::ofstream::out);
@@ -32,7 +33,7 @@ void reconstruct_graph(Graph* new_graph,
                        int max_node_id,
                        bool show_branch_children) {
   const Graph &g = acc->getProgram().graph;
-  ExecNode* root_node = acc->getNodeFromNodeId(root_node_id);
+  const ExecNode* root_node = acc->getProgram().nodes.at(root_node_id);
   Vertex root_vertex = root_node->get_vertex();
   unsigned num_nodes_visited = 0;
   std::map<unsigned, Vertex> existing_nodes;
@@ -121,16 +122,16 @@ HandlerRet cmd_print_edge(const CommandTokens& command_tokens,
     return HANDLER_ERROR;
   }
 
-  if (!acc->doesNodeExist(src_node_id)) {
+  if (!acc->getProgram().nodeExists(src_node_id)) {
     std::cerr << "ERROR: Source node " << src_node_id << " does not exist!\n";
     return HANDLER_ERROR;
   }
-  if (!acc->doesNodeExist(tgt_node_id)) {
+  if (!acc->getProgram().nodeExists(tgt_node_id)) {
     std::cerr << "ERROR: Target node " << tgt_node_id << " does not exist!\n";
     return HANDLER_ERROR;
   }
-  ExecNode* source = acc->getNodeFromNodeId(src_node_id);
-  ExecNode* target = acc->getNodeFromNodeId(tgt_node_id);
+  const ExecNode* source = acc->getProgram().nodes.at(src_node_id);
+  const ExecNode* target = acc->getProgram().nodes.at(tgt_node_id);
   DebugEdgePrinter printer(source, target, acc, std::cout);
   printer.printAll();
 
@@ -152,11 +153,11 @@ HandlerRet cmd_print_node(const CommandTokens& command_tokens,
     return HANDLER_ERROR;
   }
 
-  if (!acc->doesNodeExist(node_id)) {
+  if (!acc->getProgram().nodeExists(node_id)) {
     std::cerr << "ERROR: Node " << node_id << " does not exist!\n";
     return HANDLER_ERROR;
   }
-  ExecNode* node = acc->getNodeFromNodeId(node_id);
+  const ExecNode* node = acc->getProgram().nodes.at(node_id);
   DebugNodePrinter printer(node, acc, std::cout);
   printer.printAll();
 
@@ -214,7 +215,7 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   if (args.find("show_branch_children") != args.end())
     show_branch_children = args["show_branch_children"];
 
-  if (!acc->doesNodeExist(root_node)) {
+  if (!acc->getProgram().nodeExists(root_node)) {
     std::cerr << "ERROR: Node " << root_node << " does not exist!\n";
     return HANDLER_ERROR;
   }

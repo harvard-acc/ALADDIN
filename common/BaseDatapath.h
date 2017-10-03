@@ -118,7 +118,7 @@ class microop_label_writer {
   microop_label_writer(Map _vertexToNode, Graph& _graph)
       : vertexToNode(_vertexToNode), graph(_graph) {}
   void operator()(std::ostream& out, const Vertex& v) {
-    ExecNode* node = vertexToNode[v];
+    const ExecNode* node = vertexToNode[v];
     out << "[label=\"" << node->get_node_id() << "\\n("
         << node->get_microop_name() << ")\"]";
   }
