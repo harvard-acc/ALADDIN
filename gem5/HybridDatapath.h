@@ -451,10 +451,14 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   Stats::Scalar dcache_loads;
   Stats::Scalar dcache_stores;
+  Stats::Histogram dcache_latency;
+  Stats::Histogram dcache_queue_time;
 
-  // Number of loads and stores issued by ACP.
+  // ACP related statistics.
   Stats::Scalar acp_loads;
   Stats::Scalar acp_stores;
+  Stats::Histogram acp_latency;
+  Stats::Histogram acp_queue_time;
 
   // Total cycles spent on DMA setup.
   Stats::Scalar dma_setup_cycles;

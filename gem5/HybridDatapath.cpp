@@ -531,6 +531,8 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
         issueCacheRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
+      entry->when_issued = curTick();
+      dcache_queue_time.sample(entry->when_issued - entry->when_allocated);
       cache_queue.incrementIssuedThisCycle();
       DPRINTF(HybridDatapath,
               "node:%d, vaddr = 0x%x, paddr = 0x%x is accessing cache\n",
@@ -638,6 +640,8 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
         issueAcpRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
+      entry->when_issued = curTick();
+      acp_queue_time.sample(entry->when_issued - entry->when_allocated);
       cache_queue.incrementIssuedThisCycle();
       DPRINTF(
           HybridDatapath,
@@ -1029,23 +1033,28 @@ void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
   panic_if(!entry, "Did not find a cache queue entry for vaddr %#x\n", vaddr);
   if (entry->status == WaitingFromCache) {
     entry->status = Returned;
+    Tick elapsed = curTick() - entry->when_issued;
     DPRINTF(HybridDatapath,
             "setting %s cache queue entry for vaddr %#x to Returned.\n",
             isLoad ? "load" : "store",
             vaddr);
-    Stats::Scalar* mem_stat;
+    Stats::Scalar* mem_stat_count;
+    Stats::Histogram* mem_stat_latency;
     switch (entry->type) {
       case Cache:
-        mem_stat = isLoad ? &dcache_loads : &dcache_stores;
+        mem_stat_count = isLoad ? &dcache_loads : &dcache_stores;
+        mem_stat_latency = &dcache_latency;
         break;
       case ACP:
-        mem_stat = isLoad ? &acp_loads : &acp_stores;
+        mem_stat_count = isLoad ? &acp_loads : &acp_stores;
+        mem_stat_latency = &acp_latency;
         break;
       default:
         panic("Unexpected memory operation type trying to update the cacne "
               "queue!");
     }
-    (*mem_stat)++;
+    (*mem_stat_count)++;
+    mem_stat_latency->sample(elapsed);
   } else if (entry->status == WaitingForOwnership) {
     entry->status = ReadyToIssue;
     DPRINTF(HybridDatapath,
@@ -1082,6 +1091,7 @@ void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
     case MemCmd::WriteReq:
     case MemCmd::WriteResp:
       entry->status = WaitingFromCache;
+      entry->when_issued = curTick();
       break;
     default:
       panic("%s called with an unexpected packet %s\n",
@@ -1160,12 +1170,28 @@ void HybridDatapath::regStats() {
   dcache_stores.name("system." + datapath_name + ".total_dcache_stores")
       .desc("Total number of dcache stores.")
       .flags(total | nonan);
+  dcache_latency.name("system." + datapath_name + ".dcache_latency")
+      .init(30)
+      .desc("Histogram of dcache total access latency")
+      .flags(pdf);
+  dcache_queue_time.name("system." + datapath_name + ".dcache_queue_time")
+      .init(30)
+      .desc("Histogram of time dcache request spent in queue")
+      .flags(pdf);
   acp_loads.name("system." + datapath_name + ".total_acp_loads")
       .desc("Total number of ACP loads")
       .flags(total | nonan);
   acp_stores.name("system." + datapath_name + ".total_acp_stores")
       .desc("Total number of ACP stores.")
       .flags(total | nonan);
+  acp_latency.name("system." + datapath_name + ".acp_latency")
+      .init(30)
+      .desc("Histogram of ACP transaction total latency")
+      .flags(pdf);
+  acp_queue_time.name("system." + datapath_name + ".acp_queue_time")
+      .init(30)
+      .desc("Histogram of time ACP request spent in queue")
+      .flags(pdf);
   dma_setup_cycles.name("system." + datapath_name + ".dma_setup_cycles")
       .desc("Total number of cycles spent on setting up DMA transfers.")
       .flags(total | nonan);

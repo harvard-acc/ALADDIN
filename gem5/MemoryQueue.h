@@ -5,6 +5,7 @@
 
 #include "base/flags.hh"
 #include "base/statistics.hh"
+#include "sim/core.hh"
 
 #define MIN_CACTI_SIZE 64
 
@@ -39,8 +40,12 @@ class MemoryQueueEntry {
     status = Invalid;
     paddr = 0x0;
     type = NumMemoryOpTypes;
+    when_allocated = curTick();
+    when_issued = 0;
   }
 
+  Tick when_allocated;
+  Tick when_issued;
   MemoryOpType type;
   MemAccessStatus status;  // Current status of the request.
   Addr paddr;              // Physical address, returned by the TLB.
