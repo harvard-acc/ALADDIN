@@ -411,8 +411,7 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
     scratchpad->increment_loads(array_name, array_name_index);
   } else {
     size_t size = mem_access->size;
-    uint8_t* data = new uint8_t[size];
-    memcpy(data, &(mem_access->value), size);
+    uint8_t* data = mem_access->data();
     scratchpad->writeData(array_name, vaddr, data, size);
     scratchpad->increment_stores(array_name, array_name_index);
   }
@@ -526,10 +525,10 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   } else if (entry->status == Translated) {
     Addr paddr = entry->paddr;
     int size = mem_access->size;
-    uint64_t value = mem_access->value;
+    uint8_t* data = mem_access->data();
 
     IssueResult result =
-        issueCacheRequest(vaddr, paddr, size, isLoad, node_id, value);
+        issueCacheRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
@@ -578,7 +577,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   // requirement, but we should not depend on the trace address for anything
   // performance related.
   Addr vaddr = mem_access->vaddr;
-  uint64_t value = mem_access->value;
+  uint8_t* data = mem_access->data();
   int size = mem_access->size;
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
@@ -636,7 +635,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     return false;
   } else if (entry->status == ReadyToIssue) {
     IssueResult result =
-        issueAcpRequest(vaddr, paddr, size, isLoad, node_id, value);
+        issueAcpRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
       cache_queue.incrementIssuedThisCycle();
@@ -892,9 +891,9 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheRequest(Addr vaddr,
                                                               unsigned size,
                                                               bool isLoad,
                                                               unsigned node_id,
-                                                              uint64_t value) {
+                                                              uint8_t* data) {
   return issueCacheOrAcpRequest(
-      Cache, vaddr, paddr, size, isLoad, node_id, value);
+      Cache, vaddr, paddr, size, isLoad, node_id, data);
 }
 
 HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(Addr vaddr,
@@ -902,9 +901,9 @@ HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(Addr vaddr,
                                                             unsigned size,
                                                             bool isLoad,
                                                             unsigned node_id,
-                                                            uint64_t value) {
+                                                            uint8_t* data) {
   return issueCacheOrAcpRequest(
-      ACP, vaddr, paddr, size, isLoad, node_id, value);
+      ACP, vaddr, paddr, size, isLoad, node_id, data);
 }
 
 HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
@@ -914,7 +913,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
     unsigned size,
     bool isLoad,
     unsigned node_id,
-    uint64_t value) {
+    uint8_t* data) {
   using namespace SrcTypes;
   CachePort& port = op_type == Cache ? cachePort : acpPort;
 
@@ -941,8 +940,6 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
   req->setContext(context_id);
 
   MemCmd command = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
-  uint8_t* data = new uint8_t[size];
-  memcpy(data, &value, size);
   PacketPtr data_pkt = new Packet(req, command);
   data_pkt->dataStatic(data);
 
@@ -1116,13 +1113,14 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   // This will compute the offset of THIS packet from the base address.
   Addr paddr = pkt->getAddr();
   Addr paddr_base = getPacketAddr(pkt);
-  Addr pkt_offset =  paddr - paddr_base;
-  Addr vaddr = (node->is_dma_load() ? dst_vaddr_base : src_vaddr_base) + pkt_offset;
+  Addr pkt_offset = paddr - paddr_base;
+  Addr vaddr =
+      (node->is_dma_load() ? dst_vaddr_base : src_vaddr_base) + pkt_offset;
 
   std::string array_label = node->get_array_label();
   unsigned size = pkt->req->getSize(); // in bytes
-  DPRINTF(HybridDatapath,
-          "Receiving DMA response for node %d, address %#x with label %s and size %d.\n",
+  DPRINTF(HybridDatapath, "Receiving DMA response for node %d, address %#x "
+                          "with label %s and size %d.\n",
           node_id, vaddr, array_label.c_str(), size);
   if (datapath->isReadyMode())
     datapath->scratchpad->setReadyBitRange(array_label, vaddr, size);

@@ -9,6 +9,7 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "DDDG.h"
 #include "ExecNode.h"
 #include "ScratchpadDatapath.h"
 #include "SourceManager.h"
@@ -127,13 +128,22 @@ void DebugNodePrinter::printMemoryOp() {
     else
       out << "No\n";
     out << "    Value: ";
-    if (mem_access->is_float && mem_access->size == 4)
-      out << FP2BitsConverter::ConvertBitsToFloat(mem_access->value);
-    else if (mem_access->is_float && mem_access->size == 8)
-      out << FP2BitsConverter::ConvertBitsToDouble(mem_access->value);
-    else
-      out << mem_access->value;
-    out << "\n";
+    if (auto vec_access = dynamic_cast<VectorMemAccess*>(mem_access)) {
+      char* hexstr = bytesToHexStr(vec_access->data(), vec_access->size, true);
+      out << hexstr << "\n";
+      delete[] hexstr;
+    } else {
+      auto scalar_access = dynamic_cast<ScalarMemAccess*>(mem_access);
+      uint64_t bits;
+      memcpy(&bits, scalar_access->data(), 8);
+      if (scalar_access->is_float && scalar_access->size == 4)
+        out << FP2BitsConverter::ConvertBitsToFloat(bits);
+      else if (scalar_access->is_float && scalar_access->size == 8)
+        out << FP2BitsConverter::ConvertBitsToDouble(bits);
+      else
+        out << bits;
+      out << "\n";
+    }
   }
 }
 

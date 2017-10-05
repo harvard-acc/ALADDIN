@@ -21,49 +21,81 @@
 // address space in the X86_64 implementation.
 #define ADDR_MASK 0xffffffff
 
-// Stores basic information about a typical memory access.
+// Basic information about a memory access.
 class MemAccess {
   public:
-    MemAccess() : vaddr(0), size(0), is_float(false), value(0) {}
+    MemAccess() : vaddr(0), size(0) {}
+    virtual ~MemAccess() {}
+
+    // Obtain a pointer to the first byte of data.
+    virtual uint8_t* data() = 0;
 
     // Address read from the trace.
     Addr vaddr;
     // Size of the memory access in bytes.
     size_t size;
-    // Is floating-point value or not.
-    bool is_float;
-    // Hex representation of the value loaded or stored.  For FP values, this is
-    // the IEEE-754 representation.
-    uint64_t value;
 };
 
-class DmaMemAccess : public MemAccess {
+// For a typical memory access with a value of 64 bits or less.
+class ScalarMemAccess : public MemAccess {
   public:
-    DmaMemAccess()
-        : MemAccess()
-        , src_off(0)
-        , dst_off(0) {}
+    ScalarMemAccess() : MemAccess(), is_float(false) {}
 
-    DmaMemAccess(size_t off)
-        : MemAccess()
-        , src_off(off)
-        , dst_off(off) {}
+    void set_value(uint64_t _value) {
+      memcpy(&value[0], &_value, 8);
+    }
 
-    DmaMemAccess(size_t src_off, size_t dst_off)
-        : MemAccess()
-        , src_off(src_off)
-        , dst_off(dst_off) {}
+    virtual uint8_t* data() { return &value[0]; }
 
-    /* Additional offset from vaddr/paddr.
-     *
-     * This is used to work around dependence analysis bugs when dmaLoading
-     * from non-base addresses. In the simplest case, src_off and dst_off are
-     * equal, but they don't have to be. Double buffering is a common example
-     * of where a source offset might be some number N, but the destination
-     * offset could be 0, the beginning of the scratchpad.
-     */
-    size_t src_off;
-    size_t dst_off;
+    // Is this value a floating point value?
+    bool is_float;
+
+  protected:
+    // Hex representation of the value loaded or stored.  For FP values, this
+    // is the IEEE-754 representation.
+    uint8_t value[8];
+};
+
+// A memory access of greater than 64 bits.
+class VectorMemAccess : public MemAccess {
+  public:
+    VectorMemAccess() : MemAccess(), value(nullptr) {}
+    virtual ~VectorMemAccess() {
+      if (value)
+        delete value;
+    }
+
+    void set_value(uint8_t* _value) {
+      value = _value;
+    }
+
+    virtual uint8_t* data() { return value; }
+
+  protected:
+    // A pointer to a dynamically allocated buffer. This mem access object is
+    // responsible for cleaning it up.
+    uint8_t* value;
+};
+
+class DmaMemAccess : public ScalarMemAccess {
+  public:
+   DmaMemAccess() : ScalarMemAccess(), src_off(0), dst_off(0) {}
+
+   DmaMemAccess(size_t off) : ScalarMemAccess(), src_off(off), dst_off(off) {}
+
+   DmaMemAccess(size_t src_off, size_t dst_off)
+       : ScalarMemAccess(), src_off(src_off), dst_off(dst_off) {}
+
+   /* Additional offset from vaddr/paddr.
+    *
+    * This is used to work around dependence analysis bugs when dmaLoading
+    * from non-base addresses. In the simplest case, src_off and dst_off are
+    * equal, but they don't have to be. Double buffering is a common example
+    * of where a source offset might be some number N, but the destination
+    * offset could be 0, the beginning of the scratchpad.
+    */
+   size_t src_off;
+   size_t dst_off;
 };
 
 class ExecNode {
@@ -124,8 +156,14 @@ class ExecNode {
   unsigned get_partition_index() const { return partition_index; }
   bool has_array_label() const { return (array_label.compare("") != 0); }
   MemAccess* get_mem_access() const { return mem_access; }
+  ScalarMemAccess* get_scalar_mem_access() const {
+    return dynamic_cast<ScalarMemAccess*>(mem_access);
+  }
   DmaMemAccess* get_dma_mem_access() const {
-    return static_cast<DmaMemAccess*>(mem_access);
+    return dynamic_cast<DmaMemAccess*>(mem_access);
+  }
+  VectorMemAccess* get_vector_mem_access() const {
+    return dynamic_cast<VectorMemAccess*>(mem_access);
   }
   unsigned get_loop_depth() const { return loop_depth; }
   float get_time_before_execution() const { return time_before_execution; }
@@ -161,27 +199,19 @@ class ExecNode {
   }
   void set_array_label(std::string label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
-  void set_mem_access(long long int vaddr,
-                      size_t size_in_bytes,
-                      bool is_float = false,
-                      uint64_t value = 0) {
-    mem_access = new MemAccess();
-    mem_access->vaddr = vaddr;
-    mem_access->size = size_in_bytes;
-    mem_access->is_float = is_float;
-    mem_access->value = value;
-  }
+  void set_mem_access(MemAccess* mem_access) { this->mem_access = mem_access; }
   void set_dma_mem_access(long long int vaddr,
                           size_t src_offset,
                           size_t dst_offset,
                           size_t size_in_bytes,
                           bool is_float = false,
                           uint64_t value = 0) {
-    mem_access = new DmaMemAccess(src_offset, dst_offset);
-    mem_access->vaddr = vaddr;
-    mem_access->size = size_in_bytes;
-    mem_access->is_float = is_float;
-    mem_access->value = value;
+    DmaMemAccess* dma_mem_access = new DmaMemAccess(src_offset, dst_offset);
+    dma_mem_access->set_value(value);
+    dma_mem_access->vaddr = vaddr;
+    dma_mem_access->size = size_in_bytes;
+    dma_mem_access->is_float = is_float;
+    mem_access = dma_mem_access;
   }
   void set_loop_depth(unsigned depth) { loop_depth = depth; }
   void set_time_before_execution(float time) { time_before_execution = time; }

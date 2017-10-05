@@ -364,14 +364,14 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                 unsigned size,
                                 bool isLoad,
                                 unsigned node_id,
-                                uint64_t value);
+                                uint8_t* data);
 
   IssueResult issueAcpRequest(Addr vaddr,
                               Addr paddr,
                               unsigned size,
                               bool isLoad,
                               unsigned node_id,
-                              uint64_t value);
+                              uint8_t* data);
 
   // A helper function for issuing either cache or ACP requests.
   IssueResult issueCacheOrAcpRequest(MemoryOpType op_type,
@@ -380,7 +380,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                      unsigned size,
                                      bool isLoad,
                                      unsigned node_id,
-                                     uint64_t value);
+                                     uint8_t* data);
 
   // For ACP: Request ownership of a cache line.
   IssueResult issueOwnershipRequest(Addr vaddr,

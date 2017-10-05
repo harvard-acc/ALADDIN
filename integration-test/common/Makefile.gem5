@@ -6,7 +6,7 @@
 
 .PHONY: gem5 gem5-cpu gem5-accel clean-gem5
 
-GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
+GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp dma_interface.c
 GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
 # For the MachSuite harness and support system.

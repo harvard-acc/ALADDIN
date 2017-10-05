@@ -1,3 +1,4 @@
+#include <cstring>
 #include <stdio.h>
 #include <sys/stat.h>
 
@@ -11,6 +12,64 @@
 #include "SourceManager.h"
 
 using namespace SrcTypes;
+
+static const char kHexTable[16] = {
+  '0', '1', '2', '3', '4', '5', '6', '7',
+  '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+};
+
+static uint8_t nibbleVal(char nib) {
+  for (uint8_t i = 0; i < 16; i++) {
+    if (nib == kHexTable[i])
+      return i;
+  }
+  assert("Invalid character!\n");
+  return 0;
+}
+
+uint8_t* hexStrToBytes(const char* str) {
+  unsigned len = strlen(str);
+  assert(len % 2 == 0 && "String must be an even length!");
+  unsigned start = 0;
+  unsigned byte_buf_len = len/2;
+  // Ignore the starting 0x.
+  if (strncmp(str, "0x", 2) == 0) {
+    start += 2;
+    byte_buf_len--;
+  }
+  uint8_t* byte_buf = new uint8_t[byte_buf_len];
+  for (unsigned i = start; i < len; i += 2) {
+    uint8_t val = (nibbleVal(str[i]) << 4) + nibbleVal(str[i + 1]);
+    byte_buf[(i - start) / 2] = val;
+  }
+  return byte_buf;
+}
+
+char* bytesToHexStr(uint8_t* data, int size, bool separate32) {
+  unsigned str_len = size * 2 + 3;
+  if (separate32)
+    str_len += size / 4;
+
+  unsigned sep_count = 0;
+  const unsigned sep_threshold = separate32 ? 4 : size + 1;
+
+  char* str_buf = new char[str_len];
+  char* buf_ptr = str_buf;
+  sprintf(buf_ptr, "0x");
+  buf_ptr += 2;
+
+  for (int i = 0; i < size; i++) {
+    buf_ptr += sprintf(buf_ptr, "%02x", data[i]);
+    sep_count++;
+    if (sep_count == sep_threshold && i != size - 1) {
+      buf_ptr += sprintf(buf_ptr, "_");
+      sep_count = 0;
+    }
+  }
+  *buf_ptr = 0;
+
+  return str_buf;
+}
 
 // TODO: Eventual goal is to remove datapath as an argument entirely and rely
 // only on Program.
@@ -112,6 +171,28 @@ Variable* DDDG::get_array_real_var(const std::string& array_name) {
   DynamicVariable real_dyn_var = program->call_arg_map.lookup(dyn_var);
   Variable* real_var = real_dyn_var.get_variable();
   return real_var;
+}
+
+MemAccess* DDDG::create_mem_access(char* value_str,
+                                   double value_dp,
+                                   unsigned mem_size_bytes,
+                                   ValueType value_type) {
+  if (value_type == Vector) {
+    uint8_t* bytes = hexStrToBytes(value_str);
+    VectorMemAccess* mem_access = new VectorMemAccess();
+    mem_access->set_value(bytes);
+    mem_access->size = mem_size_bytes;
+    return mem_access;
+  } else {
+    bool is_float = value_type == Float;
+    uint64_t bits =
+        FP2BitsConverter::Convert(value_dp, mem_size_bytes, is_float);
+    ScalarMemAccess* mem_access = new ScalarMemAccess();
+    mem_access->set_value(bits);
+    mem_access->is_float = is_float;
+    mem_access->size = mem_size_bytes;
+    return mem_access;
+  }
 }
 
 // Parse line from the labelmap section.
@@ -273,12 +354,11 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
            &is_reg,
            label);
   }
-  bool is_float = false;
   std::string tmp_value(char_value);
-  std::size_t found = tmp_value.find('.');
-  if (found != std::string::npos)
-    is_float = true;
-  double value = strtod(char_value, NULL);
+  ValueType value_type = size > 64 ? Vector : 
+      tmp_value.find('.') != std::string::npos ? Float : Integer;
+  // If the value is a vector type, we need to process it differently.
+  double value = value_type == Vector ? 0 : strtod(char_value, NULL);
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
@@ -329,9 +409,11 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       // 1st arg of store is the address, and the 2nd arg is the value, but the
       // 2nd arg is parsed first.
       Addr mem_address = parameter_value_per_inst[0];
-      unsigned mem_size = parameter_size_per_inst.back() / BYTE;
-      uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
-      curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
+      size_t mem_size = size / BYTE;
+      MemAccess* mem_access =
+          create_mem_access(char_value, value, mem_size, value_type);
+      mem_access->vaddr = mem_address;
+      curr_node->set_mem_access(mem_access);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
       Addr mem_address = parameter_value_per_inst[0];
       unsigned mem_size = parameter_size_per_inst.back() / BYTE;
@@ -382,12 +464,10 @@ void DDDG::parse_result(std::string line) {
   char label[256];
 
   sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
-  bool is_float = false;
   std::string tmp_value(char_value);
-  std::size_t found = tmp_value.find('.');
-  if (found != std::string::npos)
-    is_float = true;
-  double value = strtod(char_value, NULL);
+  ValueType value_type = size > 64 ? Vector :
+      tmp_value.find('.') != std::string::npos ? Float : Integer;
+  double value = value_type == Vector ? 0 : strtod(char_value, NULL);
   std::string label_str(label);
 
   if (curr_node->is_fp_op() && (size == 64))
@@ -408,9 +488,11 @@ void DDDG::parse_result(std::string line) {
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
     size_t mem_size = size / BYTE;
+    MemAccess* mem_access =
+        create_mem_access(char_value, value, mem_size, value_type);
+    mem_access->vaddr = mem_address;
     handle_post_write_dependency(mem_address, mem_size, current_node_id);
-    uint64_t bits = FP2BitsConverter::Convert(value, mem_size, is_float);
-    curr_node->set_mem_access(mem_address, mem_size, is_float, bits);
+    curr_node->set_mem_access(mem_access);
   } else if (curr_node->is_dma_op()) {
     Addr base_addr = 0;
     size_t src_off = 0, dst_off = 0, size = 0;

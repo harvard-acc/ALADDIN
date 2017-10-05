@@ -183,7 +183,23 @@ class AcpTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 6754)
+    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 10972)
+
+  def runTest(self):
+    self.runAndValidate()
+
+class SimdTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_simd"))
+    self.setSimBin("test_simd")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("system.test_simd_datapath.sim_cycles", 8363)
 
   def runTest(self):
     self.runAndValidate()

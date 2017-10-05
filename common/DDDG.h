@@ -104,6 +104,29 @@ class FP2BitsConverter {
     }
 };
 
+// Deserialize the hex string @str to bytes in @byte_buf.
+//
+// Args:
+//   str: A null terminated string, all lowercase, containing only hexadecimal
+//        digits, and optionally prefixed by 0x. It must have an even length.
+//
+// Returns:
+//   A byte buffer storing the deserialized data. Memory is allocated
+//   dynamically, and the caller is responsible for freeing it.
+uint8_t* hexStrToBytes(const char* str);
+
+
+// Serialize the byte buffer into a string.
+//
+// Args:
+//   data: The byte buffer.
+//   size: The length of the byte buffer.
+//   separate32: If true, then every 32 bits will be separated with an
+//     underscore. Defaults to false.
+//
+// Returns:
+//   A string representing the serialized data.
+char* bytesToHexStr(uint8_t* data, int size, bool separate32=false);
 
 class DDDG {
  public:
@@ -121,6 +144,14 @@ class DDDG {
   inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
 
  private:
+  // The type of value for the current parameter.
+  enum ValueType {
+    Integer,
+    Float,
+    Vector,
+    NumValueTypes,
+  };
+
   void parse_instruction_line(std::string line);
   void parse_parameter(std::string line, int param_tag);
   void parse_result(std::string line);
@@ -129,6 +160,11 @@ class DDDG {
   void parse_labelmap_line(std::string line);
   std::string parse_function_name(std::string line);
   bool is_function_returned(std::string line, std::string target_function);
+
+  MemAccess* create_mem_access(char* value_str,
+                               double value_dp,
+                               unsigned mem_size,
+                               ValueType value_type);
 
   // Enforce RAW/WAW dependencies on this memory access.
   //
