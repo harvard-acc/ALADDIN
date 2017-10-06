@@ -53,8 +53,10 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                   params->cacheBandwidth,
                   system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
-      enable_stats_dump(params->enableStatsDump), cacheSize(params->cacheSize),
-      cacti_cfg(params->cactiCacheConfig), cacheLineSize(system->cacheLineSize()),
+      enable_stats_dump(params->enableStatsDump),
+      use_acp_cache(params->useAcpCache), cacheSize(params->cacheSize),
+      cacti_cfg(params->cactiCacheConfig),
+      cacheLineSize(system->cacheLineSize()),
       cacheHitLatency(params->cacheHitLatency), cacheAssoc(params->cacheAssoc),
       cache_readEnergy(0), cache_writeEnergy(0), cache_leakagePower(0),
       cache_area(0), dtb(this,
@@ -588,8 +590,6 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   // simultaneous requests to the same cache line (aka an MSHR).
   //
   // For stores: we issue separate ownership requests for each request.
-  // TODO: Add an optimization pass to merge consecutive stores to the same
-  // cache line, as long as none of them cross cache line boundaries.
   // TODO: ACP is only supposed to accept 2 different transaction sizes (16
   // bytes and 64 bytes), not arbitrary burst lengths.
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
@@ -605,8 +605,16 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     entry->type = ACP;
   }
 
-  if (entry->status == Invalid)
-    entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
+  if (entry->status == Invalid) {
+    if (use_acp_cache) {
+      // If we have the middle cache, we don't need to handle ownership requests
+      // ourselves. Just go ahead and issue the read or write.
+      entry->status = ReadyToIssue;
+    } else {
+      // We need to explicitly request ownership of a cache line on stores.
+      entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
+    }
+  }
 
   if (entry->paddr == 0) {
     // ACP works with physical addresses, which the trace cannot possibly have,
@@ -982,19 +990,11 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   req = new Request(paddr, size, flags, getAcpMasterId(), curTick(), pc);
   req->setContext(context_id);
 
-  // TODO: What is the proper command to use here?
-  // Tried:
-  //   1. ReadExReq: Accomplishes part of the behavior, but it does not
-  //      require a writeback to the L2. Requires a full cache line read.
-  //   2. ReadSharedReq: No good - we need exclusive access in order to write
-  //      the block.
-  //   3. CleanEvict: The L2 crossbar will just sink the packet without
-  //      forwarding it on to the L1 dcache.
-  //   4. WritebackDirty: This packet would have to contain the writeback data
-  //      (which it can't possibly know).
-  //   5. WritebackClean: Same as above.
-  //   6. UpgradeReq: Seems to do nothing but invalidate a line regardless of
-  //      its current state.
+  // The command that comes closest to emulating ACP behavior is ReadExReq,
+  // which gives us ownership of this cache line, returns the latest version of
+  // the data, and invalidates all other copies. It does not force a writeback
+  // to L2, however; that can only be triggered by the cache that is doing the
+  // writeback in the first place.
   MemCmd command = MemCmd::ReadExReq;
 
   PacketPtr data_pkt = new Packet(req, command);

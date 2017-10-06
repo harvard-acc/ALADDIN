@@ -1,7 +1,28 @@
 from m5.params import *
-from m5.objects import CommMonitor
+from m5.objects import CommMonitor, Cache
 from MemObject import MemObject
 from m5.proxy import *
+from Cache import *
+
+class AcpCache(Cache):
+  """ A small L1 cache that handles coherency logic on ACP's behalf.
+
+  Since this is just to get coherency functionality that we would ordinarily
+  implement on our own in zero time, this needs to be very small (just one or
+  two cache lines), but latency-wise, it needs to emulate the characteristics
+  of an L2 cache lookup. However, we do need to ensure we have enough MSHRs and
+  write buffers so that we don't suffer MORE than an L2 cache lookup latency when
+  we have to writeback cache lines to the L2.
+  """
+  size = "64B"
+  assoc = 1
+  tag_latency = 13
+  data_latency = 1
+  response_latency = 1
+  mshrs = 4
+  tgts_per_mshr = 4
+  write_buffers = 4
+  prefetcher = NULL
 
 class HybridDatapath(MemObject):
   type = "HybridDatapath"
@@ -62,6 +83,8 @@ class HybridDatapath(MemObject):
       False, "Record memory traffic going to/from the accelerator.")
   enableAcp = Param.Bool(
       False, "Connect the datapath's ACP port to the system L2.")
+  useAcpCache = Param.Bool(
+      True, "Use an L1 cache to handle ACP coherency traffic.")
 
   spad_port = MasterPort("HybridDatapath DMA port")
   cache_port = MasterPort("HybridDatapath cache coherent port")
@@ -95,4 +118,9 @@ class HybridDatapath(MemObject):
       self.cache.mem_side = bus.slave
 
   def connectAcpPort(self, tol2bus):
-    self.acp_port = tol2bus.slave
+    if self.useAcpCache:
+      self.acp_cache = AcpCache()
+      self.acp_port = self.acp_cache.cpu_side
+      self.acp_cache.mem_side = tol2bus.slave
+    else:
+      self.acp_port = tol2bus.slave

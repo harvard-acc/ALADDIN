@@ -472,7 +472,22 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // If True, this exits the sim loop at the end of each accelerator
   // invocation so that stats can be dumped. The simulation script will
   // resume execution afterwards.
-  bool enable_stats_dump;
+  const bool enable_stats_dump;
+
+  // Enable or disable the ACP L1 cache implementation method.
+  //
+  // There are currently two implemented ways to handle ACP coherency logic:
+  //   1. Directly connect the ACP port to the L2 cache crossbar. We will issue
+  //      all the cache coherency commands ourselves.
+  //
+  //   2. Place a tiny L1 cache (just one or two cache lines large) in between
+  //      the ACP port and the L2 cache crossbar and just issue reads and writes
+  //      out of the port. The cache will handle all coherency traffic for us.
+  //      The cache parameters must be carefully tuned so that latency-wise, it
+  //      looks like we're still directly accessing L2.
+  //
+  // If this value is true, we use method 2; otherwise, we use method 1.
+  const bool use_acp_cache;
 
   // Data cache structural parameters.
   std::string cacheSize;  // Because of GEM5's stupid xxkB format.
