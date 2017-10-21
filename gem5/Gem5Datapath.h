@@ -82,7 +82,8 @@ class Gem5Datapath : public MemObject {
   /* Insert a mapping between array labels to their simulated virtual
    * addresses. */
   virtual void insertArrayLabelToVirtual(std::string array_label,
-                                         Addr vaddr) = 0;
+                                         Addr vaddr,
+                                         size_t size) = 0;
 
  protected:
   /* True if gem5 is being simulated with just Aladdin, false if there are

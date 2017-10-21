@@ -167,36 +167,34 @@ void DDDG::insert_control_dependence(unsigned source_node, unsigned dest_node) {
 // Return a pointer to that Variable.
 Variable* DDDG::get_array_real_var(const std::string& array_name) {
   Variable* var = srcManager.get<Variable>(array_name);
+  return get_array_real_var(var);
+}
+
+// Same as the above function, but takes a Variable* pointer directly.
+Variable* DDDG::get_array_real_var(Variable* var) {
   DynamicVariable dyn_var(curr_dynamic_function, var);
   DynamicVariable real_dyn_var = program->call_arg_map.lookup(dyn_var);
   Variable* real_var = real_dyn_var.get_variable();
   return real_var;
 }
 
-MemAccess* DDDG::create_mem_access(char* value_str,
-                                   double value_dp,
-                                   unsigned mem_size_bytes,
-                                   ValueType value_type) {
-  if (value_type == Vector) {
-    uint8_t* bytes = hexStrToBytes(value_str);
+MemAccess* DDDG::create_mem_access(Value& value) {
+  if (value.getType() == Value::Vector) {
     VectorMemAccess* mem_access = new VectorMemAccess();
-    mem_access->set_value(bytes);
-    mem_access->size = mem_size_bytes;
+    mem_access->set_value(value.getVector());
+    mem_access->size = value.getSize();
     return mem_access;
   } else {
-    bool is_float = value_type == Float;
-    uint64_t bits =
-        FP2BitsConverter::Convert(value_dp, mem_size_bytes, is_float);
     ScalarMemAccess* mem_access = new ScalarMemAccess();
-    mem_access->set_value(bits);
-    mem_access->is_float = is_float;
-    mem_access->size = mem_size_bytes;
+    mem_access->set_value(value.getScalar());
+    mem_access->is_float = value.getType() == Value::Float;
+    mem_access->size = value.getSize();
     return mem_access;
   }
 }
 
 // Parse line from the labelmap section.
-void DDDG::parse_labelmap_line(std::string line) {
+void DDDG::parse_labelmap_line(const std::string& line) {
   char label_name[256], function_name[256], callers[256];
   int line_number;
   int num_matches = sscanf(line.c_str(),
@@ -228,7 +226,7 @@ void DDDG::parse_labelmap_line(std::string line) {
   }
 }
 
-void DDDG::parse_instruction_line(std::string line) {
+void DDDG::parse_instruction_line(const std::string& line) {
   char curr_static_function[256];
   char instid[256], bblockid[256], bblockname[256];
   int line_num;
@@ -325,13 +323,14 @@ void DDDG::parse_instruction_line(std::string line) {
   }
   curr_bblock = bblockid;
   curr_node->set_dynamic_invocation(func_invocation_count);
-  last_parameter = 0;
+  last_parameter = false;
   parameter_value_per_inst.clear();
   parameter_size_per_inst.clear();
   parameter_label_per_inst.clear();
+  func_caller_args.clear();
 }
 
-void DDDG::parse_parameter(std::string line, int param_tag) {
+void DDDG::parse_parameter(const std::string& line, int param_tag) {
   int size, is_reg;
   char char_value[256];
   char label[256], prev_bbid[256];
@@ -354,11 +353,12 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
            &is_reg,
            label);
   }
-  std::string tmp_value(char_value);
-  ValueType value_type = size > 64 ? Vector : 
-      tmp_value.find('.') != std::string::npos ? Float : Integer;
-  // If the value is a vector type, we need to process it differently.
-  double value = value_type == Vector ? 0 : strtod(char_value, NULL);
+  Value value(char_value, size);
+  if (curr_microop == LLVM_IR_EntryDecl) {
+    if (value.getType() == Value::Ptr)
+      datapath->addEntryArrayDecl(std::string(label), value);
+    return;
+  }
   if (!last_parameter) {
     num_of_parameters = param_tag;
     if (curr_microop == LLVM_IR_Call)
@@ -368,24 +368,28 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
           callee_function, callee_function->get_invocations() + 1);
     }
   }
-  last_parameter = 1;
-  last_call_source = -1;
+  last_parameter = true;
   if (is_reg) {
     Variable* variable = srcManager.insert<Variable>(label);
     DynamicVariable unique_reg_ref(curr_dynamic_function, variable);
-    if (curr_microop == LLVM_IR_Call) {
-      unique_reg_in_caller_func = unique_reg_ref;
+    auto reg_it = register_last_written.find(unique_reg_ref);
+    bool found_reg_entry = reg_it != register_last_written.end();
+    if (curr_microop == LLVM_IR_Call && param_tag != num_of_parameters) {
+      // The first parameter on a call function block is the name of the
+      // function itself, not an argument to the function.
+      //
+      // The first element in the pair is the register reference for this call
+      // argument.  The second element in the pair is the id of the last node
+      // to write to this register, if such a node exists.
+      func_caller_args.push_back(std::make_pair(
+          unique_reg_ref, found_reg_entry ? reg_it->second : current_node_id));
     }
     // Find the instruction that writes the register
-    auto reg_it = register_last_written.find(unique_reg_ref);
-    if (reg_it != register_last_written.end()) {
+    if (found_reg_entry) {
       /*Find the last instruction that writes to the register*/
       reg_edge_t tmp_edge = { (unsigned)current_node_id, param_tag };
       register_edge_table.insert(std::make_pair(reg_it->second, tmp_edge));
       num_of_reg_dep++;
-      if (curr_microop == LLVM_IR_Call) {
-        last_call_source = reg_it->second;
-      }
     } else if ((curr_microop == LLVM_IR_Store && param_tag == 2) ||
                (curr_microop == LLVM_IR_Load && param_tag == 1)) {
       /*For the load/store op without a gep instruction before, assuming the
@@ -395,7 +399,9 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
       curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op()) {
-    parameter_value_per_inst.push_back(((Addr)value) & ADDR_MASK);
+    // NOTE: We are moving value into the parameter value list, so the value
+    // object is now no longer valid and cannot be used directly!
+    parameter_value_per_inst.push_back(std::move(value));
     parameter_size_per_inst.push_back(size);
     parameter_label_per_inst.push_back(label);
     // last parameter
@@ -409,9 +415,8 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
       // 1st arg of store is the address, and the 2nd arg is the value, but the
       // 2nd arg is parsed first.
       Addr mem_address = parameter_value_per_inst[0];
-      size_t mem_size = size / BYTE;
       MemAccess* mem_access =
-          create_mem_access(char_value, value, mem_size, value_type);
+          create_mem_access(parameter_value_per_inst.back());
       mem_access->vaddr = mem_address;
       curr_node->set_mem_access(mem_access);
     } else if (param_tag == 2 && curr_microop == LLVM_IR_Store) {
@@ -458,16 +463,13 @@ void DDDG::parse_parameter(std::string line, int param_tag) {
   }
 }
 
-void DDDG::parse_result(std::string line) {
+void DDDG::parse_result(const std::string& line) {
   int size, is_reg;
   char char_value[256];
   char label[256];
 
   sscanf(line.c_str(), "%d,%[^,],%d,%[^,],\n", &size, char_value, &is_reg, label);
-  std::string tmp_value(char_value);
-  ValueType value_type = size > 64 ? Vector :
-      tmp_value.find('.') != std::string::npos ? Float : Integer;
-  double value = value_type == Vector ? 0 : strtod(char_value, NULL);
+  Value value(char_value, size);
   std::string label_str(label);
 
   if (curr_node->is_fp_op() && (size == 64))
@@ -475,44 +477,67 @@ void DDDG::parse_result(std::string line) {
   assert(is_reg);
   Variable* var = srcManager.insert<Variable>(label_str);
   DynamicVariable unique_reg_ref(curr_dynamic_function, var);
-  auto reg_it = register_last_written.find(unique_reg_ref);
-  if (reg_it != register_last_written.end())
-    reg_it->second = current_node_id;
-  else
-    register_last_written[unique_reg_ref] = current_node_id;
+  register_last_written[unique_reg_ref] = current_node_id;
 
   if (curr_microop == LLVM_IR_Alloca) {
     curr_node->set_variable(srcManager.get<Variable>(label_str));
     curr_node->set_array_label(label_str);
-    datapath->addArrayBaseAddress(label_str, ((Addr)value) & ADDR_MASK);
+    datapath->addArrayBaseAddress(label_str, value.getScalar());
   } else if (curr_microop == LLVM_IR_Load) {
     Addr mem_address = parameter_value_per_inst.back();
     size_t mem_size = size / BYTE;
-    MemAccess* mem_access =
-        create_mem_access(char_value, value, mem_size, value_type);
+    MemAccess* mem_access = create_mem_access(value);
     mem_access->vaddr = mem_address;
     handle_post_write_dependency(mem_address, mem_size, current_node_id);
     curr_node->set_mem_access(mem_access);
   } else if (curr_node->is_dma_op()) {
-    Addr base_addr = 0;
-    size_t src_off = 0, dst_off = 0, size = 0;
-    // Determine DMA interface version.
-    if (parameter_value_per_inst.size() == 4) {
-      // v1 (src offset = dst offset).
-      base_addr = parameter_value_per_inst[1];
-      src_off = (size_t) parameter_value_per_inst[2];
-      dst_off = src_off;
-      size = (size_t) parameter_value_per_inst[3];
-    } else if (parameter_value_per_inst.size() == 5) {
-      // v2 (src offset is separate from dst offset).
-      base_addr = parameter_value_per_inst[1];
-      src_off = (size_t) parameter_value_per_inst[2];
-      dst_off = (size_t) parameter_value_per_inst[3];
-      size = (size_t) parameter_value_per_inst[4];
+    DmaMemAccess* mem_access;
+    Addr src_addr = 0, dst_addr = 0;
+    size_t size = 0;
+    Variable *src_var = nullptr, *dst_var = nullptr;
+    int dma_version = 0;
+    if (value == 3) {
+      // Version 3 is the only version with a non-zero return value.
+      dma_version = 3;
+    } else if (num_of_parameters == 5 && value == 0) {
+      // Version 2 has 4 arguments + the function name = 5 parameters, and
+      // return value 0.
+      dma_version = 2;
     } else {
-      assert("Unknown DMA interface version!");
+      // Otherwise, it must be version 1.
+      dma_version = 1;
     }
-    curr_node->set_dma_mem_access(base_addr, src_off, dst_off, size);
+    if (dma_version == 1) {
+      Addr base_addr = parameter_value_per_inst[1];
+      size_t offset = (size_t) parameter_value_per_inst[2];
+      size = (size_t) parameter_value_per_inst[3];
+      src_addr = base_addr + offset;
+      dst_addr = src_addr;
+      src_var = srcManager.get<Variable>(parameter_label_per_inst[1]);
+      dst_var = src_var;
+    } else if (dma_version == 2) {
+      Addr base_addr = parameter_value_per_inst[1];
+      size_t src_offset = (size_t) parameter_value_per_inst[2];
+      size_t dst_offset = (size_t) parameter_value_per_inst[3];
+      size = (size_t) parameter_value_per_inst[4];
+      src_addr = base_addr + src_offset;
+      dst_addr = base_addr + dst_offset;
+      src_var = srcManager.get<Variable>(parameter_label_per_inst[1]);
+      dst_var = src_var;
+    } else if (dma_version == 3) {
+      dst_addr = parameter_value_per_inst[1];
+      src_addr = parameter_value_per_inst[2];
+      size = (size_t) parameter_value_per_inst[3];
+      dst_var = srcManager.get<Variable>(parameter_label_per_inst[1]);
+      src_var = srcManager.get<Variable>(parameter_label_per_inst[2]);
+    } else {
+      assert(false && "Invalid DMA interface version!");
+    }
+
+    src_var = get_array_real_var(src_var);
+    dst_var = get_array_real_var(dst_var);
+    mem_access = new DmaMemAccess(dst_addr, src_addr, size, src_var, dst_var);
+    curr_node->set_dma_mem_access(mem_access);
     if (curr_microop == LLVM_IR_DMALoad) {
       /* If we're using full/empty bits, then we want loads and stores to
        * issue as soon as their data is available. This means that for nearly
@@ -522,8 +547,7 @@ void DDDG::parse_result(std::string line) {
       if (!datapath->isReadyMode()) {
         // For dmaLoad (which is a STORE from the accelerator's perspective),
         // enforce RAW and WAW dependencies on subsequent nodes.
-        Addr start_addr = base_addr + dst_off;
-        for (Addr addr = start_addr; addr < start_addr + size; addr += 1) {
+        for (Addr addr = dst_addr; addr < dst_addr + size; addr += 1) {
           // TODO: Storing an entry for every byte in this range is very inefficient...
           auto addr_it = address_last_written.find(addr);
           if (addr_it != address_last_written.end())
@@ -536,45 +560,49 @@ void DDDG::parse_result(std::string line) {
     } else {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.
-      Addr start_addr = base_addr + src_off;
-      handle_post_write_dependency(start_addr, size, current_node_id);
+      handle_post_write_dependency(src_addr, size, current_node_id);
     }
   }
 }
 
-void DDDG::parse_forward(std::string line) {
+void DDDG::parse_forward(const std::string& line) {
   int size, is_reg;
-  double value;
-  char label[256];
+  char label_buf[256];
 
   // DMA and trig operations are not actually treated as called functions by
   // Aladdin, so there is no need to add any register name mappings.
   if (curr_node->is_dma_op() || curr_node->is_trig_op())
     return;
 
-  sscanf(line.c_str(), "%d,%lf,%d,%[^,],\n", &size, &value, &is_reg, label);
+  sscanf(line.c_str(), "%d,%*[^,],%d,%[^,],\n", &size, &is_reg, label_buf);
   assert(is_reg);
 
   assert(curr_node->is_call_op());
-  Variable* var = srcManager.insert<Variable>(label);
+  Variable* var = srcManager.insert<Variable>(label_buf);
   DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
-  if (unique_reg_in_caller_func) {
-    program->call_arg_map.add(unique_reg_ref, unique_reg_in_caller_func);
-    unique_reg_in_caller_func = DynamicVariable();
+  SrcTypes::DynamicVariable caller_arg;
+  unsigned last_node_to_modify = 0;
+  if (!func_caller_args.empty()) {
+    std::tie(caller_arg, last_node_to_modify) = func_caller_args.front();
+    program->call_arg_map.add(unique_reg_ref, caller_arg);
+    func_caller_args.pop_front();
   }
-  auto reg_it = register_last_written.find(unique_reg_ref);
-  int tmp_written_inst = current_node_id;
-  if (last_call_source != -1) {
-    tmp_written_inst = last_call_source;
+  if (caller_arg) {
+    register_last_written[unique_reg_ref] = last_node_to_modify;
+  } else {
+    register_last_written[unique_reg_ref] = current_node_id;
   }
-  if (reg_it != register_last_written.end())
-    reg_it->second = tmp_written_inst;
-  else
-    register_last_written[unique_reg_ref] = tmp_written_inst;
 }
 
-std::string DDDG::parse_function_name(std::string line) {
+void DDDG::parse_entry_declaration(const std::string& line) {
+  curr_microop = LLVM_IR_EntryDecl;
+  char curr_static_function[256];
+  num_of_parameters = 0;
+  sscanf(line.c_str(), "entry,%s,%d\n", curr_static_function, &num_of_parameters);
+}
+
+std::string DDDG::parse_function_name(const std::string& line) {
   char curr_static_function[256];
   char instid[256], bblockid[256];
   int line_num;
@@ -591,7 +619,7 @@ std::string DDDG::parse_function_name(std::string line) {
   return curr_static_function;
 }
 
-bool DDDG::is_function_returned(std::string line, std::string target_function) {
+bool DDDG::is_function_returned(const std::string& line, std::string target_function) {
   char curr_static_function[256];
   char instid[256], bblockid[256];
   int line_num;
@@ -681,6 +709,8 @@ size_t DDDG::build_initial_dddg(size_t trace_off, size_t trace_size) {
       parse_result(line_left);
     } else if (tag.compare("f") == 0) {
       parse_forward(line_left);
+    } else if (tag.compare("entry") == 0) {
+      parse_entry_declaration(line_left);
     } else {
       parse_parameter(line_left, atoi(tag.c_str()));
     }

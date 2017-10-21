@@ -123,6 +123,11 @@ void BaseDatapath::initBaseAddress() {
 #endif
 }
 
+void BaseDatapath::initDmaBaseAddress() {
+  auto opt = getGraphOpt<DmaBaseAddressInit>();
+  opt->run();
+}
+
 void BaseDatapath::memoryAmbiguation() {
   auto opt = getGraphOpt<MemoryAmbiguationOpt>();
   opt->run();
@@ -1006,23 +1011,6 @@ void BaseDatapath::initExecutingQueue() {
   }
 }
 
-partition_config_t::iterator BaseDatapath::getArrayConfigFromAddr(Addr base_addr) {
-  auto part_it = user_params.partition.begin();
-  for (; part_it != user_params.partition.end(); ++part_it) {
-    if (part_it->second.base_addr == base_addr) {
-      break;
-    }
-  }
-  // If the array label is not found, abort the simulation.
-  std::string array_label = part_it->first;
-  if (array_label.empty()) {
-    std::cerr << "Unknown address " << base_addr
-              << std::endl;
-    exit(-1);
-  }
-  return part_it;
-}
-
 // readConfigs
 void BaseDatapath::parse_config(std::string& bench,
                                 std::string& config_file_name) {
@@ -1088,27 +1076,24 @@ void BaseDatapath::parse_config(std::string& bench,
         p_type = complete;
         m_type = reg;
       }
-      long long int addr = 0;
       user_params.partition[array_label] = {
-        m_type, p_type, size, wordsize, p_factor, addr
+        m_type, p_type, size, wordsize, p_factor, 0
       };
     } else if (!type.compare("cache")) {
       unsigned size = 0, p_factor = 0, wordsize = 0;
       char array_label[256];
       sscanf(rest_line.c_str(), "%[^,],%d\n", array_label, &size);
       std::string p_type(type);
-      long long int addr = 0;
       user_params.partition[array_label] = {
-        cache, none, size, wordsize, p_factor, addr
+        cache, none, size, wordsize, p_factor, 0
       };
     } else if (!type.compare("acp")) {
       unsigned size = 0, p_factor = 0, wordsize = 0;
       char array_label[256];
       sscanf(rest_line.c_str(), "%[^,],%d\n", array_label, &size);
       std::string p_type(type);
-      long long int addr = 0;
       user_params.partition[array_label] = {
-        acp, none, size, wordsize, p_factor, addr
+        acp, none, size, wordsize, p_factor, 0
       };
     } else if (!type.compare("pipelining")) {
       user_params.global_pipelining = atoi(rest_line.c_str());

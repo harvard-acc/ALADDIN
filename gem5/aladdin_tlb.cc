@@ -128,18 +128,16 @@ std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
     vpn = vaddr - page_offset;
   } else {
     TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
-    std::string array_name =
-        datapath->getProgram().getBaseAddressLabel(state->node_id);
+    Addr trace_req_vaddr = pkt->req->getPaddr();
+    const std::string& array_name = state->var->get_name();
     Addr base_sim_vaddr = lookupVirtualAddr(array_name);
     Addr base_trace_addr =
         static_cast<Addr>(datapath->getBaseAddress(array_name));
-    Addr trace_req_vaddr = pkt->req->getPaddr();
     Addr array_offset = trace_req_vaddr - base_trace_addr;
     vaddr = base_sim_vaddr + array_offset;
     DPRINTF(AladdinTLB,
-            "Accessing array %s at node id %d with base address %#x.\n",
+            "Accessing array %s with base address %#x.\n",
             array_name.c_str(),
-            state->node_id,
             base_sim_vaddr);
     DPRINTF(AladdinTLB, "Translating vaddr %#x.\n", vaddr);
     page_offset = vaddr % pageBytes;
@@ -156,8 +154,10 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
   if (!tlbMemory->lookup(vpn, ppn)) {
     if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
       ppn = infiniteBackupTLB[vpn];
-    else
+    else if (datapath->isExecuteStandalone())
       ppn = vpn;
+    else
+      assert(false && "Unable to service this Aladdin TLB miss!");
   }
   AladdinTLBResponse* translation = pkt->getPtr<AladdinTLBResponse>();
   translation->vaddr = vpn + page_offset;

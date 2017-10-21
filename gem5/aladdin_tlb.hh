@@ -11,6 +11,8 @@
 #include "mem/mem_object.hh"
 #include "mem/request.hh"
 
+#include "aladdin/common/SourceEntity.h"
+
 class HybridDatapath;
 
 class AladdinTLBEntry {
@@ -191,7 +193,7 @@ class AladdinTLB {
    * This is purely an artifact of how Aladdin is implemented so it doesn't
    * need to be modeled for timing.
    */
-  std::map<std::string, Addr> arrayLabelToVirtualAddrMap;
+  std::map<std::string, std::pair<Addr, size_t>> arrayLabelToVirtualAddrMap;
 
  public:
   AladdinTLB(HybridDatapath* _datapath,
@@ -249,13 +251,15 @@ class AladdinTLB {
    * This method inserts a mapping between the array name and its
    * corresponding simulated virtual address. */
 
-  void insertArrayLabelToVirtual(std::string array_label, Addr sim_vaddr) {
-    arrayLabelToVirtualAddrMap[array_label] = sim_vaddr;
+  void insertArrayLabelToVirtual(std::string array_label,
+                                 Addr sim_vaddr,
+                                 size_t size) {
+    arrayLabelToVirtualAddrMap[array_label] = std::make_pair(sim_vaddr, size);
   }
 
   /* Get the simulated virtual address from its array name. */
   Addr lookupVirtualAddr(std::string array_label) {
-    return arrayLabelToVirtualAddrMap[array_label];
+    return arrayLabelToVirtualAddrMap.at(array_label).first;
   }
 
   /* Perform a TLB translation with timing. */
@@ -269,7 +273,7 @@ class AladdinTLB {
    */
   bool translateInvisibly(PacketPtr pkt);
 
-  /* Translate a trace virtual address to a simulated virtual address. 
+  /* Translate a trace virtual address to a simulated virtual address.
    *
    * Returns:
    *   A pair of the virtual page number and page offset for this trace
@@ -290,10 +294,13 @@ class AladdinTLB {
                        float* avg_leak);
   float getArea() { return area; }
 
+  /* Holds a pointer to the Variable corresponding to the address being
+   * translated (the variable name is required to translate from trace to
+   * simulation address). */
   class TLBSenderState : public Packet::SenderState {
    public:
-    TLBSenderState(unsigned _node_id) : node_id(_node_id) {}
-    unsigned node_id;
+    TLBSenderState(SrcTypes::Variable* _var) : var(_var) {}
+    SrcTypes::Variable* var;
   };
 
   /* Number of TLB translation requests in the current cycle. */

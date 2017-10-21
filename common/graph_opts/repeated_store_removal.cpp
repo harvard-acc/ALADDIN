@@ -28,7 +28,7 @@ void RepeatedStoreRemoval::optimize() {
         --node_id;
         continue;
       }
-      long long int node_address = node->get_mem_access()->vaddr;
+      Addr node_address = node->get_mem_access()->vaddr;
       auto addr_it = address_store_map.find(node_address);
 
       if (addr_it == address_store_map.end())

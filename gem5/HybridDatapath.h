@@ -110,7 +110,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   virtual void insertTLBEntry(Addr vaddr, Addr paddr);
 
   // Insert an array label to its simulated virtual address mapping.
-  virtual void insertArrayLabelToVirtual(std::string array_label, Addr vaddr);
+  virtual void insertArrayLabelToVirtual(std::string array_label,
+                                         Addr vaddr,
+                                         size_t size);
 
   /* Invoked by the TLB when a TLB request has completed.
    *
@@ -335,7 +337,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                       bool is_dma_load);
 
   // Issue a virtual address translation timing request.
-  bool issueTLBRequestTiming(Addr addr, unsigned size, bool isLoad, unsigned node_id);
+  bool issueTLBRequestTiming(Addr addr,
+                             unsigned size,
+                             bool isLoad,
+                             SrcTypes::Variable* var);
 
   // Return the address translation of this trace address immediately.
   //
@@ -350,13 +355,18 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   AladdinTLBResponse getAddressTranslation(Addr trace_addr,
                                            unsigned size,
                                            bool isLoad,
-                                           unsigned node_id);
+                                           SrcTypes::Variable* var);
 
   // Create a TLB request packet.
+  //
+  // The Variable pointer is meant to contain the name of the array being
+  // accessed, which is not necessarily the same as the Variable object
+  // attached to the current node (that Variable would refer to the
+  // register/variable that contains the actual address).
   PacketPtr createTLBRequestPacket(Addr addr,
                                    unsigned size,
                                    bool isLoad,
-                                   unsigned node_id);
+                                   SrcTypes::Variable* var);
 
   // Cache/ACP access functions.
   IssueResult issueCacheRequest(Addr vaddr,

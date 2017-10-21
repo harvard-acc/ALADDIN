@@ -29,7 +29,7 @@ void LoadBuffering::optimize() {
         node_it++;
         continue;
       }
-      long long int node_address = node->get_mem_access()->vaddr;
+      Addr node_address = node->get_mem_access()->vaddr;
       auto addr_it = address_loaded.find(node_address);
       if (node->is_store_op() && addr_it != address_loaded.end()) {
         address_loaded.erase(addr_it);

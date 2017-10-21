@@ -39,6 +39,7 @@ class DebugNodePrinter : public DebugPrinterBase {
   void printBasic();
   void printSourceInfo();
   void printMemoryOp();
+  void printDmaOp();
   void printGep();
   void printCall();
   void printChildren();

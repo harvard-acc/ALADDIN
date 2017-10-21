@@ -63,6 +63,7 @@ void DebugNodePrinter::printAll() {
   printBasic();
   printSourceInfo();
   printMemoryOp();
+  printDmaOp();
   printGep();
   printCall();
   printParents();
@@ -144,6 +145,22 @@ void DebugNodePrinter::printMemoryOp() {
         out << bits;
       out << "\n";
     }
+  }
+}
+
+void DebugNodePrinter::printDmaOp() {
+  if (node->is_dma_op()) {
+    DmaMemAccess* mem_access = node->get_dma_mem_access();
+    out << "  Source: " << mem_access->src_var->get_name()
+        << ", addr: 0x" << std::hex << mem_access->src_addr << "\n"
+        << "  Destination: " << mem_access->dst_var->get_name()
+        << ", addr: 0x" << std::hex << mem_access->dst_addr << "\n"
+        << "  Size: " << std::dec << mem_access->size << "\n"
+        << "  Dynamic op:  ";
+    if (node->is_dynamic_mem_op())
+      out << "Yes\n";
+    else
+      out << "No\n";
   }
 }
 
@@ -256,12 +273,6 @@ void DebugEdgePrinter::printEdgeInfo() {
     switch (edge_weight) {
       case (uint8_t)MEMORY_EDGE:
         out << "Memory dependence (original)";
-        break;
-      case 1:
-        out << "Memory dependence (load)";
-        break;
-      case 2:
-        out << "Memory dependence (store)";
         break;
       case CONTROL_EDGE:
         out << "Control dependence";

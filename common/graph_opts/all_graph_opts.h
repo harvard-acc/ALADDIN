@@ -6,6 +6,7 @@
 #include "base_opt.h"
 #include "base_address_init.h"
 #include "consecutive_branch_fusion.h"
+#include "dma_base_address_init.h"
 #include "global_loop_pipelining.h"
 #include "induction_dependence_removal.h"
 #include "load_buffering.h"

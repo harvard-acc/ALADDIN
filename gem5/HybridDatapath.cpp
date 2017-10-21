@@ -169,12 +169,12 @@ void HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr) {
 }
 
 void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
-                                               Addr vaddr) {
+                                               Addr vaddr,
+                                               size_t size) {
   DPRINTF(HybridDatapath,
-          "Inserting array label mapping %s -> vpn 0x%x.\n",
-          array_label.c_str(),
-          vaddr);
-  dtb.insertArrayLabelToVirtual(array_label, vaddr);
+          "Inserting array label mapping %s -> vpn 0x%x, size %d.\n",
+          array_label.c_str(), vaddr, size);
+  dtb.insertArrayLabelToVirtual(array_label, vaddr, size);
 }
 
 void HybridDatapath::eventStep() {
@@ -382,6 +382,8 @@ MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
         return Register;
       case acp:
         return ACP;
+      case host:
+        assert(false && "Accessing host memory directly is not allowed!");
     }
   }
   return NumMemoryOpTypes;
@@ -401,7 +403,7 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   std::string array_name = node->get_array_label();
   unsigned array_name_index = node->get_partition_index();
   MemAccess* mem_access = node->get_mem_access();
-  uint64_t vaddr = mem_access->vaddr;
+  Addr vaddr = mem_access->vaddr;
   bool isLoad = node->is_load_op();
   bool satisfied = scratchpad->canServicePartition(
                        array_name, array_name_index, vaddr, isLoad);
@@ -510,8 +512,10 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
   if (entry->status == Invalid || entry->status == Retry) {
     int size = mem_access->size;
+    SrcTypes::Variable* var =
+        srcManager.get<SrcTypes::Variable>(node->get_array_label());
     if (dtb.canRequestTranslation() &&
-        issueTLBRequestTiming(vaddr, size, isLoad, node_id)) {
+        issueTLBRequestTiming(vaddr, size, isLoad, var)) {
       markNodeStarted(node);
       dtb.incrementRequestCounter();
       entry->status = Translating;
@@ -620,8 +624,10 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     // ACP works with physical addresses, which the trace cannot possibly have,
     // so to model this faithfully, we perform the address translation in zero
     // time. Make sure we use the original virtual address.
+    SrcTypes::Variable* var =
+        srcManager.get<SrcTypes::Variable>(node->get_array_label());
     AladdinTLBResponse translation =
-        getAddressTranslation(vaddr, size, isLoad, node_id);
+        getAddressTranslation(vaddr, size, isLoad, var);
     entry->paddr = translation.paddr;
   }
   if (!node->started())
@@ -688,16 +694,20 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
   DmaMemAccess* mem_access = node->get_dma_mem_access();
-  Addr base_addr = mem_access->vaddr;
   size_t size = mem_access->size;  // In bytes.
-  Addr src_vaddr = (base_addr + mem_access->src_off) & ADDR_MASK;
-  Addr dst_vaddr = (base_addr + mem_access->dst_off) & ADDR_MASK;
+  Addr src_vaddr = mem_access->src_addr;
+  Addr dst_vaddr = mem_access->dst_addr;
+  if (isExecuteStandalone()) {
+    src_vaddr &= ADDR_MASK;
+    dst_vaddr &= ADDR_MASK;
+  }
   DPRINTF(HybridDatapath,
           "issueDmaRequest: src_addr: %#x, dst_addr: %#x, size: %u\n",
           src_vaddr, dst_vaddr, size);
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
-  auto part_it = getArrayConfigFromAddr(base_addr);
+  Addr accel_addr = isLoad ? dst_vaddr : src_vaddr;
+  auto part_it = user_params.getArrayConfig(accel_addr);
   MemoryType mtype = part_it->second.memory_type;
   assert(mtype == spad || mtype == reg);
   std::string array_label = part_it->first;
@@ -725,11 +735,12 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    *
    * Make sure we use the right address for the host memory translation!
    */
+  SrcTypes::Variable* var = isLoad ? mem_access->src_var : mem_access->dst_var;
   AladdinTLBResponse translation = getAddressTranslation(
-      isLoad ? src_vaddr : dst_vaddr, size, isLoad, node_id);
+      isLoad ? src_vaddr : dst_vaddr, size, isLoad, var);
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
-    scratchpad->readData(array_label, src_vaddr, size, data);
+    scratchpad->readData(array_label, accel_addr, size, data);
   }
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
@@ -814,9 +825,9 @@ bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
 }
 
 bool HybridDatapath::issueTLBRequestTiming(
-    Addr trace_addr, unsigned size, bool isLoad, unsigned node_id) {
+    Addr trace_addr, unsigned size, bool isLoad, SrcTypes::Variable* var) {
   DPRINTF(HybridDatapath, "%s for trace addr:%#x\n", __func__, trace_addr);
-  PacketPtr data_pkt = createTLBRequestPacket(trace_addr, size, isLoad, node_id);
+  PacketPtr data_pkt = createTLBRequestPacket(trace_addr, size, isLoad, var);
 
   // TLB access
   if (dtb.translateTiming(data_pkt))
@@ -828,11 +839,9 @@ bool HybridDatapath::issueTLBRequestTiming(
   }
 }
 
-AladdinTLBResponse HybridDatapath::getAddressTranslation(Addr addr,
-                                                         unsigned size,
-                                                         bool isLoad,
-                                                         unsigned node_id) {
-  PacketPtr data_pkt = createTLBRequestPacket(addr, size, isLoad, node_id);
+AladdinTLBResponse HybridDatapath::getAddressTranslation(
+    Addr addr, unsigned size, bool isLoad, SrcTypes::Variable* var) {
+  PacketPtr data_pkt = createTLBRequestPacket(addr, size, isLoad, var);
   dtb.translateInvisibly(data_pkt);
   // data_pkt->data now contains the translated address. Make a local copy and
   // return it.
@@ -845,7 +854,7 @@ AladdinTLBResponse HybridDatapath::getAddressTranslation(Addr addr,
 }
 
 PacketPtr HybridDatapath::createTLBRequestPacket(
-    Addr trace_addr, unsigned size, bool isLoad, unsigned node_id) {
+    Addr trace_addr, unsigned size, bool isLoad, SrcTypes::Variable* var) {
   Flags<Packet::FlagsType> flags = 0;
   // Constructor for physical request only
   Request* req = new Request(trace_addr, size, flags, getCacheMasterId());
@@ -853,7 +862,7 @@ PacketPtr HybridDatapath::createTLBRequestPacket(
   PacketPtr data_pkt = new Packet(req, command);
 
   AladdinTLBResponse* translation = new AladdinTLBResponse();
-  AladdinTLB::TLBSenderState* state = new AladdinTLB::TLBSenderState(node_id);
+  AladdinTLB::TLBSenderState* state = new AladdinTLB::TLBSenderState(var);
   data_pkt->dataStatic<AladdinTLBResponse>(translation);
   data_pkt->senderState = state;
 
@@ -868,9 +877,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
           pkt->getAddr(),
           pkt->cmdString());
   Addr vaddr = pkt->getAddr();  // The trace address.
-  unsigned node_id = state->node_id;
-  ExecNode* node = program.nodes.at(node_id);
-  bool isLoad = node->is_load_op();
+  bool isLoad = pkt->isRead();
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   panic_if(!entry || entry->status != Translating,
            "Unable to find matching cache queue entry!");
@@ -887,11 +894,8 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
     Addr paddr = pkt->getPtr<AladdinTLBResponse>()->paddr;
     entry->status = Translated;
     entry->paddr = paddr;
-    DPRINTF(HybridDatapath,
-            "node:%d was translated, vaddr = %x, paddr = %x\n",
-            node_id,
-            vaddr,
-            paddr);
+    DPRINTF(
+        HybridDatapath, "Translated: vaddr = %x, paddr = %x\n", vaddr, paddr);
   }
   delete state;
   delete pkt->req;
@@ -1117,8 +1121,12 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   assert(node != nullptr && "DMA node id is invalid!");
 
   DmaMemAccess* mem_access = node->get_dma_mem_access();
-  Addr src_vaddr_base = (mem_access->vaddr + mem_access->src_off) & ADDR_MASK;
-  Addr dst_vaddr_base = (mem_access->vaddr + mem_access->dst_off) & ADDR_MASK;
+  Addr src_vaddr_base = mem_access->src_addr;
+  Addr dst_vaddr_base = mem_access->dst_addr;
+  if (datapath->isExecuteStandalone()) {
+    src_vaddr_base &= ADDR_MASK;
+    dst_vaddr_base &= ADDR_MASK;
+  }
 
   // This will compute the offset of THIS packet from the base address.
   Addr paddr = pkt->getAddr();

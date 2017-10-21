@@ -10,6 +10,7 @@ enum MemoryType {
   reg,
   cache,
   acp,
+  host,
 };
 
 // None is used if an array is stored in a cache.
@@ -21,7 +22,7 @@ struct PartitionEntry {
   unsigned array_size;  // num of bytes
   unsigned wordsize;    // in bytes
   unsigned part_factor;
-  long long int base_addr;
+  Addr base_addr;
 };
 
 class UserConfigParams {
@@ -29,6 +30,24 @@ class UserConfigParams {
   UserConfigParams()
       : cycle_time(1), ready_mode(false), scratchpad_ports(1),
         global_pipelining(false) {}
+
+  partition_config_t::const_iterator getArrayConfig(Addr addr) const {
+    auto part_it = partition.begin();
+    for (; part_it != partition.end(); ++part_it) {
+      Addr base = part_it->second.base_addr;
+      size_t size = part_it->second.array_size;
+      if (base <= addr && base + size > addr)
+        break;
+    }
+    // If the array label is not found, abort the simulation.
+    // const std::string& array_label = part_it->first;
+    if (part_it == partition.end() || part_it->first.empty()) {
+      std::cerr << "Cannot find array with address : 0x" << std::hex << addr
+                << std::endl;
+      assert(false);
+    }
+    return part_it;
+  }
 
   unrolling_config_t unrolling;
   pipeline_config_t pipeline;

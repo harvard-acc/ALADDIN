@@ -25,6 +25,7 @@
 class MemAccess {
   public:
     MemAccess() : vaddr(0), size(0) {}
+    MemAccess(Addr _vaddr, size_t _size) : vaddr(_vaddr), size(_size) {}
     virtual ~MemAccess() {}
 
     // Obtain a pointer to the first byte of data.
@@ -77,25 +78,33 @@ class VectorMemAccess : public MemAccess {
     uint8_t* value;
 };
 
-class DmaMemAccess : public ScalarMemAccess {
+class DmaMemAccess : public MemAccess {
+  protected:
+   typedef SrcTypes::Variable Variable;
+
   public:
-   DmaMemAccess() : ScalarMemAccess(), src_off(0), dst_off(0) {}
+   DmaMemAccess()
+       : MemAccess(), src_addr(0), src_var(nullptr), dst_var(nullptr) {}
 
-   DmaMemAccess(size_t off) : ScalarMemAccess(), src_off(off), dst_off(off) {}
+   DmaMemAccess(Addr _dst_addr,
+                Addr _src_addr,
+                size_t _size,
+                Variable* _src_var,
+                Variable* _dst_var)
+       : MemAccess(_dst_addr, _size), src_addr(_src_addr), src_var(_src_var),
+         dst_var(_dst_var) {}
 
-   DmaMemAccess(size_t src_off, size_t dst_off)
-       : ScalarMemAccess(), src_off(src_off), dst_off(dst_off) {}
+   virtual uint8_t* data() {
+     assert(false &&
+            "DMA memory accesses do not store the data in the trace itself!");
+     return nullptr;
+   }
 
-   /* Additional offset from vaddr/paddr.
-    *
-    * This is used to work around dependence analysis bugs when dmaLoading
-    * from non-base addresses. In the simplest case, src_off and dst_off are
-    * equal, but they don't have to be. Double buffering is a common example
-    * of where a source offset might be some number N, but the destination
-    * offset could be 0, the beginning of the scratchpad.
-    */
-   size_t src_off;
-   size_t dst_off;
+   Addr src_addr;
+   Addr& dst_addr = MemAccess::vaddr;
+
+   Variable* src_var;
+   Variable* dst_var;
 };
 
 class ExecNode {
@@ -200,17 +209,7 @@ class ExecNode {
   void set_array_label(std::string label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(MemAccess* mem_access) { this->mem_access = mem_access; }
-  void set_dma_mem_access(long long int vaddr,
-                          size_t src_offset,
-                          size_t dst_offset,
-                          size_t size_in_bytes,
-                          bool is_float = false,
-                          uint64_t value = 0) {
-    DmaMemAccess* dma_mem_access = new DmaMemAccess(src_offset, dst_offset);
-    dma_mem_access->set_value(value);
-    dma_mem_access->vaddr = vaddr;
-    dma_mem_access->size = size_in_bytes;
-    dma_mem_access->is_float = is_float;
+  void set_dma_mem_access(DmaMemAccess* dma_mem_access) {
     mem_access = dma_mem_access;
   }
   void set_loop_depth(unsigned depth) { loop_depth = depth; }
@@ -238,6 +237,10 @@ class ExecNode {
     if (is_int_add_op() || is_fp_add_op())
       return true;
     return false;
+  }
+
+  bool is_gep_op() const {
+    return microop == LLVM_IR_GetElementPtr;
   }
 
   bool is_memory_op() const {

@@ -1,7 +1,9 @@
 #ifndef __DDDG_H__
 #define __DDDG_H__
 
+#include <deque>
 #include <map>
+#include <memory>
 #include <set>
 #include <stack>
 #include <string>
@@ -115,7 +117,6 @@ class FP2BitsConverter {
 //   dynamically, and the caller is responsible for freeing it.
 uint8_t* hexStrToBytes(const char* str);
 
-
 // Serialize the byte buffer into a string.
 //
 // Args:
@@ -127,6 +128,108 @@ uint8_t* hexStrToBytes(const char* str);
 // Returns:
 //   A string representing the serialized data.
 char* bytesToHexStr(uint8_t* data, int size, bool separate32=false);
+
+// This class represents the value of some register or parameter in the trace.
+//
+// The value can take on different types and formats, depending on the size and
+// the format of the value string. This class converts the string into the
+// appropriate type and simplifies generic manipulation of the value.
+class Value {
+ public:
+  Value(Value&& other)
+      : vector_buf(std::move(other.vector_buf)), data(other.data),
+        type(other.type), size(other.size) {}
+
+  Value(char* value_buf, unsigned _size) : size(_size / 8), vector_buf() {
+    createValue(value_buf);
+  }
+
+  ~Value() {}
+
+  void createValue(char* value_buf) {
+    const std::string value_str(value_buf);
+    if (size > 8) {
+      type = Vector;
+      vector_buf = std::unique_ptr<uint8_t>(hexStrToBytes(value_buf));
+    } else if (value_str.find('.') != std::string::npos) {
+      type = Float;
+      if (size == 4) {
+        data.fp = (float)strtod(value_str.c_str(), NULL);
+      } else if (size == 8) {
+        data.dp = strtod(value_str.c_str(), NULL);
+      } else {
+        assert(false && "Floating point value must be 32-bit or 64-bit!");
+      }
+    } else if (value_str.substr(0, 2) == "0x") {
+      type = Ptr;
+      data.ptr = (void*)strtol(value_str.c_str(), NULL, 16);
+    } else {
+      type = Integer;
+      data.integer = (long long)strtol(value_str.c_str(), NULL, 10);
+    }
+  }
+
+  bool operator==(int value) {
+    return data.integer == value;
+  }
+
+  bool operator==(double value) {
+    return data.dp == value;
+  }
+
+  bool operator==(void* ptr) {
+    return data.ptr == ptr;
+  }
+
+  // Supported value types.
+  enum Type {
+    Integer,
+    Float,
+    Vector,
+    Ptr,
+    NumValueTypes,
+  };
+
+  // The only data accessors we want to expose are scalar or vector. Even if
+  // the type is Ptr, as far as we are concerned, we just need the raw value of
+  // the pointer. Only when the data is actually of type Vector do we return a
+  // pointer to a character buffer.
+  uint64_t getScalar() const { return data.bits; }
+
+  // Requesting the vector data buffer pointer will automatically release
+  // ownership of the managed pointer.
+  uint8_t* getVector() { return vector_buf.release(); }
+
+  // Implicit conversion to unsigned integer.
+  operator uint64_t() const { return data.bits; }
+
+  Type getType() const { return type; }
+  unsigned getSize() const { return size; }
+
+ protected:
+  union DataStorage {
+    long long integer;
+    double dp;
+    float fp;
+    void* ptr;
+    uint64_t bits;
+  };
+
+  // Manages the vector data buffer.
+  //
+  // When we parse a vector value string from the trace, we always convert it
+  // into a byte array, but that data doesn't always get used (as part of a
+  // MemAccess object).  The unique_ptr is used to handle ownership of that
+  // byte array and only free the memory if it was unused.
+  std::unique_ptr<uint8_t> vector_buf;
+
+  // Stores the data for all datatypes other than Vector.
+  DataStorage data;
+
+  // Data type.
+  Type type;
+  unsigned size;  // In bytes.
+};
 
 class DDDG {
  public:
@@ -144,27 +247,17 @@ class DDDG {
   inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
 
  private:
-  // The type of value for the current parameter.
-  enum ValueType {
-    Integer,
-    Float,
-    Vector,
-    NumValueTypes,
-  };
+  void parse_instruction_line(const std::string& line);
+  void parse_parameter(const std::string& line, int param_tag);
+  void parse_result(const std::string& line);
+  void parse_forward(const std::string& line);
+  void parse_call_parameter(const std::string& line, int param_tag);
+  void parse_labelmap_line(const std::string& line);
+  void parse_entry_declaration(const std::string& line);
+  std::string parse_function_name(const std::string& line);
+  bool is_function_returned(const std::string& line, std::string target_function);
 
-  void parse_instruction_line(std::string line);
-  void parse_parameter(std::string line, int param_tag);
-  void parse_result(std::string line);
-  void parse_forward(std::string line);
-  void parse_call_parameter(std::string line, int param_tag);
-  void parse_labelmap_line(std::string line);
-  std::string parse_function_name(std::string line);
-  bool is_function_returned(std::string line, std::string target_function);
-
-  MemAccess* create_mem_access(char* value_str,
-                               double value_dp,
-                               unsigned mem_size,
-                               ValueType value_type);
+  MemAccess* create_mem_access(Value& value);
 
   // Enforce RAW/WAW dependencies on this memory access.
   //
@@ -176,6 +269,7 @@ class DDDG {
                                     unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
   SrcTypes::Variable* get_array_real_var(const std::string& array_name);
+  SrcTypes::Variable* get_array_real_var(SrcTypes::Variable* var);
 
   SrcTypes::DynamicFunction curr_dynamic_function;
 
@@ -190,18 +284,16 @@ class DDDG {
 
   bool last_parameter;
   int num_of_parameters;
-  // Used to track the instruction that initialize call function parameters
-  int last_call_source;
   // The loop depth of the basic block the current node belongs to.
   unsigned current_loop_depth;
-  /* Unique register ID in the caller function. Used to create a mapping between
-   * register IDs in caller and callee functions. */
-  SrcTypes::DynamicVariable unique_reg_in_caller_func;
 
   std::string curr_instid;
-  std::vector<Addr> parameter_value_per_inst;
+  std::vector<Value> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
+  // This deque contains a list of pairs of DynamicVariable objects for each
+  // call argument and the last node to modify that DynamicVariable.
+  std::deque<std::pair<SrcTypes::DynamicVariable, unsigned>> func_caller_args;
   long num_of_instructions;
   long current_node_id;
   int num_of_reg_dep;

@@ -63,6 +63,7 @@ void ScratchpadDatapath::globalOptimizationPass() {
  */
 void ScratchpadDatapath::initBaseAddress() {
   BaseDatapath::initBaseAddress();
+  BaseDatapath::initDmaBaseAddress();
 
   vertex_iter vi, vi_end;
   for (boost::tie(vi, vi_end) = vertices(program.graph); vi != vi_end; ++vi) {
@@ -125,7 +126,7 @@ void ScratchpadDatapath::scratchpadPartition() {
        ++part_it) {
     PartitionType p_type = part_it->second.partition_type;
     MemoryType m_type = part_it->second.memory_type;
-    if (p_type == complete || m_type == cache || m_type == acp)
+    if (p_type == complete || m_type != spad)
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
@@ -157,12 +158,12 @@ void ScratchpadDatapath::scratchpadPartition() {
       PartitionType p_type = part_it->second.partition_type;
       MemoryType m_type = part_it->second.memory_type;
       /* continue if it's complete partition, cache, or acp. */
-      if (p_type == complete || m_type == cache || m_type == acp)
+      if (p_type == complete || m_type != spad)
         continue;
       assert(p_type == block || p_type == cyclic);
 
       MemAccess* mem_access = node->get_mem_access();
-      long long int abs_addr = mem_access->vaddr;
+      Addr abs_addr = mem_access->vaddr;
       unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
       node->set_partition_index(
@@ -202,6 +203,9 @@ void ScratchpadDatapath::stepExecutingQueue() {
         markNodeCompleted(it, index);
         executed = true;
       } else if (scratchpadCanService) {
+        PartitionEntry partition = user_params.partition.at(array_name);
+        assert(partition.memory_type != MemoryType::host &&
+               "Host memory accesses are not supported by standalone Aladdin!");
         MemAccess* mem_access = node->get_mem_access();
         Addr vaddr = mem_access->vaddr;
         bool isLoad = node->is_load_op();

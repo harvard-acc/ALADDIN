@@ -156,12 +156,30 @@ class BaseDatapath {
     functionNames.insert(func_name);
   }
 
-  void addArrayBaseAddress(std::string label, long long int addr) {
+  void addArrayBaseAddress(const std::string& label, Addr addr) {
     auto part_it = user_params.partition.find(label);
     // Add checking for zero to handle DMA operations where we only use
     // base_addr to find the label name.
     if (part_it != user_params.partition.end() && part_it->second.base_addr == 0) {
       part_it->second.base_addr = addr;
+    }
+  }
+
+  void addEntryArrayDecl(const std::string& array_name,
+                         Addr addr) {
+    auto part_it = user_params.partition.find(array_name);
+    if (part_it == user_params.partition.end()) {
+      // If this array doesn't exist in the user-declared arrays, then it
+      // belongs to the host, which makes it only accessible by DMA.
+      PartitionEntry entry = { host, none, 0, 0, 0, addr };
+      user_params.partition[array_name] = entry;
+    } else {
+      // If we find an entry with a matching name, it was either a
+      // user-specified array (which means it's part of the actual
+      // accelerator), or it is a redeclaration of a host array. Either way,
+      // update the base address and word size.
+      PartitionEntry& entry = part_it->second;
+      entry.base_addr = addr;
     }
   }
 
@@ -181,20 +199,20 @@ class BaseDatapath {
   void treeHeightReduction();
   void fuseRegLoadStores();
   void fuseConsecutiveBranches();
+  void initDmaBaseAddress();
 
   //=------------ Program access functions --------------=//
 
   std::string getBenchName() { return benchName; }
   SrcTypes::SourceManager& get_source_manager() { return srcManager; }
   const Program& getProgram() const { return program; }
-  long long int getBaseAddress(std::string label) {
+  Addr getBaseAddress(const std::string& label) {
     return user_params.partition.at(label).base_addr;
   }
 
   //=----------- User configuration functions ------------=//
 
   bool isReadyMode() const { return user_params.ready_mode; }
-  partition_config_t::iterator getArrayConfigFromAddr(Addr base_addr);
 
   //=----------- Simulation/scheduling functions --------=//
 

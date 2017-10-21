@@ -21,7 +21,8 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/reg_load_store_fusion.o \
 									graph_opts/consecutive_branch_fusion.o \
 									graph_opts/per_loop_pipelining.o \
-									graph_opts/global_loop_pipelining.o
+									graph_opts/global_loop_pipelining.o \
+									graph_opts/dma_base_address_init.o
 
 UTILS_OBJS = file_func.o generic_func.o power_func.o
 DEBUGGER_OBJS = debugger_print.o debugger_commands.o
