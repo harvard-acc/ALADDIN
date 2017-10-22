@@ -711,9 +711,11 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    * the CPU using physical addresses, but our DMA model initiates transfers
    * from the accelerator, which can't know physical addresses without a
    * translation.
+   *
+   * Make sure we use the right address for the host memory translation!
    */
-  AladdinTLBResponse translation =
-      getAddressTranslation(dst_vaddr, size, isLoad, node_id);
+  AladdinTLBResponse translation = getAddressTranslation(
+      isLoad ? src_vaddr : dst_vaddr, size, isLoad, node_id);
   mem_access->paddr = translation.paddr;
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {

@@ -38,7 +38,7 @@ class AesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9875)
+    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9707)
 
   def runTest(self):
     self.runAndValidate()
@@ -150,7 +150,7 @@ class MultipleInvocationsTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_multiple_invocations_datapath.sim_cycles", 1781)
+    self.addExpectedStatResult("system.test_multiple_invocations_datapath.sim_cycles", 1496)
 
   def runTest(self):
     self.runAndValidate()
