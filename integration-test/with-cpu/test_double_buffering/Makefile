@@ -4,7 +4,7 @@
 
 ACCEL_NAME = test_double_buffering
 SRCS = test_double_buffering.c
-BMARK_SPECIFIC_CFLAGS=-DDMA_INTERFACE_V2
+BMARK_SPECIFIC_CFLAGS=-DDMA_INTERFACE_V3
 export WORKLOAD=kernel_loop
 
 include ../../common/Makefile.tracer

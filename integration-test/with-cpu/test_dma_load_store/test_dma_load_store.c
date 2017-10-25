@@ -29,15 +29,15 @@ int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 // Read values from store_vals and copy them into store_loc.
 void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 #ifdef DMA_MODE
-  dmaLoad(&store_vals[0], 0, num_vals * sizeof(TYPE));
-  dmaLoad(&store_loc[0], 0, num_vals * sizeof(TYPE));
+  dmaLoad(store_vals, store_vals, num_vals * sizeof(TYPE));
+  dmaLoad(store_loc, store_loc, num_vals * sizeof(TYPE));
 #endif
 
   loop: for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_vals[i];
 
 #ifdef DMA_MODE
-  dmaStore(&store_loc[0], 0, num_vals * sizeof(TYPE));
+  dmaStore(store_loc, store_loc, num_vals * sizeof(TYPE));
 #endif
 }
 

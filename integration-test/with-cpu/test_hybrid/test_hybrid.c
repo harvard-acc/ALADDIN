@@ -32,13 +32,13 @@ int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 // Read values from store_vals and copy them into store_loc.
 void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 #ifdef DMA_MODE
-  dmaLoad(&store_vals[0], 0, 4096);
+  dmaLoad(store_vals, store_vals, 4096);
   // Don't DMA store_loc! That part will be accessed via coherent memory.
 #endif
   loop: for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_vals[i];
 #ifdef DMA_MODE
-  dmaStore(&store_vals[0], 0, 4096);
+  dmaStore(store_vals, store_vals, 4096);
 #endif
 }
 

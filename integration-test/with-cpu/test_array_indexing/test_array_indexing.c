@@ -38,7 +38,7 @@ int validate(TYPE* array) {
 
 void kernel_2d(TYPE* array) {
 #ifdef DMA_MODE
-  dmaLoad(array, 0, 0, L1_SZ * L2_SZ * sizeof(TYPE));
+  dmaLoad(array, array, L1_SZ * L2_SZ * sizeof(TYPE));
 #endif
   TYPE (*array_2d)[L1_SZ] = (TYPE(*)[L1_SZ]) array;
 
@@ -49,13 +49,13 @@ void kernel_2d(TYPE* array) {
   }
 
 #ifdef DMA_MODE
-  dmaStore(array, 0, 0, L1_SZ * L2_SZ * sizeof(TYPE));
+  dmaStore(array, array, L1_SZ * L2_SZ * sizeof(TYPE));
 #endif
 }
 
 void kernel_3d(TYPE* array) {
 #ifdef DMA_MODE
-  dmaLoad(array, 0, 0, L1_SZ * L2_SZ * L3_SZ * sizeof(TYPE));
+  dmaLoad(array, array, L1_SZ * L2_SZ * L3_SZ * sizeof(TYPE));
 #endif
   TYPE (*array_3d)[L1_SZ][L2_SZ] = (TYPE(*)[L1_SZ][L2_SZ]) array;
 
@@ -68,7 +68,7 @@ void kernel_3d(TYPE* array) {
   }
 
 #ifdef DMA_MODE
-  dmaStore(array, 0, 0, L1_SZ * L2_SZ * L3_SZ * sizeof(TYPE));
+  dmaStore(array, array, L1_SZ * L2_SZ * L3_SZ * sizeof(TYPE));
 #endif
 }
 
@@ -76,7 +76,7 @@ void kernel_3d(TYPE* array) {
 // in C99).
 void kernel_2d_dyn(TYPE* array, int dynamic_size) {
 #ifdef DMA_MODE
-  dmaLoad(array, 0, 0, dynamic_size * dynamic_size * sizeof(TYPE));
+  dmaLoad(array, array, dynamic_size * dynamic_size * sizeof(TYPE));
 #endif
   TYPE (*array_2d)[dynamic_size] = (TYPE(*)[dynamic_size]) array;
 
@@ -87,7 +87,7 @@ void kernel_2d_dyn(TYPE* array, int dynamic_size) {
   }
 
 #ifdef DMA_MODE
-  dmaStore(array, 0, 0, dynamic_size * dynamic_size * sizeof(TYPE));
+  dmaStore(array, array, dynamic_size * dynamic_size * sizeof(TYPE));
 #endif
 }
 

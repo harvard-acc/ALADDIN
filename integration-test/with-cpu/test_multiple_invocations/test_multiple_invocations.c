@@ -33,15 +33,15 @@ void store_kernel(TYPE* store_vals,
                   int starting_offset,
                   int num_vals) {
 #ifdef DMA_MODE
-  dmaLoad(&store_vals[0], starting_offset * sizeof(TYPE), 0, num_vals * sizeof(TYPE));
-  dmaLoad(&store_loc[0], starting_offset * sizeof(TYPE), 0, num_vals * sizeof(TYPE));
+  dmaLoad(store_vals, &store_vals[starting_offset], num_vals * sizeof(TYPE));
+  dmaLoad(store_loc, &store_loc[starting_offset], num_vals * sizeof(TYPE));
 #endif
 
   loop: for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_vals[i];
 
 #ifdef DMA_MODE
-  dmaStore(&store_loc[0], 0, starting_offset * sizeof(TYPE), num_vals * sizeof(TYPE));
+  dmaStore(&store_loc[starting_offset], store_loc, num_vals * sizeof(TYPE));
 #endif
 }
 

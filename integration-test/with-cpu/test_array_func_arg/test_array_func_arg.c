@@ -44,9 +44,9 @@ void child_func(TYPE* array, size_t idx) {
 // Read values from store_vals and copy them into store_loc.
 void kernel(TYPE* array0, TYPE* array1, bool* selection, size_t num_vals) {
 #ifdef DMA_MODE
-  dmaLoad(array0, 0, 0, num_vals * sizeof(TYPE));
-  dmaLoad(array1, 0, 0, num_vals * sizeof(TYPE));
-  dmaLoad(selection, 0, 0, num_vals * sizeof(bool));
+  dmaLoad(array0, array0, num_vals * sizeof(TYPE));
+  dmaLoad(array1, array1, num_vals * sizeof(TYPE));
+  dmaLoad(selection, selection, num_vals * sizeof(bool));
 #endif
 
   loop: for (int i = 0; i < num_vals; i++) {
@@ -57,8 +57,8 @@ void kernel(TYPE* array0, TYPE* array1, bool* selection, size_t num_vals) {
   }
 
 #ifdef DMA_MODE
-  dmaStore(array0, 0, 0, num_vals * sizeof(TYPE));
-  dmaStore(array1, 0, 0, num_vals * sizeof(TYPE));
+  dmaStore(array0, array0, num_vals * sizeof(TYPE));
+  dmaStore(array1, array1, num_vals * sizeof(TYPE));
 #endif
 }
 
@@ -96,6 +96,8 @@ int main() {
       INTEGRATION_TEST, "array0", array0, num_vals * sizeof(TYPE));
   mapArrayToAccelerator(
       INTEGRATION_TEST, "array1", array1, num_vals * sizeof(TYPE));
+  mapArrayToAccelerator(
+      INTEGRATION_TEST, "selection", selection, num_vals * sizeof(bool));
 
   fprintf(stdout, "Invoking accelerator!\n");
   invokeAcceleratorAndBlock(INTEGRATION_TEST);

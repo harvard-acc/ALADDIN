@@ -46,7 +46,7 @@ void kernel_loop(int input[BUFFER_SIZE*2], int output[BUFFER_SIZE*2]) {
   //
   // "Source" is the CPU (where the data is coming from).
   // "Dest" is where the data is going to (the local scratchpad).
-  dmaLoad(&input[0], FIRST_HALF, FIRST_HALF, DMA_SIZE);
+  dmaLoad(&input[FIRST_HALF], &input[FIRST_HALF], DMA_SIZE);
 
   // Load all the data that is needed for the second half of the first loop
   // iteration.
@@ -56,7 +56,7 @@ void kernel_loop(int input[BUFFER_SIZE*2], int output[BUFFER_SIZE*2]) {
   // the first half of the data can proceed even while the second half has not
   // finished loading, because the memory dependences are tracked on the
   // granularity of dmaLoad calls.
-  dmaLoad(&input[0], SECOND_HALF, SECOND_HALF, DMA_SIZE);
+  dmaLoad(&input[BUFFER_SIZE], &input[BUFFER_SIZE], DMA_SIZE);
 #endif
 
   // Primary outer loop.
@@ -73,7 +73,7 @@ loop0: for (int i = 0; i < BUFFER_SIZE; i++) {
     //
     // "Source" is the first half of the scratchpad.
     // "Dest" is the appropriate half of the entire array in main memory.
-    dmaStore(&output[0], FIRST_HALF, it*DMA_SIZE, DMA_SIZE);
+    dmaStore(&output[it*BUFFER_SIZE], &output[FIRST_HALF], DMA_SIZE);
 
     // Don't load any more data if we're already on the last iteration!
     if (it != ARRAY_SIZE/BUFFER_SIZE - 2) {
@@ -83,7 +83,7 @@ loop0: for (int i = 0; i < BUFFER_SIZE; i++) {
       dmaFence();
 
       // Prefetch the next iteration's first half data.
-      dmaLoad(&input[0], (it+2)*DMA_SIZE, FIRST_HALF, DMA_SIZE);
+      dmaLoad(&input[FIRST_HALF], &input[(it+2)*BUFFER_SIZE], DMA_SIZE);
     }
 #endif
 
@@ -95,11 +95,11 @@ loop1: for (int i = BUFFER_SIZE; i < BUFFER_SIZE*2; i++) {
 
 #ifdef DMA_MODE
     // Store the second half processed data.
-    dmaStore(&output[0], SECOND_HALF, (it+1)*DMA_SIZE, DMA_SIZE);
+    dmaStore(&output[(it+1)*BUFFER_SIZE], &output[BUFFER_SIZE], DMA_SIZE);
     if (it != ARRAY_SIZE/BUFFER_SIZE - 2) {
       dmaFence();
       // Prefetch the next iteration's second half data.
-      dmaLoad(&input[0], (it+3)*DMA_SIZE, SECOND_HALF, DMA_SIZE);
+      dmaLoad(&input[BUFFER_SIZE], &input[(it+3)*BUFFER_SIZE], DMA_SIZE);
     }
 #endif
   }

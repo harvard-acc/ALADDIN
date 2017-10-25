@@ -36,7 +36,7 @@ void store_kernel(val_t* store_val0,  // in scratchpads.
                   val_t* store_val1,  // from cache.
                   val_t* store_loc,   // to ACP.
                   int num_vals) {
-  dmaLoad(&store_val0[0], 0, num_vals * sizeof(val_t));
+  dmaLoad(store_val0, store_val0, num_vals * sizeof(val_t));
   loop: for (int i = 0; i < num_vals; i++)
     store_loc[i] = store_val0[i] + store_val1[i];
 }
