@@ -202,8 +202,7 @@ void DebugNodePrinter::printChildren() {
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
     ExecNode* node = prog.nodes.at(child_node);
-    if (!node->is_isolated())
-      out << child_node << " ";
+    out << child_node << " ";
   }
   out << "]\n";
 }
@@ -214,8 +213,7 @@ void DebugNodePrinter::printParents() {
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
     ExecNode* node = prog.nodes.at(parent_node);
-    if (!node->is_isolated())
-      out << parent_node << " ";
+    out << parent_node << " ";
   }
   out << "]\n";
 }
