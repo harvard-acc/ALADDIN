@@ -27,8 +27,14 @@ static uint8_t nibbleVal(char nib) {
   return 0;
 }
 
-uint8_t* hexStrToBytes(const char* str) {
+uint8_t* hexStrToBytes(const char* str, unsigned size) {
   unsigned len = strlen(str);
+  if (len == 1 && str[0] == '0') {
+    // Zero initialized value.
+    uint8_t* byte_buf = new uint8_t[size];
+    memset((void*)byte_buf, 0, size);
+    return byte_buf;
+  }
   assert(len % 2 == 0 && "String must be an even length!");
   unsigned start = 0;
   unsigned byte_buf_len = len/2;
@@ -37,6 +43,8 @@ uint8_t* hexStrToBytes(const char* str) {
     start += 2;
     byte_buf_len--;
   }
+  assert(byte_buf_len == size &&
+         "Length of string does not match buffer size!");
   uint8_t* byte_buf = new uint8_t[byte_buf_len];
   for (unsigned i = start; i < len; i += 2) {
     uint8_t val = (nibbleVal(str[i]) << 4) + nibbleVal(str[i + 1]);

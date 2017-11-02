@@ -110,12 +110,14 @@ class FP2BitsConverter {
 //
 // Args:
 //   str: A null terminated string, all lowercase, containing only hexadecimal
-//        digits, and optionally prefixed by 0x. It must have an even length.
+//        digits, and optionally prefixed by 0x. It must have an even length,
+//        UNLESS it is the string "0", which denotes a zero initialized value.
+//   size: The size of the buffer to be returned.
 //
 // Returns:
 //   A byte buffer storing the deserialized data. Memory is allocated
 //   dynamically, and the caller is responsible for freeing it.
-uint8_t* hexStrToBytes(const char* str);
+uint8_t* hexStrToBytes(const char* str, unsigned size);
 
 // Serialize the byte buffer into a string.
 //
@@ -150,7 +152,7 @@ class Value {
     const std::string value_str(value_buf);
     if (size > 8) {
       type = Vector;
-      vector_buf = std::unique_ptr<uint8_t>(hexStrToBytes(value_buf));
+      vector_buf = std::unique_ptr<uint8_t>(hexStrToBytes(value_buf, size));
     } else if (value_str.find('.') != std::string::npos) {
       type = Float;
       if (size == 4) {
