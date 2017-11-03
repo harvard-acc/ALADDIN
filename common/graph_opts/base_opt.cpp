@@ -58,13 +58,43 @@ void BaseAladdinOpt::updateGraphWithIsolatedEdges(
     remove_edge(source(*it, graph), target(*it, graph), graph);
 }
 
+bool BaseAladdinOpt::isPrunableNode(ExecNode* node) const {
+  unsigned node_microop = node->get_microop();
+  // Certain types of operations modify program state or control flow without
+  // necessarily inducing a dependency on future nodes. Such nodes should never
+  // be removed from the graph.
+  switch (node_microop) {
+    case LLVM_IR_SilentStore:
+    case LLVM_IR_Store:
+    case LLVM_IR_Ret:
+      return false;
+    default:
+      break;
+  }
+
+  // DMA stores modify host memory so they cannot be pruned. Branch nodes may
+  // have zero children -- this might be the result of loop pipelining -- and
+  // they cannot be removed because this could result in the ancestors of the
+  // branch nodes also being removed.
+  if (node->is_dma_store() || node->is_branch_op())
+    return false;
+
+  // In ready mode, we don't add any memory dependencies between dmaLoads and
+  // future loads/stores, because this dependence is captured by the full/empty
+  // bits. Therefore, a dmaLoad node may have no zero children.
+  if (node->is_dma_load() && user_params.ready_mode)
+    return false;
+
+  return true;
+}
+
 void BaseAladdinOpt::cleanLeafNodes() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
-  // Track the number of children each node has.
-  std::map<unsigned, int> num_of_children;
+  // Track the number of children each node has that will be removed.
+  std::map<unsigned, int> num_children_to_be_removed;
   for (auto& node_it : exec_nodes)
-    num_of_children[node_it.first] = 0;
+    num_children_to_be_removed[node_it.first] = 0;
   std::vector<unsigned> to_remove_nodes;
 
   std::vector<Vertex> topo_nodes;
@@ -76,29 +106,33 @@ void BaseAladdinOpt::cleanLeafNodes() {
       continue;
     unsigned node_id = vertex_to_name[node_vertex];
     ExecNode* node = exec_nodes.at(node_id);
-    int node_microop = node->get_microop();
-    if (num_of_children.at(node_id) == boost::out_degree(node_vertex, graph) &&
-        node_microop != LLVM_IR_SilentStore && node_microop != LLVM_IR_Store &&
-        node_microop != LLVM_IR_Ret && !node->is_branch_op() &&
-        !node->is_dma_store()) {
+    if (num_children_to_be_removed.at(node_id) ==
+            boost::out_degree(node_vertex, graph) &&
+        isPrunableNode(node)) {
       to_remove_nodes.push_back(node_id);
-      // iterate its parents
+      // This node will be removed, so we need to update the counters for all
+      // of its parents.
       in_edge_iter in_edge_it, in_edge_end;
       for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         int parent_id = vertex_to_name[source(*in_edge_it, graph)];
-        num_of_children.at(parent_id)++;
+        num_children_to_be_removed.at(parent_id)++;
       }
     } else if (node->is_branch_op()) {
-      // iterate its parents
+      // Increment the counter for every parent of this branch node with a
+      // control dependence. A control dependence is an artifically introduced
+      // edge, not a true memory dependence. If that parent's only dependences
+      // are control dependences to branches, then that parent's produced value
+      // is not used anywhere, so it can be removed. Note that it is the PARENT
+      // of the branch that may be removed, not the branch itself.
       in_edge_iter in_edge_it, in_edge_end;
       for (boost::tie(in_edge_it, in_edge_end) = in_edges(node_vertex, graph);
            in_edge_it != in_edge_end;
            ++in_edge_it) {
         if (edge_to_parid[*in_edge_it] == CONTROL_EDGE) {
           int parent_id = vertex_to_name[source(*in_edge_it, graph)];
-          num_of_children.at(parent_id)++;
+          num_children_to_be_removed.at(parent_id)++;
         }
       }
     }

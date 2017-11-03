@@ -44,6 +44,9 @@ class BaseAladdinOpt {
   bool doesEdgeExist(ExecNode* from, ExecNode* to);
   bool doesEdgeExist(Vertex from, Vertex to);
 
+  // Is this node removable from the program if it has no children?
+  bool isPrunableNode(ExecNode* node) const;
+
   unrolling_config_t::const_iterator getUnrollFactor(ExecNode* node);
   SrcTypes::UniqueLabel getUniqueLabel(ExecNode* node);
 
