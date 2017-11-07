@@ -40,6 +40,12 @@ class ScratchpadDatapath : public BaseDatapath {
   std::map<unsigned, unsigned> inflight_multicycle_nodes;
   // To streamline code.
   const float cycle_time;
+
+  // If we invoke the same accelerator more than once, we don't need to create
+  // scratchpad objects again.  (the scratchpads can't change), but we will
+  // need to assign labels and partitions to the nodes.
+  bool mem_reg_conversion_executed;
+  bool scratchpad_partition_executed;
 };
 
 #endif

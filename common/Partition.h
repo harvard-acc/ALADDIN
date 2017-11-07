@@ -35,6 +35,16 @@ class Partition {
   unsigned getLoads() { return loads; }
   unsigned getStores() { return stores; }
 
+  /* Clear these stats when we finish an invocation.
+   *
+   * The next invocation may want to reuse the data, but we don't want to
+   * preserve this information as we'll calculate power/energy wrongly.
+   */
+  void resetStats() {
+    loads = 0;
+    stores = 0;
+  }
+
   // Access data stored in this array.
   // The _data array is assumed to be of length word_size/8.
   virtual void writeBlock(unsigned blk_index, uint8_t* _data) {

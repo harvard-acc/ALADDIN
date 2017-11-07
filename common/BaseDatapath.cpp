@@ -108,7 +108,6 @@ void BaseDatapath::clearDatapath() {
   clearFunctionName();
   clearArrayBaseAddress();
   clearRegStats();
-  registers.clear();
 }
 
 void BaseDatapath::initBaseAddress() {

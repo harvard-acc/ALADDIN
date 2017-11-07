@@ -109,6 +109,12 @@ class Scratchpad {
                        float* avg_leakage);
   float getTotalArea();
 
+  void resetStats() {
+    for (auto& array : logical_arrays) {
+      array.second->resetStats();
+    }
+  }
+
  private:
   /* Num of read/write ports per partition. */
   unsigned num_ports;

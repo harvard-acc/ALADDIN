@@ -7,7 +7,7 @@ Scratchpad::Scratchpad(
   ready_mode = _ready_mode;
 }
 
-Scratchpad::~Scratchpad() {}
+Scratchpad::~Scratchpad() { clear(); }
 
 void Scratchpad::clear() {
   for (auto it = logical_arrays.begin(); it != logical_arrays.end(); ++it) {
@@ -15,6 +15,7 @@ void Scratchpad::clear() {
   }
   logical_arrays.clear();
 }
+
 // wordsize in bytes
 void Scratchpad::setScratchpad(std::string baseName,
                                Addr base_addr,

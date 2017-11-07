@@ -93,6 +93,13 @@ class LogicalArray {
     for ( Partition* part : partitions)
       part->resetAllReadyBits();
   }
+
+  void resetStats() {
+    for (auto part : partitions) {
+      part->resetStats();
+    }
+  }
+
  protected:
 
   /* Read or write data to this array.
