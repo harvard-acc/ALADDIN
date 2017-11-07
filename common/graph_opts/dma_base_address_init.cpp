@@ -1,3 +1,4 @@
+#include "../DDDG.h"
 #include "dma_base_address_init.h"
 
 // Determine the base addresses and array names of the DMA access operands.
@@ -81,7 +82,6 @@ void DmaBaseAddressInit::optimize() {
       continue;
 
     Vertex dma_vertex = node->get_vertex();
-    DmaMemAccess* mem_access = node->get_dma_mem_access();
 
     // Find the node that generated this address, if it exists.
     bool found_src = false, found_dst = false;
@@ -95,20 +95,28 @@ void DmaBaseAddressInit::optimize() {
       // The edge weight between a DMA node and a GEP node is either 1 (for the
       // destination address) or 2 (for the source address). The values refer
       // to which function call parameter each argument was.
-      if (!(parent_node->is_gep_op() && (edge_parid == 1 || edge_parid == 2)))
+      if (!(parent_node->is_gep_op() &&
+            (edge_parid == 1 || edge_parid == 2 || edge_parid == MEMORY_EDGE)))
         continue;
 
       DynamicVariable dynvar = parent_node->get_dynamic_variable();
       DynamicVariable orig_var = call_argument_map.lookup(dynvar);
-      if (edge_parid == 1) {
-        mem_access->dst_var = orig_var.get_variable();
-        found_dst = true;
-      } else if (edge_parid == 2) {
-        mem_access->src_var = orig_var.get_variable();
-        found_src = true;
-      }
-      if (found_src && found_dst) {
-        break;
+      if (node->is_dma_load() || node->is_dma_store()) {
+        DmaMemAccess* mem_access = node->get_dma_mem_access();
+        if (edge_parid == 1) {
+          mem_access->dst_var = orig_var.get_variable();
+          found_dst = true;
+        } else if (edge_parid == 2) {
+          mem_access->src_var = orig_var.get_variable();
+          found_src = true;
+        }
+        if (found_src && found_dst) {
+          break;
+        }
+      } else if (node->is_set_ready_bits()) {
+        ReadyBitAccess* mem_access = node->get_ready_bit_access();
+        mem_access->array = orig_var.get_variable();
+        found_src = found_dst = true;
       }
     }
   }

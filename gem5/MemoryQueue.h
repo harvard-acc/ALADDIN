@@ -31,6 +31,7 @@ enum MemoryOpType {
   Cache,
   Dma,
   ACP,
+  ReadyBits,
   NumMemoryOpTypes,
 };
 

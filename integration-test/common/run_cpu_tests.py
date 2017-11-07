@@ -204,5 +204,21 @@ class SimdTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
+class StreamingDmaTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_streaming_dma"))
+    self.setSimBin("test_streaming_dma")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("system.test_streaming_dma_datapath.sim_cycles", 656)
+
+  def runTest(self):
+    self.runAndValidate()
+
 if __name__ == "__main__":
   unittest.main()

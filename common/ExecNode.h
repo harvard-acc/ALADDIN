@@ -107,6 +107,23 @@ class DmaMemAccess : public MemAccess {
    Variable* dst_var;
 };
 
+class ReadyBitAccess : public MemAccess {
+ protected:
+  typedef SrcTypes::Variable Variable;
+
+ public:
+  ReadyBitAccess() : MemAccess(), value(0) {}
+  ReadyBitAccess(Addr addr, size_t size, Variable* _array, uint8_t _value)
+      : MemAccess(addr, size), array(_array), value(_value) {}
+
+  virtual uint8_t* data() { return &value; }
+
+  // The array for the ready bits.
+  Variable* array;
+  // The value the ready bits will be set to: either 0 or 1.
+  uint8_t value;
+};
+
 class ExecNode {
  protected:
    typedef SrcTypes::src_id_t src_id_t;
@@ -173,6 +190,9 @@ class ExecNode {
   }
   VectorMemAccess* get_vector_mem_access() const {
     return dynamic_cast<VectorMemAccess*>(mem_access);
+  }
+  ReadyBitAccess* get_ready_bit_access() const {
+    return dynamic_cast<ReadyBitAccess*>(mem_access);
   }
   unsigned get_loop_depth() const { return loop_depth; }
   float get_time_before_execution() const { return time_before_execution; }
@@ -356,8 +376,9 @@ class ExecNode {
   bool is_dma_load() const { return microop == LLVM_IR_DMALoad; }
   bool is_dma_store() const { return microop == LLVM_IR_DMAStore; }
   bool is_dma_fence() const { return microop == LLVM_IR_DMAFence; }
+  bool is_set_ready_bits() const { return microop == LLVM_IR_SetReadyBits; }
   bool is_dma_op() const {
-    return is_dma_load() || is_dma_store() || is_dma_fence();
+    return is_dma_load() || is_dma_store() || is_dma_fence() || is_set_ready_bits();
   }
 
   bool is_int_mul_op() const {
@@ -616,6 +637,8 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(ExtractValue);
       LLVM_IR_OPCODE_TO_NAME(InsertValue);
       LLVM_IR_OPCODE_TO_NAME(LandingPad);
+      LLVM_IR_OPCODE_TO_NAME(SetReadyBits);
+      LLVM_IR_OPCODE_TO_NAME(EntryDecl);
       LLVM_IR_OPCODE_TO_NAME(DMAFence);
       LLVM_IR_OPCODE_TO_NAME(DMAStore);
       LLVM_IR_OPCODE_TO_NAME(DMALoad);

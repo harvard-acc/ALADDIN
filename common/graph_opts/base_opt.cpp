@@ -82,8 +82,16 @@ bool BaseAladdinOpt::isPrunableNode(ExecNode* node) const {
   // In ready mode, we don't add any memory dependencies between dmaLoads and
   // future loads/stores, because this dependence is captured by the full/empty
   // bits. Therefore, a dmaLoad node may have no zero children.
-  if (node->is_dma_load() && user_params.ready_mode)
+  if (user_params.ready_mode && (node->is_dma_load() || node->is_set_ready_bits()))
     return false;
+
+  // This is probably an error on the user's part; issue a warning.
+  if (!user_params.ready_mode && node->is_set_ready_bits()) {
+    std::cerr << "Warning: ready mode is not enabled, so calling "
+                 "setReadyBits() at node "
+              << node->get_node_id() << " has no effect.\n";
+    return true;
+  }
 
   return true;
 }

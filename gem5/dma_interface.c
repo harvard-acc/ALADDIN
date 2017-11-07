@@ -25,6 +25,11 @@ int dmaStore(void* dst_host_addr, void* src_addr, size_t size) {
   return _dmaImpl3(dst_host_addr, src_addr, size);
 }
 
+int setReadyBits(void* start_addr, size_t size, unsigned value) {
+  asm("");
+  return 0;
+}
+
 #elif defined(DMA_INTERFACE_V2)
 
 // With version 2 and earlier, we return (void*)NULL and use the number of

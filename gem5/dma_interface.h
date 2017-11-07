@@ -13,6 +13,10 @@
 int dmaLoad(void* dst_addr, void* src_host_addr, size_t size);
 int dmaStore(void* dst_host_addr, void* src_addr, size_t size);
 
+// The user can explicitly toggle the state of ready bits, if ready mode is
+// enabled. This requires support from DMA v3.
+int setReadyBits(void* start_addr, size_t size, unsigned value);
+
 #elif defined(DMA_INTERFACE_V2)
 
 #warning "DMA interface v2 is deprecated!"

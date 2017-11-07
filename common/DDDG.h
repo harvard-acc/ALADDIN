@@ -17,7 +17,7 @@
 #include "opcode_func.h"
 #include "SourceManager.h"
 
-#define MEMORY_EDGE -1
+#define MEMORY_EDGE (-1)
 #define REGISTER_EDGE 5
 #define FUSED_BRANCH_EDGE 6
 #define CONTROL_EDGE 11
@@ -269,6 +269,10 @@ class DDDG {
   void handle_post_write_dependency(Addr start_addr,
                                     size_t size,
                                     unsigned sink_node);
+  // Enforce memory dependences between ready bit nodes and DMA nodes.
+  void handle_ready_bit_dependency(Addr start_addr,
+                                   size_t size,
+                                   unsigned sink_node);
   void insert_control_dependence(unsigned source_node, unsigned dest_node);
   SrcTypes::Variable* get_array_real_var(const std::string& array_name);
   SrcTypes::Variable* get_array_real_var(SrcTypes::Variable* var);
@@ -323,6 +327,7 @@ class DDDG {
   // manage methods
   std::unordered_map<SrcTypes::DynamicVariable, unsigned> register_last_written;
   uint_to_uint address_last_written;
+  uint_to_uint ready_bits_last_changed;
   // DMA nodes that have been seen since the last DMA fence.
   std::list<unsigned> last_dma_nodes;
   // All nodes seen since the last Ret instruction.

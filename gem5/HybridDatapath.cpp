@@ -139,8 +139,10 @@ void HybridDatapath::initializeDatapath(int delay) {
   acc_sim_cycles += delay;
   cachePort.clearRetryPkt();
   startDatapathScheduling(delay);
-  if (isReadyMode())
-    scratchpad->resetReadyBits();
+  if (isReadyMode()) {
+    // Ready bits must be explicitly set by the user.
+    scratchpad->setReadyBits();
+  }
 }
 
 void HybridDatapath::startDatapathScheduling(int delay) {
@@ -248,6 +250,9 @@ void HybridDatapath::stepExecutingQueue() {
           break;
         case Dma:
           op_satisfied = handleDmaMemoryOp(node);
+          break;
+        case ReadyBits:
+          op_satisfied = handleReadyBitAccess(node);
           break;
         case ACP:
           op_satisfied = handleAcpMemoryOp(node);
@@ -364,8 +369,10 @@ void HybridDatapath::exitSimulation() {
 }
 
 MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
-  if (node->is_dma_op())
+  if (node->is_dma_load() || node->is_dma_store() || node->is_dma_fence())
     return Dma;
+  if (node->is_set_ready_bits())
+    return ReadyBits;
 
   const std::string& array_label = node->get_array_label();
   auto it = user_params.partition.find(array_label);
@@ -422,6 +429,19 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   return true;
 }
 
+bool HybridDatapath::handleReadyBitAccess(ExecNode* node) {
+  ReadyBitAccess* access = node->get_ready_bit_access();
+  const std::string& array_name = access->array->get_name();
+  Addr start_addr = access->vaddr;
+  size_t size = access->size;
+  bool reset_ready_bits = (access->value == 0);
+  if (reset_ready_bits)
+    scratchpad->resetReadyBitRange(array_name, start_addr, size);
+  else
+    scratchpad->setReadyBitRange(array_name, start_addr, size);
+  return true;
+}
+
 bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
   if (node->is_dma_fence())
     return true;
@@ -432,13 +452,14 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     inflight_dma_nodes[node_id] = status;
   else
     status = inflight_dma_nodes.at(node_id);
+  DmaMemAccess* mem_access = node->get_dma_mem_access();
   if (status == Invalid && inflight_dma_nodes.size() < maxInflightNodes) {
     /* A DMA load needs to be preceded by a cache flush of the buffer being sent,
      * while a DMA store needs to be preceded by a cache invalidate of the
      * receiving buffer. In CPU mode, this should be handled by the CPU; in standalone
      * mode, we add extra latency to the DMA operation here.
      */
-    size_t size = node->get_mem_access()->size;
+    size_t size = mem_access->size;
     bool isLoad = node->is_dma_load();
     unsigned cache_delay_cycles = 0;
     unsigned cache_lines_affected =
@@ -461,10 +482,6 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     dmaWaitingQueue.push_back(std::make_pair(node_id, delay));
     return false;  // DMA op not completed. Move on to the next node.
   } else if (status == Returned) {
-    std::string array_label = node->get_array_label();
-    if (node->is_dma_load() && isReadyMode())
-      // TODO: Will be replaced by call backs from dma_device.
-      scratchpad->setReadyBits(array_label);
     inflight_dma_nodes.erase(node_id);
     return true;  // DMA op completed.
   } else {
@@ -1140,7 +1157,7 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath, "Receiving DMA response for node %d, address %#x "
                           "with label %s and size %d.\n",
           node_id, vaddr, array_label.c_str(), size);
-  if (datapath->isReadyMode())
+  if (node->is_dma_load() && datapath->isReadyMode())
     datapath->scratchpad->setReadyBitRange(array_label, vaddr, size);
 
   // For dmaLoads, write the data into the scratchpad.

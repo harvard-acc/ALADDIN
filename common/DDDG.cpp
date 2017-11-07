@@ -132,6 +132,31 @@ void DDDG::output_dddg() {
   }
 }
 
+void DDDG::handle_ready_bit_dependency(Addr start_addr,
+                                       size_t size,
+                                       unsigned sink_node) {
+  std::set<unsigned> ready_bit_nodes;
+  // Find the last node that updated the full/empty state for this address.
+  for (Addr addr = start_addr; addr < start_addr + size; addr++) {
+    auto it = ready_bits_last_changed.find(addr);
+    if (it != ready_bits_last_changed.end()) {
+      ready_bit_nodes.insert(it->second);
+      // This dependency only lasts until the next DMA operation that changes
+      // or depends on this ready bit.
+      ready_bits_last_changed.erase(it);
+    }
+  }
+  // Add the dependence.
+  for (unsigned source_inst : ready_bit_nodes) {
+    if (memory_edge_table.find(source_inst) == memory_edge_table.end())
+      memory_edge_table[source_inst] = std::set<unsigned>();
+    std::set<unsigned>& sink_list = memory_edge_table[source_inst];
+    auto result = sink_list.insert(sink_node);
+    if (result.second)
+      num_of_mem_dep++;
+  }
+}
+
 void DDDG::handle_post_write_dependency(Addr start_addr,
                                         size_t size,
                                         unsigned sink_node) {
@@ -324,7 +349,8 @@ void DDDG::parse_instruction_line(const std::string& line) {
       insert_control_dependence(node_id, last_dma_fence);
     }
     last_dma_nodes.clear();
-  } else if (microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore) {
+  } else if (microop == LLVM_IR_DMALoad || microop == LLVM_IR_DMAStore ||
+             microop == LLVM_IR_SetReadyBits) {
     if (last_dma_fence != -1)
       insert_control_dependence(last_dma_fence, current_node_id);
     last_dma_nodes.push_back(current_node_id);
@@ -498,7 +524,7 @@ void DDDG::parse_result(const std::string& line) {
     mem_access->vaddr = mem_address;
     handle_post_write_dependency(mem_address, mem_size, current_node_id);
     curr_node->set_mem_access(mem_access);
-  } else if (curr_node->is_dma_op()) {
+  } else if (curr_node->is_dma_load() || curr_node->is_dma_store()) {
     DmaMemAccess* mem_access;
     Addr src_addr = 0, dst_addr = 0;
     size_t size = 0;
@@ -564,12 +590,31 @@ void DDDG::parse_result(const std::string& line) {
             address_last_written.insert(
                 std::make_pair(addr, current_node_id));
         }
+      } else {
+        // DMALoads also change ready bits.
+        handle_ready_bit_dependency(dst_addr, size, current_node_id);
       }
     } else {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.
       handle_post_write_dependency(src_addr, size, current_node_id);
     }
+  } else if (curr_node->is_set_ready_bits()) {
+    Addr start_addr = parameter_value_per_inst[1];
+    size_t size = parameter_value_per_inst[2];
+    unsigned value = parameter_value_per_inst[3];
+    for (Addr addr = start_addr; addr < start_addr + size; addr++) {
+      // Changing ready bits can be viewed as a store; this means we can use
+      // the existing dependence infrastructure to handle the dependence
+      // between ready bit changes and loads and stores.
+      address_last_written[addr] = current_node_id;
+      ready_bits_last_changed[addr] = current_node_id;
+    }
+    Variable* var = srcManager.get<Variable>(parameter_label_per_inst[1]);
+    var = get_array_real_var(var);
+    ReadyBitAccess* access =
+        new ReadyBitAccess(start_addr, size, var, value);
+    curr_node->set_mem_access(access);
   }
 }
 

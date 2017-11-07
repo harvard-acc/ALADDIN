@@ -149,7 +149,9 @@ void DebugNodePrinter::printMemoryOp() {
 }
 
 void DebugNodePrinter::printDmaOp() {
-  if (node->is_dma_op()) {
+  if (!node->is_dma_op())
+    return;
+  if (node->is_dma_load() || node->is_dma_store()) {
     DmaMemAccess* mem_access = node->get_dma_mem_access();
     out << "  Source: " << mem_access->src_var->get_name()
         << ", addr: 0x" << std::hex << mem_access->src_addr << "\n"
@@ -157,11 +159,17 @@ void DebugNodePrinter::printDmaOp() {
         << ", addr: 0x" << std::hex << mem_access->dst_addr << "\n"
         << "  Size: " << std::dec << mem_access->size << "\n"
         << "  Dynamic op:  ";
-    if (node->is_dynamic_mem_op())
-      out << "Yes\n";
-    else
-      out << "No\n";
+  } else if (node->is_set_ready_bits()) {
+    ReadyBitAccess* mem_access = node->get_ready_bit_access();
+    out << "  Array: " << mem_access->array->get_name() << "\n"
+        << "  Addr: 0x" << std::hex << mem_access->vaddr << "\n"
+        << "  Size: " << std::dec << mem_access->size << "\n"
+        << "  Dynamic op:  ";
   }
+  if (node->is_dynamic_mem_op())
+    out << "Yes\n";
+  else
+    out << "No\n";
 }
 
 void DebugNodePrinter::printGep() {

@@ -286,6 +286,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   bool handleDmaMemoryOp(ExecNode* node);
 
+  /* Handle an access to ready bits on the scratchpad.
+   *
+   * Ready bit accesses are currently modeled as a single cycle operation.
+   */
+  bool handleReadyBitAccess(ExecNode* node);
+
   /* Handle a cache memory access and return true if the data has returned.
    *
    * Currently, address translation and cache accesses are serialized

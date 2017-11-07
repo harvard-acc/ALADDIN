@@ -821,7 +821,8 @@ void BaseDatapath::prepareForScheduling() {
     if (!node->has_vertex())
       continue;
     Vertex node_vertex = node->get_vertex();
-    if (boost::degree(node_vertex, program.graph) != 0 || node->is_dma_op()) {
+    if (boost::degree(node_vertex, program.graph) != 0 || node->is_dma_load() ||
+        node->is_dma_store() || node->is_dma_fence()) {
       node->set_num_parents(boost::in_degree(node_vertex, program.graph));
       node->set_isolated(false);
       totalConnectedNodes++;
