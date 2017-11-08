@@ -527,7 +527,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
   // At this point, we have a valid entry.
 
-  if (entry->status == Invalid || entry->status == Retry) {
+  if (entry->status == Invalid) {
     int size = mem_access->size;
     SrcTypes::Variable* var =
         srcManager.get<SrcTypes::Variable>(node->get_array_label());
@@ -545,7 +545,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
               node->get_node_id());
     }
     return false;
-  } else if (entry->status == Translated) {
+  } else if (entry->status == Translated || entry->status == Retry) {
     Addr paddr = entry->paddr;
     int size = mem_access->size;
     uint8_t* data = mem_access->data();
