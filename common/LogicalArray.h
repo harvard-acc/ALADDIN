@@ -29,7 +29,6 @@ class LogicalArray {
   bool canService(unsigned part_index, Addr addr, bool isLoad);
 
   /* Setters. */
-  void setWordSize(unsigned _word_size) { word_size = _word_size; }
   void setReadEnergy(float _read_energy) { part_read_energy = _read_energy; }
   void setWriteEnergy(float _write_energy) {
     part_write_energy = _write_energy;
@@ -38,7 +37,7 @@ class LogicalArray {
   void setArea(float _area) { part_area = _area; }
   /* Accessors. */
   /* Find the data block index for address addr in partition part_index. */
-  std::string getBaseName() { return base_name; }
+  const std::string& getBaseName() { return base_name; }
   size_t getBlockIndex(unsigned part_index, Addr addr);
   size_t getPartitionIndex(Addr addr);
 
@@ -110,19 +109,19 @@ class LogicalArray {
   void accessData(Addr addr, uint8_t* data, size_t len, bool is_read);
 
   /* Array label for the LogicalArray. */
-  std::string base_name;
+  const std::string base_name;
   /* Base address for the LogicalArray. */
-  Addr base_addr;
+  const Addr base_addr;
   /* Partition types: block or cyclic. */
-  PartitionType partition_type;
+  const PartitionType partition_type;
   /* Num of partitions inside this LogicalArray. */
-  unsigned num_partitions;
+  const unsigned num_partitions;
   /* Total size in Bytes for all the partitions. */
-  unsigned total_size;
+  const unsigned total_size;
   /* Word size for each partition. */
-  unsigned word_size;
+  const unsigned word_size;
   /* Num of ports for each partition. */
-  unsigned num_ports;
+  const unsigned num_ports;
   /* Size of each partition. */
   std::vector<size_t> size_per_part;
   /* All the Partitions inside the same LogicalArray have the same

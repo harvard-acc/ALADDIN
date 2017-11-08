@@ -3,20 +3,18 @@
 #include "LogicalArray.h"
 
 LogicalArray::LogicalArray(std::string _base_name,
-                             Addr _base_addr,
-                             PartitionType _partition_type,
-                             unsigned _partition_factor,
-                             unsigned _total_size,
-                             unsigned _word_size,
-                             unsigned _num_ports,
-                             bool _ready_mode) {
-  base_name = _base_name;
-  base_addr = _base_addr;
-  partition_type = _partition_type;
-  num_partitions = _partition_factor;
-  total_size = _total_size;
-  word_size = _word_size;
-  num_ports = _num_ports;
+                           Addr _base_addr,
+                           PartitionType _partition_type,
+                           unsigned _partition_factor,
+                           unsigned _total_size,
+                           unsigned _word_size,
+                           unsigned _num_ports,
+                           bool _ready_mode)
+    : base_name(_base_name), base_addr(_base_addr),
+      partition_type(_partition_type), num_partitions(_partition_factor),
+      total_size(_total_size), word_size(_word_size), num_ports(_num_ports) {
+
+  assert(base_addr != 0 && "A base address of zero is certainly incorrect!");
 
   /* For now, compute the maximum partition size and use that for power
    * calculations. */
@@ -27,7 +25,7 @@ LogicalArray::LogicalArray(std::string _base_name,
     std::cerr << "ERROR: Logical array " << base_name
               << " has invalid size! Total size: " << total_size
               << ", partition size: " << part_size << std::endl;
-    exit(1);
+    assert(false);
   }
 
   uca_org_t cacti_result = cactiWrapper(part_size, word_size, num_ports);
