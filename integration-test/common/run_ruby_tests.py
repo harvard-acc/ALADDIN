@@ -12,7 +12,7 @@ class AesTest(tests.AesTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 8802)
+    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 8229)
 
   def runTest(self):
     self.runAndValidate()
@@ -35,8 +35,8 @@ class LoadStoreTest(tests.LoadStoreTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_load_store_datapath.sim_cycles", 4357)
-    self.addExpectedStatResult("system.ruby.l1_cntrl_acc0.L1Dcache.demand_hits", 3839)
+    self.addExpectedStatResult("system.test_load_store_datapath.sim_cycles", 4095)
+    self.addExpectedStatResult("system.ruby.l1_cntrl_acc0.L1Dcache.demand_hits", 1919)
     self.addExpectedStatResult("system.ruby.l1_cntrl_acc0.L1Dcache.demand_misses", 258)
 
   def runTest(self):
