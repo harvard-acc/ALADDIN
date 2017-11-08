@@ -1015,7 +1015,13 @@ void BaseDatapath::initExecutingQueue() {
 void BaseDatapath::parse_config(std::string& bench,
                                 std::string& config_file_name) {
   std::ifstream config_file;
-  config_file.open(config_file_name);
+  config_file.open(config_file_name, std::ifstream::in);
+  if (config_file.fail()) {
+    std::cerr
+        << "[ERROR]: Failed to open the configuration file " << config_file_name
+        << ". Please verify the file exists and permissions are correct.\n";
+    exit(1);
+  }
   std::string wholeline;
 
   while (!config_file.eof()) {
