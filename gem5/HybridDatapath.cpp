@@ -793,7 +793,7 @@ void HybridDatapath::sendFinishedSignal() {
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);
   DatapathSenderState* state = new DatapathSenderState(true);
-  pkt->senderState = state;
+  pkt->pushSenderState(state);
 
   if (!cachePort.sendTimingReq(pkt)) {
     assert(!cachePort.inRetry());
@@ -826,9 +826,10 @@ bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
             pkt->getAddr());
   }
   DatapathSenderState* state =
-      dynamic_cast<DatapathSenderState*>(pkt->senderState);
+      dynamic_cast<DatapathSenderState*>(pkt->popSenderState());
+  assert(state && "Packet did not contain a DatapathSenderState!");
   if (!state->is_ctrl_signal) {
-    datapath->updateCacheRequestStatusOnResp(pkt);
+    datapath->updateCacheRequestStatusOnResp(pkt, state);
   } else {
     DPRINTF(HybridDatapath,
             "recvTimingResp for control signal access: %#x\n",
@@ -843,14 +844,14 @@ bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
 
 bool HybridDatapath::issueTLBRequestTiming(
     Addr trace_addr, unsigned size, bool isLoad, SrcTypes::Variable* var) {
-  DPRINTF(HybridDatapath, "%s for trace addr:%#x\n", __func__, trace_addr);
+  DPRINTF(HybridDatapath, "%s for trace addr: %#x\n", __func__, trace_addr);
   PacketPtr data_pkt = createTLBRequestPacket(trace_addr, size, isLoad, var);
 
-  // TLB access
-  if (dtb.translateTiming(data_pkt))
+  if (dtb.translateTiming(data_pkt)) {
     return true;
-  else {
-    delete data_pkt->senderState;
+  } else {
+    // Delete the entire packet; we'll recreate it when we retry the TLB.
+    delete data_pkt->popSenderState();
     delete data_pkt;
     return false;
   }
@@ -865,7 +866,7 @@ AladdinTLBResponse HybridDatapath::getAddressTranslation(
   AladdinTLBResponse translation = *data_pkt->getPtr<AladdinTLBResponse>();
 
   delete data_pkt->req;
-  delete data_pkt->senderState;
+  delete data_pkt->popSenderState();
   delete data_pkt;
   return translation;
 }
@@ -881,14 +882,16 @@ PacketPtr HybridDatapath::createTLBRequestPacket(
   AladdinTLBResponse* translation = new AladdinTLBResponse();
   AladdinTLB::TLBSenderState* state = new AladdinTLB::TLBSenderState(var);
   data_pkt->dataStatic<AladdinTLBResponse>(translation);
-  data_pkt->senderState = state;
+  data_pkt->pushSenderState(state);
 
   return data_pkt;
 }
 
 void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
+  // TLB packets will never be sent out to the memory system, and the only
+  // sender states we attach are our own.
   AladdinTLB::TLBSenderState* state =
-      dynamic_cast<AladdinTLB::TLBSenderState*>(pkt->senderState);
+      safe_cast<AladdinTLB::TLBSenderState*>(pkt->popSenderState());
   DPRINTF(HybridDatapath,
           "completeTLBRequest for paddr: %#x %s\n",
           pkt->getAddr(),
@@ -912,7 +915,7 @@ void HybridDatapath::completeTLBRequest(PacketPtr pkt, bool was_miss) {
     entry->status = Translated;
     entry->paddr = paddr;
     DPRINTF(
-        HybridDatapath, "Translated: vaddr = %x, paddr = %x\n", vaddr, paddr);
+        HybridDatapath, "Translated: vaddr = %#x, paddr = %#x\n", vaddr, paddr);
   }
   delete state;
   delete pkt->req;
@@ -952,7 +955,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
 
   if (port.inRetry()) {
     DPRINTF(HybridDatapathVerbose, "%s: %s port in retry.\n",
-            op_type == Cache ? Cache : ACP, __func__);
+            op_type == Cache ? "Cache" : "ACP", __func__);
     return DidNotAttempt;
   }
 
@@ -977,7 +980,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
   data_pkt->dataStatic(data);
 
   DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
-  data_pkt->senderState = state;
+  data_pkt->pushSenderState(state);
 
   if (!port.sendTimingReq(data_pkt)) {
     assert(!port.inRetry());
@@ -1020,7 +1023,7 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
 
   PacketPtr data_pkt = new Packet(req, command);
   DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
-  data_pkt->senderState = state;
+  data_pkt->pushSenderState(state);
   uint8_t* data = new uint8_t[size];
   data_pkt->dataDynamic<uint8_t>(data);
 
@@ -1038,9 +1041,8 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   return Accepted;
 }
 
-void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
-  DatapathSenderState* state =
-      dynamic_cast<DatapathSenderState*>(pkt->senderState);
+void HybridDatapath::updateCacheRequestStatusOnResp(
+    PacketPtr pkt, DatapathSenderState* state) {
   unsigned node_id = state->node_id;
   Addr vaddr = state->vaddr;
   if (isExecuteStandalone())
@@ -1085,8 +1087,8 @@ void HybridDatapath::updateCacheRequestStatusOnResp(PacketPtr pkt) {
 }
 
 void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
-  DatapathSenderState* state =
-      dynamic_cast<DatapathSenderState*>(pkt->senderState);
+  DatapathSenderState* state = pkt->findNextSenderState<DatapathSenderState>();
+  assert(state && "Retry packet is missing DatapathSenderState!");
   Addr vaddr = state->vaddr;
 
   // If we receive a ReadExReq or ReadExReq, that means that the trace vaddr

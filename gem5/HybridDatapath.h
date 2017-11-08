@@ -407,7 +407,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Update the status of a cache request after receiving a response.
   //
   // This terminates the lifetime of the packet and response.
-  void updateCacheRequestStatusOnResp(PacketPtr pkt);
+  void updateCacheRequestStatusOnResp(PacketPtr pkt,
+                                      DatapathSenderState* state);
 
   // Update the status of a retried cache request.
   //
