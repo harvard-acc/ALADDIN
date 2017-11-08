@@ -54,7 +54,8 @@ class DmaCacheHybridTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 5645)
+    self.addExpectedStatResult(
+        "system.test_hybrid_datapath.sim_cycles", 5391)
 
   def runTest(self):
     self.runAndValidate()
@@ -71,8 +72,8 @@ class LoadStoreTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    # Result depends mostly on cache queue size and bandwidth.
-    self.addExpectedStatResult("system.test_load_store_datapath.sim_cycles", 3076)
+    self.addExpectedStatResult(
+        "system.test_load_store_datapath.sim_cycles", 2999)
 
   def runTest(self):
     self.runAndValidate()
@@ -88,7 +89,8 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_dma_load_store_datapath.sim_cycles", 16870)
+    self.addExpectedStatResult(
+        "system.test_dma_load_store_datapath.sim_cycles", 16634)
 
   def runTest(self):
     self.runAndValidate()
@@ -118,7 +120,8 @@ class DoubleBufferingTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_double_buffering_datapath.sim_cycles", 882)
+    self.addExpectedStatResult(
+        "system.test_double_buffering_datapath.sim_cycles", 859)
 
   def runTest(self):
     self.runAndValidate()
@@ -134,7 +137,8 @@ class ArrayFunctionRenamedArgTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_array_func_arg_datapath.sim_cycles", 723)
+    self.addExpectedStatResult(
+        "system.test_array_func_arg_datapath.sim_cycles", 657)
 
   def runTest(self):
     self.runAndValidate()
@@ -150,7 +154,8 @@ class MultipleInvocationsTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_multiple_invocations_datapath.sim_cycles", 1496)
+    self.addExpectedStatResult(
+        "system.test_multiple_invocations_datapath.sim_cycles", 1114)
 
   def runTest(self):
     self.runAndValidate()
@@ -199,7 +204,7 @@ class SimdTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_simd_datapath.sim_cycles", 7467)
+    self.addExpectedStatResult("system.test_simd_datapath.sim_cycles", 6926)
 
   def runTest(self):
     self.runAndValidate()
@@ -215,7 +220,8 @@ class StreamingDmaTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_streaming_dma_datapath.sim_cycles", 656)
+    self.addExpectedStatResult(
+        "system.test_streaming_dma_datapath.sim_cycles", 521)
 
   def runTest(self):
     self.runAndValidate()

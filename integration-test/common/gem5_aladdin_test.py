@@ -25,6 +25,7 @@ DEFAULT_POST_SCRIPT_ARGS = {
   "cpu-type": "DerivO3CPU",
   "caches": True,
   "enable_prefetchers": True,
+  "xbar_width": 16,
 }
 
 GEM5_CFG_FILE = "gem5.cfg"
