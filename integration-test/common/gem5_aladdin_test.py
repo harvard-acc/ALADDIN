@@ -269,16 +269,14 @@ class Gem5AladdinTest(unittest.TestCase):
            "%(out_dir)s \\\n"
            "%(sim_script)s \\\n"
            "%(sim_script_args)s \\\n"
-           "%(sim_bin)s %(sim_opt)s \\\n"
-           "2>&1 | gzip -c > %(run_dir)s/stdout.gz") % {
+           "%(sim_bin)s %(sim_opt)s \\\n") % {
         "binary": binary,
         "debug_flags": debug_flags,
         "out_dir": out_dir,
         "sim_script": sim_script,
         "sim_script_args": sim_script_args_str,
         "sim_bin": sim_bin,
-        "sim_opt": sim_opt,
-        "run_dir": self.run_dir}
+        "sim_opt": sim_opt}
 
     return cmd
 
@@ -327,8 +325,12 @@ class Gem5AladdinTest(unittest.TestCase):
   def runAndValidate(self):
     """ Run the test and validate the results. """
     os.chdir(self.run_dir)
-    returncode = subprocess.call("sh run.sh", shell=True)
-    self.assertEqual(returncode, 0, msg="gem5 returned nonzero exit code!")
+    process = subprocess.Popen("sh run.sh", shell=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, _ = process.communicate()
+    with open(os.path.join(self.run_dir, "stdout"), "w") as f:
+      f.write(stdout)
+    self.assertEqual(process.returncode, 0, msg="gem5 returned nonzero exit code!")
 
     expected_stats = [s for s in self.expected_results.iterkeys()]
     statistics = self.parseGem5Stats(expected_stats=expected_stats)
