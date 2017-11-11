@@ -107,7 +107,7 @@ std::list<cnode_pair_t> Program::findFunctionBoundaries(Function* func) const {
   if (!func)
     return boundaries;
 
-  cnode_pair_t current_bound;
+  cnode_pair_t current_bound = std::make_pair(nullptr, nullptr);
   for (auto& node_id_pair : nodes) {
     const ExecNode* node = node_id_pair.second;
     if (node->is_call_op()) {
@@ -116,7 +116,16 @@ std::list<cnode_pair_t> Program::findFunctionBoundaries(Function* func) const {
         current_bound.first = node;
     } else if (node->is_ret_op() && node->get_static_function() == func) {
       current_bound.second = node;
+      if (current_bound.first == nullptr) {
+        // This must have been a top level function, so just mark the very
+        // first node as the start.
+        current_bound.first = nodes.begin()->second;
+      }
       boundaries.push_back(current_bound);
+
+      // Reset to the default value.
+      current_bound.first = nullptr;
+      current_bound.second = nullptr;
     }
   }
   return boundaries;
