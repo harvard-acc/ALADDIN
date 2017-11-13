@@ -85,6 +85,8 @@ class HybridDatapath(MemObject):
       False, "Connect the datapath's ACP port to the system L2.")
   useAcpCache = Param.Bool(
       True, "Use an L1 cache to handle ACP coherency traffic.")
+  useAladdinDebugger = Param.Bool(
+      False, "Start the Aladdin debugger on initialization.")
 
   spad_port = MasterPort("HybridDatapath DMA port")
   cache_port = MasterPort("HybridDatapath cache coherent port")

@@ -20,6 +20,7 @@
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
 
+#include "aladdin/common/debugger_prompt.h"
 #include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "aladdin_tlb.hh"
@@ -333,6 +334,16 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     initializeDatapath(1);
   }
 
+  void enterDebuggerIfEnabled() {
+    using namespace adb;
+    if (!use_aladdin_debugger)
+      return;
+
+    HandlerRet ret = interactive_mode(static_cast<ScratchpadDatapath*>(this));
+    if (ret == QUIT)
+      exitSimLoop("User exited from debugger.");
+  }
+
   // DMA access functions.
   void delayedDmaIssue();  // Used to postpone a call to issueDmaRequest().
   void issueDmaRequest(unsigned node_id);
@@ -536,9 +547,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // If true, then successive DMA nodes are pipelined to overlap transferring
   // data of one DMA transaction with the setup latency of the next. If false,
   // then DMA nodes wait for all transactions to finish setup before issuing.
-  bool pipelinedDma;
+  const bool pipelinedDma;
 
-  bool ignoreCacheFlush;
+  // Skip the initial delay caused by flushing cache lines on DMA.
+  const bool ignoreCacheFlush;
+
+  // Start the Aladdin debugger.
+  const bool use_aladdin_debugger;
 
   // gem5 tick
   EventWrapper<HybridDatapath, &HybridDatapath::eventStep> tickEvent;
@@ -547,7 +562,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Datapath re-initialization.
   //
   // Used in standalone mode to support multiple invocations.
-  EventWrapper<HybridDatapath, &HybridDatapath::reinitializeDatapath> reinitializeEvent;
+  EventWrapper<HybridDatapath, &HybridDatapath::reinitializeDatapath>
+      reinitializeEvent;
+
+  // Event to start the debugger's interactive mode.
+  EventWrapper<HybridDatapath, &HybridDatapath::enterDebuggerIfEnabled>
+      enterDebuggerEvent;
 
   // Number of executed nodes as of the last event trigger.
   // This is required for deadlock detection.

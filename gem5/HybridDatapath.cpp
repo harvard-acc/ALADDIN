@@ -54,9 +54,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                   system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
       enable_stats_dump(params->enableStatsDump),
-      acp_enabled(params->enableAcp),
-      use_acp_cache(params->useAcpCache), cacheSize(params->cacheSize),
-      cacti_cfg(params->cactiCacheConfig),
+      acp_enabled(params->enableAcp), use_acp_cache(params->useAcpCache),
+      cacheSize(params->cacheSize), cacti_cfg(params->cactiCacheConfig),
       cacheLineSize(system->cacheLineSize()),
       cacheHitLatency(params->cacheHitLatency), cacheAssoc(params->cacheAssoc),
       cache_readEnergy(0), cache_writeEnergy(0), cache_leakagePower(0),
@@ -72,7 +71,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                          params->acceleratorName),
       pipelinedDma(params->pipelinedDma),
       ignoreCacheFlush(params->ignoreCacheFlush), tickEvent(this),
-      delayedDmaEvent(this), reinitializeEvent(this),
+      use_aladdin_debugger(params->useAladdinDebugger), delayedDmaEvent(this),
+      reinitializeEvent(this), enterDebuggerEvent(this),
       executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
@@ -104,6 +104,9 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    */
   cacheLineFlushLatency = ceil((56.0 * 1.5) / cycle_time);
   cacheLineInvalidateLatency = ceil((47.0 * 1.5) / cycle_time);
+
+  if (use_aladdin_debugger)
+    adb::init_debugger();
 }
 
 HybridDatapath::~HybridDatapath() {
@@ -134,8 +137,13 @@ void HybridDatapath::initializeDatapath(int delay) {
     exitSimulation();
     return;
   }
+  enterDebuggerIfEnabled();
+
   globalOptimizationPass();
   prepareForScheduling();
+  enterDebuggerIfEnabled();
+  adb::execution_status = adb::SCHEDULING;
+
   num_cycles += delay;
   acc_sim_cycles += delay;
   cachePort.clearRetryPkt();
@@ -344,6 +352,8 @@ bool HybridDatapath::step() {
       clearDatapath();
       schedule(reinitializeEvent, clockEdge(Cycles(1)));
     } else {
+      enterDebuggerIfEnabled();
+      adb::execution_status = adb::POSTSCHEDULING;
       exitSimulation();
     }
   }
