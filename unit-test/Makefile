@@ -1,3 +1,23 @@
+# Aladdin unit tests.
+#
+# To build unit tests:
+# 	make all -j8
+#
+# To run unit tests with junit output:
+#    make junit_test [-jN]
+# where -jN can optionally parallelize the operation over N threads.
+# The output will be written to report_dir/.
+#
+# To run all unit tests one by one to see the raw output:
+# 	make test
+# With this target, tests cannot be run in parallel (since each test's output
+# will get then interleaved).
+#
+# To build the performance test (which will just measure how long it takes to
+# run Aladdin on a set of traces):
+# 	make perf
+# 	./test_performance
+
 .PHONY: all clean clean-test report_dir test junit_test
 
 ifeq ($(USE_DB), 1)
@@ -42,8 +62,12 @@ perf: test_performance.o
 test : report_dir $(TESTS)
 	$(foreach t,$(TESTS),./$t;)
 
-junit_test: report_dir $(TESTS)
-	$(foreach t,$(TESTS),./$t -r junit -o $(TEST_REPORT_DIR)/$t.xml;)
+# Enables running tests in parallel by making a fake target for each test.
+JUNIT_TEST_PARALLEL = $(patsubst %, run_junit-%, $(TESTS))
+run_junit-%: report_dir %
+	./$* -r junit -o $(TEST_REPORT_DIR)/$*.xml
+
+junit_test: $(JUNIT_TEST_PARALLEL)
 
 $(ALADDIN_HOME)/libaladdin.a :
 	$(MAKE) -C ../common lib
