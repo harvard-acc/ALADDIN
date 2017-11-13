@@ -17,6 +17,8 @@
 #include <readline/history.h>
 #endif
 
+using namespace adb;
+
 // Place this at the end of a set of commands to denote the end.
 const Command COMMANDS_END = {"", NULL, NULL};
 
@@ -44,19 +46,19 @@ static sig_atomic_t waiting_for_input;
 
 // Whether we compute execution statistics or not depends on where we are in
 // the scheduling.
-ExecutionStatus execution_status;
+ExecutionStatus adb::execution_status;
 
 std::string get_command() {
   std::string command;
   waiting_for_input = 1;
 #ifdef HAS_READLINE
-  char* cmd = readline("aladdin >> ");
+  char* cmd = readline("adb >> ");
   if (cmd && *cmd)
     add_history(cmd);
   command = std::string(cmd);
   free(cmd);
 #else
-  std::cout << "aladdin >> ";
+  std::cout << "adb >> ";
   std::getline(std::cin, command);
 #endif
   waiting_for_input = 0;
@@ -69,7 +71,8 @@ std::string get_command() {
 //
 // Return:
 //  0 on success, -1 otherwise.
-int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args) {
+int adb::parse_command_args(const CommandTokens& command_tokens,
+                            CommandArgs& args) {
   boost::char_separator<char> sep("=");
   for (unsigned i = 0; i < command_tokens.size(); i++) {
     boost::tokenizer<boost::char_separator<char>> tok(command_tokens[i], sep);
@@ -98,9 +101,9 @@ int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args) {
   return 0;
 }
 
-HandlerRet dispatch_command(const CommandTokens& command_tokens,
-                            Command* command_list,
-                            ScratchpadDatapath* acc) {
+HandlerRet adb::dispatch_command(const CommandTokens& command_tokens,
+                                 Command* command_list,
+                                 ScratchpadDatapath* acc) {
   if (!command_list)
     return HANDLER_NOT_FOUND;
   Command current_command = command_list[0];
@@ -125,7 +128,7 @@ HandlerRet cmd_unknown(std::string& command) {
   return HANDLER_SUCCESS;
 }
 
-HandlerRet interactive_mode(ScratchpadDatapath* acc) {
+HandlerRet adb::interactive_mode(ScratchpadDatapath* acc) {
   std::cout << "Entering Aladdin Debugger...\n";
   while (true) {
     std::string command = get_command();
@@ -176,9 +179,9 @@ void init_readline() {
 }
 #endif
 
-void init_debugger() {
+void adb::init_debugger() {
   waiting_for_input = 0;
-  execution_status = PRESCHEDULING;
+  adb::execution_status = PRESCHEDULING;
 #ifdef HAS_READLINE
   init_readline();
 #endif

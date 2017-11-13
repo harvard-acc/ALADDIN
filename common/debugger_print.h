@@ -7,6 +7,8 @@
 #include "ScratchpadDatapath.h"
 #include "SourceManager.h"
 
+namespace adb {
+
 // Formatted print out of pairs of node ids.
 //
 // Prints up up to 80 pairs in rows of 4 columns each.
@@ -145,5 +147,7 @@ class DebugCyclePrinter : public DebugPrinterBase {
   int cycle;
   int max_nodes;
 };
+
+};  // namespace adb
 
 #endif

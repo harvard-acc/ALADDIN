@@ -15,6 +15,8 @@
 #include "debugger_print.h"
 #include "debugger_prompt.h"
 
+using namespace adb;
+
 void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
   std::unordered_map<Vertex, const ExecNode*> vertexToNode;
   BGL_FORALL_VERTICES(v, graph, Graph) {
@@ -48,9 +50,9 @@ void reconstruct_graph(Graph* new_graph,
   boost::breadth_first_search(g, root_vertex, boost::visitor(visitor));
 }
 
-HandlerRet cmd_print_cycle(const CommandTokens& command_tokens,
-                           Command* subcmd_list,
-                           ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print_cycle(const CommandTokens& command_tokens,
+                                Command* subcmd_list,
+                                ScratchpadDatapath* acc) {
 
   if (command_tokens.size() < 2) {
     std::cerr << "ERROR: Need to specify a cycle to print activity for!\n";
@@ -77,9 +79,9 @@ HandlerRet cmd_print_cycle(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_print_function(const CommandTokens& command_tokens,
-                              Command* subcmd_list,
-                              ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print_function(const CommandTokens& command_tokens,
+                                   Command* subcmd_list,
+                                   ScratchpadDatapath* acc) {
   if (command_tokens.size() < 2) {
     std::cerr << "ERROR: Need to specify a function to print!\n";
     return HANDLER_ERROR;
@@ -91,9 +93,9 @@ HandlerRet cmd_print_function(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_print_loop(const CommandTokens& command_tokens,
-                          Command* subcmd_list,
-                          ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print_loop(const CommandTokens& command_tokens,
+                               Command* subcmd_list,
+                               ScratchpadDatapath* acc) {
   if (command_tokens.size() < 2) {
     std::cerr << "ERROR: Need to specify a loop to print!\n";
     return HANDLER_ERROR;
@@ -105,9 +107,9 @@ HandlerRet cmd_print_loop(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_print_edge(const CommandTokens& command_tokens,
-                          Command* subcmd_list,
-                          ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print_edge(const CommandTokens& command_tokens,
+                               Command* subcmd_list,
+                               ScratchpadDatapath* acc) {
   if (command_tokens.size() < 3) {
     std::cerr << "ERROR: Need to specify source and target node ids!\n";
     return HANDLER_ERROR;
@@ -138,9 +140,9 @@ HandlerRet cmd_print_edge(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_print_node(const CommandTokens& command_tokens,
-                          Command* subcmd_list,
-                          ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print_node(const CommandTokens& command_tokens,
+                               Command* subcmd_list,
+                               ScratchpadDatapath* acc) {
   if (command_tokens.size() < 2) {
     std::cerr << "ERROR: Need to specify a node id!\n";
     return HANDLER_ERROR;
@@ -164,9 +166,9 @@ HandlerRet cmd_print_node(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_print(const CommandTokens& command_tokens,
-                     Command* subcmd_list,
-                     ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_print(const CommandTokens& command_tokens,
+                          Command* subcmd_list,
+                          ScratchpadDatapath* acc) {
   if (command_tokens.size() < 2) {
     std::cerr << "ERROR: Invalid arguments to 'print'.\n";
     return HANDLER_ERROR;
@@ -183,9 +185,9 @@ HandlerRet cmd_print(const CommandTokens& command_tokens,
 }
 
 // graph root=N [max_nodes=K] [show_branch_children=1/0]
-HandlerRet cmd_graph(const CommandTokens& command_tokens,
-                     Command* subcmd_list,
-                     ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_graph(const CommandTokens& command_tokens,
+                          Command* subcmd_list,
+                          ScratchpadDatapath* acc) {
   if (command_tokens.size() < 2) {
     std::cout << "Invalid arguments to command 'graph'!\n";
     return HANDLER_ERROR;
@@ -236,9 +238,9 @@ HandlerRet cmd_graph(const CommandTokens& command_tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_help(const CommandTokens& tokens,
-                    Command* subcmd_list,
-                    ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_help(const CommandTokens& tokens,
+                         Command* subcmd_list,
+                         ScratchpadDatapath* acc) {
   std::cout << "\nAladdin debugger help\n"
             << "========================\n\n"
             << "The Aladdin debugger works just like Aladdin itself, except after Aladdin runs the\n"
@@ -283,14 +285,14 @@ HandlerRet cmd_help(const CommandTokens& tokens,
   return HANDLER_SUCCESS;
 }
 
-HandlerRet cmd_continue(const CommandTokens& tokens,
-                        Command* subcmd_list,
-                        ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_continue(const CommandTokens& tokens,
+                             Command* subcmd_list,
+                             ScratchpadDatapath* acc) {
   return CONTINUE;
 }
 
-HandlerRet cmd_quit(const CommandTokens& tokens,
-                    Command* subcmd_list,
-                    ScratchpadDatapath* acc) {
+HandlerRet adb::cmd_quit(const CommandTokens& tokens,
+                         Command* subcmd_list,
+                         ScratchpadDatapath* acc) {
   return QUIT;
 }

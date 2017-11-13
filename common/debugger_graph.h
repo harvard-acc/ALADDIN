@@ -14,6 +14,8 @@
 #include "typedefs.h"
 #include "debugger_graph.h"
 
+namespace adb {
+
 class bfs_finished : public std::exception {
   virtual const char* what() const throw() {
     return "BFS finished";
@@ -121,4 +123,5 @@ class NodeVisitor : public boost::default_bfs_visitor {
   unsigned* num_nodes_visited;
 };
 
+};  // namespace adb
 #endif

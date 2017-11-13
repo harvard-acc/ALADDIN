@@ -18,6 +18,8 @@
 #include "debugger_print.h"
 #include "debugger_prompt.h"
 
+using namespace adb;
+
 void print_node_pair_list(std::list<cnode_pair_t> pairs,
                           std::string row_header,
                           std::ostream& out) {

@@ -6,6 +6,8 @@
 
 #include "ScratchpadDatapath.h"
 
+namespace adb {
+
 enum HandlerRet {
   CONTINUE,
   QUIT,
@@ -50,7 +52,8 @@ HandlerRet interactive_mode(ScratchpadDatapath* acc);
 void init_debugger();
 int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args);
 
-extern const Command COMMANDS_END;
 extern ExecutionStatus execution_status;
+
+};  // namespace adb
 
 #endif

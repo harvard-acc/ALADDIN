@@ -3,6 +3,8 @@
 
 #include "debugger_prompt.h"
 
+namespace adb {
+
 HandlerRet cmd_print(const CommandTokens& tokens,
                      Command* subcmd_list,
                      ScratchpadDatapath* acc);
@@ -33,5 +35,7 @@ HandlerRet cmd_continue(const CommandTokens& tokens,
 HandlerRet cmd_quit(const CommandTokens& tokens,
                     Command* subcmd_list,
                     ScratchpadDatapath* acc);
+
+};  // namespace adb
 
 #endif

@@ -23,6 +23,8 @@
 
 #include "debugger_prompt.h"
 
+using namespace adb;
+
 int main(int argc, const char* argv[]) {
   const char* logo =
       "     ________                                                    \n"
