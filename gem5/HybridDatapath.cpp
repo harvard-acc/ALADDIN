@@ -54,6 +54,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                   system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
       enable_stats_dump(params->enableStatsDump),
+      acp_enabled(params->enableAcp),
       use_acp_cache(params->useAcpCache), cacheSize(params->cacheSize),
       cacti_cfg(params->cactiCacheConfig),
       cacheLineSize(system->cacheLineSize()),
@@ -585,6 +586,12 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
+  if (!acp_enabled) {
+    fatal("Attempted to perform an ACP access when ACP was not enabled on this "
+          "system! Add \"enable_acp = True\" to the gem5.cfg file and try "
+          "again.");
+  }
+
   unsigned node_id = node->get_node_id();
   if (!cache_queue.canIssue()) {
     DPRINTF(HybridDatapathVerbose, "Unable to service ACP request for node %d: "

@@ -491,6 +491,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // resume execution afterwards.
   const bool enable_stats_dump;
 
+  // ACP has been enabled in this system. If this flag is false, Aladdin will
+  // terminate simulation if an ACP access is attempted.
+  const bool acp_enabled;
+
   // Enable or disable the ACP L1 cache implementation method.
   //
   // There are currently two implemented ways to handle ACP coherency logic:
