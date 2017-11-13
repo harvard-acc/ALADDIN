@@ -275,8 +275,7 @@ void BaseDatapath::updatePerCycleActivity(
    * leakage power and area of multipliers are relatively significant, and no
    * reuse for adders. This way of modeling is consistent with our observation
    * of accelerators generated with Vivado. */
-  int num_adds_so_far = 0, num_bits_so_far = 0;
-  int num_shifters_so_far = 0;
+  unsigned num_adds_so_far = 0, num_bits_so_far = 0, num_shifters_so_far = 0;
   auto bound_it = program.loop_bounds.begin();
   for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
@@ -304,7 +303,7 @@ void BaseDatapath::updatePerCycleActivity(
     funcActivity& curr_fu_activity = func_activity.at(func_id).at(node_level);
 
     if (node->is_multicycle_op()) {
-      for (unsigned stage = 0;
+      for (int stage = 0;
            node_level + stage < node->get_complete_execution_cycle();
            stage++) {
         funcActivity& fp_fu_activity =

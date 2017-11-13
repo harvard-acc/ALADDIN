@@ -30,6 +30,7 @@ DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS) $(GRAPH_OPTS_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
 DEBUGGER_OBJ_FILES = $(patsubst %.o,obj/%.o,$(DEBUGGER_OBJS))
+WARNING_EXCEPTIONS = -Wno-reorder
 
 OBJ_DIR = obj
 
@@ -78,7 +79,7 @@ $(EXE): obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES)
 	$(CXX)  $(BITWIDTH) -o $(EXE) $(EXE).o $(OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
 $(OBJ_DIR)/%.o : %.h %.cpp
-	$(CXX) $(CFLAGS) -o $@ -c $*.cpp
+	$(CXX) $(CFLAGS) -Werror -Wall $(WARNING_EXCEPTIONS) -o $@ -c $*.cpp
 
 $(CACTI_OBJ_DIR)/%.o : $(CACTI_DIR)/%.cc
 	$(CXX) $(CFLAGS)  -DNTHREADS=$(NTHREADS) -o $@ -c $(CACTI_DIR)/$*.cc

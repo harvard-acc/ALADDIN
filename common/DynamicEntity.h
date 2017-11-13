@@ -34,7 +34,7 @@ class DynamicFunction {
       : function(f), iteration(it) {}
 
   explicit operator bool() const {
-    return (function && iteration != -1);
+    return (function && iteration != (unsigned)-1);
   }
 
   bool operator==(const DynamicFunction& other) const {

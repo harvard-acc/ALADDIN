@@ -13,6 +13,9 @@ void RepeatedStoreRemoval::optimize() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
   unsigned removed_stores = 0;
+  if (exec_nodes.empty() == 0)
+    return;
+
   int node_id = exec_nodes.size() - 1;
   auto bound_it = loop_bounds.end();
   bound_it--;
@@ -20,7 +23,7 @@ void RepeatedStoreRemoval::optimize() {
   while (node_id >= 0) {
     std::unordered_map<unsigned, int> address_store_map;
 
-    while (node_id >= bound_it->node_id && node_id >= 0) {
+    while (node_id >= (int)bound_it->node_id && node_id >= 0) {
       ExecNode* node = exec_nodes.at(node_id);
       if (!node->has_vertex() ||
           boost::degree(node->get_vertex(), graph) == 0 ||

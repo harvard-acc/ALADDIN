@@ -35,13 +35,13 @@ class ReadyPartition : public Partition {
 
   /* Set all the ready bits in the partition. */
   virtual void setAllReadyBits() {
-    for ( int i = 0; i < num_words; ++i)
+    for (unsigned i = 0; i < num_words; ++i)
       setReadyBit(i);
   }
 
   /* Reset all the ready bits in the partition. */
   virtual void resetAllReadyBits() {
-    for ( int i = 0; i < num_words; ++i)
+    for (unsigned i = 0; i < num_words; ++i)
       resetReadyBit(i);
   }
 

@@ -86,7 +86,6 @@ void DebugNodePrinter::printBasic() {
 void DebugNodePrinter::printSourceInfo() {
   using namespace SrcTypes;
 
-  SourceManager& srcManager = acc->get_source_manager();
   int line_num = node->get_line_num();
   if (line_num != -1)
     out << "  Line number: " << line_num << "\n";
@@ -211,7 +210,6 @@ void DebugNodePrinter::printChildren() {
       acc->getProgram().getChildNodes(node->get_node_id());
   out << "  Children: " << childNodes.size() << " [ ";
   for (auto child_node : childNodes) {
-    ExecNode* node = prog.nodes.at(child_node);
     out << child_node << " ";
   }
   out << "]\n";
@@ -222,7 +220,6 @@ void DebugNodePrinter::printParents() {
       acc->getProgram().getParentNodes(node->get_node_id());
   out << "  Parents: " << parentNodes.size() << " [ ";
   for (auto parent_node : parentNodes) {
-    ExecNode* node = prog.nodes.at(parent_node);
     out << parent_node << " ";
   }
   out << "]\n";
@@ -381,7 +378,6 @@ int DebugFunctionPrinter::computeFunctionLatency() {
 //-------------------
 
 std::list<const ExecNode*> DebugCyclePrinter::findNodesExecutedinCycle() {
-  const Graph& graph = acc->getProgram().graph;
   std::list<const ExecNode*> matched_nodes;
 
   // In many cases, a simple linear traversal through all nodes ends up being

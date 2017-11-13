@@ -100,7 +100,7 @@ void BaseAladdinOpt::cleanLeafNodes() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
   // Track the number of children each node has that will be removed.
-  std::map<unsigned, int> num_children_to_be_removed;
+  std::map<unsigned, unsigned> num_children_to_be_removed;
   for (auto& node_it : exec_nodes)
     num_children_to_be_removed[node_it.first] = 0;
   std::vector<unsigned> to_remove_nodes;

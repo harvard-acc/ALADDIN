@@ -140,7 +140,6 @@ HandlerRet adb::interactive_mode(ScratchpadDatapath* acc) {
     boost::char_separator<char> sep(" ");
     boost::tokenizer<boost::char_separator<char>> tok(command, sep);
     CommandTokens command_split;
-    unsigned arg_num = 0;
     for (auto it = tok.begin(); it != tok.end(); ++it) {
       command_split.push_back(*it);
     }

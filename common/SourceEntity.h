@@ -209,7 +209,7 @@ class UniqueLabel {
 
   Function* get_function() const { return function; }
   Label* get_label() const { return label; }
-  unsigned get_line_number() const { return line_number; }
+  int get_line_number() const { return line_number; }
 
   std::string str() const {
     std::stringstream str;
@@ -222,7 +222,7 @@ class UniqueLabel {
  private:
   Function* function;
   Label* label;
-  unsigned line_number;
+  int line_number;
 };
 
 };  // namespace SrcTypes

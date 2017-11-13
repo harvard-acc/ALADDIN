@@ -16,7 +16,6 @@ std::string ConsecutiveBranchFusion::getCenteredName(size_t size) {
 }
 
 void ConsecutiveBranchFusion::optimize() {
-  EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
   std::set<Edge> to_remove_edges;
   std::vector<NewEdge> to_add_edges;
 

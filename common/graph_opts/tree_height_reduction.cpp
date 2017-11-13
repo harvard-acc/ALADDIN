@@ -57,7 +57,7 @@ void TreeHeightReduction::optimize() {
     std::vector<std::pair<ExecNode*, bool>> leaves;
     std::vector<ExecNode*> associative_chain;
     associative_chain.push_back(node);
-    int chain_id = 0;
+    unsigned chain_id = 0;
     while (chain_id < associative_chain.size()) {
       ExecNode* chain_node = associative_chain[chain_id];
       if (chain_node->is_associative()) {
@@ -180,7 +180,7 @@ void TreeHeightReduction::findMinRankNodes(
     std::map<ExecNode*, unsigned>& rank_map) {
   unsigned min_rank = end_node_id;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
-    int node_rank = it->second;
+    unsigned node_rank = it->second;
     if (node_rank < min_rank) {
       *node1 = it->first;
       min_rank = node_rank;
@@ -188,7 +188,7 @@ void TreeHeightReduction::findMinRankNodes(
   }
   min_rank = end_node_id;
   for (auto it = rank_map.begin(); it != rank_map.end(); ++it) {
-    int node_rank = it->second;
+    unsigned node_rank = it->second;
     if ((it->first != *node1) && (node_rank < min_rank)) {
       *node2 = it->first;
       min_rank = node_rank;

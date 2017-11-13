@@ -86,12 +86,13 @@ void LogicalArray::computePartitionSizes(std::vector<size_t>& size_per_part) {
 
 size_t LogicalArray::getPartitionIndex(Addr addr) {
   int rel_addr = addr - base_addr;
-  if (rel_addr >= total_size) {
+  assert(rel_addr >= 0);
+  if ((unsigned)rel_addr >= total_size) {
     std::cerr << "[ERROR]: LogicalArray " << base_name
               << ": Attempting to access offset " << rel_addr
               << ", but total size = " << total_size << std::endl;
+    assert((unsigned)rel_addr < total_size);
   }
-  assert(rel_addr < total_size);
   size_t part_index = 0;
   if (partition_type == cyclic) {
     /* cyclic partition. */

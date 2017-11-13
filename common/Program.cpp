@@ -59,7 +59,7 @@ std::list<cnode_pair_t> Program::findLoopBoundaries(
     const UniqueLabel& loop_label) const {
   std::list<cnode_pair_t> loop_boundaries;
   bool is_loop_executing = false;
-  int current_loop_depth = -1;
+  unsigned current_loop_depth = (unsigned)-1;
 
   const ExecNode* loop_start;
 
@@ -192,7 +192,7 @@ int Program::shortestDistanceBetweenNodes(unsigned from, unsigned to) const {
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       if (get(boost::edge_name, graph, *out_edge_it) != CONTROL_EDGE) {
-        int child_id = atVertex(target(*out_edge_it, graph));
+        unsigned child_id = atVertex(target(*out_edge_it, graph));
         if (child_id == to)
           return curr_dist + 1;
         queue.push_back({ child_id, curr_dist + 1 });
