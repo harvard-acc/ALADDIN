@@ -1,7 +1,7 @@
 #ifndef _DEBUGGER_COMMANDS_H_
 #define _DEBUGGER_COMMANDS_H_
 
-#include "debugger.h"
+#include "debugger_prompt.h"
 
 HandlerRet cmd_print(const CommandTokens& tokens,
                      Command* subcmd_list,

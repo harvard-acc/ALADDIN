@@ -1,5 +1,5 @@
-#ifndef _DEBUGGER_H_
-#define _DEBUGGER_H_
+#ifndef _DEBUGGER_PROMPT_H_
+#define _DEBUGGER_PROMPT_H_
 
 #include <vector>
 #include <string>
@@ -45,7 +45,9 @@ struct Command {
 HandlerRet dispatch_command(const CommandTokens& tokens,
                             Command* command_list,
                             ScratchpadDatapath* acc);
+HandlerRet interactive_mode(ScratchpadDatapath* acc);
 
+void init_debugger();
 int parse_command_args(const CommandTokens& command_tokens, CommandArgs& args);
 
 extern const Command COMMANDS_END;

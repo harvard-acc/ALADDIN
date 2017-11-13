@@ -25,7 +25,7 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/dma_base_address_init.o
 
 UTILS_OBJS = file_func.o generic_func.o power_func.o
-DEBUGGER_OBJS = debugger_print.o debugger_commands.o
+DEBUGGER_OBJS = debugger_print.o debugger_commands.o debugger_prompt.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS) $(GRAPH_OPTS_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
@@ -55,8 +55,8 @@ ifeq ($(HAS_READLINE),1)
   LFLAGS += -lreadline
 endif
 
-all : CFLAGS+=-O3
-all : $(EXE)
+all: CFLAGS+=-O3
+all: $(EXE)
 
 debug: CFLAGS+=-DDEBUG -O0
 debug: $(EXE)

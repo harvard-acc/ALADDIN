@@ -15,8 +15,8 @@
 #include "SourceManager.h"
 #include "SourceEntity.h"
 
-#include "debugger.h"
 #include "debugger_print.h"
+#include "debugger_prompt.h"
 
 void print_node_pair_list(std::list<cnode_pair_t> pairs,
                           std::string row_header,

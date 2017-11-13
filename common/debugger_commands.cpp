@@ -10,10 +10,10 @@
 #include <boost/tokenizer.hpp>
 
 #include "typedefs.h"
-#include "debugger.h"
+#include "debugger_commands.h"
 #include "debugger_graph.h"
 #include "debugger_print.h"
-#include "debugger_commands.h"
+#include "debugger_prompt.h"
 
 void dump_graph(Graph& graph, ScratchpadDatapath* acc, std::string graph_name) {
   std::unordered_map<Vertex, const ExecNode*> vertexToNode;
