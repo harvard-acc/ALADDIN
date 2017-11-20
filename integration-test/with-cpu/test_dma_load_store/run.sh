@@ -14,7 +14,7 @@ ${gem5_dir}/build/X86/gem5.opt \
   --sys-clock=1GHz \
   --cpu-type=DerivO3CPU \
   --caches \
-  --cacheline_size=32 \
+  --cacheline_size=64 \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
   -c ${bmk_home}/test_dma_load_store \
   | gzip -c > stdout.gz

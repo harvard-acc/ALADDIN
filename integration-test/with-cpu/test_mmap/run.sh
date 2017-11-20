@@ -15,4 +15,4 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cpu-type=DerivO3CPU \
   --caches \
   -c ${bmk_home}/test_mmap \
-  | gzip -c stdout.gz
+  | gzip -c > stdout.gz

@@ -17,4 +17,4 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cacheline_size=32 \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c test_double_buffering \
-  | gzip -c stdout.gz
+  | gzip -c > stdout.gz

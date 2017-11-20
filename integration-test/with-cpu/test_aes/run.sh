@@ -19,4 +19,4 @@ ${gem5_dir}/build/X86/gem5.opt \
   --accel_cfg_file=${cfg_home}/gem5.cfg \
   -c aes \
   -o "input.data check.data" \
-  | gzip -c stdout.gz
+  | gzip -c > stdout.gz

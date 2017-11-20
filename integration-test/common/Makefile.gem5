@@ -13,9 +13,10 @@ GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 CFLAGS = -O3 -Wall -Wno-unused-label -I../../common
 
 # -mno-sse
-GEM5_CFLAGS = -static -O3 -mno-80387 -msoft-float \
-              -march=nocona -msse -mfpmath=sse \
-              -fno-exceptions -fno-inline
+GEM5_CFLAGS = -static -O3 \
+              -msse -mfpmath=sse \
+              -fno-exceptions \
+              -std=gnu99
 
 INCLUDES += -I$(ALADDIN_HOME)/gem5
 LFLAGS = -lm

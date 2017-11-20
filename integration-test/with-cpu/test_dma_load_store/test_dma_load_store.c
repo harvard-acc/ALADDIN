@@ -5,6 +5,8 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 #include "aladdin_sys_connection.h"
 #include "aladdin_sys_constants.h"
 #define TYPE int
@@ -12,6 +14,8 @@
 #ifdef DMA_MODE
 #include "gem5/dma_interface.h"
 #endif
+
+#define CACHELINE_SIZE 64
 
 int test_stores(TYPE* store_vals, TYPE* store_loc, int num_vals) {
   int num_failures = 0;
@@ -43,8 +47,13 @@ void store_kernel(TYPE* store_vals, TYPE* store_loc, int num_vals) {
 
 int main() {
   const int num_vals = 1024;
-  TYPE* store_vals =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
-  TYPE* store_loc =  (TYPE *) malloc (sizeof(TYPE) * num_vals);
+  TYPE *store_vals, *store_loc;
+  int err = posix_memalign(
+      (void**)&store_vals, CACHELINE_SIZE, sizeof(TYPE) * num_vals);
+  assert(err == 0 && "Failed to allocate memory!");
+  err = posix_memalign(
+      (void**)&store_loc, CACHELINE_SIZE, sizeof(TYPE) * num_vals);
+  assert(err == 0 && "Failed to allocate memory!");
   for (int i = 0; i < num_vals; i++) {
     store_vals[i] = i;
     store_loc[i] = -1;

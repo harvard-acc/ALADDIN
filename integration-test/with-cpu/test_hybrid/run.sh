@@ -16,4 +16,4 @@ ${gem5_dir}/build/X86/gem5.opt \
   --cacheline_size=64 \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
   -c ${bmk_home}/test_hybrid \
-  | gzip -c stdout.gz
+  | gzip -c > stdout.gz
