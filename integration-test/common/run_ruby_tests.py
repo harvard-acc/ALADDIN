@@ -99,7 +99,7 @@ class MultipleInvocationsTest(tests.MultipleInvocationsTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_multiple_invocations_datapath.sim_cycles", 1118)
+        "system.test_multiple_invocations_datapath.sim_cycles", 1112)
 
   def runTest(self):
     self.runAndValidate()
