@@ -135,7 +135,7 @@ class DebugFunctionPrinter : public DebugPrinterBase {
 class DebugCyclePrinter : public DebugPrinterBase {
  public:
   DebugCyclePrinter(int _cycle,
-                    int _max_nodes,
+                    unsigned _max_nodes,
                     ScratchpadDatapath* _acc,
                     std::ostream& _out)
       : DebugPrinterBase(_acc, _out), cycle(_cycle), max_nodes(_max_nodes) {}
@@ -145,7 +145,7 @@ class DebugCyclePrinter : public DebugPrinterBase {
 
  private:
   int cycle;
-  int max_nodes;
+  unsigned max_nodes;
 };
 
 };  // namespace adb

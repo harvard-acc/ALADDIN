@@ -48,7 +48,7 @@ class NodeVisitor : public boost::default_bfs_visitor {
   // Add a vertex and all of its children to the graph.
   void discover_vertex(const Vertex& v, const Graph& g) const {
     unsigned node_id = get(boost::vertex_node_id, g, v);
-    if (max_node_id != -1 && node_id > max_node_id)
+    if ((int)max_node_id != -1 && node_id > max_node_id)
       return;
 
     auto node_it = existing_nodes->find(node_id);
@@ -98,7 +98,7 @@ class NodeVisitor : public boost::default_bfs_visitor {
       unsigned target_id = get(boost::vertex_node_id, g, target_vertex_orig);
       Vertex target_vertex;
       if (existing_nodes->find(target_id) == existing_nodes->end()) {
-        if (max_node_id != -1 && target_id > max_node_id)
+        if ((int)max_node_id != -1 && target_id > max_node_id)
           continue;
         target_vertex = insert_vertex(target_id);
         (*num_nodes_visited)++;

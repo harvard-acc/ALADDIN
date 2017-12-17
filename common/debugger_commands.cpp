@@ -74,7 +74,12 @@ HandlerRet adb::cmd_print_cycle(const CommandTokens& command_tokens,
   if (args.find("max_nodes") != args.end())
     max_nodes = args["max_nodes"];
 
-  DebugCyclePrinter printer(cycle, max_nodes, acc, std::cout);
+  if (max_nodes <= 0) {
+    std::cerr << "ERROR: Cannot specify max_nodes to be <= 0!\n";
+    return HANDLER_ERROR;
+  }
+
+  DebugCyclePrinter printer(cycle, (unsigned)max_nodes, acc, std::cout);
   printer.printAll();
   return HANDLER_SUCCESS;
 }
