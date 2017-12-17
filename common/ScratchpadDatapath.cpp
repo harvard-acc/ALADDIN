@@ -124,32 +124,36 @@ void ScratchpadDatapath::scratchpadPartition() {
   std::cout << "-------------------------------" << std::endl;
   std::string bn(benchName);
 
-  if (!scratchpad_partition_executed) {
-    bool spad_partition = false;
-    // set scratchpad
-    for (auto part_it = user_params.partition.begin();
-         part_it != user_params.partition.end();
-         ++part_it) {
-      PartitionType p_type = part_it->second.partition_type;
-      MemoryType m_type = part_it->second.memory_type;
-      if (p_type == complete || m_type != spad)
-        continue;
-      spad_partition = true;
-      std::string array_label = part_it->first;
-      Addr base_addr = getBaseAddress(array_label);
-      unsigned size = part_it->second.array_size;  // num of bytes
-      unsigned p_factor = part_it->second.part_factor;
-      unsigned wordsize = part_it->second.wordsize;  // in bytes
+  bool spad_partition = false;
+  for (auto part_it = user_params.partition.begin();
+       part_it != user_params.partition.end();
+       ++part_it) {
+    PartitionType p_type = part_it->second.partition_type;
+    MemoryType m_type = part_it->second.memory_type;
+    if (p_type == complete || m_type != spad)
+      continue;
+    spad_partition = true;
+    std::string array_label = part_it->first;
+    Addr base_addr = getBaseAddress(array_label);
+    unsigned size = part_it->second.array_size;  // num of bytes
+    unsigned p_factor = part_it->second.part_factor;
+    unsigned wordsize = part_it->second.wordsize;  // in bytes
 
-      PartitionType part_type = cyclic;
-      if (p_type == block)
-        part_type = block;
+    PartitionType part_type = cyclic;
+    if (p_type == block)
+      part_type = block;
+
+    if (!scratchpad_partition_executed) {
+      // Only create the scratchpads once.
       scratchpad->setScratchpad(
           array_label, base_addr, part_type, p_factor, size, wordsize);
+    } else {
+      // On subsequent invocations, just update the base address.
+      scratchpad->setLogicalArrayBaseAddress(array_label, base_addr);
     }
-    if (!spad_partition)
-      return;
   }
+  if (!spad_partition)
+    return;
   scratchpad_partition_executed = true;
 
   for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();

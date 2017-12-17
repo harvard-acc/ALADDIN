@@ -39,6 +39,20 @@ class Scratchpad {
     return logical_arrays[arrayName]->getPartitionIndex(abs_addr);
   }
 
+  // Set the base address of a logical array.
+  //
+  // Although this is done at construction time, it is also needed when there
+  // are multiple invocations of the accelerator.
+  void setLogicalArrayBaseAddress(const std::string& arrayName, Addr base_addr) {
+    auto it = logical_arrays.find(arrayName);
+    if (it == logical_arrays.end()) {
+      std::cerr << "Unable to set base address on array " << arrayName
+                << ": no such array found!\n";
+    }
+    assert(it != logical_arrays.end());
+    it->second->setBaseAddress(base_addr);
+  }
+
   void readData(std::string arrayName, Addr addr, size_t len, uint8_t* data) {
     logical_arrays[arrayName]->readData(addr, len, data);
   }

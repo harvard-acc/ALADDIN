@@ -29,6 +29,7 @@ class LogicalArray {
   bool canService(unsigned part_index, Addr addr, bool isLoad);
 
   /* Setters. */
+  void setBaseAddress(Addr _base_addr) { base_addr = _base_addr; }
   void setReadEnergy(float _read_energy) { part_read_energy = _read_energy; }
   void setWriteEnergy(float _write_energy) {
     part_write_energy = _write_energy;
@@ -110,8 +111,12 @@ class LogicalArray {
 
   /* Array label for the LogicalArray. */
   const std::string base_name;
-  /* Base address for the LogicalArray. */
-  const Addr base_addr;
+  /* Base address for the LogicalArray.
+   *
+   * This is the only attribute of the array that is allowed to change across
+   * invocations.
+   */
+  Addr base_addr;
   /* Partition types: block or cyclic. */
   const PartitionType partition_type;
   /* Num of partitions inside this LogicalArray. */
