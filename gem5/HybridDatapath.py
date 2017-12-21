@@ -45,7 +45,9 @@ class HybridDatapath(MemObject):
       "for a set of related simulations.")
 
   # Scratchpad/DMA parameters.
-  dmaSetupOverhead = Param.Unsigned(30, "Overhead in starting a DMA transaction.")
+  cacheLineFlushLatency = Param.Unsigned(113, "Latency of flushing a cacheline (ns).")
+  cacheLineInvalidateLatency = Param.Unsigned(113, "Latency invalidating a cacheline (ns).")
+  dmaSetupOverhead = Param.Unsigned(234, "Overhead in starting a DMA transaction (ns).")
   maxDmaRequests = Param.Unsigned(16, "Max number of outstanding DMA requests")
   numDmaChannels = Param.Unsigned(16, "Number of virtual DMA channels.")
   dmaChunkSize = Param.Unsigned("64", "DMA transaction chunk size.")

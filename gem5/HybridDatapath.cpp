@@ -37,7 +37,6 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                    params->acceleratorId,
                    params->executeStandalone,
                    params->system),
-      dmaSetupOverhead(params->dmaSetupOverhead),
       spadPort(this,
                params->system,
                params->maxDmaRequests,
@@ -91,6 +90,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    * up front, instead of per dmaLoad call, or we'll overestimate the setup
    * latency.
    */
+  dmaSetupOverhead = params->dmaSetupOverhead / cycle_time;
   if (execute_standalone) {
     initializeDatapath(dmaSetupOverhead);
   }
@@ -99,11 +99,9 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
    * accelerator cycles.  Yeah, this is backwards -- we should be doing this
    * from the CPU itself -- but in standalone mode where we don't have a CPU,
    * this is the next best option.
-   *
-   * Latencies were characterized from Zynq Zedboard running at 666MHz.
    */
-  cacheLineFlushLatency = ceil((56.0 * 1.5) / cycle_time);
-  cacheLineInvalidateLatency = ceil((47.0 * 1.5) / cycle_time);
+  cacheLineFlushLatency = params->cacheLineFlushLatency / cycle_time;
+  cacheLineInvalidateLatency = params->cacheLineFlushLatency / cycle_time;
 
   if (use_aladdin_debugger)
     adb::init_debugger();
