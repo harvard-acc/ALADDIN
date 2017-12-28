@@ -244,7 +244,13 @@ void HybridDatapath::stepExecutingQueue() {
     ExecNode* node = *it;
     bool op_satisfied = false;
     if (node->is_memory_op() || node->is_dma_op()) {
-      MemoryOpType type = getMemoryOpType(node);
+      MemoryOpType type;
+      try {
+        type = getMemoryOpType(node);
+      } catch (IllegalHostMemoryAccessException& e) {
+        fatal(e.what());
+      }
+
       switch (type) {
         case Register:
           op_satisfied = handleRegisterMemoryOp(node);
@@ -399,7 +405,7 @@ MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
       case acp:
         return ACP;
       case host:
-        assert(false && "Accessing host memory directly is not allowed!");
+        throw IllegalHostMemoryAccessException(node);
     }
   }
   return NumMemoryOpTypes;
@@ -540,13 +546,22 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
     int size = mem_access->size;
     SrcTypes::Variable* var =
         srcManager.get<SrcTypes::Variable>(node->get_array_label());
-    if (dtb.canRequestTranslation() &&
-        issueTLBRequestTiming(vaddr, size, isLoad, var)) {
+    if (dtb.canRequestTranslation()) {
+      bool issued_tlb_req = false;
+      try {
+        issued_tlb_req = issueTLBRequestTiming(vaddr, size, isLoad, var);
+      } catch (AladdinException& e) {
+        fatal("An error occurred during cache access to trace virtual address "
+              "%#x at node %d: %s\n",
+              vaddr, node_id, e.what());
+      }
+      if (!issued_tlb_req)
+        return false;
       markNodeStarted(node);
       dtb.incrementRequestCounter();
       entry->status = Translating;
       DPRINTF(HybridDatapath,
-              "node:%d, vaddr = %x, is translating\n",
+              "node: %d, trace vaddr = %x, is translating\n",
               node_id,
               vaddr);
     } else {
@@ -658,9 +673,13 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     // time. Make sure we use the original virtual address.
     SrcTypes::Variable* var =
         srcManager.get<SrcTypes::Variable>(node->get_array_label());
-    AladdinTLBResponse translation =
-        getAddressTranslation(vaddr, size, isLoad, var);
-    entry->paddr = translation.paddr;
+    try {
+      AladdinTLBResponse translation =
+          getAddressTranslation(vaddr, size, isLoad, var);
+      entry->paddr = translation.paddr;
+    } catch (AladdinException& e) {
+      fatal("An error occurred during ACP access at node %d: %s\n", e.what());
+    }
   }
   if (!node->started())
     markNodeStarted(node);
@@ -739,15 +758,24 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   /* Assigning the array label can (and probably should) be done in the
    * optimization pass instead of the scheduling pass. */
   Addr accel_addr = isLoad ? dst_vaddr : src_vaddr;
-  auto part_it = user_params.getArrayConfig(accel_addr);
-  MemoryType mtype = part_it->second.memory_type;
-  assert(mtype == spad || mtype == reg);
-  std::string array_label = part_it->first;
-  node->set_array_label(array_label);
+
+  MemoryType mtype;
+  try {
+    auto part_it = user_params.getArrayConfig(accel_addr);
+    mtype = part_it->second.memory_type;
+    node->set_array_label(part_it->first);
+  } catch (UnknownArrayException& e) {
+    fatal("During DMA at node %d: %s", node_id, e.what());
+  }
+  fatal_if(
+      !(mtype == spad || mtype == reg),
+      "At node %d: DMA request must be to/from a scratchpad or register.\n",
+      node_id);
   if (mtype == spad)
-    incrementDmaScratchpadAccesses(array_label, size, isLoad);
+    incrementDmaScratchpadAccesses(node->get_array_label(), size, isLoad);
   else
-    registers.getRegister(array_label)->increment_dma_accesses(isLoad);
+    registers.getRegister(node->get_array_label())
+        ->increment_dma_accesses(isLoad);
 
   // Update the tracking structures.
   inflight_dma_nodes.at(node_id) = WaitingFromDma;
@@ -768,11 +796,16 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
    * Make sure we use the right address for the host memory translation!
    */
   SrcTypes::Variable* var = isLoad ? mem_access->src_var : mem_access->dst_var;
-  AladdinTLBResponse translation = getAddressTranslation(
-      isLoad ? src_vaddr : dst_vaddr, size, isLoad, var);
+  AladdinTLBResponse translation;
+  try {
+    translation = getAddressTranslation(
+        isLoad ? src_vaddr : dst_vaddr, size, isLoad, var);
+  } catch (AladdinException& e) {
+    fatal("An error occurred during DMA at node %d: %s\n", node_id, e.what());
+  }
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
-    scratchpad->readData(array_label, accel_addr, size, data);
+    scratchpad->readData(node->get_array_label(), accel_addr, size, data);
   }
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);

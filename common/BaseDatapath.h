@@ -12,7 +12,6 @@
  */
 
 #include <iostream>
-#include <assert.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
@@ -25,6 +24,7 @@
 
 #include "DatabaseDeps.h"
 
+#include "AladdinExceptions.h"
 #include "ExecNode.h"
 #include "typedefs.h"
 #include "DDDG.h"
@@ -207,7 +207,10 @@ class BaseDatapath {
   SrcTypes::SourceManager& get_source_manager() { return srcManager; }
   const Program& getProgram() const { return program; }
   Addr getBaseAddress(const std::string& label) {
-    return user_params.partition.at(label).base_addr;
+    auto it = user_params.partition.find(label);
+    if (it == user_params.partition.end())
+      throw UnknownArrayException(label);
+    return it->second.base_addr;
   }
 
   //=----------- User configuration functions ------------=//

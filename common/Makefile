@@ -6,7 +6,7 @@ HAS_READLINE ?= 0
 
 MACHINE_MODEL_OBJS = BaseDatapath.o ScratchpadDatapath.o Scratchpad.o \
                      Registers.o Partition.o LogicalArray.o ReadyPartition.o \
-                     SourceManager.o Program.o
+                     SourceManager.o Program.o AladdinExceptions.o
 
 GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/memory_ambiguation.o \

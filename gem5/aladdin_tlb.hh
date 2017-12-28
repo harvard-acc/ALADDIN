@@ -11,6 +11,7 @@
 #include "mem/mem_object.hh"
 #include "mem/request.hh"
 
+#include "aladdin/common/AladdinExceptions.h"
 #include "aladdin/common/SourceEntity.h"
 
 class HybridDatapath;
@@ -259,7 +260,10 @@ class AladdinTLB {
 
   /* Get the simulated virtual address from its array name. */
   Addr lookupVirtualAddr(std::string array_label) {
-    return arrayLabelToVirtualAddrMap.at(array_label).first;
+    auto it = arrayLabelToVirtualAddrMap.find(array_label);
+    if (it == arrayLabelToVirtualAddrMap.end())
+      throw VirtualAddrLookupException(array_label);
+    return it->second.first;
   }
 
   /* Perform a TLB translation with timing. */

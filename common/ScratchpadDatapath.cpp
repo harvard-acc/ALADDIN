@@ -134,7 +134,14 @@ void ScratchpadDatapath::scratchpadPartition() {
       continue;
     spad_partition = true;
     std::string array_label = part_it->first;
-    Addr base_addr = getBaseAddress(array_label);
+    Addr base_addr = 0;
+    try {
+      base_addr = getBaseAddress(array_label);
+    } catch (UnknownArrayException& e) {
+      std::cerr << "[ERROR]: Could not find the base address of array "
+                << array_label << ": " << e.what() << std::endl;
+      exit(1);
+    }
     unsigned size = part_it->second.array_size;  // num of bytes
     unsigned p_factor = part_it->second.part_factor;
     unsigned wordsize = part_it->second.wordsize;  // in bytes

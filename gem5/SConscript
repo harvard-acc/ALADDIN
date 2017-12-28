@@ -4,6 +4,7 @@ Import('*')
 
 SimObject('HybridDatapath.py')
 
+Source('../common/AladdinExceptions.cpp')
 Source('../common/BaseDatapath.cpp')
 Source('../common/ScratchpadDatapath.cpp')
 Source('../common/Scratchpad.cpp')

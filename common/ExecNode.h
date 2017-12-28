@@ -226,7 +226,7 @@ class ExecNode {
   void set_double_precision(bool double_precision) {
     this->double_precision = double_precision;
   }
-  void set_array_label(std::string label) { array_label = label; }
+  void set_array_label(const std::string& label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(MemAccess* mem_access) { this->mem_access = mem_access; }
   void set_dma_mem_access(DmaMemAccess* dma_mem_access) {

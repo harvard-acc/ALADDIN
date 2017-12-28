@@ -1,6 +1,7 @@
 #ifndef _USER_CONFIG_H_
 #define _USER_CONFIG_H_
 
+#include "AladdinExceptions.h"
 #include "ExecNode.h"
 #include "SourceEntity.h"
 #include "typedefs.h"
@@ -39,12 +40,9 @@ class UserConfigParams {
       if (base <= addr && base + size > addr)
         break;
     }
-    // If the array label is not found, abort the simulation.
-    // const std::string& array_label = part_it->first;
+
     if (part_it == partition.end() || part_it->first.empty()) {
-      std::cerr << "Cannot find array with address : 0x" << std::hex << addr
-                << std::endl;
-      assert(false);
+      throw UnknownArrayException(addr);
     }
     return part_it;
   }
