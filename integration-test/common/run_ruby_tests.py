@@ -23,7 +23,7 @@ class DmaCacheHybridTest(tests.DmaCacheHybridTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 5326)
+    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 7672)
 
   def runTest(self):
     self.runAndValidate()
@@ -52,7 +52,7 @@ class DmaLoadStoreTest(tests.DmaLoadStoreTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_dma_load_store_datapath.sim_cycles", 16585)
+        "system.test_dma_load_store_datapath.sim_cycles", 22898)
 
   def runTest(self):
     self.runAndValidate()
@@ -87,7 +87,7 @@ class ArrayFunctionRenamedArgTest(tests.ArrayFunctionRenamedArgTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_array_func_arg_datapath.sim_cycles", 670)
+        "system.test_array_func_arg_datapath.sim_cycles", 663)
 
   def runTest(self):
     self.runAndValidate()
@@ -99,7 +99,7 @@ class MultipleInvocationsTest(tests.MultipleInvocationsTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_multiple_invocations_datapath.sim_cycles", 1112)
+        "system.test_multiple_invocations_datapath.sim_cycles", 1212)
 
   def runTest(self):
     self.runAndValidate()
@@ -147,7 +147,7 @@ class StreamingDmaTest(tests.StreamingDmaTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_streaming_dma_datapath.sim_cycles", 497)
+        "system.test_streaming_dma_datapath.sim_cycles", 514)
 
   def runTest(self):
     self.runAndValidate()
