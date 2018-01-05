@@ -47,6 +47,29 @@ class UserConfigParams {
     return part_it;
   }
 
+  void setArraySize(const std::string& array_name, unsigned size) {
+    auto part_it = partition.find(array_name);
+    if (part_it != partition.end()) {
+      MemoryType mtype = part_it->second.memory_type;
+      if (mtype == cache || mtype == acp || mtype == host) {
+        part_it->second.array_size = size;
+      } else {
+        if (size != part_it->second.array_size) {
+          std::cerr << "[WARNING]: " << array_name
+                    << " is mapped to a scratchpad or "
+                       "register file, whose size cannot "
+                       "be changed dynamically!\n";
+        }
+      }
+    } else {
+      // The only case in where we don't find this array is if when we get a
+      // call to mapArrayToAccelerator() for a region of host memory. We won't
+      // have the trace base address until we parse the entry block in the
+      // dynamic trace, but we can still set the size now.
+      partition[array_name] = { host, none, size, 0, 0, 0 };
+    }
+  }
+
   unrolling_config_t unrolling;
   pipeline_config_t pipeline;
   partition_config_t partition;

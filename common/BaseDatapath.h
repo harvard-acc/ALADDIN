@@ -177,7 +177,7 @@ class BaseDatapath {
       // If we find an entry with a matching name, it was either a
       // user-specified array (which means it's part of the actual
       // accelerator), or it is a redeclaration of a host array. Either way,
-      // update the base address and word size.
+      // update the base address.
       PartitionEntry& entry = part_it->second;
       entry.base_addr = addr;
     }

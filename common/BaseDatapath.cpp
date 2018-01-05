@@ -1094,13 +1094,10 @@ void BaseDatapath::parse_config(std::string& bench,
         cache, none, size, wordsize, p_factor, 0
       };
     } else if (!type.compare("acp")) {
-      unsigned size = 0, p_factor = 0, wordsize = 0;
       char array_label[256];
-      sscanf(rest_line.c_str(), "%[^,],%d\n", array_label, &size);
+      sscanf(rest_line.c_str(), "%[^,]\n", array_label);
       std::string p_type(type);
-      user_params.partition[array_label] = {
-        acp, none, size, wordsize, p_factor, 0
-      };
+      user_params.partition[array_label] = { acp, none, 0, 0, 0, 0 };
     } else if (!type.compare("pipelining")) {
       user_params.global_pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("pipeline")) {

@@ -184,6 +184,11 @@ void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
           "Inserting array label mapping %s -> vpn 0x%x, size %d.\n",
           array_label.c_str(), vaddr, size);
   dtb.insertArrayLabelToVirtual(array_label, vaddr, size);
+  try {
+    user_params.setArraySize(array_label, size);
+  } catch (UnknownArrayException& e) {
+    fatal(e.what());
+  }
 }
 
 void HybridDatapath::eventStep() {
@@ -767,10 +772,11 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   } catch (UnknownArrayException& e) {
     fatal("During DMA at node %d: %s", node_id, e.what());
   }
-  fatal_if(
-      !(mtype == spad || mtype == reg),
-      "At node %d: DMA request must be to/from a scratchpad or register.\n",
-      node_id);
+  fatal_if(!(mtype == spad || mtype == reg),
+           "At node %d: DMA request to %s must be to/from a scratchpad or "
+           "register, but we got %s\n",
+           node_id, node->get_array_label(),
+           mtype == cache ? "cache" : mtype == acp ? "acp" : "host");
   if (mtype == spad)
     incrementDmaScratchpadAccesses(node->get_array_label(), size, isLoad);
   else
