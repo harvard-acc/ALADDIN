@@ -1,6 +1,8 @@
 #ifndef _USER_CONFIG_H_
 #define _USER_CONFIG_H_
 
+#include <iostream>
+
 #include "AladdinExceptions.h"
 #include "ExecNode.h"
 #include "SourceEntity.h"
@@ -70,6 +72,55 @@ class UserConfigParams {
     }
   }
 
+  // For each array we know of, check if the address ranges overlap.
+  //
+  // When overlaps are found, print the overlapping arrays and their address
+  // ranges. Overlapping ranges almost always lead to incorrect behavior.
+  void checkOverlappingRanges() {
+    std::set<OverlappingArrayPair> overlapping_arrays;
+    for (auto& array_0 : partition) {
+      // Compare each array with all the others.
+      const std::string& array_0_name = array_0.first;
+      Addr base_0 = array_0.second.base_addr;
+      unsigned size_0 = array_0.second.array_size;
+      Addr end_0 = base_0 + size_0;
+
+      if (base_0 == 0)
+        continue;
+      for (auto& array_1 : partition) {
+        const std::string& array_1_name = array_1.first;
+        if (array_0_name == array_1_name)
+          continue;
+        Addr base_1 = array_1.second.base_addr;
+        unsigned size_1 = array_1.second.array_size;
+        unsigned end_1 = base_1 + size_1;
+        if (base_1 == 0)
+          continue;
+
+        // Two ranges [A,B], [C,D] do not overlap if A and B are both less than
+        // C or both greater than D.
+        if ((base_0 < base_1 && end_0 <= base_1) ||
+            (base_0 >= end_1 && end_0 > end_1)) {
+          continue;
+        } else {
+          overlapping_arrays.insert(OverlappingArrayPair(
+              array_0_name, base_0, end_0, array_1_name, base_1, end_1));
+        }
+      }
+    }
+    if (!overlapping_arrays.empty()) {
+      for (auto& array_pair : overlapping_arrays) {
+        std::cerr << array_pair << "\n";
+      }
+      std::cerr
+          << "Overlapping array address ranges can lead to incorrect behavior, "
+             "such as DMA nodes trying to access the wrong arrays, ACP "
+             "accessing the wrong memory, etc. Please check your Aladdin "
+             "configuration file and the mapArrayToAccelerator() calls to "
+             "verify that they are correct.\n";
+    }
+  }
+
   unrolling_config_t unrolling;
   pipeline_config_t pipeline;
   partition_config_t partition;
@@ -78,6 +129,64 @@ class UserConfigParams {
   bool ready_mode;
   unsigned scratchpad_ports;
   bool global_pipelining;
+
+ protected:
+  // This class defines a pair of arrays that overlap.
+  class OverlappingArrayPair {
+   protected:
+    // An internal description of an array.
+    struct Array {
+     public:
+      Array(const std::string& _name, Addr _base, Addr _end)
+          : name(_name), base(_base), end(_end) {}
+
+      bool operator==(const Array& other) const {
+        return name == other.name && base == other.base && end == other.end;
+      }
+
+      friend std::ostream& operator<<(std::ostream& os,
+                                      const Array& obj) {
+        os << obj.name << ": " << std::hex << "0x" << obj.base << " - 0x"
+           << obj.end << std::dec;
+        return os;
+      }
+
+      std::string name;
+      Addr base;
+      Addr end;
+    };
+
+    Array array0;
+    Array array1;
+
+   public:
+    OverlappingArrayPair(const std::string& array_0_name,
+                         Addr base_0,
+                         Addr end_0,
+                         const std::string& array_1_name,
+                         Addr base_1,
+                         Addr end_1)
+        : array0(array_0_name, base_0, end_0),
+          array1(array_1_name, base_1, end_1) {}
+
+    // Two OverlappingArrayPair objects are equal if their arrays are equal, in
+    // any order.
+    bool operator==(const OverlappingArrayPair& other) const {
+      return (array0 == other.array0 && array1 == other.array1) ||
+             (array0 == other.array1 && array1 == other.array0);
+    }
+
+    bool operator<(const OverlappingArrayPair& other) const {
+      return (array0.base < array1.base);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os,
+                                    const OverlappingArrayPair& obj) {
+      os << "[WARNING]: Overlapping array declarations found!\n"
+         << "  " << obj.array0 << "\n" << obj.array1;
+      return os;
+    }
+  };
 };
 
 

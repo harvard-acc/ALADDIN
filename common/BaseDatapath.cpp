@@ -47,6 +47,7 @@ bool BaseDatapath::buildDddg() {
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
+  user_params.checkOverlappingRanges();
   delete dddg;
 
   if (current_trace_off == DDDG::END_OF_TRACE)

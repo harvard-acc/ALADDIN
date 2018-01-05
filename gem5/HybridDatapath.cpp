@@ -189,6 +189,7 @@ void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
   } catch (UnknownArrayException& e) {
     fatal(e.what());
   }
+  user_params.checkOverlappingRanges();
 }
 
 void HybridDatapath::eventStep() {
