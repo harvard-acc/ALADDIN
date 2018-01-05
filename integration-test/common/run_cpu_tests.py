@@ -19,7 +19,7 @@ class StandaloneAesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 32})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3381)
+    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3231)
 
   def runTest(self):
     self.runAndValidate()
@@ -55,7 +55,7 @@ class DmaCacheHybridTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_hybrid_datapath.sim_cycles", 7571)
+        "system.test_hybrid_datapath.sim_cycles", 2239)
 
   def runTest(self):
     self.runAndValidate()
@@ -73,7 +73,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_load_store_datapath.sim_cycles", 2872)
+        "system.test_load_store_datapath.sim_cycles", 2999)
 
   def runTest(self):
     self.runAndValidate()
@@ -90,7 +90,7 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_dma_load_store_datapath.sim_cycles", 22780)
+        "system.test_dma_load_store_datapath.sim_cycles", 3409)
 
   def runTest(self):
     self.runAndValidate()

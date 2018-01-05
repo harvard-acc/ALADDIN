@@ -23,7 +23,7 @@ class DmaCacheHybridTest(tests.DmaCacheHybridTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 7672)
+    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 2224)
 
   def runTest(self):
     self.runAndValidate()
@@ -52,7 +52,7 @@ class DmaLoadStoreTest(tests.DmaLoadStoreTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_dma_load_store_datapath.sim_cycles", 22898)
+        "system.test_dma_load_store_datapath.sim_cycles", 3700)
 
   def runTest(self):
     self.runAndValidate()
