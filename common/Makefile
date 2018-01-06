@@ -30,7 +30,7 @@ DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS) $(GRAPH_OPTS_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
 DEBUGGER_OBJ_FILES = $(patsubst %.o,obj/%.o,$(DEBUGGER_OBJS))
-WARNING_EXCEPTIONS = -Wno-reorder
+WARNING_EXCEPTIONS = -Wno-reorder -Wno-deprecated-declarations
 
 OBJ_DIR = obj
 
@@ -47,9 +47,9 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -Icacti-p \
-					-I$(ALADDIN_HOME)
-LFLAGS += -lz -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex -lpthread
+CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -Icacti-p
+CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS)
+LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lboost_regex -lpthread
 
 ifeq ($(HAS_READLINE),1)
   CFLAGS += -DHAS_READLINE
