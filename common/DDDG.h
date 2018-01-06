@@ -247,6 +247,9 @@ class DDDG {
   void output_dddg();
   size_t build_initial_dddg(size_t trace_off, size_t trace_size);
   inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
+  const std::string& get_top_level_function_name() const {
+    return top_level_function_name;
+  }
 
  private:
   void parse_instruction_line(const std::string& line);
@@ -293,6 +296,7 @@ class DDDG {
   // The loop depth of the basic block the current node belongs to.
   unsigned current_loop_depth;
 
+  std::string top_level_function_name;
   std::string curr_instid;
   std::vector<Value> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;

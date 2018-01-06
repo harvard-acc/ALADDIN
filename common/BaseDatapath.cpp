@@ -48,6 +48,7 @@ bool BaseDatapath::buildDddg() {
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
   user_params.checkOverlappingRanges();
+  topLevelFunctionName = dddg->get_top_level_function_name();
   delete dddg;
 
   if (current_trace_off == DDDG::END_OF_TRACE)
@@ -56,6 +57,7 @@ bool BaseDatapath::buildDddg() {
   std::cout << "-------------------------------" << std::endl;
   std::cout << "    Initializing BaseDatapath      " << std::endl;
   std::cout << "-------------------------------" << std::endl;
+  std::cout << " Top level: " << topLevelFunctionName << std::endl;
   numTotalNodes = program.nodes.size();
   beginNodeId = program.nodes.begin()->first;
   endNodeId = (--program.nodes.end())->first + 1;
@@ -662,6 +664,7 @@ void BaseDatapath::outputPerCycleActivity(
   // Summary output.
   summary_data_t summary;
   summary.benchName = benchName;
+  summary.topLevelFunctionName = topLevelFunctionName;
   summary.num_cycles = num_cycles;
   summary.idle_fu_cycles = idle_fu_cycles;
   summary.avg_power = avg_power;
@@ -704,6 +707,7 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   outfile << "        Aladdin Results        " << std::endl;
   outfile << "===============================" << std::endl;
   outfile << "Running : " << summary.benchName << std::endl;
+  outfile << "Top level function: " << summary.topLevelFunctionName << std::endl;
   outfile << "Cycle : " << summary.num_cycles << " cycles" << std::endl;
   outfile << "Avg Power: " << summary.avg_power << " mW" << std::endl;
   outfile << "Idle FU Cycles: " << summary.idle_fu_cycles << " cycles" << std::endl;

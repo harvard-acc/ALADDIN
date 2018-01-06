@@ -82,6 +82,7 @@ struct regEntry {
 // Data to print out to file, stdout, or database.
 struct summary_data_t {
   std::string benchName;
+  std::string topLevelFunctionName;
   int num_cycles;
   int idle_fu_cycles;
   float avg_power;
@@ -350,6 +351,7 @@ class BaseDatapath {
 #endif
 
   std::string benchName;
+  std::string topLevelFunctionName;
   int num_cycles;
 
   // The accelerated program description.

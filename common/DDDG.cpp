@@ -296,6 +296,8 @@ void DDDG::parse_instruction_line(const std::string& line) {
   curr_node->set_basic_block(basicblock);
   curr_node->set_loop_depth(current_loop_depth);
   datapath->addFunctionName(curr_static_function);
+  if (top_level_function_name.empty())
+    top_level_function_name = std::string(curr_static_function);
 
   int func_invocation_count = 0;
   bool curr_func_found = false;
@@ -652,7 +654,8 @@ void DDDG::parse_entry_declaration(const std::string& line) {
   curr_microop = LLVM_IR_EntryDecl;
   char curr_static_function[256];
   num_of_parameters = 0;
-  sscanf(line.c_str(), "entry,%s,%d\n", curr_static_function, &num_of_parameters);
+  sscanf(line.c_str(), "%[^,],%d\n", curr_static_function, &num_of_parameters);
+  top_level_function_name = std::string(curr_static_function);
 }
 
 std::string DDDG::parse_function_name(const std::string& line) {
