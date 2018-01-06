@@ -684,7 +684,9 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
           getAddressTranslation(vaddr, size, isLoad, var);
       entry->paddr = translation.paddr;
     } catch (AladdinException& e) {
-      fatal("An error occurred during ACP access at node %d: %s\n", e.what());
+      fatal("An error occurred during ACP access at node %d: %s\n",
+            node_id,
+            e.what());
     }
   }
   if (!node->started())
