@@ -44,6 +44,7 @@ ifeq ($(DMA_MODE),1)
 	CPPFLAGS += -DDMA_MODE -I$(ALADDIN_HOME)/gem5
 endif
 
+LLVM_VERSION = $(shell clang --version | grep -o -m 1 "[0-9\.]\+" | head -n 1)
 LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
 
 #########################################################
@@ -51,7 +52,7 @@ LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
 #########################################################
 
 labelmap: $(ALL_SRCS)
-	$(GET_LABELED_STMTS) $(ALL_SRCS) -- -I$(LLVM_HOME)/lib/clang/3.4/include $(CPPFLAGS) $(BMARK_SPECIFIC_CFLAGS)
+	$(GET_LABELED_STMTS) $(ALL_SRCS) -- -I$(LLVM_HOME)/lib/clang/$(LLVM_VERSION)/include $(CPPFLAGS) $(BMARK_SPECIFIC_CFLAGS)
 
 full.llvm: $(LLVM_OBJS)
 	llvm-link -o $@ $^ $(LOGGER)
