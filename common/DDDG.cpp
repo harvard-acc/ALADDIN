@@ -417,8 +417,10 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
       // The first element in the pair is the register reference for this call
       // argument.  The second element in the pair is the id of the last node
       // to write to this register, if such a node exists.
-      func_caller_args.push_back(std::make_pair(
-          unique_reg_ref, found_reg_entry ? reg_it->second : current_node_id));
+      unsigned last_node_to_modify =
+          found_reg_entry ? reg_it->second : current_node_id;
+      func_caller_args.push_back(
+          FunctionCallerArg(param_tag, unique_reg_ref, last_node_to_modify, true));
     }
     // Find the instruction that writes the register
     if (found_reg_entry) {
@@ -431,6 +433,17 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
       /*For the load/store op without a gep instruction before, assuming the
        *load/store op performs a gep which writes to the label register*/
       register_last_written[unique_reg_ref] = current_node_id;
+    }
+  } else {
+    if (curr_microop == LLVM_IR_Call && param_tag != num_of_parameters) {
+      // If a function is called with a literal value instead of a variable,
+      // there isn't a name associated with the argument. Therefore, we'll have
+      // to pick a placeholder variable to use for this temporary. The empty
+      // string will work fine.
+      Variable* temporary = srcManager.insert<Variable>("");
+      DynamicVariable unique_ref(curr_dynamic_function, temporary);
+      func_caller_args.push_back(
+          FunctionCallerArg(param_tag, unique_ref, 0, false));
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
@@ -636,17 +649,24 @@ void DDDG::parse_forward(const std::string& line) {
   Variable* var = srcManager.insert<Variable>(label_buf);
   DynamicVariable unique_reg_ref(callee_dynamic_function, var);
   // Create a mapping between registers in caller and callee functions.
-  SrcTypes::DynamicVariable caller_arg;
-  unsigned last_node_to_modify = 0;
+  FunctionCallerArg arg;
   if (!func_caller_args.empty()) {
-    std::tie(caller_arg, last_node_to_modify) = func_caller_args.front();
-    program->call_arg_map.add(unique_reg_ref, caller_arg);
+    arg = func_caller_args.front();
+    if (arg.is_reg)
+      program->call_arg_map.add(unique_reg_ref, arg.dynvar);
     func_caller_args.pop_front();
-  }
-  if (caller_arg) {
-    register_last_written[unique_reg_ref] = last_node_to_modify;
   } else {
-    register_last_written[unique_reg_ref] = current_node_id;
+    std::cerr
+        << "[WARNING]: Expected more forwarded arguments for call to function "
+        << active_method.top().get_function()->get_name() << " at node "
+        << curr_node->get_node_id() << "!\n";
+  }
+  if (arg.is_reg) {
+    if (arg.dynvar) {
+      register_last_written[unique_reg_ref] = arg.last_node_to_modify;
+    } else {
+      register_last_written[unique_reg_ref] = current_node_id;
+    }
   }
 }
 

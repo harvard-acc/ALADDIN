@@ -301,9 +301,27 @@ class DDDG {
   std::vector<Value> parameter_value_per_inst;
   std::vector<unsigned> parameter_size_per_inst;
   std::vector<std::string> parameter_label_per_inst;
-  // This deque contains a list of pairs of DynamicVariable objects for each
-  // call argument and the last node to modify that DynamicVariable.
-  std::deque<std::pair<SrcTypes::DynamicVariable, unsigned>> func_caller_args;
+
+  struct FunctionCallerArg {
+    FunctionCallerArg() : arg_num(-1), last_node_to_modify(0), is_reg(false) {}
+    FunctionCallerArg(int _arg_num,
+                      SrcTypes::DynamicVariable _dynvar,
+                      unsigned last_node,
+                      bool _is_reg)
+        : arg_num(_arg_num), dynvar(_dynvar), last_node_to_modify(last_node),
+          is_reg(_is_reg) {}
+    // Argument number, starting from 0.
+    int arg_num;
+    // The dynamic variable reference from the caller perspective.
+    SrcTypes::DynamicVariable dynvar;
+    // The last node to modify this register.
+    unsigned last_node_to_modify;
+    // Is this variable reference a register or a temporary? If it's a
+    // temporary, then last_node_to_modify does not apply.
+    bool is_reg;
+  };
+  std::deque<FunctionCallerArg> func_caller_args;
+
   long num_of_instructions;
   long current_node_id;
   int num_of_reg_dep;
