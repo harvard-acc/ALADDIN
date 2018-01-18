@@ -59,14 +59,18 @@ report_dir:
 perf: test_performance.o
 	$(CXX) -o test_performance $^ $(LFLAGS)
 
-test : report_dir $(TESTS)
-	$(foreach t,$(TESTS),./$t;)
+RUN_ALL_TESTS = $(patsubst %, run_test-%, $(TESTS))
+run_test-%: report_dir %
+	@printf "Running $*..." && \
+		./$* > /dev/null && ret=$$? && \
+		test $$ret && printf "PASSED\n" || printf "FAILED\n" && \
+		test $$ret
+test: $(RUN_ALL_TESTS)
 
 # Enables running tests in parallel by making a fake target for each test.
 JUNIT_TEST_PARALLEL = $(patsubst %, run_junit-%, $(TESTS))
 run_junit-%: report_dir %
 	./$* -r junit -o $(TEST_REPORT_DIR)/$*.xml
-
 junit_test: $(JUNIT_TEST_PARALLEL)
 
 $(ALADDIN_HOME)/libaladdin.a :
