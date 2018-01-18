@@ -185,8 +185,15 @@ void ScratchpadDatapath::scratchpadPartition() {
       Addr abs_addr = mem_access->vaddr;
       unsigned data_size = mem_access->size;  // in bytes
       assert(data_size != 0 && "Memory access size must be >= 1 byte.");
-      node->set_partition_index(
-          scratchpad->getPartitionIndex(base_label, abs_addr));
+      try {
+        node->set_partition_index(
+            scratchpad->getPartitionIndex(base_label, abs_addr));
+      } catch (UnknownArrayException& e) {
+        std::cerr << "[ERROR]: At node " << node->get_node_id()
+                  << ", could not set partition index on array \"" << base_label
+                  << "\" because it does not exist!" << std::endl;
+        exit(1);
+      }
     }
   }
 #ifdef DEBUG
@@ -228,17 +235,24 @@ void ScratchpadDatapath::stepExecutingQueue() {
         MemAccess* mem_access = node->get_mem_access();
         Addr vaddr = mem_access->vaddr;
         bool isLoad = node->is_load_op();
-        if (scratchpad->canServicePartition(
-                array_name, array_name_index, vaddr, isLoad)){
-          markNodeStarted(node);
-          if (isLoad)
-            scratchpad->increment_loads(array_name, array_name_index);
-          else
-            scratchpad->increment_stores(array_name, array_name_index);
-          markNodeCompleted(it, index);
-          executed = true;
-        } else {
-          scratchpadCanService = scratchpad->canService();
+        try {
+          if (scratchpad->canServicePartition(
+                  array_name, array_name_index, vaddr, isLoad)) {
+            markNodeStarted(node);
+            if (isLoad)
+              scratchpad->increment_loads(array_name, array_name_index);
+            else
+              scratchpad->increment_stores(array_name, array_name_index);
+            markNodeCompleted(it, index);
+            executed = true;
+          } else {
+            scratchpadCanService = scratchpad->canService();
+          }
+        } catch (UnknownArrayException& e) {
+          std::cerr << "[ERROR]: Node " << node->get_node_id()
+                    << " tried to access array \"" << array_name
+                    << "\", which does not exist: " << e.what() << std::endl;
+          exit(1);
         }
       }
     } else if (node->is_multicycle_op()) {

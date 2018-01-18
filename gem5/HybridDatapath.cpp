@@ -433,10 +433,15 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   MemAccess* mem_access = node->get_mem_access();
   Addr vaddr = mem_access->vaddr;
   bool isLoad = node->is_load_op();
-  bool satisfied = scratchpad->canServicePartition(
-                       array_name, array_name_index, vaddr, isLoad);
-  if (!satisfied)
-    return false;
+  try {
+    bool satisfied = scratchpad->canServicePartition(
+                         array_name, array_name_index, vaddr, isLoad);
+    if (!satisfied)
+      return false;
+  } catch (UnknownArrayException& e) {
+    fatal("At node %d: tried to access array \"%s\", which does not exist!\n",
+          node->get_node_id(), array_name);
+  }
 
   markNodeStarted(node);
   if (isLoad) {
@@ -456,10 +461,15 @@ bool HybridDatapath::handleReadyBitAccess(ExecNode* node) {
   Addr start_addr = access->vaddr;
   size_t size = access->size;
   bool reset_ready_bits = (access->value == 0);
-  if (reset_ready_bits)
-    scratchpad->resetReadyBitRange(array_name, start_addr, size);
-  else
-    scratchpad->setReadyBitRange(array_name, start_addr, size);
+  try {
+    if (reset_ready_bits)
+      scratchpad->resetReadyBitRange(array_name, start_addr, size);
+    else
+      scratchpad->setReadyBitRange(array_name, start_addr, size);
+  } catch (UnknownArrayException& e) {
+    fatal("At node %d: tried to set ready bits on array \"%s\", which does not "
+          "exist!\n", node->get_node_id(), array_name);
+  } 
   return true;
 }
 

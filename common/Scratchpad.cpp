@@ -55,7 +55,7 @@ bool Scratchpad::canServicePartition(std::string baseName,
                                      unsigned part_index,
                                      Addr addr,
                                      bool isLoad) {
-  return logical_arrays[baseName]->canService(part_index, addr, isLoad);
+  return getLogicalArray(baseName)->canService(part_index, addr, isLoad);
 }
 
 // power in mW, energy in pJ, time in ns
@@ -92,19 +92,19 @@ void Scratchpad::getMemoryBlocks(std::vector<std::string>& names) {
   }
 }
 void Scratchpad::increment_loads(std::string array_label, unsigned index) {
-  logical_arrays[array_label]->increment_loads(index);
+  getLogicalArray(array_label)->increment_loads(index);
 }
 
 void Scratchpad::increment_stores(std::string array_label, unsigned index) {
-  logical_arrays[array_label]->increment_stores(index);
+  getLogicalArray(array_label)->increment_stores(index);
 }
 
 void Scratchpad::increment_dma_loads(std::string array_label,
                                      unsigned dma_size) {
-  logical_arrays[array_label]->increment_streaming_stores(dma_size);
+  getLogicalArray(array_label)->increment_streaming_stores(dma_size);
 }
 
 void Scratchpad::increment_dma_stores(std::string array_label,
                                       unsigned dma_size) {
-  logical_arrays[array_label]->increment_streaming_loads(dma_size);
+  getLogicalArray(array_label)->increment_streaming_loads(dma_size);
 }

@@ -36,7 +36,7 @@ class Scratchpad {
   bool partitionExist(std::string baseName);
 
   size_t getPartitionIndex(std::string arrayName, Addr abs_addr) {
-    return logical_arrays[arrayName]->getPartitionIndex(abs_addr);
+    return getLogicalArray(arrayName)->getPartitionIndex(abs_addr);
   }
 
   // Set the base address of a logical array.
@@ -44,52 +44,47 @@ class Scratchpad {
   // Although this is done at construction time, it is also needed when there
   // are multiple invocations of the accelerator.
   void setLogicalArrayBaseAddress(const std::string& arrayName, Addr base_addr) {
-    auto it = logical_arrays.find(arrayName);
-    if (it == logical_arrays.end()) {
-      std::cerr << "Unable to set base address on array " << arrayName
-                << ": no such array found!\n";
-    }
-    assert(it != logical_arrays.end());
-    it->second->setBaseAddress(base_addr);
+    LogicalArray* array = getLogicalArray(arrayName);
+    array->setBaseAddress(base_addr);
   }
 
   void readData(std::string arrayName, Addr addr, size_t len, uint8_t* data) {
-    logical_arrays[arrayName]->readData(addr, len, data);
+    getLogicalArray(arrayName)->readData(addr, len, data);
   }
 
   void writeData(std::string arrayName, Addr addr, uint8_t* data, size_t len) {
-    logical_arrays[arrayName]->writeData(addr, data, len);
+    getLogicalArray(arrayName)->writeData(addr, data, len);
   }
 
   /* Set the ready bit for a specific addr. */
   void setReadyBit(
            std::string baseName, unsigned part_index, Addr addr) {
-    logical_arrays[baseName]->setReadyBit(part_index, addr);
+    getLogicalArray(baseName)->setReadyBit(part_index, addr);
   }
   /* Reset the ready bit for a specific addr. */
   void resetReadyBit(
            std::string baseName, unsigned part_index, Addr addr) {
-    logical_arrays[baseName]->resetReadyBit(part_index, addr);
+    getLogicalArray(baseName)->resetReadyBit(part_index, addr);
   }
 
   /* Set/reset multiple ready bits given then address and the data length. */
   void setReadyBitRange(
            std::string baseName, Addr addr, unsigned size) {
-    logical_arrays[baseName]->setReadyBitRange(addr, size);
+    getLogicalArray(baseName)->setReadyBitRange(addr, size);
   }
 
   void resetReadyBitRange(
            std::string baseName, Addr addr, unsigned size) {
-    logical_arrays[baseName]->resetReadyBitRange(addr, size);
+    getLogicalArray(baseName)->resetReadyBitRange(addr, size);
   }
 
   /* Set all the ready bits for the baseName array. */
   void setReadyBits(std::string baseName) {
-    logical_arrays[baseName]->setReadyBits();
+    getLogicalArray(baseName)->setReadyBits();
   }
   /* Reset all the ready bits for the baseName array. */
   void resetReadyBits(std::string baseName) {
-    logical_arrays[baseName]->resetReadyBits();
+    getLogicalArray(baseName)->resetReadyBits();
   }
 
   /* Set all the ready bits in all the scratchpads. */
@@ -130,6 +125,14 @@ class Scratchpad {
   }
 
  private:
+  LogicalArray* getLogicalArray(const std::string& name) {
+    auto it = logical_arrays.find(name);
+    if (it == logical_arrays.end()) {
+      throw UnknownArrayException(name);
+    }
+    return logical_arrays.at(name);
+  }
+
   /* Num of read/write ports per partition. */
   unsigned num_ports;
   /* Set if ReadyPartition is used. */
