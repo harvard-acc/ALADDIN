@@ -14,7 +14,13 @@ LogicalArray::LogicalArray(std::string _base_name,
       partition_type(_partition_type), num_partitions(_partition_factor),
       total_size(_total_size), word_size(_word_size), num_ports(_num_ports) {
 
-  assert(base_addr != 0 && "A base address of zero is certainly incorrect!");
+  if (base_addr == 0) {
+    std::cerr
+        << "[WARNING]: Array \"" << base_name
+        << "\" has a base address of zero! This is probably incorrect, but as "
+           "long as it is never accessed, it will not cause an error."
+        << std::endl;
+  }
 
   /* For now, compute the maximum partition size and use that for power
    * calculations. */
