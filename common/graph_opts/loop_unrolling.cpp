@@ -213,7 +213,7 @@ void LoopFlattening::optimize() {
     auto config_it = getUnrollFactor(node);
     if (config_it == user_params.unrolling.end() || config_it->second != 0)
       continue;
-    if (node->is_compute_op())
+    if (node->is_compute_op() && !node->is_inductive())
       node->set_microop(LLVM_IR_Move);
     else if (node->is_branch_op())
       to_remove_nodes.push_back(node->get_node_id());
