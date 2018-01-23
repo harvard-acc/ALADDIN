@@ -352,6 +352,10 @@ class ExecNode {
     return false;
   }
 
+  bool is_phi_op() const {
+      return microop == LLVM_IR_PHI;
+  }
+
   bool is_convert_op() const {
     switch (microop) {
       case LLVM_IR_Trunc:

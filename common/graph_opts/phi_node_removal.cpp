@@ -19,7 +19,7 @@ void PhiNodeRemoval::optimize() {
        node_it++) {
     ExecNode* node = node_it->second;
     if (!node->has_vertex() ||
-        (node->get_microop() != LLVM_IR_PHI && !node->is_convert_op()) ||
+        (!node->is_phi_op() && !node->is_convert_op()) ||
         (checked_phi_nodes.find(node) != checked_phi_nodes.end()))
       continue;
     Vertex node_vertex = node->get_vertex();
@@ -37,7 +37,7 @@ void PhiNodeRemoval::optimize() {
     }
     if (phi_child.size() == 0 || boost::in_degree(node_vertex, graph) == 0)
       continue;
-    if (node->get_microop() == LLVM_IR_PHI) {
+    if (node->is_phi_op()) {
       // find its first non-phi ancestor.
       // phi node can have multiple children, but it can only have one parent.
       assert(boost::in_degree(node_vertex, graph) == 1);
@@ -45,8 +45,7 @@ void PhiNodeRemoval::optimize() {
       Vertex parent_vertex = source(*in_edge_it, graph);
       ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
       // Search for the first non-phi ancestor of the current phi node.
-      while (nonphi_ancestor->get_microop() == LLVM_IR_PHI) {
-        checked_phi_nodes.insert(nonphi_ancestor);
+      while (nonphi_ancestor->is_phi_op()) {
         assert(nonphi_ancestor->has_vertex());
         Vertex parent_vertex = nonphi_ancestor->get_vertex();
         if (boost::in_degree(parent_vertex, graph) == 0)
@@ -57,7 +56,7 @@ void PhiNodeRemoval::optimize() {
         nonphi_ancestor = getNodeFromVertex(parent_vertex);
       }
       to_remove_edges.insert(*in_edge_it);
-      if (nonphi_ancestor->get_microop() != LLVM_IR_PHI) {
+      if (!nonphi_ancestor->is_phi_op()) {
         // Add dependence between the current phi node's children and its first
         // non-phi ancestor.
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
@@ -73,8 +72,7 @@ void PhiNodeRemoval::optimize() {
       in_edge_iter in_edge_it = in_edges(node_vertex, graph).first;
       Vertex parent_vertex = source(*in_edge_it, graph);
       ExecNode* nonphi_ancestor = getNodeFromVertex(parent_vertex);
-      while (nonphi_ancestor->is_convert_op()) {
-        checked_phi_nodes.insert(nonphi_ancestor);
+      while (nonphi_ancestor->is_convert_op() || nonphi_ancestor->is_phi_op()) {
         Vertex parent_vertex = nonphi_ancestor->get_vertex();
         if (boost::in_degree(parent_vertex, graph) == 0)
           break;
@@ -84,7 +82,7 @@ void PhiNodeRemoval::optimize() {
         nonphi_ancestor = getNodeFromVertex(parent_vertex);
       }
       to_remove_edges.insert(*in_edge_it);
-      if (!nonphi_ancestor->is_convert_op()) {
+      if (!nonphi_ancestor->is_convert_op() && !nonphi_ancestor->is_phi_op()) {
         for (auto child_it = phi_child.begin(), chil_E = phi_child.end();
              child_it != chil_E;
              ++child_it) {
