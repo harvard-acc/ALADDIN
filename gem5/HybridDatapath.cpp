@@ -8,7 +8,7 @@
 #include "base/flags.hh"
 #include "base/trace.hh"
 #include "base/types.hh"
-#include "base/misc.hh"
+#include "base/logging.hh"
 #include "dev/dma_device.hh"
 #include "mem/mem_object.hh"
 #include "mem/packet.hh"
@@ -848,7 +848,7 @@ void HybridDatapath::addDmaNodeToIssueQueue(unsigned node_id) {
 }
 
 void HybridDatapath::sendFinishedSignal() {
-  Flags<Packet::FlagsType> flags = 0;
+  Request::Flags flags = 0;
   size_t size = 4;  // 32 bit integer.
   uint8_t* data = new uint8_t[size];
   // Set some sentinel value.
@@ -940,7 +940,7 @@ AladdinTLBResponse HybridDatapath::getAddressTranslation(
 
 PacketPtr HybridDatapath::createTLBRequestPacket(
     Addr trace_addr, unsigned size, bool isLoad, SrcTypes::Variable* var) {
-  Flags<Packet::FlagsType> flags = 0;
+  Request::Flags flags = 0;
   // Constructor for physical request only
   Request* req = new Request(trace_addr, size, flags, getCacheMasterId());
   MemCmd command = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
@@ -1028,7 +1028,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
 
   MasterID id = op_type == Cache ? getCacheMasterId() : getAcpMasterId();
 
-  Flags<Packet::FlagsType> flags = 0;
+  Request::Flags flags = 0;
   /* To use strided prefetching, we need to include a "PC" so the prefetcher
    * can predict memory behavior similar to how branch predictors work. We
    * don't have real PCs in aladdin so we'll just hash the unique id of the
@@ -1075,7 +1075,7 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   size = cacheLineSize;
 
   Request* req = NULL;
-  Flags<Packet::FlagsType> flags = 0;
+  Request::Flags flags = 0;
   DynamicInstruction inst = program.nodes.at(node_id)->get_dynamic_instruction();
   Addr pc = static_cast<Addr>(std::hash<DynamicInstruction>()(inst));
   req = new Request(paddr, size, flags, getAcpMasterId(), curTick(), pc);
