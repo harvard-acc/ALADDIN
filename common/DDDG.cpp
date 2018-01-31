@@ -161,22 +161,31 @@ void DDDG::handle_post_write_dependency(Addr start_addr,
                                         size_t size,
                                         unsigned sink_node) {
   Addr addr = start_addr;
+  bool is_ready_mode = datapath->isReadyMode();
+  ExecNode* sink = program->nodes.at(sink_node);
   while (addr < start_addr + size) {
     // Get the last node to write to this address.
     auto addr_it = address_last_written.find(addr);
     if (addr_it != address_last_written.end()) {
       unsigned source_inst = addr_it->second;
 
-      if (memory_edge_table.find(source_inst) == memory_edge_table.end())
-        memory_edge_table[source_inst] = std::set<unsigned>();
-      std::set<unsigned>& sink_list = memory_edge_table[source_inst];
+      // If sink_node is a load, source_inst is a DMA load, and ready mode is
+      // enabled, we can skip adding this dependency, because ready mode
+      // replaces the DDDG for handling RAW dependencies where the READ is from
+      // an ordinary load.
+      ExecNode* source = program->nodes.at(source_inst);
+      if (!(sink->is_load_op() && source->is_dma_load() && is_ready_mode)) {
+        if (memory_edge_table.find(source_inst) == memory_edge_table.end())
+          memory_edge_table[source_inst] = std::set<unsigned>();
+        std::set<unsigned>& sink_list = memory_edge_table[source_inst];
 
-      // No need to check if the node already exists - if it does, an insertion
-      // will not happen, and insertion would require searching for the place
-      // to place the new entry anyways.
-      auto result = sink_list.insert(sink_node);
-      if (result.second)
-        num_of_mem_dep++;
+        // No need to check if the node already exists - if it does, an
+        // insertion will not happen, and insertion would require searching for
+        // the place to place the new entry anyways.
+        auto result = sink_list.insert(sink_node);
+        if (result.second)
+          num_of_mem_dep++;
+      }
     }
     addr++;
   }
@@ -477,8 +486,8 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
         // Check if the last node to write was a DMA load. If so, we must obey
         // this memory ordering, because DMA loads are variable-latency
         // operations.
-        int last_node_to_write = addr_it->second;
-        if (program->nodes.at(last_node_to_write)->is_dma_load())
+        ExecNode* last_node_to_write = program->nodes.at(addr_it->second);
+        if (last_node_to_write->is_dma_load())
           handle_post_write_dependency(
               mem_address, mem_size, current_node_id);
         // Now we can overwrite the last written node id.
@@ -588,27 +597,23 @@ void DDDG::parse_result(const std::string& line) {
     mem_access = new DmaMemAccess(dst_addr, src_addr, size, src_var, dst_var);
     curr_node->set_dma_mem_access(mem_access);
     if (curr_microop == LLVM_IR_DMALoad) {
-      /* If we're using full/empty bits, then we want loads and stores to
-       * issue as soon as their data is available. This means that for nearly
-       * all of the loads, the DMA load node would not have completed, so we
-       * can't add these memory dependencies.
+      /* For dmaLoad (which is a STORE from the accelerator's perspective),
+       * enforce RAW and WAW dependencies on subsequent nodes.
+       *
+       * NOTE: If we're using full/empty bits, then we want loads to issue as
+       * soon as their data is available, rather than depending on the DMA load
+       * node to finish. However, stores must still be ordered with respect to
+       * DMA loads. Therefore, we must still update the address_last_written
+       * state and skip adding edges to load nodes later.
        */
-      if (!datapath->isReadyMode()) {
-        // For dmaLoad (which is a STORE from the accelerator's perspective),
-        // enforce RAW and WAW dependencies on subsequent nodes.
-        for (Addr addr = dst_addr; addr < dst_addr + size; addr += 1) {
-          // TODO: Storing an entry for every byte in this range is very inefficient...
-          auto addr_it = address_last_written.find(addr);
-          if (addr_it != address_last_written.end())
-            addr_it->second = current_node_id;
-          else
-            address_last_written.insert(
-                std::make_pair(addr, current_node_id));
-        }
-      } else {
-        // DMALoads also change ready bits.
-        handle_ready_bit_dependency(dst_addr, size, current_node_id);
+      for (Addr addr = dst_addr; addr < dst_addr + size; addr += 1) {
+        // TODO: Storing an entry for every byte in this range is very
+        // inefficient...
+        address_last_written[addr] = current_node_id;
       }
+      // DMALoads also change ready bits.
+      if (datapath->isReadyMode())
+        handle_ready_bit_dependency(dst_addr, size, current_node_id);
     } else {
       // For dmaStore (which is actually a LOAD from the accelerator's
       // perspective), enforce RAW dependencies on this node.

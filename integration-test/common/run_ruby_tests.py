@@ -57,6 +57,18 @@ class DmaLoadStoreTest(tests.DmaLoadStoreTest):
   def runTest(self):
     self.runAndValidate()
 
+class DmaStoreOrderTest(tests.DmaStoreOrderTest):
+  def setSimParams(self):
+    super(DmaStoreOrderTest, self).setSimParams()
+    self.addGem5Parameter({"ruby": True})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult(
+        "system.test_dma_store_order_datapath.sim_cycles", 1862)
+
+  def runTest(self):
+    self.runAndValidate()
+
 class MmapTest(tests.MmapTest):
   def setSimParams(self):
     super(MmapTest, self).setSimParams()

@@ -95,6 +95,23 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
   def runTest(self):
     self.runAndValidate()
 
+class DmaStoreOrderTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_dma_store_order"))
+    self.setSimBin("test_dma_store_order")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult(
+        "system.test_dma_store_order_datapath.sim_cycles", 1780)
+
+  def runTest(self):
+    self.runAndValidate()
+
 class MmapTest(gat.Gem5AladdinTest):
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]
