@@ -259,6 +259,8 @@ class ExecNode {
     return false;
   }
 
+  bool is_intrinsic_op() const { return microop == LLVM_IR_Intrinsic; }
+
   bool is_gep_op() const {
     return microop == LLVM_IR_GetElementPtr;
   }
@@ -415,6 +417,8 @@ class ExecNode {
   float fu_node_latency(float cycle_time) const {
     if (microop == LLVM_IR_Ret)
       return cycle_time;
+    if (is_intrinsic_op())
+      return intrinsic_op_latency_in_cycles() * cycle_time;
     if (is_fp_op())
       return fp_node_latency_in_cycles() * cycle_time;
     switch ((int)cycle_time) {
@@ -575,6 +579,14 @@ class ExecNode {
     return TRIG_SINE_LATENCY_IN_CYCLES;
   }
 
+  unsigned intrinsic_op_latency_in_cycles() const {
+    // Intrinsic operations are generally meant to represent functions that
+    // would be inefficient to model directly. Since there are so many of them,
+    // for now just assume they all take a single cycle. Later, we can refine
+    // them if need be based on the operation.
+    return 1;
+  }
+
 
   std::string get_microop_name() const {
 
@@ -650,6 +662,7 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(SilentStore);
       LLVM_IR_OPCODE_TO_NAME(Sine);
       LLVM_IR_OPCODE_TO_NAME(Cosine);
+      LLVM_IR_OPCODE_TO_NAME(Intrinsic);
       default:
         return "";
     }

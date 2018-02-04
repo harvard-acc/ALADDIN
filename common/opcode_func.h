@@ -72,6 +72,7 @@
 #define LLVM_IR_SilentStore 101
 #define LLVM_IR_Sine 102
 #define LLVM_IR_Cosine 103
+#define LLVM_IR_Intrinsic 104
 // clang-format on
 
 #endif
