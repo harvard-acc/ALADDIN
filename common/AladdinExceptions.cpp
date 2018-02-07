@@ -53,3 +53,6 @@ IllegalHostMemoryAccessException::IllegalHostMemoryAccessException(
                            node->get_array_label() +
                            "\" directly from the accelerator is not allowed! " +
                            helpfulSuggestion) {}
+
+ArrayAccessException::ArrayAccessException(const std::string& message)
+    : AladdinException(message) {}

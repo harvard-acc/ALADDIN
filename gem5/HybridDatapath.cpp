@@ -824,7 +824,12 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   }
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
-    scratchpad->readData(node->get_array_label(), accel_addr, size, data);
+    try {
+      scratchpad->readData(node->get_array_label(), accel_addr, size, data);
+    } catch (ArrayAccessException& e) {
+      fatal("When reading from array %s at node %d: %s\n",
+            node->get_array_label(), node->get_node_id(), e.what());
+    }
   }
 
   DmaEvent* dma_event = new DmaEvent(this, node_id);
@@ -1233,8 +1238,12 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   if (node->is_dma_load()) {
     uint8_t* data = pkt->getPtr<uint8_t>();
     assert(data != nullptr && "Packet data is null!");
-
-    datapath->scratchpad->writeData(array_label, vaddr, data, size);
+    try {
+      datapath->scratchpad->writeData(array_label, vaddr, data, size);
+    } catch (ArrayAccessException& e) {
+      fatal("When writing to array %s at node %d: %s\n", array_label, node_id,
+            e.what());
+    }
   }
   return DmaPort::recvTimingResp(pkt);
 }

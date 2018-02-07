@@ -202,9 +202,14 @@ void LogicalArray::increment_streaming_stores(unsigned streaming_size) {
   }
 }
 
-void LogicalArray::accessData(Addr addr, uint8_t* data, size_t len, bool is_read) {
-  assert(len > 0 && "data length must be greater than zero!");
-  assert(len % word_size == 0 && "data length is not a multiple of word_size!");
+void LogicalArray::accessData(Addr addr,
+                              uint8_t* data,
+                              size_t len,
+                              bool is_read) {
+  if (len == 0)
+    throw ArrayAccessException("Data access length just be nonzero");
+  if (len % word_size != 0)
+    throw ArrayAccessException("Data length is not a multiple of word size");
   uint8_t* ptr = nullptr;
   Addr curr_addr = addr;
   for (size_t i = 0; i < len; i += word_size) {
@@ -241,7 +246,8 @@ void LogicalArray::resetReadyBit(unsigned part_index, Addr addr) {
 void LogicalArray::setReadyBitRange(Addr addr, unsigned size) {
   for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
     Addr curr_addr = addr + curr_size;
-    assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
+    if (!(curr_addr >= base_addr && curr_addr < base_addr + total_size))
+      throw ArrayAccessException("Out of bounds array access");
     unsigned part_index = getPartitionIndex(curr_addr);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->setReadyBit(blk_index);
@@ -251,7 +257,8 @@ void LogicalArray::setReadyBitRange(Addr addr, unsigned size) {
 void LogicalArray::resetReadyBitRange(Addr addr, unsigned size) {
   for (unsigned curr_size = 0; curr_size < size; curr_size += word_size) {
     Addr curr_addr = addr + curr_size;
-    assert(curr_addr >= base_addr && curr_addr < base_addr + total_size);
+    if (!(curr_addr >= base_addr && curr_addr < base_addr + total_size))
+      throw ArrayAccessException("Out of bounds array access");
     unsigned part_index = getPartitionIndex(curr_addr);
     unsigned blk_index = getBlockIndex(part_index, curr_addr);
     partitions[part_index]->resetReadyBit(blk_index);

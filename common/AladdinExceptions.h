@@ -40,4 +40,9 @@ class IllegalHostMemoryAccessException : public AladdinException {
   static const std::string helpfulSuggestion;
 };
 
+class ArrayAccessException : public AladdinException {
+ public:
+  ArrayAccessException(const std::string& message);
+};
+
 #endif
