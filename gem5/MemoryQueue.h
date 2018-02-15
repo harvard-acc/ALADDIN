@@ -28,6 +28,7 @@ enum MemAccessStatus {
 enum MemoryOpType {
   Register,
   Scratchpad,
+  ScratchpadBypass,
   Cache,
   Dma,
   ACP,

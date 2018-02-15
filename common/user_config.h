@@ -10,6 +10,7 @@
 
 enum MemoryType {
   spad,
+  spad_bypass,
   reg,
   cache,
   acp,
@@ -26,6 +27,61 @@ struct PartitionEntry {
   unsigned wordsize;    // in bytes
   unsigned part_factor;
   Addr base_addr;
+};
+
+// Every mapping entry stores an address range mapping.
+struct SpadToDmaMappingEntry {
+  Addr spad_start;
+  Addr host_start;
+  std::string host_array_name;
+  unsigned size;
+};
+
+// This class maintains all the mappings of scratchpad address ranges to host
+// memory address ranges in a scratchpad.
+// For example, a dmaLoad(spad+100, host+200, 300) would add a new mapping entry
+// which maps the address range of {spad+100, spad+400} in spad to host address
+// range {host+200, host+500}.
+class SpadToDmaMapping {
+ public:
+  SpadToDmaMapping() : part_entry(nullptr) { mapping_entries.clear(); }
+  SpadToDmaMapping(PartitionEntry* _part_entry) : part_entry(_part_entry) {
+    mapping_entries.clear();
+  }
+
+  std::pair<std::string, Addr> getSpadToDmaMapping(Addr spad_addr) {
+    for (auto& entry : mapping_entries) {
+      if (entry.spad_start <= spad_addr &&
+          entry.spad_start + entry.size > spad_addr) {
+        return { entry.host_array_name,
+                 entry.host_start + spad_addr - entry.spad_start };
+      }
+    }
+    std::cerr << "Do not find host array mapping for the scratchpad address!\n";
+    exit(1);
+  }
+
+  void updateSpadToDmaMapping(Addr spad_start,
+                              Addr host_start,
+                              std::string host_array_name,
+                              unsigned size) {
+    // Check if the new mapping overlaps with an existing one. If so, replace
+    // the old one with the new one.
+    for (auto it = mapping_entries.begin(); it != mapping_entries.end();) {
+      if ((it->spad_start <= spad_start &&
+           it->spad_start + it->size > spad_start) ||
+          (it->spad_start > spad_start &&
+           it->spad_start + it->size <= spad_start + size)) {
+        it = mapping_entries.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    mapping_entries.push_back({ spad_start, host_start, host_array_name, size });
+  }
+
+  PartitionEntry* part_entry;
+  std::vector<SpadToDmaMappingEntry> mapping_entries;
 };
 
 class UserConfigParams {
@@ -121,9 +177,49 @@ class UserConfigParams {
     }
   }
 
+  void updateSpadToDmaMapping(std::string spad_name,
+                              std::string host_array_name,
+                              Addr spad_start,
+                              Addr host_start,
+                              unsigned size) {
+    std::cout << "Updating scratchpad to host array mappings. Scratchpad name: "
+              << spad_name << ", spad base: " << std::hex << spad_start
+              << ", host array name: " << host_array_name
+              << ", host base: " << host_start << std::dec << ", size " << size
+              << "\n";
+    auto map_it = spad_dma_mapping.find(spad_name);
+    if (map_it != spad_dma_mapping.end()) {
+      map_it->second.updateSpadToDmaMapping(
+          spad_start, host_start, host_array_name, size);
+    } else {
+      auto part_it = partition.find(spad_name);
+      if (part_it != partition.end()) {
+        spad_dma_mapping[spad_name] = SpadToDmaMapping(&(part_it->second));
+        spad_dma_mapping[spad_name].updateSpadToDmaMapping(
+            spad_start, host_start, host_array_name, size);
+      } else {
+        std::cerr << "No partition entry is found for the scratchpad name "
+                  << spad_name << "!\n";
+        exit(1);
+      }
+    }
+  }
+
+  std::pair<std::string, Addr> getSpadToDmaMapping(std::string spad_name,
+                                                   Addr spad_addr) {
+    auto map_it = spad_dma_mapping.find(spad_name);
+    if (map_it != spad_dma_mapping.end()) {
+      return map_it->second.getSpadToDmaMapping(spad_addr);
+    }
+    std::cerr << spad_name
+              << " does not have scrachpad to any host memory mappings!\n";
+    exit(1);
+  }
+
   unrolling_config_t unrolling;
   pipeline_config_t pipeline;
   partition_config_t partition;
+  spad_dma_mapping_t spad_dma_mapping;
 
   float cycle_time;
   bool ready_mode;

@@ -100,6 +100,12 @@ class LogicalArray {
     }
   }
 
+  /* Return true if the partition with index part_index has ready bits set. */
+  bool checkReadyBits(unsigned part_index, Addr addr) {
+    unsigned blk_index = getBlockIndex(part_index, addr);
+    return partitions[part_index]->checkReadyBits(blk_index);
+  }
+
  protected:
 
   /* Read or write data to this array.

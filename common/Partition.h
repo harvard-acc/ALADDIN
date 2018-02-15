@@ -68,6 +68,7 @@ class Partition {
   virtual void resetReadyBit(unsigned blk_index) {}
   virtual void setAllReadyBits() {}
   virtual void resetAllReadyBits() {}
+  virtual bool checkReadyBits(unsigned blk_index) {return true;}
   /* Increment the load counter by one and also update the occupied_bw counter.
    */
   void increment_loads() {

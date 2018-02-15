@@ -213,10 +213,16 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   class DatapathSenderState : public Packet::SenderState {
    public:
     DatapathSenderState(bool _is_ctrl_signal)
-        : node_id(-1), vaddr(0), is_ctrl_signal(_is_ctrl_signal) {}
+        : node_id(-1), vaddr(0), is_ctrl_signal(_is_ctrl_signal),
+          is_dma_bypass(false) {}
 
     DatapathSenderState(unsigned _node_id, Addr _vaddr)
-        : node_id(_node_id), vaddr(_vaddr), is_ctrl_signal(false) {}
+        : node_id(_node_id), vaddr(_vaddr), is_ctrl_signal(false),
+          is_dma_bypass(false) {}
+
+    DatapathSenderState(unsigned _node_id, Addr _vaddr, bool _is_dma_bypass)
+        : node_id(_node_id), vaddr(_vaddr), is_ctrl_signal(false),
+          is_dma_bypass(_is_dma_bypass) {}
 
     /* Aladdin node that triggered the memory access. */
     unsigned node_id;
@@ -229,6 +235,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
      * differently) or an ordinary memory access.
      */
     bool is_ctrl_signal;
+
+    bool is_dma_bypass;
   };
 
   class DmaEvent : public Event {
@@ -276,6 +284,11 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   bool handleSpadMemoryOp(ExecNode* node);
 
+  /* Handle a scratchpad memory operation when the scratchpad can
+   * opportunistically use ACP to fetch data. It returns true if satisfied.
+   */
+  bool handleSpadBypassMemoryOp(ExecNode* node);
+
   /* Handle a DMA request and return true if the DMA request has returned.
    *
    * Since DMA requests are multicycle operations, this only returns true
@@ -314,7 +327,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    * The mechanics of actually performing the access are delegated to worker
    * functions.
    */
-  bool handleAcpMemoryOp(ExecNode* node);
+  bool handleAcpMemoryOp(ExecNode* node, bool is_dma_bypass);
 
   /* Prints the ids of all nodes currently on the executing queue.
    *
@@ -398,7 +411,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                               unsigned size,
                               bool isLoad,
                               unsigned node_id,
-                              uint8_t* data);
+                              uint8_t* data,
+                              bool is_dma_bypass);
 
   // A helper function for issuing either cache or ACP requests.
   IssueResult issueCacheOrAcpRequest(MemoryOpType op_type,
@@ -407,7 +421,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                      unsigned size,
                                      bool isLoad,
                                      unsigned node_id,
-                                     uint8_t* data);
+                                     uint8_t* data,
+                                     bool is_dma_bypass);
 
   // For ACP: Request ownership of a cache line.
   IssueResult issueOwnershipRequest(Addr vaddr,
@@ -451,6 +466,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // This queue stores the DMA events that are waiting for their setup latency
   // to elapse before they can be issued, along with their setup latencies.
   std::deque<std::pair<unsigned, Tick>> dmaWaitingQueue;
+
+  // This stores the mapping information needed by the nodes that are trying to
+  // bypass DMA accesses. This is added to speed up simulation, since otherwise
+  // a bypassing access that is waiting for ACP bandwidth will check the global
+  // mapping table in every cycle, which slows down the simulation
+  // siginificantly.
+  std::map<unsigned, std::pair<std::string, Addr>> inflight_bypass_nodes;
 
   // Number of cycles required for the CPU to initiate a DMA transfer.
   unsigned dmaSetupOverhead;
