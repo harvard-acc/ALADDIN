@@ -56,3 +56,8 @@ IllegalHostMemoryAccessException::IllegalHostMemoryAccessException(
 
 ArrayAccessException::ArrayAccessException(const std::string& message)
     : AladdinException(message) {}
+
+AddressTranslationException::AddressTranslationException(Addr vaddr)
+    : AladdinException(
+          std::string("Unable to translate simulation virtual address: " +
+                      std::to_string(vaddr) + ".")) {}

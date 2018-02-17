@@ -157,7 +157,7 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
     else if (datapath->isExecuteStandalone())
       ppn = vpn;
     else
-      assert(false && "Unable to service this Aladdin TLB miss!");
+      throw AddressTranslationException(vpn);
   }
   AladdinTLBResponse* translation = pkt->getPtr<AladdinTLBResponse>();
   translation->vaddr = vpn + page_offset;
