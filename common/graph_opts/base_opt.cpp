@@ -72,11 +72,14 @@ bool BaseAladdinOpt::isPrunableNode(ExecNode* node) const {
       break;
   }
 
-  // DMA stores modify host memory so they cannot be pruned. Branch nodes may
-  // have zero children -- this might be the result of loop pipelining -- and
-  // they cannot be removed because this could result in the ancestors of the
-  // branch nodes also being removed.
-  if (node->is_dma_store() || node->is_branch_op())
+  // DMA stores modify host memory so they cannot be pruned. DMA loads may
+  // appear isolated, but in fact it could affect program execution in a future
+  // invocation of the same accelerator, so they cannot be pruned either.
+  //
+  // Branch nodes may have zero children -- this might be the result of loop
+  // pipelining -- and they cannot be removed because this could result in the
+  // ancestors of the branch nodes also being removed.
+  if (node->is_dma_op() || node->is_branch_op())
     return false;
 
   // In ready mode, we don't add any memory dependencies between dmaLoads and
