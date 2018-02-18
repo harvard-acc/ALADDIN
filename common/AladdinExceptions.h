@@ -45,4 +45,9 @@ class ArrayAccessException : public AladdinException {
   ArrayAccessException(const std::string& message);
 };
 
+class AddressTranslationException : public AladdinException {
+ public:
+  AddressTranslationException(Addr vaddr);
+};
+
 #endif
