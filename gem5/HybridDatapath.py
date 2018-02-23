@@ -79,6 +79,10 @@ class HybridDatapath(MemObject):
   cacheQueueSize = Param.Int(32, "Maximum outstanding cache requests.")
   cacheBandwidth = Param.Int(4, "Maximum cache requests per cycle.")
 
+  # ACP cache latency parameters
+  acpCacheLatency = Param.Int(13, "ACP cache tag latecny")
+  acpCacheMSHRs = Param.Int(4, "ACP cache MSHR number")
+
   enableStatsDump = Param.Bool(
       False, "Dump m5 stats after each accelerator invocation.")
   recordMemoryTrace = Param.Bool(
@@ -124,7 +128,8 @@ class HybridDatapath(MemObject):
 
   def connectAcpPort(self, tol2bus):
     if self.useAcpCache:
-      self.acp_cache = AcpCache()
+      self.acp_cache = AcpCache(
+        tag_latency = self.acpCacheLatency, mshrs = self.acpCacheMSHRs)
       self.acp_port = self.acp_cache.cpu_side
       self.acp_cache.mem_side = tol2bus.slave
     else:
