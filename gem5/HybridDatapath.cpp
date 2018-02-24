@@ -1287,6 +1287,7 @@ void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
     case MemCmd::ReadReq:
     case MemCmd::ReadResp:
     case MemCmd::WriteReq:
+    case MemCmd::WriteLineReq:
     case MemCmd::WriteResp:
       entry->status = WaitingFromCache;
       entry->when_issued = curTick();
