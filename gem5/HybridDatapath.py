@@ -14,9 +14,9 @@ class AcpCache(Cache):
   write buffers so that we don't suffer MORE than an L2 cache lookup latency when
   we have to writeback cache lines to the L2.
   """
-  size = "64B"
+  size = "128B"
   assoc = 1
-  tag_latency = 13
+  tag_latency = 1
   data_latency = 1
   response_latency = 1
   mshrs = 4
@@ -80,8 +80,9 @@ class HybridDatapath(MemObject):
   cacheBandwidth = Param.Int(4, "Maximum cache requests per cycle.")
 
   # ACP cache latency parameters
-  acpCacheLatency = Param.Int(13, "ACP cache tag latecny")
-  acpCacheMSHRs = Param.Int(4, "ACP cache MSHR number")
+  acpCacheSize = Param.String("64B", "ACP cache size")
+  acpCacheLatency = Param.Int(1, "ACP cache tag latency")
+  acpCacheMSHRs = Param.Int(4, "ACP cache number of MSHRs")
 
   enableStatsDump = Param.Bool(
       False, "Dump m5 stats after each accelerator invocation.")
@@ -128,8 +129,10 @@ class HybridDatapath(MemObject):
 
   def connectAcpPort(self, tol2bus):
     if self.useAcpCache:
-      self.acp_cache = AcpCache(
-        tag_latency = self.acpCacheLatency, mshrs = self.acpCacheMSHRs)
+      self.acp_cache = AcpCache(size = self.acpCacheSize,
+                                tag_latency = self.acpCacheLatency,
+                                mshrs = self.acpCacheMSHRs,
+                                write_buffers = self.acpCacheMSHRs)
       self.acp_port = self.acp_cache.cpu_side
       self.acp_cache.mem_side = tol2bus.slave
     else:
