@@ -3,6 +3,7 @@ from m5.objects import CommMonitor, Cache, MemTraceProbe
 from MemObject import MemObject
 from m5.proxy import *
 from Cache import *
+from XBar import *
 
 class AcpCache(Cache):
   """ A small L1 cache that handles coherency logic on ACP's behalf.
@@ -128,12 +129,18 @@ class HybridDatapath(MemObject):
       self.cache.mem_side = bus.slave
 
   def connectAcpPort(self, tol2bus):
+    if not hasattr(self, "acpbus"):
+      self.acpbus = NoncoherentXBar(width = 16,
+                                    frontend_latency = 1,
+                                    forward_latency = 1,
+                                    response_latency = 1)
     if self.useAcpCache:
       self.acp_cache = AcpCache(size = self.acpCacheSize,
                                 tag_latency = self.acpCacheLatency,
                                 mshrs = self.acpCacheMSHRs,
                                 write_buffers = self.acpCacheMSHRs)
       self.acp_port = self.acp_cache.cpu_side
-      self.acp_cache.mem_side = tol2bus.slave
+      self.acp_cache.mem_side = self.acpbus.slave
+      tol2bus.slave = self.acpbus.master
     else:
       self.acp_port = tol2bus.slave
