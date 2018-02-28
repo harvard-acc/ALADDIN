@@ -28,6 +28,11 @@ int* invokeAcceleratorAndReturn(unsigned req_code) {
   return finish_flag;
 }
 
+void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag) {
+  *finish_flag = NOT_COMPLETED;
+  ioctl(ALADDIN_FD, req_code, finish_flag);
+}
+
 void dumpGem5Stats(char* stats_desc) {
   ioctl(ALADDIN_FD, DUMP_STATS, stats_desc);
 }

@@ -58,6 +58,11 @@ void invokeAcceleratorAndBlock(unsigned req_code);
  */
 int* invokeAcceleratorAndReturn(unsigned req_code);
 
+/* The only difference from invokeAcceleratorAndReturn is this one does not allocate
+ * memory for the finish_flag pointer, and the client code is responsible for that.
+ */
+void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag);
+
 /* Trigger gem5 to dump its stats and then resume simulation.
  *
  * This is accomplished using a special request code in lieu of one assigned to
