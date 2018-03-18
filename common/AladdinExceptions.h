@@ -47,7 +47,7 @@ class ArrayAccessException : public AladdinException {
 
 class AddressTranslationException : public AladdinException {
  public:
-  AddressTranslationException(Addr vaddr);
+  AddressTranslationException(Addr vaddr, unsigned size);
 };
 
 #endif

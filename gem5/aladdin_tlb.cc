@@ -151,14 +151,24 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
   auto result = translateTraceToSimVirtual(pkt);
   vpn = result.first;
   page_offset = result.second;
-  if (!tlbMemory->lookup(vpn, ppn)) {
-    if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
-      ppn = infiniteBackupTLB[vpn];
-    else if (datapath->isExecuteStandalone())
-      ppn = vpn;
-    else
-      throw AddressTranslationException(vpn);
+  unsigned size = pkt->req->getSize();
+  // Ensure that the entire range is mapped.
+  for (Addr curr_vpn = vpn; curr_vpn < vpn + size; curr_vpn += pageBytes) {
+    Addr curr_ppn;
+    if (!tlbMemory->lookup(curr_vpn, curr_ppn)) {
+      if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
+        curr_ppn = infiniteBackupTLB[curr_vpn];
+      else if (datapath->isExecuteStandalone())
+        curr_ppn = curr_vpn;
+      else
+        throw AddressTranslationException(curr_vpn, size);
+    }
+    // Ensure we return the translation for the starting page.
+    if (curr_vpn == vpn) {
+      ppn = curr_ppn;
+    }
   }
+
   AladdinTLBResponse* translation = pkt->getPtr<AladdinTLBResponse>();
   translation->vaddr = vpn + page_offset;
   translation->paddr = ppn + page_offset;
