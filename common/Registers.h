@@ -9,13 +9,15 @@
 class Register {
  public:
   Register(std::string baseName,
-           unsigned int size,
+           unsigned int _total_size,
+           unsigned int _word_size,
            float cycleTime,
            unsigned int id) {
     this->baseName = baseName;
     this->cycleTime = cycleTime;
     this->id = id;
-    num_bytes = size;
+    total_size = _total_size;
+    word_size = _word_size;
     loads = 0;
     stores = 0;
     // Units are confusing...they are...
@@ -23,11 +25,13 @@ class Register {
     float reg_int_power, reg_sw_power, reg_leak_power, reg_area;
     getRegisterPowerArea(
         cycleTime, &reg_int_power, &reg_sw_power, &reg_leak_power, &reg_area);
-    readEnergy = num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
-    writeEnergy = num_bytes * 8 * (reg_int_power + reg_sw_power) * cycleTime;
+    // The read/write energy value should be for a single-word access. Vector
+    // accesses should multiply this by the vector size.
+    readEnergy = word_size * 8 * (reg_int_power + reg_sw_power) * cycleTime;
+    writeEnergy = word_size * 8 * (reg_int_power + reg_sw_power) * cycleTime;
     // REG_leak_power is mW and we want leakPower in mW so we're fine.
-    leakPower = num_bytes * 8 * (reg_leak_power);
-    area = num_bytes * 8 * (reg_area);
+    leakPower = total_size * 8 * (reg_leak_power);
+    area = total_size * 8 * (reg_area);
   }
 
   void increment_loads() { loads++; }
@@ -44,10 +48,13 @@ class Register {
   double getWriteEnergy() { return writeEnergy; }
   double getLeakagePower() { return leakPower; }
   double getArea() { return area; }
+  unsigned getTotalSize() const { return total_size; }
+  unsigned getWordSize() const { return word_size; }
 
  private:
   std::string baseName;
-  unsigned int num_bytes;
+  unsigned int total_size;  // bytes
+  unsigned int word_size;  // bytes
   unsigned int id;
   float cycleTime;
   double readEnergy;
@@ -67,7 +74,8 @@ class Registers {
   ~Registers();
 
   void createRegister(std::string baseName,
-                      unsigned num_bytes,
+                      unsigned total_size_bytes,
+                      unsigned word_size_bytes,
                       float cycleTime);
   void getRegisterNames(std::vector<std::string>& names);
   Register* getRegister(std::string baseName) { return regs[baseName]; }

@@ -12,11 +12,13 @@ void Registers::clear() {
 }
 
 void Registers::createRegister(std::string baseName,
-                               unsigned int num_bytes,
+                               unsigned int total_size_bytes,
+                               unsigned int word_size_bytes,
                                float cycleTime) {
   assert(regs.find(baseName) == regs.end());
   unsigned int new_id = regs.size();
-  regs[baseName] = new Register(baseName, num_bytes, cycleTime, new_id);
+  regs[baseName] = new Register(
+      baseName, total_size_bytes, word_size_bytes, cycleTime, new_id);
 }
 
 void Registers::getRegisterNames(std::vector<std::string>& names) {

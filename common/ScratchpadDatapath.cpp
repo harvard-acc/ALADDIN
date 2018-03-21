@@ -105,7 +105,8 @@ void ScratchpadDatapath::completePartition() {
     if (p_type == complete) {
       std::string array_label = it->first;
       unsigned size = it->second.array_size;
-      registers.createRegister(array_label, size, cycle_time);
+      unsigned word_size = it->second.wordsize;
+      registers.createRegister(array_label, size, word_size, cycle_time);
     }
   }
 }
