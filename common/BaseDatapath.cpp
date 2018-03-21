@@ -486,7 +486,7 @@ void BaseDatapath::outputPerCycleActivity(
   }
   // TODO: mem_partition_names contains logical arrays, not completely
   // partitioned arrays.
-  stats << "reg,";
+  stats << "reg-read,reg-write,";
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
        ++it) {
     stats << *it << "-read," << *it << "-write,";
@@ -598,10 +598,14 @@ void BaseDatapath::outputPerCycleActivity(
            curr_shifter_dynamic_power) *
           cycleTime;
 #ifdef DEBUG
-      power_stats << curr_mul_dynamic_power + mul_leakage_power << ","
-                  << curr_add_dynamic_power + add_leakage_power << ","
-                  << curr_bit_dynamic_power + bit_leakage_power << ","
-                  << curr_shifter_dynamic_power + shifter_leakage_power << ","
+      power_stats << curr_fp_sp_mul_dynamic_power << ","
+                  << curr_fp_dp_mul_dynamic_power << ","
+                  << curr_fp_sp_add_dynamic_power << ","
+                  << curr_fp_dp_add_dynamic_power << ","
+                  << curr_mul_dynamic_power << ","
+                  << curr_add_dynamic_power << ","
+                  << curr_bit_dynamic_power << ","
+                  << curr_shifter_dynamic_power << ","
                   << curr_trig_dynamic_power << ",";
 #endif
     }
@@ -632,7 +636,8 @@ void BaseDatapath::outputPerCycleActivity(
             << mem_activity.at(*it).at(curr_level).write << ",";
     }
     stats << std::endl;
-    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power;
+    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power
+                << ",";
     power_stats << std::endl;
 #endif
     if (is_fu_idle)
