@@ -38,12 +38,14 @@
 #include "DynamicEntity.h"
 #include "user_config.h"
 
-struct memActivity {
-  unsigned read;
-  unsigned write;
+// Records the number of reads and writes from a memory block for a specific
+// cycle in terms of bytes.
+struct MemoryActivity {
+  int bytes_read;
+  int bytes_write;
 };
 
-struct funcActivity {
+struct FunctionActivity {
   unsigned mul;
   unsigned add;
   unsigned bit;
@@ -53,7 +55,7 @@ struct funcActivity {
   unsigned fp_sp_add;
   unsigned fp_dp_add;
   unsigned trig;
-  funcActivity() {
+  FunctionActivity() {
     mul = 0;
     add = 0;
     bit = 0;
@@ -71,12 +73,12 @@ struct funcActivity {
   }
 };
 
-class Scratchpad;
-
 struct RegStatEntry {
   int reads;
   int writes;
 };
+
+class Scratchpad;
 
 // Data to print out to file, stdout, or database.
 struct summary_data_t {
@@ -302,6 +304,11 @@ class BaseDatapath {
   void markNodeCompleted(std::list<ExecNode*>::iterator& executingQueuePos,
                          int& advance_to);
 
+  // Used to track cycle level activity for components identified by name.
+  template <typename StatType>
+  using cycle_activity_map =
+      std::unordered_map<std::string, std::vector<StatType>>;
+
   // Stats output.
   void writePerCycleActivity();
   void writeBaseAddress();
@@ -310,20 +317,20 @@ class BaseDatapath {
   void initPerCycleActivity(
       std::vector<std::string>& comp_partition_names,
       std::vector<std::string>& mem_partition_names,
-      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-      std::unordered_map<std::string, funcActivity>& func_max_activity,
+      cycle_activity_map<MemoryActivity>& mem_activity,
+      cycle_activity_map<FunctionActivity>& func_activity,
+      std::unordered_map<std::string, FunctionActivity>& func_max_activity,
       int num_cycles);
   void updatePerCycleActivity(
-      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-      std::unordered_map<std::string, funcActivity>& func_max_activity);
+      cycle_activity_map<MemoryActivity>& mem_activity,
+      cycle_activity_map<FunctionActivity>& func_activity,
+      std::unordered_map<std::string, FunctionActivity>& func_max_activity);
   void outputPerCycleActivity(
       std::vector<std::string>& comp_partition_names,
       std::vector<std::string>& mem_partition_names,
-      std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-      std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-      std::unordered_map<std::string, funcActivity>& func_max_activity);
+      cycle_activity_map<MemoryActivity>& mem_activity,
+      cycle_activity_map<FunctionActivity>& func_activity,
+      std::unordered_map<std::string, FunctionActivity>& func_max_activity);
   void writeSummary(std::ostream& outfile, summary_data_t& summary);
 
 #ifdef USE_DB

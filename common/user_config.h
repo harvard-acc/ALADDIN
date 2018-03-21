@@ -105,6 +105,13 @@ class UserConfigParams {
     return part_it;
   }
 
+  const PartitionEntry& getArrayConfig(const std::string& array_name) {
+    auto part_it = partition.find(array_name);
+    if (part_it == partition.end())
+      throw UnknownArrayException(array_name);
+    return part_it->second;
+  }
+
   void setArraySize(const std::string& array_name, unsigned size) {
     auto part_it = partition.find(array_name);
     if (part_it != partition.end()) {

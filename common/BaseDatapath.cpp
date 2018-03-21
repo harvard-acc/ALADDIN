@@ -215,10 +215,10 @@ void BaseDatapath::dumpStats() {
  */
 void BaseDatapath::writePerCycleActivity() {
   /* Activity per function in the code. Indexed by function names.  */
-  std::unordered_map<std::string, std::vector<funcActivity>> func_activity;
-  std::unordered_map<std::string, funcActivity> func_max_activity;
+  cycle_activity_map<FunctionActivity> func_activity;
+  std::unordered_map<std::string, FunctionActivity> func_max_activity;
   /* Activity per array. Indexed by array names.  */
-  std::unordered_map<std::string, std::vector<memActivity>> mem_activity;
+  cycle_activity_map<MemoryActivity> mem_activity;
 
   std::vector<std::string> comp_partition_names;
   std::vector<std::string> mem_partition_names;
@@ -244,31 +244,31 @@ void BaseDatapath::writePerCycleActivity() {
 void BaseDatapath::initPerCycleActivity(
     std::vector<std::string>& comp_partition_names,
     std::vector<std::string>& mem_partition_names,
-    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-    std::unordered_map<std::string, funcActivity>& func_max_activity,
+    cycle_activity_map<MemoryActivity>& mem_activity,
+    cycle_activity_map<FunctionActivity>& func_activity,
+    std::unordered_map<std::string, FunctionActivity>& func_max_activity,
     int num_cycles) {
   for (auto it = comp_partition_names.begin(); it != comp_partition_names.end();
        ++it) {
     mem_activity.insert(
-        { *it, std::vector<memActivity>(num_cycles, { 0, 0 }) });
+        { *it, std::vector<MemoryActivity>(num_cycles, { 0, 0 }) });
   }
   for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
        ++it) {
     mem_activity.insert(
-        { *it, std::vector<memActivity>(num_cycles, { 0, 0 }) });
+        { *it, std::vector<MemoryActivity>(num_cycles, { 0, 0 }) });
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-    funcActivity tmp;
-    func_activity.insert({ *it, std::vector<funcActivity>(num_cycles, tmp) });
+    FunctionActivity tmp;
+    func_activity.insert({ *it, std::vector<FunctionActivity>(num_cycles, tmp) });
     func_max_activity.insert({ *it, tmp });
   }
 }
 
 void BaseDatapath::updatePerCycleActivity(
-    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-    std::unordered_map<std::string, funcActivity>& func_max_activity) {
+    cycle_activity_map<MemoryActivity>& mem_activity,
+    cycle_activity_map<FunctionActivity>& func_activity,
+    std::unordered_map<std::string, FunctionActivity>& func_max_activity) {
   /* We use two ways to count the number of functional units in accelerators:
    * one assumes that functional units can be reused in the same region; the
    * other assumes no reuse of functional units. The advantage of reusing is
@@ -285,7 +285,7 @@ void BaseDatapath::updatePerCycleActivity(
        ++node_it) {
     ExecNode* node = node_it->second;
     // TODO: On every iteration, this could be a bottleneck.
-    std::string func_id = node->get_static_function()->get_name();
+    const std::string& func_id = node->get_static_function()->get_name();
     auto max_it = func_max_activity.find(func_id);
     assert(max_it != func_max_activity.end());
 
@@ -304,13 +304,13 @@ void BaseDatapath::updatePerCycleActivity(
     if (node->is_isolated())
       continue;
     int node_level = node->get_start_execution_cycle();
-    funcActivity& curr_fu_activity = func_activity.at(func_id).at(node_level);
+    FunctionActivity& curr_fu_activity = func_activity.at(func_id).at(node_level);
 
     if (node->is_multicycle_op()) {
       for (int stage = 0;
            node_level + stage < node->get_complete_execution_cycle();
            stage++) {
-        funcActivity& fp_fu_activity =
+        FunctionActivity& fp_fu_activity =
             func_activity.at(func_id).at(node_level + stage);
         /* Activity for floating point functional units includes all their
          * stages.*/
@@ -341,52 +341,56 @@ void BaseDatapath::updatePerCycleActivity(
       num_bits_so_far += 1;
     } else if (node->is_load_op()) {
       const std::string& array_label = node->get_array_label();
-      if (mem_activity.find(array_label) != mem_activity.end())
-        mem_activity.at(array_label).at(node_level).read += 1;
+      int bytes_read = node->get_mem_access()->size;
+      if (mem_activity.find(array_label) != mem_activity.end()) {
+        mem_activity.at(array_label).at(node_level).bytes_read += bytes_read;
+      }
     } else if (node->is_store_op()) {
       const std::string& array_label = node->get_array_label();
+      int bytes_written = node->get_mem_access()->size;
       if (mem_activity.find(array_label) != mem_activity.end())
-        mem_activity.at(array_label).at(node_level).write += 1;
+        mem_activity.at(array_label).at(node_level).bytes_write +=
+            bytes_written;
     }
   }
   for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
     auto max_it = func_max_activity.find(*it);
     assert(max_it != func_max_activity.end());
-    std::vector<funcActivity>& cycle_activity = func_activity.at(*it);
+    std::vector<FunctionActivity>& cycle_activity = func_activity.at(*it);
     max_it->second.mul =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.mul < b.mul);
                          })->mul;
     max_it->second.fp_sp_mul =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.fp_sp_mul < b.fp_sp_mul);
                          })->fp_sp_mul;
     max_it->second.fp_dp_mul =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.fp_dp_mul < b.fp_dp_mul);
                          })->fp_dp_mul;
     max_it->second.fp_sp_add =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.fp_sp_add < b.fp_sp_add);
                          })->fp_sp_add;
     max_it->second.fp_dp_add =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.fp_dp_add < b.fp_dp_add);
                          })->fp_dp_add;
     max_it->second.trig =
         std::max_element(cycle_activity.begin(),
                          cycle_activity.end(),
-                         [](const funcActivity& a, const funcActivity& b) {
+                         [](const FunctionActivity& a, const FunctionActivity& b) {
                            return (a.trig < b.trig);
                          })->trig;
   }
@@ -395,9 +399,9 @@ void BaseDatapath::updatePerCycleActivity(
 void BaseDatapath::outputPerCycleActivity(
     std::vector<std::string>& comp_partition_names,
     std::vector<std::string>& mem_partition_names,
-    std::unordered_map<std::string, std::vector<memActivity>>& mem_activity,
-    std::unordered_map<std::string, std::vector<funcActivity>>& func_activity,
-    std::unordered_map<std::string, funcActivity>& func_max_activity) {
+    cycle_activity_map<MemoryActivity>& mem_activity,
+    cycle_activity_map<FunctionActivity>& func_activity,
+    std::unordered_map<std::string, FunctionActivity>& func_max_activity) {
   /*Set the constants*/
   float add_int_power, add_switch_power, add_leak_power, add_area;
   float mul_int_power, mul_switch_power, mul_leak_power, mul_area;
@@ -462,6 +466,8 @@ void BaseDatapath::outputPerCycleActivity(
 
   std::string file_name;
 #ifdef DEBUG
+  // TODO: Wrap the per-cycle stats output in a class dedicated to writing
+  // cycle-level stats.
   file_name = benchName + "_stats";
   std::ofstream stats;
   stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
@@ -492,7 +498,7 @@ void BaseDatapath::outputPerCycleActivity(
     stats << *it << "-read," << *it << "-write,";
   }
   stats << std::endl;
-  power_stats << "reg,";
+  power_stats << "reg-read,reg-write,";
   power_stats << std::endl;
 #endif
   /*Finish writing the second line*/
@@ -528,8 +534,12 @@ void BaseDatapath::outputPerCycleActivity(
   float mul_leakage_power = mul_leak_power * max_mul;
   float bit_leakage_power = bit_leak_power * max_bit;
   float shifter_leakage_power = shifter_leak_power * max_shifter;
+  // Total leakage power is the sum of leakage from the explicitly named
+  // registers (completely partitioned registers) and the inferred flops from
+  // the functional units.
+  float fu_flop_leakage_power = reg_leak_power_per_bit * 32 * max_reg;
   float reg_leakage_power =
-      registers.getTotalLeakagePower() + reg_leak_power_per_bit * 32 * max_reg;
+      registers.getTotalLeakagePower() + fu_flop_leakage_power;
   float fp_sp_mul_leakage_power = fp_sp_mul_leak_power * max_fp_sp_mul;
   float fp_dp_mul_leakage_power = fp_dp_mul_leak_power * max_fp_dp_mul;
   float fp_sp_add_leakage_power = fp_sp_add_leak_power * max_fp_sp_add;
@@ -553,7 +563,7 @@ void BaseDatapath::outputPerCycleActivity(
     bool is_fu_idle = true;
     // For FUs
     for (auto it = functionNames.begin(); it != functionNames.end(); ++it) {
-      funcActivity& curr_activity = func_activity.at(*it).at(curr_level);
+      FunctionActivity& curr_activity = func_activity.at(*it).at(curr_level);
       is_fu_idle &= curr_activity.is_idle();
 #ifdef DEBUG
       stats << curr_activity.fp_sp_mul << ","
@@ -609,34 +619,54 @@ void BaseDatapath::outputPerCycleActivity(
                   << curr_trig_dynamic_power << ",";
 #endif
     }
-    // For regs
+    // These are inferred flops from functional unit activity. They are assumed
+    // to be 4-byte accesses.
     int curr_reg_reads = regStats.at(curr_level).reads;
     int curr_reg_writes = regStats.at(curr_level).writes;
-    float curr_reg_dynamic_energy =
-        (reg_int_power_per_bit + reg_switch_power_per_bit) *
-        (curr_reg_reads + curr_reg_writes) * 32 * cycleTime;
+    float curr_reg_read_dynamic_energy =
+        (reg_int_power_per_bit + reg_switch_power_per_bit) * curr_reg_reads *
+        32 * cycleTime;
+    float curr_reg_write_dynamic_energy =
+        (reg_int_power_per_bit + reg_switch_power_per_bit) * curr_reg_writes *
+        32 * cycleTime;
     for (auto it = comp_partition_names.begin();
          it != comp_partition_names.end();
          ++it) {
-      curr_reg_reads += mem_activity.at(*it).at(curr_level).read;
-      curr_reg_writes += mem_activity.at(*it).at(curr_level).write;
-      curr_reg_dynamic_energy += registers.getReadEnergy(*it) *
-                                     mem_activity.at(*it).at(curr_level).read +
-                                 registers.getWriteEnergy(*it) *
-                                     mem_activity.at(*it).at(curr_level).write;
+      Register* reg = registers.getRegister(*it);
+      int reg_bytes_read = mem_activity.at(*it).at(curr_level).bytes_read;
+      int reg_bytes_written = mem_activity.at(*it).at(curr_level).bytes_write;
+      int reg_words_read = ceil(((float)reg_bytes_read)/reg->getWordSize());
+      int reg_words_written = ceil(((float)reg_bytes_written)/reg->getWordSize());
+      int reg_read_energy = registers.getReadEnergy(*it) * reg_words_read;
+      int reg_write_energy = registers.getReadEnergy(*it) * reg_words_written;
+
+      curr_reg_reads += reg_words_read;
+      curr_reg_writes += reg_words_written;
+      curr_reg_read_dynamic_energy += reg_read_energy;
+      curr_reg_write_dynamic_energy += reg_write_energy;
     }
-    fu_dynamic_energy += curr_reg_dynamic_energy;
+    fu_dynamic_energy +=
+        curr_reg_read_dynamic_energy + curr_reg_write_dynamic_energy;
 
 #ifdef DEBUG
     stats << curr_reg_reads << "," << curr_reg_writes << ",";
 
     for (auto it = mem_partition_names.begin(); it != mem_partition_names.end();
          ++it) {
-      stats << mem_activity.at(*it).at(curr_level).read << ","
-            << mem_activity.at(*it).at(curr_level).write << ",";
+      const std::string& array_name = *it;
+      const PartitionEntry &entry = user_params.getArrayConfig(array_name);
+      int mem_bytes_read = mem_activity.at(array_name).at(curr_level).bytes_read;
+      int mem_bytes_written = mem_activity.at(array_name).at(curr_level).bytes_write;
+      int mem_words_read = ceil(((float)mem_bytes_read) / entry.wordsize);
+      int mem_words_written = ceil(((float)mem_bytes_written) / entry.wordsize);
+      stats << mem_words_read << "," << mem_words_written << ",";
     }
     stats << std::endl;
-    power_stats << curr_reg_dynamic_energy / cycleTime + reg_leakage_power
+    power_stats << (curr_reg_read_dynamic_energy / cycleTime) +
+                       (reg_leakage_power / 2)
+                << ","
+                << (curr_reg_write_dynamic_energy / cycleTime) +
+                       (reg_leakage_power / 2)
                 << ",";
     power_stats << std::endl;
 #endif
