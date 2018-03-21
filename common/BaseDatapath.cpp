@@ -898,7 +898,7 @@ int BaseDatapath::rescheduleNodesWhenNeeded() {
 }
 
 void BaseDatapath::computeRegStats() {
-  regStats.assign(num_cycles, { 0, 0, 0 });
+  regStats.assign(num_cycles, { 0, 0 });
   for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
        ++node_it) {
     ExecNode* node = node_it->second;

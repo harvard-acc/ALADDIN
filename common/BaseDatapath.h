@@ -73,8 +73,7 @@ struct funcActivity {
 
 class Scratchpad;
 
-struct regEntry {
-  int size;
+struct RegStatEntry {
   int reads;
   int writes;
 };
@@ -384,7 +383,7 @@ class BaseDatapath {
   // Completely partitioned arrays.
   Registers registers;
 
-  std::vector<regEntry> regStats;
+  std::vector<RegStatEntry> regStats;
   std::unordered_set<std::string> functionNames;
   std::vector<DynLoopBound> loopBound;
 
