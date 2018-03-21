@@ -32,6 +32,7 @@ class ScratchpadDatapath : public BaseDatapath {
   virtual int rescheduleNodesWhenNeeded();
 
  protected:
+  virtual void writeOtherStats();
   Scratchpad* scratchpad;
   /*True if any of the scratchpads can still service memory requests.
     False if non of the scratchpads can service any memory requests.*/

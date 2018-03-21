@@ -449,3 +449,11 @@ void ScratchpadDatapath::getAverageMemPower(unsigned int cycles,
                                             float* avg_leak) {
   scratchpad->getAveragePower(cycles, avg_power, avg_dynamic, avg_leak);
 }
+
+void ScratchpadDatapath::writeOtherStats() {
+  std::ofstream spad_stats_file;
+  std::string file_name = benchName + "_spad_stats.txt";
+  spad_stats_file.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
+  scratchpad->dumpStats(spad_stats_file);
+  spad_stats_file.close();
+}

@@ -129,6 +129,8 @@ class Scratchpad {
     }
   }
 
+  void dumpStats(std::ofstream& stats_file);
+
  private:
   LogicalArray* getLogicalArray(const std::string& name) {
     auto it = logical_arrays.find(name);

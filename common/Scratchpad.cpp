@@ -108,3 +108,16 @@ void Scratchpad::increment_dma_stores(std::string array_label,
                                       unsigned dma_size) {
   getLogicalArray(array_label)->increment_streaming_loads(dma_size);
 }
+
+void Scratchpad::dumpStats(std::ofstream& outfile) {
+  for (auto it = logical_arrays.begin(); it != logical_arrays.end(); it++) {
+    const std::string& name = it->first;
+    LogicalArray* array = it->second;
+    outfile << "Array: " << name << ", size = " << array->getTotalSize()
+            << ", partitions = " << array->getNumPartitions()
+            << ", word size = " << array->getWordSize()
+            << ", reads = " << array->getTotalLoads()
+            << ", writes = " << array->getTotalStores() << "\n";
+  }
+  outfile << "===============\n";
+}

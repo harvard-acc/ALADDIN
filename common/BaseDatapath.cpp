@@ -201,9 +201,9 @@ void BaseDatapath::dumpStats() {
   rescheduleNodesWhenNeeded();
   computeRegStats();
   writePerCycleActivity();
+  writeOtherStats();
 #ifdef DEBUG
   dumpGraph(benchName);
-  writeOtherStats();
 #endif
 }
 
@@ -468,14 +468,14 @@ void BaseDatapath::outputPerCycleActivity(
 #ifdef DEBUG
   // TODO: Wrap the per-cycle stats output in a class dedicated to writing
   // cycle-level stats.
-  file_name = benchName + "_stats";
+  file_name = benchName + "_stats.txt";
   std::ofstream stats;
   stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   stats << num_cycles << ",";
 
   std::ofstream power_stats;
-  file_name += "_power";
+  file_name = benchName + "_power_stats.txt";
   power_stats.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
   power_stats << "cycles," << num_cycles << "," << numTotalNodes << std::endl;
   power_stats << num_cycles << ",";
@@ -812,35 +812,7 @@ void BaseDatapath::writeBaseAddress() {
   gzclose(gzip_file);
 }
 
-void BaseDatapath::writeOtherStats() {
-  // First collect the data from program.nodes.
-  std::vector<int> microop;
-  std::vector<int> exec_cycle;
-  std::vector<bool> isolated;
-  microop.reserve(totalConnectedNodes);
-  exec_cycle.reserve(totalConnectedNodes);
-  isolated.reserve(totalConnectedNodes);
-
-  for (auto node_it = program.nodes.begin(); node_it != program.nodes.end();
-       ++node_it) {
-    ExecNode* node = node_it->second;
-    microop.push_back(node->get_microop());
-    exec_cycle.push_back(node->get_start_execution_cycle());
-    isolated.push_back(node->is_isolated());
-  }
-
-  std::string cycle_file_name(benchName);
-  cycle_file_name += "_level.gz";
-  write_gzip_file(cycle_file_name, exec_cycle.size(), exec_cycle);
-
-  std::string microop_file_name(benchName);
-  microop_file_name += "_microop.gz";
-  write_gzip_file(microop_file_name, microop.size(), microop);
-
-  std::string isolated_file_name(benchName);
-  microop_file_name += "_isolated.gz";
-  write_gzip_bool_file(isolated_file_name, isolated.size(), isolated);
-}
+void BaseDatapath::writeOtherStats() {}
 
 // stepFunctions
 // multiple function, each function is a separate graph

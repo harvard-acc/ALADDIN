@@ -41,7 +41,7 @@ class LogicalArray {
   const std::string& getBaseName() { return base_name; }
   size_t getBlockIndex(unsigned part_index, Addr addr);
   size_t getPartitionIndex(Addr addr);
-
+  unsigned getTotalSize() const { return total_size; }
   unsigned getTotalLoads();
   unsigned getTotalStores();
 
@@ -49,6 +49,8 @@ class LogicalArray {
   float getWriteEnergy() { return getTotalStores() * part_write_energy; }
   float getLeakagePower() { return part_leak_power * num_partitions; }
   float getArea() { return part_area * num_partitions; }
+  unsigned getNumPartitions() const { return num_partitions; }
+  unsigned getWordSize() const { return word_size; }
 
   /* Write @len bytes contained in @data into this array at address @addr.
    * It is assumed that data is at least len bytes long.
@@ -105,6 +107,8 @@ class LogicalArray {
     unsigned blk_index = getBlockIndex(part_index, addr);
     return partitions[part_index]->checkReadyBits(blk_index);
   }
+
+  void dumpStats(std::ostream& outfile);
 
  protected:
 

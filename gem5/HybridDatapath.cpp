@@ -1500,7 +1500,7 @@ void HybridDatapath::getAverageCachePower(unsigned int cycles,
   *avg_power = avg_cache_pwr;
 
   // TODO: Write this detailed data to the database as well.
-  std::string power_file_name = benchName + "_power_stats.txt";
+  std::string power_file_name = benchName + "_cache_stats.txt";
   std::ofstream power_file(power_file_name.c_str());
 
   power_file << "system.datapath.dcache.average_pwr " << avg_cache_pwr

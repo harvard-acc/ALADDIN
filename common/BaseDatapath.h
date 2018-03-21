@@ -312,8 +312,8 @@ class BaseDatapath {
   // Stats output.
   void writePerCycleActivity();
   void writeBaseAddress();
-  // Writes microop, execution cycle, and isolated nodes.
-  void writeOtherStats();
+  // A method that derived datapaths can overridie to dump custom stats.
+  virtual void writeOtherStats();
   void initPerCycleActivity(
       std::vector<std::string>& comp_partition_names,
       std::vector<std::string>& mem_partition_names,
