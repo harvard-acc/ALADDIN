@@ -33,7 +33,7 @@ void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag) {
   ioctl(ALADDIN_FD, req_code, finish_flag);
 }
 
-void dumpGem5Stats(char* stats_desc) {
+void dumpGem5Stats(const char* stats_desc) {
   ioctl(ALADDIN_FD, DUMP_STATS, stats_desc);
 }
 

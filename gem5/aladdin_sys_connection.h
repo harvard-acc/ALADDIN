@@ -72,7 +72,7 @@ void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag);
  *   stats_desc: A description of what the code just performed. This will be
  *   dumped inline with the stats.
  */
-void dumpGem5Stats(char* stats_desc);
+void dumpGem5Stats(const char* stats_desc);
 
 /* Trigger gem5 to reset all its stats and then resume simulation.
  *
