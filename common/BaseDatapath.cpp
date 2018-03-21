@@ -910,12 +910,15 @@ void BaseDatapath::computeRegStats() {
     Vertex node_vertex = node->get_vertex();
     out_edge_iter out_edge_it, out_edge_end;
     std::set<int> children_levels;
-    for (boost::tie(out_edge_it, out_edge_end) = out_edges(node_vertex, program.graph);
+    for (boost::tie(out_edge_it, out_edge_end) =
+             out_edges(node_vertex, program.graph);
          out_edge_it != out_edge_end;
          ++out_edge_it) {
       int child_id = program.atVertex(target(*out_edge_it, program.graph));
       ExecNode* child_node = program.nodes.at(child_id);
-      if (child_node->is_control_op() || child_node->is_load_op())
+      if (child_node->is_control_op() || child_node->is_load_op() ||
+          child_node->is_call_op() || child_node->is_ret_op() ||
+          child_node->is_convert_op())
         continue;
 
       int child_level = child_node->get_start_execution_cycle();
