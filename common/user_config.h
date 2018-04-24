@@ -286,7 +286,7 @@ class UserConfigParams {
     friend std::ostream& operator<<(std::ostream& os,
                                     const OverlappingArrayPair& obj) {
       os << "[WARNING]: Overlapping array declarations found!\n"
-         << "  " << obj.array0 << "\n" << obj.array1;
+         << "  " << obj.array0 << "\n  " << obj.array1;
       return os;
     }
   };
