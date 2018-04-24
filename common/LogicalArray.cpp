@@ -72,11 +72,11 @@ LogicalArray::~LogicalArray() {
 /* Compute the size of each partition. Depending on the word size and array
  * size, not every partition will be the same size.
  */
-void LogicalArray::computePartitionSizes(std::vector<size_t>& size_per_part) {
+void LogicalArray::computePartitionSizes(std::vector<int>& size_per_part) {
   size_per_part.resize(num_partitions);
   /* First, compute the minimium size of a partition. */
-  size_t min_size = (total_size/word_size/num_partitions)*word_size;
-  size_t remaining_size = total_size - min_size*num_partitions;
+  int min_size = (total_size / word_size / num_partitions) * word_size;
+  int remaining_size = total_size - min_size * num_partitions;
   for (size_t i = 0; i < num_partitions; i++)
     size_per_part[i] = min_size;
   /* If there is any remainder, then we have to split this evenly across as
@@ -106,10 +106,8 @@ size_t LogicalArray::getPartitionIndex(Addr addr) {
   } else {
     /* block partition. */
     for (size_t i = 0; i < size_per_part.size(); i++) {
-      if (rel_addr <= 0) {
-        part_index = i;
-        break;
-      }
+      if (rel_addr - size_per_part[i] < 0)
+        return i;
       rel_addr -= size_per_part[i];
     }
     // If rel_addr > 0, then we've gone past the bounds of the array.

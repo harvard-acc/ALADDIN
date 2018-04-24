@@ -22,7 +22,7 @@ class LogicalArray {
                 bool _ready_mode);
   ~LogicalArray();
   void step();
-  void computePartitionSizes(std::vector<size_t>& size_per_part);
+  void computePartitionSizes(std::vector<int>& size_per_part);
   /* Return true if any Partition can service. */
   bool canService();
   /* Return true if the partition with index part_index can service. */
@@ -138,7 +138,7 @@ class LogicalArray {
   /* Num of ports for each partition. */
   const unsigned num_ports;
   /* Size of each partition. */
-  std::vector<size_t> size_per_part;
+  std::vector<int> size_per_part;
   /* All the Partitions inside the same LogicalArray have the same
    * energy/power/area characteristics. */
   /* Per access read energy for each partition. */
