@@ -10,13 +10,10 @@ GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp
 GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
 # For the MachSuite harness and support system.
-CFLAGS = -O3 -Wall -Wno-unused-label -I../../common
+CFLAGS = -O3 -Wall -Wno-unused-label -I../../common -DDMA_INTERFACE_V3 -DDMA_MODE
 ALL_SRCS = $(SRCS) ../../common/harness.c
 
-# -mno-sse
-GEM5_CFLAGS = -static -O3 -mno-80387 -msoft-float \
-              -march=nocona -msse -mfpmath=sse \
-              -fno-exceptions -fno-inline
+GEM5_CFLAGS = -static -O3
 
 INCLUDES += -I$(ALADDIN_HOME)
 LFLAGS = -lm

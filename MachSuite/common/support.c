@@ -9,6 +9,24 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+void* malloc_aligned(size_t size) {
+  void* ptr = NULL;
+  int err = posix_memalign(
+      (void**)&ptr, CACHELINE_SIZE, next_multiple(size, CACHELINE_SIZE));
+  assert(err == 0 && "Failed to allocate memory!");
+  return ptr;
+}
+
+size_t next_multiple(size_t request, size_t align) {
+  size_t n = request / align;
+  if (n == 0)
+    return align;  // Return at least this many bytes.
+  size_t remainder = request % align;
+  if (remainder)
+    return (n + 1) * align;
+  return request;
+}
+
 // In general, fd_printf is used for individual values.
 #define SUFFICIENT_SPRINTF_SPACE 256
 // It'd be nice if dprintf was c99. But it ain't.

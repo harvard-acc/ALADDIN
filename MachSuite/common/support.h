@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+#define CACHELINE_SIZE 64
+
+void* malloc_aligned(size_t size);
+size_t next_multiple(size_t request, size_t align);
+
 ///// File and section functions
 char *readfile(int fd);
 char *find_section_start(char *s, int n);

@@ -32,8 +32,8 @@ int main(int argc, char **argv)
 
   // Load input data
   int in_fd;
-  char *data;
-  data = malloc(INPUT_SIZE);
+  char* data = (char*)malloc_aligned(INPUT_SIZE);
+
   assert( data!=NULL && "Out of memory" );
   in_fd = open( in_file, O_RDONLY );
   assert( in_fd>0 && "Couldn't open input data file");
