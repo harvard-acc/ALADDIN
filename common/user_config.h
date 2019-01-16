@@ -112,18 +112,22 @@ class UserConfigParams {
     return part_it->second;
   }
 
-  void setArraySize(const std::string& array_name, unsigned size) {
+  void updateArrayParams(const std::string& array_name,
+                         unsigned size) {
     auto part_it = partition.find(array_name);
+    Addr curr_array_base = 0;
     if (part_it != partition.end()) {
       MemoryType mtype = part_it->second.memory_type;
       if (mtype == cache || mtype == acp || mtype == host) {
         part_it->second.array_size = size;
+        curr_array_base = part_it->second.base_addr;
       } else {
         if (size != part_it->second.array_size) {
           std::cerr << "[WARNING]: " << array_name
                     << " is mapped to a scratchpad or "
                        "register file, whose size cannot "
                        "be changed dynamically!\n";
+          return;
         }
       }
     } else {
@@ -132,6 +136,26 @@ class UserConfigParams {
       // have the trace base address until we parse the entry block in the
       // dynamic trace, but we can still set the size now.
       partition[array_name] = { host, none, size, 0, 0, 0 };
+    }
+    // To resolve the overlapping array case, find all other partition entries
+    // that overlap with this range and set their sizes to zero, so we can
+    // guarantee that a call to getArrayConfig(addr) will not return the wrong
+    // array. This only applies for the types of memory that can be
+    // configurable at runtime (host/acp/cache).
+    for (auto part_it = partition.begin(); part_it != partition.end();
+         ++part_it) {
+      const std::string& part_name = part_it->first;
+      Addr part_base = part_it->second.base_addr;
+      size_t part_size = part_it->second.array_size;
+      MemoryType mtype = part_it->second.memory_type;
+      if ((mtype == cache || mtype == acp || mtype == host) &&
+          rangesOverlap(curr_array_base,
+                        curr_array_base + size,
+                        part_base,
+                        part_base + part_size) &&
+          part_name != array_name) {
+        part_it->second.array_size = 0;
+      }
     }
   }
 
@@ -160,10 +184,7 @@ class UserConfigParams {
         if (base_1 == 0)
           continue;
 
-        // Two ranges [A,B], [C,D] do not overlap if A and B are both less than
-        // C or both greater than D.
-        if ((base_0 < base_1 && end_0 <= base_1) ||
-            (base_0 >= end_1 && end_0 > end_1)) {
+        if (rangesOverlap(base_0, end_0, base_1, end_1)) {
           continue;
         } else {
           overlapping_arrays.insert(OverlappingArrayPair(
@@ -234,6 +255,16 @@ class UserConfigParams {
   bool global_pipelining;
 
  protected:
+  // Returns true if the ranges defined by [base_0, end_0) and [base_1, end_1)
+  // overlap.
+  bool rangesOverlap(Addr base_0, Addr end_0, Addr base_1, Addr end_1) {
+    // Two ranges [A,B], [C,D] do not overlap if A and B are both less than
+    // C or both greater than D.
+    bool disjoint = ((base_0 < base_1 && end_0 <= base_1) ||
+                     (base_0 >= end_1 && end_0 > end_1));
+    return !disjoint;
+  }
+
   // This class defines a pair of arrays that overlap.
   class OverlappingArrayPair {
    protected:

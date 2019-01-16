@@ -185,7 +185,7 @@ void HybridDatapath::insertArrayLabelToVirtual(const std::string& array_label,
           array_label.c_str(), vaddr, size);
   dtb.insertArrayLabelToVirtual(array_label, vaddr, size);
   try {
-    user_params.setArraySize(array_label, size);
+    user_params.updateArrayParams(array_label, size);
   } catch (UnknownArrayException& e) {
     fatal(e.what());
   }
