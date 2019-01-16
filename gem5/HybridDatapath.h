@@ -114,6 +114,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   virtual void insertArrayLabelToVirtual(std::string array_label,
                                          Addr vaddr,
                                          size_t size);
+  virtual void resetTrace();
 
   /* Invoked by the TLB when a TLB request has completed.
    *

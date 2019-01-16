@@ -153,6 +153,9 @@ class BaseDatapath {
   // trace was empty.
   bool buildDddg();
 
+  // Reset the dynamic trace to the beginning.
+  virtual void resetTrace();
+
   // Add a function to the list of functions.
   void addFunctionName(std::string func_name) {
     functionNames.insert(func_name);

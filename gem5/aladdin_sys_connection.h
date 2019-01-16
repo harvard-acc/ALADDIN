@@ -80,6 +80,9 @@ void dumpGem5Stats(const char* stats_desc);
  */
 void resetGem5Stats();
 
+/* Start reading the dynamic trace from the beginning. */
+void resetTrace(unsigned req_code);
+
 /* Create a virtual to physical address mapping for the specified array for
  * the dynamic trace used in Aladdin.
  *

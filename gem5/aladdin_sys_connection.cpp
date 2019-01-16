@@ -37,6 +37,10 @@ void dumpGem5Stats(const char* stats_desc) {
   ioctl(ALADDIN_FD, DUMP_STATS, stats_desc);
 }
 
+void resetTrace(unsigned req_code) {
+  ioctl(ALADDIN_FD, RESET_TRACE, &req_code);
+}
+
 void resetGem5Stats() { ioctl(ALADDIN_FD, RESET_STATS, NULL); }
 
 void mapArrayToAccelerator(unsigned req_code,

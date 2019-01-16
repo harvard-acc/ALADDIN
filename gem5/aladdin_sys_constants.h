@@ -75,6 +75,10 @@ extern int DUMP_STATS;
 // A special request code that triggers gem5 to reset all stats.
 extern int RESET_STATS;
 
+// A special request code to start reading a dynamic trace from the beginning
+// again.
+extern int RESET_TRACE;
+
 // A string to pass to exitSimLoop to indicate that this is just a point to
 // dump stats, not to end simulation.
 extern const char* DUMP_STATS_EXIT_SIM_SIGNAL;

@@ -85,6 +85,9 @@ class Gem5Datapath : public MemObject {
                                          Addr vaddr,
                                          size_t size) = 0;
 
+  /* Reset the dynamic trace to the beginning. */
+  virtual void resetTrace() = 0;
+
  protected:
   /* True if gem5 is being simulated with just Aladdin, false if there are
    * CPUs in the system that are executing code and manually invoking the

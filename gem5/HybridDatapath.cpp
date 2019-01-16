@@ -192,6 +192,11 @@ void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
   user_params.checkOverlappingRanges();
 }
 
+void HybridDatapath::resetTrace() {
+  DPRINTF(HybridDatapath, "%s: Resetting dynamic trace\n.", name());
+  BaseDatapath::resetTrace();
+}
+
 void HybridDatapath::eventStep() {
   step();
   scratchpad->step();

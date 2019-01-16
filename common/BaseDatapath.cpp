@@ -68,6 +68,8 @@ bool BaseDatapath::buildDddg() {
   return true;
 }
 
+void BaseDatapath::resetTrace() { gzseek(trace_file, 0, SEEK_SET); }
+
 void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
     const inline_labelmap_t& inline_labelmap) {
   // The config file is parsed before the trace, so we don't have line number

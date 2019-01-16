@@ -72,6 +72,7 @@ int ALADDIN_MAP_ARRAY = 0x001DECAF;
 int NOT_COMPLETED     = 0x002DECAF;
 int DUMP_STATS        = 0x003DECAF;
 int RESET_STATS       = 0x004DECAF;
+int RESET_TRACE       = 0x005DECAF;
 
 const char* DUMP_STATS_EXIT_SIM_SIGNAL = "statistics_dump:";
 const char* RESET_STATS_EXIT_SIM_SIGNAL = "statistics_reset:";
