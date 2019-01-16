@@ -252,7 +252,7 @@ class AladdinTLB {
    * This method inserts a mapping between the array name and its
    * corresponding simulated virtual address. */
 
-  void insertArrayLabelToVirtual(std::string array_label,
+  void insertArrayLabelToVirtual(const std::string& array_label,
                                  Addr sim_vaddr,
                                  size_t size) {
     arrayLabelToVirtualAddrMap[array_label] = std::make_pair(sim_vaddr, size);

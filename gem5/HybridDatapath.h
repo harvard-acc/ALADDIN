@@ -111,7 +111,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   virtual void insertTLBEntry(Addr vaddr, Addr paddr);
 
   // Insert an array label to its simulated virtual address mapping.
-  virtual void insertArrayLabelToVirtual(std::string array_label,
+  virtual void insertArrayLabelToVirtual(const std::string& array_label,
                                          Addr vaddr,
                                          size_t size);
   virtual void resetTrace();

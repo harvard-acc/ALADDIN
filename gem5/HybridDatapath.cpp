@@ -177,7 +177,7 @@ void HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr) {
   dtb.insertBackupTLB(vpn, ppn);
 }
 
-void HybridDatapath::insertArrayLabelToVirtual(std::string array_label,
+void HybridDatapath::insertArrayLabelToVirtual(const std::string& array_label,
                                                Addr vaddr,
                                                size_t size) {
   DPRINTF(HybridDatapath,
