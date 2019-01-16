@@ -194,6 +194,10 @@ void ScratchpadDatapath::scratchpadPartition() {
                   << ", could not set partition index on array \"" << base_label
                   << "\" because it does not exist!" << std::endl;
         exit(1);
+      } catch (ArrayAccessException& e) {
+        std::cerr << "[ERROR]: At node " << node->get_node_id()
+                  << ", invalid array access: " << e.what() << std::endl;
+        exit(1);
       }
     }
   }

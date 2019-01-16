@@ -439,7 +439,7 @@ bool HybridDatapath::handleRegisterMemoryOp(ExecNode* node) {
 }
 
 bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
-  std::string array_name = node->get_array_label();
+  const std::string& array_name = node->get_array_label();
   unsigned array_name_index = node->get_partition_index();
   MemAccess* mem_access = node->get_mem_access();
   Addr vaddr = mem_access->vaddr;
@@ -452,6 +452,8 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   } catch (UnknownArrayException& e) {
     fatal("At node %d: tried to access array \"%s\", which does not exist!\n",
           node->get_node_id(), array_name);
+  } catch (ArrayAccessException& e) {
+    fatal("At node %d: %s\n", node->get_node_id(), e.what());
   }
 
   markNodeStarted(node);
@@ -460,7 +462,12 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   } else {
     size_t size = mem_access->size;
     uint8_t* data = mem_access->data();
-    scratchpad->writeData(array_name, vaddr, data, size);
+    try {
+      scratchpad->writeData(array_name, vaddr, data, size);
+    } catch (ArrayAccessException& e) {
+      fatal("At node %d, attempting to access array %d, trace addr %#x, size "
+            "%d: %s", node->get_node_id(), array_name, vaddr, size, e.what());
+    }
     scratchpad->increment_stores(array_name, array_name_index);
   }
   return true;
@@ -484,6 +491,8 @@ bool HybridDatapath::handleSpadBypassMemoryOp(ExecNode* node) {
     fatal("At node %d: tried to access array \"%s\", which does not exist!\n",
           node->get_node_id(),
           array_name);
+  } catch (ArrayAccessException& e) {
+    fatal("At node %d: %s\n", node->get_node_id(), e.what());
   }
 
   if (ready_bits_set || node->is_store_op()) {
@@ -519,7 +528,7 @@ bool HybridDatapath::handleReadyBitAccess(ExecNode* node) {
   } catch (UnknownArrayException& e) {
     fatal("At node %d: tried to set ready bits on array \"%s\", which does not "
           "exist!\n", node->get_node_id(), array_name);
-  } 
+  }
   return true;
 }
 

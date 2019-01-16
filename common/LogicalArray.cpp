@@ -92,12 +92,13 @@ void LogicalArray::computePartitionSizes(std::vector<int>& size_per_part) {
 
 size_t LogicalArray::getPartitionIndex(Addr addr) {
   int rel_addr = addr - base_addr;
-  assert(rel_addr >= 0);
-  if ((unsigned)rel_addr >= total_size) {
-    std::cerr << "[ERROR]: LogicalArray " << base_name
-              << ": Attempting to access offset " << rel_addr
-              << ", but total size = " << total_size << std::endl;
-    assert((unsigned)rel_addr < total_size);
+  if (rel_addr < 0)
+    throw ArrayAccessException(base_name + ": Array offset is negative.");
+  if (rel_addr >= (int)total_size) {
+    std::stringstream error_msg;
+    error_msg << base_name << ": Attempting to access offset " << rel_addr
+              << ", but total size = " << total_size;
+    throw ArrayAccessException(error_msg.str());
   }
   size_t part_index = 0;
   if (partition_type == cyclic) {
@@ -205,7 +206,7 @@ void LogicalArray::accessData(Addr addr,
                               size_t len,
                               bool is_read) {
   if (len == 0)
-    throw ArrayAccessException("Data access length just be nonzero");
+    throw ArrayAccessException("Data access length must be nonzero");
   if (len % word_size != 0)
     throw ArrayAccessException("Data length is not a multiple of word size");
   uint8_t* ptr = nullptr;
