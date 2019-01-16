@@ -218,6 +218,7 @@ void HybridDatapath::delayedDmaIssue() {
   // setup to finish.
   if (pipelinedDma) {
     issueDmaRequest(node_id);
+    dmaIssueQueue.erase(it++);
   }
 
   // Schedule the next delayed DMA event.
