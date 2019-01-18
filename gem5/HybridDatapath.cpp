@@ -270,9 +270,6 @@ void HybridDatapath::stepExecutingQueue() {
         case Scratchpad:
           op_satisfied = handleSpadMemoryOp(node);
           break;
-        case ScratchpadBypass:
-          op_satisfied = handleSpadBypassMemoryOp(node);
-          break;
         case Cache:
           op_satisfied = handleCacheMemoryOp(node);
           break;
@@ -283,7 +280,7 @@ void HybridDatapath::stepExecutingQueue() {
           op_satisfied = handleReadyBitAccess(node);
           break;
         case ACP:
-          op_satisfied = handleAcpMemoryOp(node, false);
+          op_satisfied = handleAcpMemoryOp(node);
           break;
         default:
           panic("Unsupported memory operation type!");
@@ -413,8 +410,6 @@ MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
     switch (memory_type) {
       case spad:
         return Scratchpad;
-      case spad_bypass:
-        return ScratchpadBypass;
       case cache:
         return Cache;
       case reg:
@@ -473,47 +468,6 @@ bool HybridDatapath::handleSpadMemoryOp(ExecNode* node) {
   return true;
 }
 
-bool HybridDatapath::handleSpadBypassMemoryOp(ExecNode* node) {
-  unsigned node_id = node->get_node_id();
-  std::string array_name = node->get_array_label();
-  unsigned array_name_index = node->get_partition_index();
-  MemAccess* mem_access = node->get_mem_access();
-  Addr vaddr = mem_access->vaddr;
-  bool ready_bits_set;
-  if (node->is_load_op())
-    DPRINTF(HybridDatapathVerbose,
-            "Reading the scratchpad \"%s\" that can bypass DMA for node %d.\n",
-            array_name, node_id);
-  try {
-    ready_bits_set =
-        scratchpad->checkReadyBits(array_name, array_name_index, vaddr);
-  } catch (UnknownArrayException& e) {
-    fatal("At node %d: tried to access array \"%s\", which does not exist!\n",
-          node->get_node_id(),
-          array_name);
-  } catch (ArrayAccessException& e) {
-    fatal("At node %d: %s\n", node->get_node_id(), e.what());
-  }
-
-  if (ready_bits_set || node->is_store_op()) {
-    // We only support DMA bypassing for loads.
-    if (node->is_load_op())
-      DPRINTF(
-          HybridDatapathVerbose,
-          "Ready bits are set. No need to bypass DMA for node %d, addr %#x.\n",
-          node_id,
-          node->get_mem_access()->vaddr);
-    return handleSpadMemoryOp(node);
-  }
-  // The ready bits of the scratchpad are not set yet. Let's use ACP for
-  // loading data.
-  DPRINTF(HybridDatapathVerbose,
-          "Ready bits are not set. Bypassing DMA for node %d, addr %#x.\n",
-          node_id,
-          node->get_mem_access()->vaddr);
-  return handleAcpMemoryOp(node, true);
-}
-
 bool HybridDatapath::handleReadyBitAccess(ExecNode* node) {
   ReadyBitAccess* access = node->get_ready_bit_access();
   const std::string& array_name = access->array->get_name();
@@ -562,30 +516,6 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     }
     dma_setup_cycles += cache_delay_cycles;
     Tick delay = clockPeriod() * cache_delay_cycles;
-
-    // Update the scratchpad to host array mapping for DMA loads.
-    if (isLoad) {
-      Addr src_vaddr = mem_access->src_addr;
-      Addr dst_vaddr = mem_access->dst_addr;
-      Addr accel_addr = isLoad ? dst_vaddr : src_vaddr;
-      SrcTypes::Variable* src_var = mem_access->src_var;
-      SrcTypes::Variable* dst_var = mem_access->dst_var;
-      MemoryType mtype;
-      try {
-        auto part_it = user_params.getArrayConfig(accel_addr);
-        mtype = part_it->second.memory_type;
-        if (mtype == spad_bypass)
-          user_params.updateSpadToDmaMapping(dst_var->get_name(),
-                                             src_var->get_name(),
-                                             dst_vaddr,
-                                             src_vaddr,
-                                             size);
-      }
-      catch (UnknownArrayException& e) {
-        fatal("During DMA at node %d: %s", node_id, e.what());
-      }
-    }
-
     if (!delayedDmaEvent.scheduled()) {
       DPRINTF(HybridDatapath,
               "Scheduling DMA %s operation with node id %d with delay %lu\n",
@@ -707,7 +637,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   }
 }
 
-bool HybridDatapath::handleAcpMemoryOp(ExecNode* node, bool is_dma_bypass) {
+bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   if (!acp_enabled) {
     fatal("Attempted to perform an ACP access when ACP was not enabled on this "
           "system! Add \"enable_acp = True\" to the gem5.cfg file and try "
@@ -730,25 +660,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node, bool is_dma_bypass) {
   // generated with aligned addresses too. That's probably not an onerous
   // requirement, but we should not depend on the trace address for anything
   // performance related.
-  std::string array_name = node->get_array_label();
   Addr vaddr = mem_access->vaddr;
-  if (is_dma_bypass) {
-    DPRINTF(HybridDatapathVerbose,
-            "spad name: %s, spad addr: %#x\n",
-            array_name,
-            vaddr);
-    if (inflight_bypass_nodes.find(node_id) != inflight_bypass_nodes.end()) {
-      std::tie(array_name, vaddr) = inflight_bypass_nodes[node_id];
-    } else {
-      std::tie(array_name, vaddr) =
-          user_params.getSpadToDmaMapping(array_name, vaddr);
-      inflight_bypass_nodes[node_id] = std::make_pair(array_name, vaddr);
-    }
-    DPRINTF(HybridDatapathVerbose,
-            "host name: %s, host addr: %#x\n",
-            array_name,
-            vaddr);
-  }
   uint8_t* data = mem_access->data();
   int size = mem_access->size;
   if (isExecuteStandalone())
@@ -789,7 +701,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node, bool is_dma_bypass) {
     // so to model this faithfully, we perform the address translation in zero
     // time. Make sure we use the original virtual address.
     SrcTypes::Variable* var =
-        srcManager.get<SrcTypes::Variable>(array_name);
+        srcManager.get<SrcTypes::Variable>(node->get_array_label());
     try {
       AladdinTLBResponse translation =
           getAddressTranslation(vaddr, size, isLoad, var);
@@ -821,7 +733,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node, bool is_dma_bypass) {
     return false;
   } else if (entry->status == ReadyToIssue) {
     IssueResult result =
-        issueAcpRequest(vaddr, paddr, size, isLoad, node_id, data, is_dma_bypass);
+        issueAcpRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
       entry->status = WaitingFromCache;
       entry->when_issued = curTick();
@@ -886,13 +798,12 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   } catch (UnknownArrayException& e) {
     fatal("During DMA at node %d: %s", node_id, e.what());
   }
-  fatal_if(!(mtype == spad || mtype == spad_bypass || mtype == reg),
+  fatal_if(!(mtype == spad || mtype == reg),
            "At node %d: DMA request to %s must be to/from a scratchpad or "
            "register, but we got %s\n",
-           node_id,
-           node->get_array_label(),
+           node_id, node->get_array_label(),
            mtype == cache ? "cache" : mtype == acp ? "acp" : "host");
-  if (mtype == spad || mtype == spad_bypass)
+  if (mtype == spad)
     incrementDmaScratchpadAccesses(node->get_array_label(), size, isLoad);
   else
     registers.getRegister(node->get_array_label())
@@ -1004,19 +915,6 @@ bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
   assert(state && "Packet did not contain a DatapathSenderState!");
   if (!state->is_ctrl_signal) {
     datapath->updateCacheRequestStatusOnResp(pkt, state);
-    if (state->is_dma_bypass) {
-      assert(datapath->inflight_bypass_nodes.find(state->node_id) !=
-             datapath->inflight_bypass_nodes.end());
-      std::string host_name = datapath->inflight_bypass_nodes[state->node_id].first;
-      Addr base_trace_addr = datapath->getBaseAddress(host_name);
-      DPRINTF(HybridDatapath,
-              "ACP request for bypassing DMA finished. Array name %s, base "
-              "addr %#x, offset %d\n",
-              host_name,
-              base_trace_addr,
-              state->vaddr - base_trace_addr);
-      datapath->inflight_bypass_nodes.erase(state->node_id);
-    }
   } else {
     DPRINTF(HybridDatapath,
             "recvTimingResp for control signal access: %#x\n",
@@ -1116,18 +1014,17 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheRequest(Addr vaddr,
                                                               unsigned node_id,
                                                               uint8_t* data) {
   return issueCacheOrAcpRequest(
-      Cache, vaddr, paddr, size, isLoad, node_id, data, false);
+      Cache, vaddr, paddr, size, isLoad, node_id, data);
 }
 
-HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(
-    Addr vaddr,
-    Addr paddr,
-    unsigned size,
-    bool isLoad,
-    unsigned node_id,
-    uint8_t* data,
-    bool is_dma_bypass) {
-  return issueCacheOrAcpRequest(ACP, vaddr, paddr, size, isLoad, node_id, data, is_dma_bypass);
+HybridDatapath::IssueResult HybridDatapath::issueAcpRequest(Addr vaddr,
+                                                            Addr paddr,
+                                                            unsigned size,
+                                                            bool isLoad,
+                                                            unsigned node_id,
+                                                            uint8_t* data) {
+  return issueCacheOrAcpRequest(
+      ACP, vaddr, paddr, size, isLoad, node_id, data);
 }
 
 HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
@@ -1137,8 +1034,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
     unsigned size,
     bool isLoad,
     unsigned node_id,
-    uint8_t* data,
-    bool is_dma_bypass) {
+    uint8_t* data) {
   using namespace SrcTypes;
   CachePort& port = op_type == Cache ? cachePort : acpPort;
 
@@ -1168,8 +1064,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
   PacketPtr data_pkt = new Packet(req, command);
   data_pkt->dataStatic(data);
 
-  DatapathSenderState* state =
-      new DatapathSenderState(node_id, vaddr, is_dma_bypass);
+  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
   data_pkt->pushSenderState(state);
 
   if (!port.sendTimingReq(data_pkt)) {

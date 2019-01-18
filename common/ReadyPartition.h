@@ -59,10 +59,6 @@ class ReadyPartition : public Partition {
     return false;
   }
 
-  virtual bool checkReadyBits(unsigned blk_index) {
-    return ready_bits[blk_index];
-  }
-
  protected:
   // Ready bits are stored at word granularity.
   std::vector<bool> ready_bits;

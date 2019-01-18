@@ -38,7 +38,6 @@ typedef boost::property_map<Graph, boost::vertex_node_id_t>::type VertexNameMap;
 
 // Other convenience typedefs.
 class PartitionEntry;
-class SpadToDmaMapping;
 class ExecNode;
 namespace SrcTypes {
   class UniqueLabel;
@@ -48,7 +47,6 @@ namespace SrcTypes {
 typedef std::unordered_map<SrcTypes::UniqueLabel, unsigned> unrolling_config_t;
 typedef std::unordered_set<SrcTypes::UniqueLabel> pipeline_config_t;
 typedef std::unordered_map<std::string, PartitionEntry> partition_config_t;
-typedef std::unordered_map<std::string, SpadToDmaMapping> spad_dma_mapping_t;
 typedef std::multimap<unsigned, SrcTypes::UniqueLabel> labelmap_t;
 typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel>
     inline_labelmap_t;

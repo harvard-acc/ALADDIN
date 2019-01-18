@@ -98,11 +98,6 @@ class Scratchpad {
       it->second->resetReadyBits();
   }
 
-  /* Check if the ready bits in the partition are set */
-  bool checkReadyBits(std::string baseName, unsigned part_index, Addr addr) {
-    return getLogicalArray(baseName)->checkReadyBits(part_index, addr);
-  }
-
   /* Increment the loads counter for the specified partition. */
   void increment_loads(std::string array_label, unsigned index);
   /* Increment the stores counter for the specified partition. */

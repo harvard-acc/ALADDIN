@@ -1115,14 +1115,6 @@ void BaseDatapath::parse_config(std::string& bench,
       sscanf(rest_line.c_str(), "%[^,]\n", array_label);
       std::string p_type(type);
       user_params.partition[array_label] = { acp, none, 0, 0, 0, 0 };
-    } else if (!type.compare("spad_bypass")) {
-      char array_label[256];
-      sscanf(rest_line.c_str(), "%[^,]\n", array_label);
-      // There should be a scratchpad parition entry that we already added.
-      auto part_it = user_params.partition.find(array_label);
-      assert(part_it != user_params.partition.end() &&
-             "Do not find a partition entry for the scratchpad!");
-      part_it->second.memory_type = spad_bypass;
     } else if (!type.compare("pipelining")) {
       user_params.global_pipelining = atoi(rest_line.c_str());
     } else if (!type.compare("pipeline")) {
