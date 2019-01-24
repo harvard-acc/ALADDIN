@@ -29,7 +29,7 @@ class HybridDatapath(MemObject):
   type = "HybridDatapath"
   cxx_header = "aladdin/gem5/HybridDatapath.h"
   # MemObject is assumed to be a parent.
-  cxx_bases = ["ScratchpadDatapath"]
+  cxx_extra_bases = ["ScratchpadDatapath"]
 
   benchName = Param.String("Aladdin accelerator name.")
   outputPrefix = Param.String("Aladdin output prefix.")

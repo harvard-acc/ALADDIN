@@ -111,7 +111,7 @@ class MultipleInvocationsTest(tests.MultipleInvocationsTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_multiple_invocations_datapath.sim_cycles", 1212)
+        "system.test_multiple_invocations_datapath.sim_cycles", 1244)
 
   def runTest(self):
     self.runAndValidate()
@@ -159,7 +159,7 @@ class StreamingDmaTest(tests.StreamingDmaTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_streaming_dma_datapath.sim_cycles", 514)
+        "system.test_streaming_dma_datapath.sim_cycles", 522)
 
   def runTest(self):
     self.runAndValidate()
