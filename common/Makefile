@@ -1,6 +1,7 @@
 
 .PHONY: all clean
 EXE = aladdin
+DEBUGGER = debugger/debugger
 
 HAS_READLINE ?= 0
 
@@ -25,7 +26,9 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/dma_base_address_init.o
 
 UTILS_OBJS = file_func.o generic_func.o power_func.o
-DEBUGGER_OBJS = debugger_print.o debugger_commands.o debugger_prompt.o
+DEBUGGER_OBJS = debugger/debugger_print.o \
+		debugger/debugger_commands.o \
+		debugger/debugger_prompt.o
 DDDG_OBJS = DDDG.o
 OBJS += $(MACHINE_MODEL_OBJS) $(UTILS_OBJS) $(DDDG_OBJS) $(GRAPH_OPTS_OBJS)
 OBJ_FILES = $(patsubst %.o,obj/%.o,$(OBJS))
@@ -56,7 +59,7 @@ ifeq ($(HAS_READLINE),1)
   LFLAGS += -lreadline
 endif
 
-DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(CACTI_OBJ_DIR)
+DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(OBJ_DIR)/debugger $(CACTI_OBJ_DIR)
 
 all: CFLAGS+=-O3
 all: $(EXE)
@@ -64,13 +67,16 @@ all: $(EXE)
 debug: CFLAGS+=-DDEBUG -O0
 debug: $(EXE)
 
-debugger: $(DIRS) $(CACTI_OBJ_FILES) $(OBJ_FILES) $(DEBUGGER_OBJ_FILES)
-	$(CXX) $(CFLAGS) -c $@.cpp
+debugger: $(DEBUGGER)
+
+$(DEBUGGER): $(DIRS) $(CACTI_OBJ_FILES) $(OBJ_FILES) $(DEBUGGER_OBJ_FILES)
+	$(CXX) $(CFLAGS) -o $@.o -c $@.cpp
 	$(CXX)  $(BITWIDTH) -o $@ $@.o $(OBJ_FILES) $(DEBUGGER_OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
 $(DIRS):
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(OBJ_DIR)/graph_opts
+	mkdir -p $(OBJ_DIR)/debugger
 	mkdir -p $(CACTI_OBJ_DIR)
 
 lib : $(DIRS) $(OBJ_FILES) $(CACTI_OBJ_FILES)

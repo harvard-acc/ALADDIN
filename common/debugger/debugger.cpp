@@ -19,7 +19,7 @@
 #include <iostream>
 #include <string>
 
-#include "ScratchpadDatapath.h"
+#include "../ScratchpadDatapath.h"
 
 #include "debugger_prompt.h"
 

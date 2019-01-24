@@ -5,12 +5,12 @@
 
 #include <boost/tokenizer.hpp>
 
-#include "DDDG.h"
+#include "../DDDG.h"
 #include "debugger_commands.h"
 #include "debugger_prompt.h"
-#include "file_func.h"
-#include "Scratchpad.h"
-#include "ScratchpadDatapath.h"
+#include "../file_func.h"
+#include "../Scratchpad.h"
+#include "../ScratchpadDatapath.h"
 
 #ifdef HAS_READLINE
 #include <readline/readline.h>

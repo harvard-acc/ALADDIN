@@ -9,7 +9,7 @@
 #include <boost/graph/breadth_first_search.hpp>
 #include <boost/tokenizer.hpp>
 
-#include "typedefs.h"
+#include "../typedefs.h"
 #include "debugger_commands.h"
 #include "debugger_graph.h"
 #include "debugger_print.h"

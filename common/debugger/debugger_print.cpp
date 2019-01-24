@@ -9,11 +9,11 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "DDDG.h"
-#include "ExecNode.h"
-#include "ScratchpadDatapath.h"
-#include "SourceManager.h"
-#include "SourceEntity.h"
+#include "../DDDG.h"
+#include "../ExecNode.h"
+#include "../ScratchpadDatapath.h"
+#include "../SourceManager.h"
+#include "../SourceEntity.h"
 
 #include "debugger_print.h"
 #include "debugger_prompt.h"

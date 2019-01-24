@@ -3,9 +3,9 @@
 
 #include <iostream>
 
-#include "ExecNode.h"
-#include "ScratchpadDatapath.h"
-#include "SourceManager.h"
+#include "../ExecNode.h"
+#include "../ScratchpadDatapath.h"
+#include "../SourceManager.h"
 
 namespace adb {
 

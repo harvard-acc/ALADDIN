@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "ScratchpadDatapath.h"
+#include "../ScratchpadDatapath.h"
 
 namespace adb {
 

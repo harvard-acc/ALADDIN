@@ -9,9 +9,9 @@
 
 #include <boost/graph/breadth_first_search.hpp>
 
-#include "ExecNode.h"
-#include "ScratchpadDatapath.h"
-#include "typedefs.h"
+#include "../ExecNode.h"
+#include "../ScratchpadDatapath.h"
+#include "../typedefs.h"
 #include "debugger_graph.h"
 
 namespace adb {

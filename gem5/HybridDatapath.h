@@ -20,7 +20,7 @@
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
 
-#include "aladdin/common/debugger_prompt.h"
+#include "aladdin/common/debugger/debugger_prompt.h"
 #include "aladdin/common/DatabaseDeps.h"
 #include "aladdin/common/ScratchpadDatapath.h"
 #include "aladdin_tlb.hh"
