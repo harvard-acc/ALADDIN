@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <vector>
 #include "power_func.h"
-#include "generic_func.h"
 #include "typedefs.h"
 #include "user_config.h"
 

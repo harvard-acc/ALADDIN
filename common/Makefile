@@ -25,7 +25,7 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/global_loop_pipelining.o \
 									graph_opts/dma_base_address_init.o
 
-UTILS_OBJS = file_func.o generic_func.o power_func.o
+UTILS_OBJS = file_func.o power_func.o
 DEBUGGER_OBJS = debugger/debugger_print.o \
 		debugger/debugger_commands.o \
 		debugger/debugger_prompt.o
