@@ -326,7 +326,7 @@ void BaseDatapath::updatePerCycleActivity(
             fp_fu_activity.fp_dp_mul += 1;
           else
             fp_fu_activity.fp_sp_mul += 1;
-        } else if (node->is_trig_op()) {
+        } else if (node->is_special_math_op()) {
           fp_fu_activity.trig += 1;
         }
       }

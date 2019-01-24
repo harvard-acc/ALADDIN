@@ -412,6 +412,9 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
       callee_dynamic_function = DynamicFunction(
           callee_function, callee_function->get_invocations() + 1);
     }
+    if (curr_microop == LLVM_IR_SpecialMathOp) {
+      curr_node->set_special_math_op(label);
+    }
   }
   last_parameter = true;
   if (is_reg) {
@@ -644,7 +647,7 @@ void DDDG::parse_forward(const std::string& line) {
 
   // DMA and trig operations are not actually treated as called functions by
   // Aladdin, so there is no need to add any register name mappings.
-  if (curr_node->is_dma_op() || curr_node->is_trig_op())
+  if (curr_node->is_dma_op() || curr_node->is_special_math_op())
     return;
 
   sscanf(line.c_str(), "%d,%*[^,],%d,%[^,],\n", &size, &is_reg, label_buf);

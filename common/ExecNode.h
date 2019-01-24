@@ -195,6 +195,7 @@ class ExecNode {
     return dynamic_cast<ReadyBitAccess*>(mem_access);
   }
   unsigned get_loop_depth() const { return loop_depth; }
+  const std::string& get_special_math_op() const { return special_math_op; }
   float get_time_before_execution() const { return time_before_execution; }
 
   /* Setters. */
@@ -233,6 +234,7 @@ class ExecNode {
     mem_access = dma_mem_access;
   }
   void set_loop_depth(unsigned depth) { loop_depth = depth; }
+  void set_special_math_op(const std::string& name) { special_math_op = name; }
   void set_time_before_execution(float time) { time_before_execution = time; }
 
   SrcTypes::DynamicFunction get_dynamic_function() const {
@@ -503,7 +505,7 @@ class ExecNode {
     }
   }
 
-  bool is_multicycle_op() const { return is_fp_op() || is_trig_op(); }
+  bool is_multicycle_op() const { return is_fp_op() || is_special_math_op(); }
 
   bool is_fp_op() const {
     switch (microop) {
@@ -548,10 +550,9 @@ class ExecNode {
     }
   }
 
-  bool is_trig_op() const {
+  bool is_special_math_op() const {
     switch (microop) {
-      case LLVM_IR_Sine:
-      case LLVM_IR_Cosine:
+      case LLVM_IR_SpecialMathOp:
         return true;
       default:
         return false;
@@ -561,8 +562,11 @@ class ExecNode {
   unsigned get_multicycle_latency() const {
     if (is_fp_op())
       return fp_node_latency_in_cycles();
-    else if (is_trig_op())
-      return trig_node_latency_in_cycles();
+    else if (is_special_math_op()) {
+      // TODO: use different latencies for different special math nodes. The
+      // name of the special math function is in special_meth_op.
+      return special_math_node_latency_in_cycles();
+    }
     return 1;
   }
 
@@ -575,8 +579,8 @@ class ExecNode {
       return FP_ADD_LATENCY_IN_CYCLES;
   }
 
-  unsigned trig_node_latency_in_cycles() const {
-    return TRIG_SINE_LATENCY_IN_CYCLES;
+  unsigned special_math_node_latency_in_cycles() const {
+    return SPECIAL_MATH_NODE_LATENCY_IN_CYCLES;
   }
 
   unsigned intrinsic_op_latency_in_cycles() const {
@@ -660,8 +664,7 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(DMALoad);
       LLVM_IR_OPCODE_TO_NAME(IndexAdd);
       LLVM_IR_OPCODE_TO_NAME(SilentStore);
-      LLVM_IR_OPCODE_TO_NAME(Sine);
-      LLVM_IR_OPCODE_TO_NAME(Cosine);
+      LLVM_IR_OPCODE_TO_NAME(SpecialMathOp);
       LLVM_IR_OPCODE_TO_NAME(Intrinsic);
       default:
         return "";
@@ -718,6 +721,8 @@ class ExecNode {
   MemAccess* mem_access;
   /* Loop depth of the basic block this node belongs to. */
   unsigned loop_depth;
+  /* Name of the special math function. */
+  std::string special_math_op;
 
   /* The static instruction that generated this node. */
   SrcTypes::Instruction* static_inst;
