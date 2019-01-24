@@ -56,25 +56,27 @@ ifeq ($(HAS_READLINE),1)
   LFLAGS += -lreadline
 endif
 
+DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(CACTI_OBJ_DIR)
+
 all: CFLAGS+=-O3
 all: $(EXE)
 
 debug: CFLAGS+=-DDEBUG -O0
 debug: $(EXE)
 
-debugger: obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES) $(DEBUGGER_OBJ_FILES)
+debugger: $(DIRS) $(CACTI_OBJ_FILES) $(OBJ_FILES) $(DEBUGGER_OBJ_FILES)
 	$(CXX) $(CFLAGS) -c $@.cpp
 	$(CXX)  $(BITWIDTH) -o $@ $@.o $(OBJ_FILES) $(DEBUGGER_OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
-obj_dir:
+$(DIRS):
 	mkdir -p $(OBJ_DIR)
 	mkdir -p $(OBJ_DIR)/graph_opts
 	mkdir -p $(CACTI_OBJ_DIR)
 
-lib : obj_dir $(OBJ_FILES) $(CACTI_OBJ_FILES)
+lib : $(DIRS) $(OBJ_FILES) $(CACTI_OBJ_FILES)
 	ar rcs $(ALADDIN_HOME)/libaladdin.a $(OBJ_FILES) $(CACTI_OBJ_FILES)
 
-$(EXE): obj_dir $(CACTI_OBJ_FILES) $(OBJ_FILES)
+$(EXE): $(DIRS) $(CACTI_OBJ_FILES) $(OBJ_FILES)
 	$(CXX) $(CFLAGS) -c aladdin.cpp
 	$(CXX)  $(BITWIDTH) -o $(EXE) $(EXE).o $(OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
