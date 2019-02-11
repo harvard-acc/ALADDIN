@@ -1,0 +1,5 @@
+pipelining,0
+cycle_time,2
+ready_mode,0
+
+unrolling,top_level,loop,1
