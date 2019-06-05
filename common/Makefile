@@ -59,6 +59,14 @@ ifeq ($(HAS_READLINE),1)
   LFLAGS += -lreadline
 endif
 
+# Get the LLVM version
+LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | head -n 1 | sed 's/\.//g')
+ifneq ($(filter $(LLVM_VERSION), 34 60),)
+  CFLAGS += -DLLVM_VERSION=$(LLVM_VERSION)
+else
+  $(error We only support LLVM-3.4 and LLVM-6.0!)
+endif
+
 DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(OBJ_DIR)/debugger $(CACTI_OBJ_DIR)
 
 all: CFLAGS+=-O3
