@@ -241,6 +241,7 @@ class BaseDatapath {
       part_it->second.base_addr = 0;
   }
   void clearRegStats() { regStats.clear(); }
+  void clearSampledLoops() { program.sampled_loops.clear(); }
 
 #ifdef USE_DB
   // Specify the experiment to be associated with this simulation. Calling this
@@ -293,6 +294,8 @@ class BaseDatapath {
 
   // After marking a node as completed, update the state of its children.
   virtual void updateChildren(ExecNode* node);
+
+  void upsampleLoops();
 
   // Compute the number of registers needed at each cycle.
   void computeRegStats();

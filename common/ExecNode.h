@@ -129,18 +129,18 @@ class ExecNode {
    typedef SrcTypes::src_id_t src_id_t;
 
  public:
-   ExecNode(unsigned int _node_id, uint8_t _microop)
-       : node_id(_node_id), microop(_microop), dynamic_invocation(0),
-         line_num(-1), start_execution_cycle(-1), complete_execution_cycle(-1),
-         num_parents(0), isolated(true), inductive(false),
-         dynamic_mem_op(false), double_precision(false), array_label(""),
-         partition_index(0), time_before_execution(0.0), mem_access(nullptr),
-         static_inst(nullptr), static_function(nullptr), variable(nullptr),
-         vertex_assigned(false) {}
+  ExecNode(unsigned int _node_id, uint8_t _microop)
+      : node_id(_node_id), microop(_microop), dynamic_invocation(0),
+        line_num(-1), start_execution_cycle(-1), complete_execution_cycle(-1),
+        dma_scheduling_delay_cycle(0), num_parents(0), isolated(true),
+        inductive(false), dynamic_mem_op(false), double_precision(false),
+        array_label(""), partition_index(0), time_before_execution(0.0),
+        mem_access(nullptr), static_inst(nullptr), static_function(nullptr),
+        variable(nullptr), vertex_assigned(false) {}
 
-   ~ExecNode() {
-     if (mem_access)
-       delete mem_access;
+  ~ExecNode() {
+    if (mem_access)
+      delete mem_access;
   }
   /* Compare two nodes based only on their node ids. */
   bool operator<(const ExecNode& other) const {
@@ -170,6 +170,9 @@ class ExecNode {
   }
   int get_complete_execution_cycle() const {
     return !completed() ? 0 : complete_execution_cycle;
+  }
+  int get_dma_scheduling_delay_cycle() const {
+    return dma_scheduling_delay_cycle;
   }
   int get_num_parents() const { return num_parents; }
   Vertex get_vertex() const { return vertex; }
@@ -215,6 +218,9 @@ class ExecNode {
   void set_start_execution_cycle(int cycle) { start_execution_cycle = cycle; }
   void set_complete_execution_cycle(int cycle) {
     complete_execution_cycle = cycle;
+  }
+  void set_dma_scheduling_delay_cycle(int cycle) {
+    dma_scheduling_delay_cycle = cycle;
   }
   void set_num_parents(int parents) { num_parents = parents; }
   void set_vertex(Vertex vertex) {
@@ -387,6 +393,10 @@ class ExecNode {
   bool is_set_ready_bits() const { return microop == LLVM_IR_SetReadyBits; }
   bool is_dma_op() const {
     return is_dma_load() || is_dma_store() || is_dma_fence() || is_set_ready_bits();
+  }
+
+  bool is_set_sampling_factor() const {
+    return microop == LLVM_IR_SetSamplingFactor;
   }
 
   bool is_int_mul_op() const {
@@ -666,6 +676,7 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(SilentStore);
       LLVM_IR_OPCODE_TO_NAME(SpecialMathOp);
       LLVM_IR_OPCODE_TO_NAME(Intrinsic);
+      LLVM_IR_OPCODE_TO_NAME(SetSamplingFactor);
       default:
         return "";
     }
@@ -688,6 +699,10 @@ class ExecNode {
    * For non-fp, non-cache-memory ops,
    * start_execution_cycle == complete_execution_cycle */
   int complete_execution_cycle;
+  /* This is the delay when the DMA node makes it to the DMA issue queue and is
+   * waiting for some cycles before scheduling. The delay is for the DMA setup
+   * and cache flush/invalidate overheads. */
+  int dma_scheduling_delay_cycle;
   /* Number of parents of this node. */
   int num_parents;
   /* Corresponding Boost Vertex descriptor. If set_vertex() is never called,

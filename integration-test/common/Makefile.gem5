@@ -18,7 +18,7 @@ GEM5_CFLAGS = -static -O3 \
               -fno-exceptions \
               -std=gnu99
 
-INCLUDES += -I$(ALADDIN_HOME)/gem5
+INCLUDES += -I$(ALADDIN_HOME) -I$(ALADDIN_HOME)/gem5
 LFLAGS = -lm
 BMARK = $(ACCEL_NAME)
 

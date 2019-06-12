@@ -521,6 +521,8 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
               "Scheduling DMA %s operation with node id %d with delay %lu\n",
               isLoad ? "load" : "store", node_id, delay);
       schedule(delayedDmaEvent, curTick() + delay);
+      ExecNode* node = program.nodes.at(node_id);
+      node->set_dma_scheduling_delay_cycle(num_cycles);
     }
     inflight_dma_nodes[node_id] = WaitingForDmaSetup;
     dmaWaitingQueue.push_back(std::make_pair(node_id, delay));

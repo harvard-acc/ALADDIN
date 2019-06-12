@@ -146,6 +146,49 @@ class DynamicInstruction {
   Instruction* instruction;
 };
 
+// Represents a label in a particular invocation of a function.
+class DynamicLabel {
+ public:
+  DynamicLabel() : dyn_func(), label(nullptr) {}
+  DynamicLabel(DynamicFunction df, Label* l, int ln = 0)
+      : dyn_func(df), label(l), line_number(ln) {}
+
+  explicit operator bool() const { return (dyn_func && label); }
+
+  bool operator==(const DynamicLabel& other) const {
+    return (dyn_func == other.dyn_func && *label == *other.label &&
+            line_number == other.line_number);
+  }
+
+  bool operator!=(const DynamicLabel& other) const {
+    return !(this->operator==(other));
+  }
+
+  DynamicLabel& operator=(const DynamicLabel& other) {
+    dyn_func = other.dyn_func;
+    label = other.label;
+    line_number = other.line_number;
+    return *this;
+  }
+
+  std::string str() const {
+    std::stringstream oss;
+    oss << dyn_func.str() << "-" << label->get_name() << "-" << line_number;
+    return oss.str();
+  }
+
+  void set_line_number(int ln) { line_number = ln; }
+
+  const DynamicFunction* get_dynamic_function() const { return &dyn_func; }
+  Label* get_label() const { return label; }
+  int get_line_number() const { return line_number; }
+
+ private:
+  DynamicFunction dyn_func;
+  Label* label;
+  int line_number;
+};
+
 };  // namespace SrcTypes
 
 // Hashing functions to enable these classes to be stored as keys in hash maps.
@@ -181,6 +224,19 @@ template <> struct hash<SrcTypes::DynamicInstruction> {
                                        : SrcTypes::InvalidId;
       return (std::hash<SrcTypes::DynamicFunction>()(*dynfunc) ^
               (inst_id << 2) >> 2);
+    }
+    return SrcTypes::InvalidId;
+  }
+};
+
+template <> struct hash<SrcTypes::DynamicLabel> {
+  size_t operator()(const SrcTypes::DynamicLabel& dl) const {
+    if (dl) {
+      const SrcTypes::DynamicFunction* dynfunc = dl.get_dynamic_function();
+      SrcTypes::src_id_t label_id =
+          dl.get_label() ? dl.get_label()->get_id() : SrcTypes::InvalidId;
+      return (std::hash<SrcTypes::DynamicFunction>()(*dynfunc) ^
+              (label_id << 2) >> 2);
     }
     return SrcTypes::InvalidId;
   }

@@ -77,6 +77,7 @@
 #define LLVM_IR_SilentStore 101
 #define LLVM_IR_SpecialMathOp 102
 #define LLVM_IR_Intrinsic 104
+#define LLVM_IR_SetSamplingFactor 105
 // clang-format on
 
 #endif

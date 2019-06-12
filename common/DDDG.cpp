@@ -398,7 +398,11 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
            &is_reg,
            label);
   }
-  Value value(char_value, size);
+  Value value(
+      char_value,
+      size,
+      // Only the first argument of the setSamplingFactor function is a string.
+      param_tag == 1 && curr_microop == LLVM_IR_SetSamplingFactor);
   if (curr_microop == LLVM_IR_EntryDecl) {
     if (value.getType() == Value::Ptr)
       datapath->addEntryArrayDecl(std::string(label), value);
@@ -459,7 +463,8 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
-      curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op()) {
+      curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op() ||
+      curr_node->is_set_sampling_factor()) {
     // NOTE: We are moving value into the parameter value list, so the value
     // object is now no longer valid and cannot be used directly!
     parameter_value_per_inst.push_back(std::move(value));
@@ -520,6 +525,9 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
     } else if (param_tag == 1 && curr_node->is_dma_op()) {
       // Data dependencies are handled in parse_result(), because we need all
       // the arguments to dmaLoad in order to do this.
+    } else if (curr_node->is_set_sampling_factor()) {
+      // The information of the sampled loops will be parsed in
+      // parse_result().
     }
   }
 }
@@ -638,6 +646,12 @@ void DDDG::parse_result(const std::string& line) {
     ReadyBitAccess* access =
         new ReadyBitAccess(start_addr, size, var, value);
     curr_node->set_mem_access(access);
+  } else if (curr_node->is_set_sampling_factor()) {
+    const std::string& loop_name = parameter_value_per_inst[1].getString();
+    float factor = parameter_value_per_inst[2].getFloat();
+    Label* label = srcManager.insert<Label>(loop_name);
+    DynamicLabel dyn_label(curr_node->get_dynamic_function(), label);
+    program->sampled_loops[dyn_label] = factor;
   }
 }
 
@@ -647,7 +661,8 @@ void DDDG::parse_forward(const std::string& line) {
 
   // DMA and trig operations are not actually treated as called functions by
   // Aladdin, so there is no need to add any register name mappings.
-  if (curr_node->is_dma_op() || curr_node->is_special_math_op())
+  if (curr_node->is_dma_op() || curr_node->is_special_math_op() ||
+      curr_node->is_set_sampling_factor())
     return;
 
   sscanf(line.c_str(), "%d,%*[^,],%d,%[^,],\n", &size, &is_reg, label_buf);

@@ -142,9 +142,20 @@ class Program {
 
   //=------------ Graph analysis functions ---------------=//
 
+  // Helper function for the following two findLoopBoundaries, either finding a
+  // static unique label or a dynamic label.
+  std::list<cnode_pair_t> findLoopBoundaries(
+      const SrcTypes::UniqueLabel* static_label,
+      const SrcTypes::DynamicLabel* dynamic_label) const;
+
   // Return pairs of branch nodes bounding iterations of the specified loop.
   std::list<cnode_pair_t> findLoopBoundaries(
       const SrcTypes::UniqueLabel& loop_label) const;
+
+  // Return pairs of branch nodes bounding iterations of the specified dynamic
+  // loop.
+  std::list<cnode_pair_t> findLoopBoundaries(
+      const SrcTypes::DynamicLabel& loop_label) const;
 
   // Return the Call and Return node pairs which bound a function.
   std::list<cnode_pair_t> findFunctionBoundaries(SrcTypes::Function* func) const;
@@ -155,6 +166,15 @@ class Program {
   // exception that we don't traverse down control edges, and all edges are
   // considered to have distance 1.
   int shortestDistanceBetweenNodes(unsigned from, unsigned to) const;
+
+  //=-------- Sampling functions --------=//
+
+  // This updates the line numbers of the sampled loops using the labelmap.
+  void updateSamplingWithLabelInfo();
+
+  // Upsample the sampled loop latencies. This returns the correction cycles
+  // to add to num_cycles.
+  int upsampleLoops();
 
   //=-------- Program data ---------=//
 
@@ -182,6 +202,9 @@ class Program {
 
   // Vertices to their corresponding node ids.
   VertexNameMap vertex_to_name;
+
+  // Sampled loops.
+  sampling_t sampled_loops;
 };
 
 #endif

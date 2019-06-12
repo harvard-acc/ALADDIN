@@ -139,18 +139,21 @@ char* bytesToHexStr(uint8_t* data, int size, bool separate32=false);
 class Value {
  public:
   Value(Value&& other)
-      : vector_buf(std::move(other.vector_buf)), data(other.data),
-        type(other.type), size(other.size) {}
+      : vector_buf(std::move(other.vector_buf)), data_str(other.data_str),
+        data(other.data), type(other.type), size(other.size) {}
 
-  Value(char* value_buf, unsigned _size) : size(_size / 8), vector_buf() {
-    createValue(value_buf);
+  Value(char* value_buf, unsigned _size, bool is_string = false) : size(_size / 8), vector_buf() {
+    createValue(value_buf, is_string);
   }
 
   ~Value() {}
 
-  void createValue(char* value_buf) {
+  void createValue(char* value_buf, bool is_string) {
     const std::string value_str(value_buf);
-    if (size > 8) {
+    if (is_string) {
+      type = String;
+      data_str = value_str;
+    } else if (size > 8) {
       type = Vector;
       vector_buf = std::unique_ptr<uint8_t>(hexStrToBytes(value_buf, size));
     } else if (value_str.find('.') != std::string::npos) {
@@ -175,6 +178,10 @@ class Value {
     return data.integer == value;
   }
 
+  bool operator==(float value) {
+    return data.fp == value;
+  }
+
   bool operator==(double value) {
     return data.dp == value;
   }
@@ -189,18 +196,23 @@ class Value {
     Float,
     Vector,
     Ptr,
+    String,
     NumValueTypes,
   };
 
-  // The only data accessors we want to expose are scalar or vector. Even if
-  // the type is Ptr, as far as we are concerned, we just need the raw value of
-  // the pointer. Only when the data is actually of type Vector do we return a
-  // pointer to a character buffer.
+  // The data accessors we want to expose are scalar, float, string and vector.
+  // Even if the type is Ptr, as far as we are concerned, we just need the raw
+  // value of the pointer. Only when the data is actually of type Vector do we
+  // return a pointer to a character buffer.
   uint64_t getScalar() const { return data.bits; }
+
+  float getFloat() const { return data.fp; }
 
   // Requesting the vector data buffer pointer will automatically release
   // ownership of the managed pointer.
   uint8_t* getVector() { return vector_buf.release(); }
+
+  const std::string getString() const { return data_str; }
 
   // Implicit conversion to unsigned integer.
   operator uint64_t() const { return data.bits; }
@@ -224,6 +236,9 @@ class Value {
   // MemAccess object).  The unique_ptr is used to handle ownership of that
   // byte array and only free the memory if it was unused.
   std::unique_ptr<uint8_t> vector_buf;
+
+  // String data.
+  std::string data_str;
 
   // Stores the data for all datatypes other than Vector.
   DataStorage data;

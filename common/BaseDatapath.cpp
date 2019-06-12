@@ -47,6 +47,7 @@ bool BaseDatapath::buildDddg() {
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   updateUnrollingPipeliningWithLabelInfo();
+  program.updateSamplingWithLabelInfo();
   user_params.checkOverlappingRanges();
   topLevelFunctionName = dddg->get_top_level_function_name();
   delete dddg;
@@ -114,6 +115,7 @@ void BaseDatapath::clearDatapath() {
   clearFunctionName();
   clearArrayBaseAddress();
   clearRegStats();
+  clearSampledLoops();
 }
 
 void BaseDatapath::initBaseAddress() {
@@ -201,12 +203,18 @@ void BaseDatapath::treeHeightReduction() {
 // called in the end of the whole flow
 void BaseDatapath::dumpStats() {
   rescheduleNodesWhenNeeded();
+  upsampleLoops();
   computeRegStats();
   writePerCycleActivity();
   writeOtherStats();
 #ifdef DEBUG
   dumpGraph(benchName);
 #endif
+}
+
+void BaseDatapath::upsampleLoops() {
+  // Update num_cycles with the correction cycles.
+  num_cycles += program.upsampleLoops();
 }
 
 /*
