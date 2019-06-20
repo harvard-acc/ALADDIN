@@ -175,7 +175,10 @@ class BasicBlock : public SourceEntity {
 
  protected:
   BasicBlock() : SourceEntity() {}
-  BasicBlock(std::string name) : SourceEntity(name) { set_id(); }
+  BasicBlock(std::string name) : SourceEntity(name) {
+    set_id();
+    preheader = (name.find("preheader") != std::string::npos);
+  }
 
  public:
   virtual std::string str() const {
@@ -184,11 +187,15 @@ class BasicBlock : public SourceEntity {
     return str.str();
   }
 
+  bool is_preheader() const { return preheader; }
+
  private:
   virtual void set_id() {
     std::hash<std::string> hash;
     id = hash("B_" + name);
   }
+
+  bool preheader;
 };
 
 // A label that belongs to a function.
