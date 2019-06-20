@@ -46,7 +46,7 @@ bool BaseDatapath::buildDddg() {
   dddg = new DDDG(this, &program, trace_file);
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
-  updateUnrollingPipeliningWithLabelInfo(dddg->get_inline_labelmap());
+  updateUnrollingPipeliningWithLabelInfo();
   user_params.checkOverlappingRanges();
   topLevelFunctionName = dddg->get_top_level_function_name();
   delete dddg;
@@ -70,8 +70,7 @@ bool BaseDatapath::buildDddg() {
 
 void BaseDatapath::resetTrace() { gzseek(trace_file, 0, SEEK_SET); }
 
-void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
-    const inline_labelmap_t& inline_labelmap) {
+void BaseDatapath::updateUnrollingPipeliningWithLabelInfo() {
   // The config file is parsed before the trace, so we don't have line number
   // information yet. After parsing the trace, update the unrolling and
   // pipelining config maps with line numbers.
@@ -95,7 +94,8 @@ void BaseDatapath::updateUnrollingPipeliningWithLabelInfo(
   }
 
   // Update the unrolling/pipelining configurations for inlined labels.
-  for (auto it = inline_labelmap.begin(); it != inline_labelmap.end(); ++it) {
+  for (auto it = program.inline_labelmap.begin();
+       it != program.inline_labelmap.end(); ++it) {
     const UniqueLabel& inlined_label = it->first;
     const UniqueLabel& orig_label = it->second;
 

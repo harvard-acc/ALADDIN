@@ -169,6 +169,10 @@ class Program {
   // number.
   labelmap_t labelmap;
 
+  // Maps a label in an inlined function to the original function in which it
+  // was written.
+  inline_labelmap_t inline_labelmap;
+
   // Control flow nodes corresponding to loop boundaries.  This is populated by
   // the LoopUnrolling optimization.
   std::vector<DynLoopBound> loop_bounds;

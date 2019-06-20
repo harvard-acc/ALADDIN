@@ -246,7 +246,6 @@ class DDDG {
   int num_of_control_dependency();
   void output_dddg();
   size_t build_initial_dddg(size_t trace_off, size_t trace_size);
-  inline_labelmap_t get_inline_labelmap() { return inline_labelmap; }
   const std::string& get_top_level_function_name() const {
     return top_level_function_name;
   }
@@ -340,9 +339,6 @@ class DDDG {
   map_uint_to_set memory_edge_table;
   // Control edge tracking table.
   map_uint_to_set control_edge_table;
-  // Maps a label in an inlined function to the original function in which it
-  // was written.
-  inline_labelmap_t inline_labelmap;
 
   // keep track of currently executed methods
   std::stack<SrcTypes::DynamicFunction> active_method;

@@ -284,8 +284,7 @@ class BaseDatapath {
   void parse_config(std::string& bench, std::string& config_file);
 
   // Update unrolling/pipelining directives with labelmap information.
-  void updateUnrollingPipeliningWithLabelInfo(
-      const inline_labelmap_t& inline_labelmap);
+  void updateUnrollingPipeliningWithLabelInfo();
 
   //=-------------- Simulation and scheduling ----------------=/
 

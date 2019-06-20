@@ -263,7 +263,7 @@ void DDDG::parse_labelmap_line(const std::string& line) {
       // Add the inlined labels to another map so that we can associate any
       // unrolling/pipelining directives declared on the original labels with
       // them.
-      inline_labelmap[inlined_label] = unique_label;
+      program->inline_labelmap[inlined_label] = unique_label;
     }
   }
 }
