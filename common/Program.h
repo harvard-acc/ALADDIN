@@ -6,6 +6,7 @@
 #include "DynamicEntity.h"
 #include "ExecNode.h"
 #include "SourceEntity.h"
+#include "Sampling.h"
 #include "typedefs.h"
 
 /* A dynamic loop boundary is identified by a branch/call node and a target
@@ -64,7 +65,7 @@ class CallArgMap {
 // of the graph.
 class Program {
  public:
-  Program() {}
+  Program() : sampling(this) {}
 
   void clear();
   void clearExecNodes();
@@ -167,15 +168,6 @@ class Program {
   // considered to have distance 1.
   int shortestDistanceBetweenNodes(unsigned from, unsigned to) const;
 
-  //=-------- Sampling functions --------=//
-
-  // This updates the line numbers of the sampled loops using the labelmap.
-  void updateSamplingWithLabelInfo();
-
-  // Upsample the sampled loop latencies. This returns the correction cycles
-  // to add to num_cycles.
-  int upsampleLoops();
-
   //=-------- Program data ---------=//
 
   // Complete set of all execution nodes.
@@ -203,8 +195,8 @@ class Program {
   // Vertices to their corresponding node ids.
   VertexNameMap vertex_to_name;
 
-  // Sampled loops.
-  sampling_t sampled_loops;
+  // Loop sampling information.
+  LoopSampling sampling;
 };
 
 #endif

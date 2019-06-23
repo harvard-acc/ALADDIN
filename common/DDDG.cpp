@@ -651,7 +651,7 @@ void DDDG::parse_result(const std::string& line) {
     float factor = parameter_value_per_inst[2].getFloat();
     Label* label = srcManager.insert<Label>(loop_name);
     DynamicLabel dyn_label(curr_node->get_dynamic_function(), label);
-    program->sampled_loops[dyn_label] = factor;
+    program->sampling.addSamplingFactor(dyn_label, factor);
   }
 }
 

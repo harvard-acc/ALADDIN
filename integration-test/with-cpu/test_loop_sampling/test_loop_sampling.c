@@ -18,12 +18,33 @@ void test_loop_sampling(int* inputs,
 #ifdef DMA_MODE
   dmaLoad(inputs, inputs, inputs_size * sizeof(int));
 #endif
-  setSamplingFactor("loop", inputs_size / sample_size);
-  loop:
+  float sampling_factor = inputs_size * 1.0 / sample_size;
+  setSamplingFactor("loop0", sampling_factor);
+  setSamplingFactor("loop1", sampling_factor);
+  setSamplingFactor("loop2", sampling_factor);
+  setSamplingFactor("loop3", 1);
+  setSamplingFactor("loop4", sampling_factor);
+  loop0:
+  for (int k = 0; k < sample_size; k++) {
+    results[k] = inputs[k] * 2;
+    loop1:
+    for (int i = 0; i < sample_size; i++) {
+      // Do some computation.
+      results[i] = inputs[i] * inputs[i] * inputs[i];
+      results[i] *= i;
+      loop2:
+      for (int j = 0; j < sample_size; j++) {
+        results[i] += results[j];
+      }
+      loop3:
+      for (int j = 0; j < inputs_size; j++) {
+        results[i] *= inputs[j];
+      }
+    }
+  }
+  loop4:
   for (int i = 0; i < sample_size; i++) {
-    // Do some computation.
-    results[i] = inputs[i] * inputs[i] * inputs[i];
-    results[i] *= i;
+    results[i] -= inputs[i];
   }
 
 #ifdef DMA_MODE
@@ -32,7 +53,7 @@ void test_loop_sampling(int* inputs,
 }
 
 int main() {
-  int inputs_size = 1024;
+  int inputs_size = 128;
   int sample_size = 1;
   int *inputs, *results;
   int err = posix_memalign(

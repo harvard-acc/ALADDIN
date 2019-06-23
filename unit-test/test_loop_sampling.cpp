@@ -225,4 +225,56 @@ SCENARIO("Test sampling on loops", "[loop_sampling]") {
       REQUIRE(second_invoc_cycle == second_invoc_ref_cycle);
     }
   }
+
+  GIVEN("Inner loops") {
+    /* Code:
+     *
+     * int top_level(int a[10], int loop_size, int sample_size) {
+     *   int ret_val = 0;
+     *   setSamplingFactor("loop0", loop_size / sample_size);
+     *   setSamplingFactor("loop1", loop_size / sample_size);
+     *   setSamplingFactor("loop2", 1);
+     *   setSamplingFactor("loop3", 1);
+     *   loop0:
+     *   for (int i = 0; i < sample_size; i++) {
+     *       ret_val += a[i];
+     *       loop1:
+     *       for (int j = 0; j < sample_size; j++)
+     *           ret_val += a[j];
+     *       loop2:
+     *       for (int j = 0; j < loop_size; j++)
+     *          ret_val *= a[j];
+     *   }
+     *   loop3:
+     *   for (int i = 0; i < inputs_size; i++)
+     *       ret_val += a[i];
+     *   return ret_val;
+     * }
+     *
+     * int main() {
+     *   int a[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+     *   int result = top_level(a, 10, 1);
+     *   printf("result = %d\n", result);
+     *   return 0;
+     * }
+     *
+     */
+    std::string bench("outputs/loop-sampling");
+    std::string trace_file("inputs/loop-sampling-inner-loops-trace.gz");
+    std::string trace_ref_file("inputs/loop-sampling-inner-loops-ref-trace.gz");
+    std::string config_file("inputs/config-loop-sampling-inner");
+
+    ScratchpadDatapath* acc =
+        new ScratchpadDatapath(bench, trace_file, config_file);
+    scheduleDatapath(acc);
+
+    // The reference accelerator doesn't do any sampling.
+    ScratchpadDatapath* acc_ref =
+        new ScratchpadDatapath(bench, trace_ref_file, config_file);
+    scheduleDatapath(acc_ref);
+
+    WHEN("After scheduling") {
+      REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+    }
+  }
 }

@@ -54,6 +54,5 @@ typedef std::unordered_map<SrcTypes::UniqueLabel, SrcTypes::UniqueLabel>
 typedef std::pair<ExecNode*, ExecNode*> node_pair_t;
 typedef std::pair<const ExecNode*, const ExecNode*> cnode_pair_t;
 typedef std::map<unsigned, ExecNode*> ExecNodeMap;
-typedef std::unordered_map<SrcTypes::DynamicLabel, float> sampling_t;
 
 #endif
