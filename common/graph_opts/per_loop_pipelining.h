@@ -6,7 +6,13 @@
 class PerLoopPipelining : public BaseAladdinOpt {
  public:
   using BaseAladdinOpt::BaseAladdinOpt;
+  void findAndPipelineLoops(LoopIteration* loop,
+                            std::set<Edge>& to_remove_edges,
+                            std::vector<NewEdge>& to_add_edges);
   virtual void optimize();
+  void optimize(const std::list<LoopIteration*>& loops,
+                std::set<Edge>& to_remove_edges,
+                std::vector<NewEdge>& to_add_edges);
   virtual std::string getCenteredName(size_t size);
 };
 

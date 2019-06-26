@@ -1,5 +1,5 @@
-#ifndef _SAMPLING_H_
-#define _SAMPLING_H_
+#ifndef _LOOP_INFO_H_
+#define _LOOP_INFO_H_
 
 #include "DynamicEntity.h"
 #include "ExecNode.h"
@@ -8,25 +8,21 @@
 
 class Program;
 
-// This is a tree structure that tries to capture the hierarchy of sampled
-// loops. The hierarchy assumes regular nested loops, not loops that break out
-// to parent loops or do any other kinds of irregular control flow.
-class SampledLoop {
+// This is a tree structure that tries to capture the hierarchy of loop
+// iterations. The hierarchy assumes regular nested loops, not loops that break
+// out to parent loops or do any other kinds of irregular control flow.
+class LoopIteration {
  public:
-  SampledLoop(const SrcTypes::DynamicLabel* _label,
-              float _factor,
-              int _start_cycle,
-              int _end_cycle,
-              int _start_node_id,
-              int _end_node_id)
-      : label(_label), factor(_factor), start_cycle(_start_cycle),
-        end_cycle(_end_cycle), elapsed_cycle(_end_cycle - _start_cycle),
-        start_node_id(_start_node_id), end_node_id(_end_node_id),
-        upsampled(false), parent(nullptr) {}
+  LoopIteration(const SrcTypes::UniqueLabel* _label = nullptr,
+                const ExecNode* _start_node = nullptr,
+                const ExecNode* _end_node = nullptr)
+      : label(_label), start_node(_start_node), end_node(_end_node),
+        parent(nullptr), sampled(false), factor(1), elapsed_cycle(0) {}
 
-  bool contains(const SampledLoop* other) const {
-    return start_node_id <= other->start_node_id &&
-           end_node_id >= other->end_node_id;
+  bool contains(const LoopIteration* other) const {
+    return isRootNode() ||
+           (start_node->get_node_id() <= other->start_node->get_node_id() &&
+            end_node->get_node_id() >= other->end_node->get_node_id());
   }
 
   bool isRootNode() const {
@@ -36,53 +32,61 @@ class SampledLoop {
 
   std::string str() const {
     std::stringstream ss;
-    if (isRootNode())
-      ss << "Root node, ";
-    else
-      ss << label->str() << ", ";
-    ss << "factor: " << factor << ", cycles: [" << start_cycle << ", "
-       << end_cycle << "], upsampled: " << upsampled
-       << ", elapsed cycle: " << elapsed_cycle << ", node IDs: ["
-       << start_node_id << ", " << end_node_id << "]";
+    if (isRootNode()) {
+      ss << "Root node, elapsed cycle: " << elapsed_cycle;
+    } else {
+      ss << label->str() << ", node IDs: [" << start_node->get_node_id() << ", "
+         << end_node->get_node_id() << "], cycles: ["
+         << start_node->get_complete_execution_cycle() << ", "
+         << end_node->get_complete_execution_cycle()
+         << "], sampled: " << sampled << ", factor: " << factor
+         << ", elapsed cycle: " << elapsed_cycle;
+    }
     return ss.str();
   }
 
-  float factor;
-  int start_cycle;
-  int end_cycle;
-  int elapsed_cycle;
-  unsigned int start_node_id;
-  unsigned int end_node_id;
-  SampledLoop* parent;
-  std::vector<SampledLoop*> children;
-  bool upsampled;
+  const SrcTypes::UniqueLabel* label;
+  const ExecNode* start_node;
+  const ExecNode* end_node;
+  LoopIteration* parent;
+  std::vector<LoopIteration*> children;
 
- private:
-  const SrcTypes::DynamicLabel* label;
+  // Fields specific to sampling.
+  bool sampled;
+  float factor;
+  int elapsed_cycle;
 };
 
-class LoopSampling {
+class LoopInfo {
  public:
-  LoopSampling(Program* _program) : program(_program) {
-    insertRootNode();
-  }
+  LoopInfo(const Program* _program) : program(_program) {}
 
-  ~LoopSampling() {
-    for (auto s : loop_samples)
+  ~LoopInfo() {
+    for (auto s : loop_iters)
       delete s;
   }
+
+  //=------------ Loop tree operations ---------------=//
+
+  // Build the loop tree by inserting all the loop iterations.
+  void buildLoopTree();
+
+  // Print the details of the loop tree.
+  void printLoopTree();
+
+  LoopIteration* getRootNode() const { return root; }
+
+  void clear() {
+    loop_sampling_factors.clear();
+    for (auto l : loop_iters)
+      delete l;
+    loop_iters.clear();
+  }
+
+  //=------------ Sampling functions ---------------=//
 
   void addSamplingFactor(SrcTypes::DynamicLabel& label, float factor) {
     loop_sampling_factors[label] = factor;
-  }
-
-  void clearSamplingInfo() {
-    loop_sampling_factors.clear();
-    for (auto s : loop_samples)
-      delete s;
-    loop_samples.clear();
-    // Insert a new root node for the next accelerator invocation.
-    insertRootNode();
   }
 
   // This updates the line numbers of the sampled loops using the labelmap.
@@ -92,44 +96,39 @@ class LoopSampling {
   // to add to num_cycles.
   int upsampleLoops();
 
-  // Print the details of the sample tree.
-  void printSampleTree();
-
  private:
-  // Create a root node that has infinite length, ensuring that all loop
-  // samples will be descendents of it.
+  //=------------ Loop tree operations ---------------=//
+
+  // Create a root node that all loop iterations will be descendents of.
   void insertRootNode() {
-    root = new SampledLoop(nullptr, 1, 0, std::numeric_limits<int>::max(), 0,
-                           std::numeric_limits<int>::max());
-    root->elapsed_cycle = 0;
-    loop_samples.push_back(root);
+    root = new LoopIteration();
+    loop_iters.push_back(root);
   }
 
-  // Build the sample tree by inserting all the sampled loops
-  void buildSampleTree();
-
   // This is a recursive function that searches for the best place to insert the
-  // sample at. The search begins downwards from the given node.
-  bool insertSample(SampledLoop* node, SampledLoop* sample);
+  // loop iteration at. The search begins downwards from the given node.
+  bool insertLoop(LoopIteration* node, LoopIteration* loop);
+
+  void printLoopTree(LoopIteration* node, int level);
+
+  //=------------ Sampling functions ---------------=//
 
   // Multiply elapsed time of this node and all children by factor.
-  void upsampleChildren(SampledLoop* node, float factor);
+  void upsampleChildren(LoopIteration* node, float factor);
 
   // Update the tree by upsampling this node's execution time.
-  void upsampleParents(SampledLoop* node, int correction_cycle);
+  void upsampleParents(LoopIteration* node, int correction_cycle);
 
   // Correct the sample's cycles due to DMA operations.
-  void sampleDmaCorrection(SampledLoop* sample);
-
-  void printSampleTree(SampledLoop* node, int level);
+  void sampleDmaCorrection(LoopIteration* loop);
 
  private:
-  // Dynamic loop samples.
-  std::vector<SampledLoop*> loop_samples;
+  // Dynamic loop iterations.
+  std::vector<LoopIteration*> loop_iters;
   // Sampled loop labels and sampling factors.
   std::unordered_map<SrcTypes::DynamicLabel, float> loop_sampling_factors;
-  SampledLoop* root;
-  Program* program;
+  LoopIteration* root;
+  const Program* program;
 };
 
 #endif

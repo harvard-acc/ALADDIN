@@ -31,6 +31,7 @@ void Program::clear() {
   graph.clear();
   call_arg_map.clear();
   loop_bounds.clear();
+  loop_info.clear();
 }
 
 ExecNode* Program::getNextNode(unsigned node_id) const {

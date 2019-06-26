@@ -262,19 +262,40 @@ SCENARIO("Test sampling on loops", "[loop_sampling]") {
     std::string bench("outputs/loop-sampling");
     std::string trace_file("inputs/loop-sampling-inner-loops-trace.gz");
     std::string trace_ref_file("inputs/loop-sampling-inner-loops-ref-trace.gz");
-    std::string config_file("inputs/config-loop-sampling-inner");
+    WHEN("Loop pipelining is not used") {
+      std::string config_file("inputs/config-loop-sampling-inner");
 
-    ScratchpadDatapath* acc =
-        new ScratchpadDatapath(bench, trace_file, config_file);
-    scheduleDatapath(acc);
+      ScratchpadDatapath* acc =
+          new ScratchpadDatapath(bench, trace_file, config_file);
+      scheduleDatapath(acc);
 
-    // The reference accelerator doesn't do any sampling.
-    ScratchpadDatapath* acc_ref =
-        new ScratchpadDatapath(bench, trace_ref_file, config_file);
-    scheduleDatapath(acc_ref);
+      // The reference accelerator doesn't do any sampling.
+      ScratchpadDatapath* acc_ref =
+          new ScratchpadDatapath(bench, trace_ref_file, config_file);
+      scheduleDatapath(acc_ref);
 
-    WHEN("After scheduling") {
-      REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      WHEN("After scheduling") {
+        REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      }
+    }
+
+    WHEN("Loop pipelining is used") {
+      // Sampling is not supposed to work with pipelined loops, but it should
+      // not affect the upsampling on other loops.
+      // In the code, loop2 will be pipelined.
+      std::string config_file("inputs/config-loop-sampling-inner-pipelining");
+      ScratchpadDatapath* acc =
+          new ScratchpadDatapath(bench, trace_file, config_file);
+      scheduleDatapath(acc);
+
+      // The reference accelerator doesn't do any sampling.
+      ScratchpadDatapath* acc_ref =
+          new ScratchpadDatapath(bench, trace_ref_file, config_file);
+      scheduleDatapath(acc_ref);
+
+      WHEN("After scheduling") {
+        REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      }
     }
   }
 }

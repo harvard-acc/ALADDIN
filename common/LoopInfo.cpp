@@ -1,9 +1,121 @@
 #include <limits>
 
-#include "Sampling.h"
+#include "LoopInfo.h"
 #include "Program.h"
 
-void LoopSampling::updateSamplingWithLabelInfo() {
+void LoopInfo::buildLoopTree() {
+  insertRootNode();
+  for (auto& line_label : program->labelmap) {
+    std::list<cnode_pair_t> loop_bound_nodes =
+        program->findLoopBoundaries(line_label.second);
+    for (auto& bound : loop_bound_nodes) {
+      const ExecNode* start_node = bound.first;
+      const ExecNode* end_node = bound.second;
+      const SrcTypes::UniqueLabel* label = &line_label.second;
+      LoopIteration* loop = new LoopIteration(label, start_node, end_node);
+      // Check if this loop iteration belongs to a sampled loop. If so, set its
+      // sampling factor and mark it sampled.
+      for (auto sample_it = loop_sampling_factors.begin();
+           sample_it != loop_sampling_factors.end();
+           ++sample_it) {
+        const SrcTypes::DynamicLabel& sampled_label = sample_it->first;
+        float factor = sample_it->second;
+        bool is_sampled_loop =
+            start_node->get_line_num() == sampled_label.get_line_number() &&
+            start_node->get_dynamic_function() ==
+                *(sampled_label.get_dynamic_function());
+        if (is_sampled_loop) {
+          loop->factor = factor;
+          loop->sampled = true;
+        }
+      }
+      loop_iters.push_back(loop);
+      insertLoop(root, loop);
+    }
+  }
+}
+
+bool LoopInfo::insertLoop(LoopIteration* node, LoopIteration* loop) {
+  if (node->contains(loop)) {
+    // The loop should be inserted to the subtree from this node. We first
+    // check if the node is a leaf node and directly insert the loop if so.
+    // Otherwise, we look at every child of this node and see if the loop
+    // will become a new parent of it (i.e., the loop will be inserted between
+    // the node and any of its children). If not, we try to insert the loop to
+    // the subtree from that child.
+    if (node->children.size() == 0) {
+      node->children.push_back(loop);
+      loop->parent = node;
+      return true;
+    }
+    bool inserted = false;
+    auto child_it = node->children.begin();
+    while (child_it != node->children.end()) {
+      if (loop->contains(*child_it)) {
+        loop->parent = node;
+        loop->children.push_back(*child_it);
+        (*child_it)->parent = loop;
+        child_it = node->children.erase(child_it);
+        if (std::find(node->children.begin(), node->children.end(), loop) ==
+            node->children.end()) {
+          child_it = node->children.insert(child_it, loop);
+          ++child_it;
+        }
+        inserted = true;
+      } else {
+        inserted |= insertLoop(*child_it, loop);
+        ++child_it;
+      }
+    }
+    if (!inserted) {
+      // The loop is neither a child nor a parent of any children, thus it's a
+      // new sibling.
+      node->children.push_back(loop);
+      loop->parent = node;
+    }
+    return true;
+  } else {
+    // The loop can't be inserted into the path downward from the node.
+    return false;
+  }
+}
+
+std::string repeatString(const std::string& str, int n) {
+  std::stringstream ss;
+  for (int i = 0; i < n; i++) {
+    ss << str;
+  }
+  return ss.str();
+}
+
+void LoopInfo::printLoopTree(LoopIteration* node, int level) {
+  // Loop tree printing format:
+  //
+  //  Root node, [loop info]
+  //  +-loop0-iter0, [loop info]
+  //  | +-loop1-iter0, [loop info]
+  //  | | +-loop2-iter0, [loop info]
+  //  | | +-loop2-iter1, [loop info]
+  //  | +-loop1-iter1, [loop info]
+  //  | | +-loop2-iter2, [loop info]
+  //  | | +-loop2-iter3, [loop info]
+  //  ...
+  std::cout << repeatString("| ", level - 1);
+  if (level > 0)
+    std::cout << "+-";
+  std::cout << node->str() << "\n";
+  for (auto& child : node->children) {
+    printLoopTree(child, level + 1);
+  }
+}
+
+void LoopInfo::printLoopTree() {
+  std::cout << "-------- Loop tree --------\n";
+  printLoopTree(root, 0);
+  std::cout << "-------- Loop tree --------\n";
+}
+
+void LoopInfo::updateSamplingWithLabelInfo() {
   const labelmap_t& labelmap = program->labelmap;
   const inline_labelmap_t& inline_labelmap = program->inline_labelmap;
   // Because we store the dynamic labels for the sampled loops, to update the
@@ -57,98 +169,43 @@ void LoopSampling::updateSamplingWithLabelInfo() {
   }
 }
 
-void LoopSampling::buildSampleTree() {
-  for (auto& label_factor : loop_sampling_factors) {
-    std::list<cnode_pair_t> loop_bound_nodes =
-        program->findLoopBoundaries(label_factor.first);
-    for (auto& bound : loop_bound_nodes) {
-      const ExecNode* first = bound.first;
-      const ExecNode* second = bound.second;
-      const SrcTypes::DynamicLabel* label = &label_factor.first;
-      float factor = label_factor.second;
-      SampledLoop* sample =
-          new SampledLoop(label, factor, first->get_complete_execution_cycle(),
-                          second->get_complete_execution_cycle(),
-                          first->get_node_id(), second->get_node_id());
-      sampleDmaCorrection(sample);
-      loop_samples.push_back(sample);
-      insertSample(root, sample);
-    }
-  }
-}
-
-bool LoopSampling::insertSample(SampledLoop* node, SampledLoop* sample) {
-  if (node->contains(sample)) {
-    // The sample should be inserted to the subtree from this node. We first
-    // check if the node is a leaf node and directly insert the sample if so.
-    // Otherwise, we look at every child of this node and see if the sample
-    // will become a new parent of it (i.e., the sample will be inserted between
-    // the node and any of its children). If not, we try to insert the sample to
-    // the subtree from that child.
-    if (node->children.size() == 0) {
-      node->children.push_back(sample);
-      sample->parent = node;
-      return true;
-    }
-    bool inserted = false;
-    auto child_it = node->children.begin();
-    while (child_it != node->children.end()) {
-      if (sample->contains(*child_it)) {
-        sample->parent = node;
-        sample->children.push_back(*child_it);
-        (*child_it)->parent = sample;
-        child_it = node->children.erase(child_it);
-        if (std::find(node->children.begin(), node->children.end(), sample) ==
-            node->children.end()) {
-          child_it = node->children.insert(child_it, sample);
-          ++child_it;
-        }
-        inserted = true;
-      } else {
-        inserted |= insertSample(*child_it, sample);
-        ++child_it;
-      }
-    }
-    if (!inserted) {
-      // The sample is neither a child nor a parent of any children, thus it's a
-      // new sibling.
-      node->children.push_back(sample);
-      sample->parent = node;
-    }
-    return true;
-  } else {
-    // The sample can't be inserted into the path downward from the node. Since
-    // the root node has an infinite interval, we are guaranteed that the sample
-    // can be inserted to the tree.
-    return false;
-  }
-}
-
-void LoopSampling::upsampleChildren(SampledLoop* node, float factor) {
+void LoopInfo::upsampleChildren(LoopIteration* node, float factor) {
   node->elapsed_cycle *= factor;
   for (auto& child : node->children)
     upsampleChildren(child, factor);
 }
 
-void LoopSampling::upsampleParents(SampledLoop* node, int correction_cycle) {
+void LoopInfo::upsampleParents(LoopIteration* node, int correction_cycle) {
   if (node->parent) {
     node->parent->elapsed_cycle += correction_cycle;
     upsampleParents(node->parent, correction_cycle);
   }
 }
 
-int LoopSampling::upsampleLoops() {
-  buildSampleTree();
-  for (auto& sample : loop_samples) {
-    int correction_cycle = sample->elapsed_cycle * (sample->factor - 1);
-    upsampleChildren(sample, sample->factor);
-    upsampleParents(sample, correction_cycle);
-    sample->upsampled = true;
+int LoopInfo::upsampleLoops() {
+  // Set the default elapsed time and do DMA correction for every sampled loop
+  // iteration.
+  for (auto& loop : loop_iters) {
+    if (loop->sampled) {
+      loop->elapsed_cycle = loop->end_node->get_complete_execution_cycle() -
+                            loop->start_node->get_complete_execution_cycle();
+      sampleDmaCorrection(loop);
+    }
+  }
+
+  // Upsample every sampled loop and propagate the sample execution across the
+  // tree.
+  for (auto& loop : loop_iters) {
+    if (loop->sampled) {
+      int correction_cycle = loop->elapsed_cycle * (loop->factor - 1);
+      upsampleChildren(loop, loop->factor);
+      upsampleParents(loop, correction_cycle);
+    }
   }
   return root->elapsed_cycle;
 }
 
-void LoopSampling::sampleDmaCorrection(SampledLoop* sample) {
+void LoopInfo::sampleDmaCorrection(LoopIteration* sample) {
   // Check every node between this loop boundary to see if it has a DMA
   // load parent. This is due to that we don't make any subsequent
   // operations block on a DMA operation (as long as there's no memory
@@ -160,8 +217,8 @@ void LoopSampling::sampleDmaCorrection(SampledLoop* sample) {
   // have long latencies and we tend to use the DMA data right away as we
   // enter the loop.
   std::list<std::pair<int, int>> dma_intervals;
-  for (unsigned int node_id = sample->start_node_id + 1;
-       node_id < sample->end_node_id;
+  for (unsigned int node_id = sample->start_node->get_node_id() + 1;
+       node_id < sample->end_node->get_node_id();
        node_id++) {
     ExecNode* node = program->nodes.at(node_id);
     in_edge_iter in_edge_it, in_edge_end;
@@ -187,44 +244,11 @@ void LoopSampling::sampleDmaCorrection(SampledLoop* sample) {
     if (dma.second > dma_merge_interval_end)
       dma_merge_interval_end = dma.second;
   }
-  if (dma_merge_interval_end < sample->start_cycle) {
+  int sample_start_cycle = sample->start_node->get_complete_execution_cycle();
+  int sample_end_cycle = sample->end_node->get_complete_execution_cycle();
+  if (dma_merge_interval_end < sample_start_cycle) {
     // DMA finishes before the loop starts. There is no overlap.
     return;
   }
-  sample->start_cycle = dma_merge_interval_end;
-  sample->elapsed_cycle = sample->end_cycle - sample->start_cycle;
-}
-
-std::string repeatString(const std::string& str, int n) {
-  std::stringstream ss;
-  for (int i = 0; i < n; i++) {
-    ss << str;
-  }
-  return ss.str();
-}
-
-void LoopSampling::printSampleTree(SampledLoop* node, int level) {
-  // Sample tree printing format:
-  //
-  //  Root node, [sample info]
-  //  +-loop0-sample0, [sample info]
-  //  | +-loop1-sample0, [sample info]
-  //  | | +-loop2-sample0, [sample info]
-  //  | | +-loop2-sample1, [sample info]
-  //  | +-loop1-sample1, [sample info]
-  //  | | +-loop2-sample2, [sample info]
-  //  | | +-loop2-sample3, [sample info]
-  std::cout << repeatString("| ", level - 1);
-  if (level > 0)
-    std::cout << "+-";
-  std::cout << node->str() << "\n";
-  for (auto& child : node->children) {
-    printSampleTree(child, level + 1);
-  }
-}
-
-void LoopSampling::printSampleTree() {
-  std::cout << "-------- Sample tree --------\n";
-  printSampleTree(root, 0);
-  std::cout << "-------- Sample tree --------\n";
+  sample->elapsed_cycle = sample_end_cycle - dma_merge_interval_end;
 }

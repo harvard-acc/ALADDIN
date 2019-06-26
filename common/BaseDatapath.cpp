@@ -47,7 +47,7 @@ bool BaseDatapath::buildDddg() {
   /* Build initial DDDG. */
   current_trace_off = dddg->build_initial_dddg(current_trace_off, trace_size);
   updateUnrollingPipeliningWithLabelInfo();
-  program.sampling.updateSamplingWithLabelInfo();
+  program.loop_info.updateSamplingWithLabelInfo();
   user_params.checkOverlappingRanges();
   topLevelFunctionName = dddg->get_top_level_function_name();
   delete dddg;
@@ -115,7 +115,6 @@ void BaseDatapath::clearDatapath() {
   clearFunctionName();
   clearArrayBaseAddress();
   clearRegStats();
-  program.sampling.clearSamplingInfo();
 }
 
 void BaseDatapath::initBaseAddress() {
@@ -168,6 +167,11 @@ void BaseDatapath::perLoopPipelining() {
 void BaseDatapath::loopUnrolling() {
   auto opt = getGraphOpt<LoopUnrolling>();
   opt->run();
+  // Loop unrolling pass has identified and stored all loop boundaries in a flat
+  // list. Based on that, now we build a tree to represent the hierarchical loop
+  // structure. This tree will be used later by loop pipelining and loop
+  // sampling.
+  program.loop_info.buildLoopTree();
 }
 
 void BaseDatapath::fuseRegLoadStores() {
@@ -214,7 +218,7 @@ void BaseDatapath::dumpStats() {
 
 void BaseDatapath::upsampleLoops() {
   // Update num_cycles with the correction cycles.
-  num_cycles += program.sampling.upsampleLoops();
+  num_cycles += program.loop_info.upsampleLoops();
 }
 
 /*

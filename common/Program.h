@@ -6,7 +6,7 @@
 #include "DynamicEntity.h"
 #include "ExecNode.h"
 #include "SourceEntity.h"
-#include "Sampling.h"
+#include "LoopInfo.h"
 #include "typedefs.h"
 
 /* A dynamic loop boundary is identified by a branch/call node and a target
@@ -65,7 +65,7 @@ class CallArgMap {
 // of the graph.
 class Program {
  public:
-  Program() : sampling(this) {}
+  Program() : loop_info(this) {}
 
   void clear();
   void clearExecNodes();
@@ -196,7 +196,7 @@ class Program {
   VertexNameMap vertex_to_name;
 
   // Loop sampling information.
-  LoopSampling sampling;
+  LoopInfo loop_info;
 };
 
 #endif
