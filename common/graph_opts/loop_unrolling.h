@@ -8,6 +8,7 @@
 struct LoopBoundDescriptor {
   // Static properties.
 
+  unsigned node_id;
   // The target basic block of this branch/call node.
   SrcTypes::BasicBlock* basic_block;
   // Either branch or call.
@@ -21,12 +22,13 @@ struct LoopBoundDescriptor {
   // How many times have we iterated this loop?
   int dyn_invocations;
 
-  LoopBoundDescriptor(SrcTypes::BasicBlock* _basic_block,
+  LoopBoundDescriptor(unsigned _node_id,
+                      SrcTypes::BasicBlock* _basic_block,
                       unsigned _microop,
                       unsigned _loop_depth,
                       unsigned _call_depth)
-      : basic_block(_basic_block), microop(_microop), call_depth(_call_depth),
-        loop_depth(_loop_depth), dyn_invocations(-1) {}
+      : node_id(_node_id), basic_block(_basic_block), microop(_microop),
+        call_depth(_call_depth), loop_depth(_loop_depth), dyn_invocations(-1) {}
 
   // Returns true if @other is a branch that exits from this loop.
   bool exitBrIs(const LoopBoundDescriptor& other) {

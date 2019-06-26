@@ -129,8 +129,8 @@ void LoopUnrolling::optimize() {
         // This is the loop descriptor we're trying to find in the loop nest
         // stack.
         LoopBoundDescriptor loop_id(
-            next_node->get_basic_block(), node->get_microop(),
-            next_node->get_loop_depth(), curr_call_depth);
+            node->get_node_id(), next_node->get_basic_block(),
+            node->get_microop(), next_node->get_loop_depth(), curr_call_depth);
         // Once we've found the loop descriptor, use this pointer to the top of
         // the stack to update the invocations count.
         LoopBoundDescriptor* curr_loop = nullptr;
@@ -150,6 +150,22 @@ void LoopUnrolling::optimize() {
           curr_loop = &loop_nests.top();
         } else if (loop_nests.top().exitBrIs(loop_id)) {
           curr_loop = &loop_nests.top();
+          // We are leaving the loop and by now we know how many iterations this
+          // loop has. If the loop has fewer iterations than the unrolling
+          // factor, we should also remove the first loop boundary (and the
+          // branch node as well), because the loop is as if flattened.
+          // Otherwise, we will leave an isolated loop boundary which can't be
+          // paired with any other.
+          int unroll_factor = unroll_it->second;
+          if (curr_loop->dyn_invocations + 1 < unroll_factor) {
+            // Remove the branch node.
+            to_remove_nodes.push_back(curr_loop->node_id);
+            // Remove the loop boundary.
+            DynLoopBound bound(curr_loop->node_id, curr_loop->loop_depth);
+            loop_bounds.erase(
+                std::remove(loop_bounds.begin(), loop_bounds.end(), bound),
+                loop_bounds.end());
+          }
           loop_nests.pop();
         } else if (loop_nests.top() == loop_id) {
           // We're repeating the same loop. Nothing to do.
@@ -173,6 +189,12 @@ void LoopUnrolling::optimize() {
         }
 
         // Counting number of loop iterations.
+        // The following unrolls the loop if its dynamic invocation number is
+        // not multiples of the unrolling factor. Here we don't know yet how
+        // many iterations this loop has, and as we have started applying
+        // unrolling and detecting loop boundaries, if the loop turns out to
+        // have fewer iterations than the unrolling factor, we will need to
+        // remove the first branch node and delete the loop boundary later.
         int unroll_factor = unroll_it->second;
         curr_loop->dyn_invocations++;
         if (curr_loop->dyn_invocations % unroll_factor == 0) {

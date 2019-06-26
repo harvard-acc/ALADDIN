@@ -17,6 +17,11 @@ struct DynLoopBound {
   unsigned target_loop_depth;
   DynLoopBound(unsigned _node_id, unsigned _target_loop_depth)
       : node_id(_node_id), target_loop_depth(_target_loop_depth) {}
+
+  bool operator==(const DynLoopBound& other) {
+    return (node_id == other.node_id &&
+            target_loop_depth == other.target_loop_depth);
+  }
 };
 
 
