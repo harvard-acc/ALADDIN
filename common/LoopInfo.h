@@ -113,11 +113,8 @@ class LoopInfo {
 
   //=------------ Sampling functions ---------------=//
 
-  // Multiply elapsed time of this node and all children by factor.
-  void upsampleChildren(LoopIteration* node, float factor);
-
-  // Update the tree by upsampling this node's execution time.
-  void upsampleParents(LoopIteration* node, int correction_cycle);
+  // Update the root node by upsampling this node's execution time upwards.
+  void upsampleLoop(LoopIteration* node, int correction_cycle);
 
   // Correct the sample's cycles due to DMA operations.
   void sampleDmaCorrection(LoopIteration* loop);

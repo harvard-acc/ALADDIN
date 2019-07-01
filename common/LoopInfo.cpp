@@ -169,17 +169,11 @@ void LoopInfo::updateSamplingWithLabelInfo() {
   }
 }
 
-void LoopInfo::upsampleChildren(LoopIteration* node, float factor) {
-  node->elapsed_cycle *= factor;
-  for (auto& child : node->children)
-    upsampleChildren(child, factor);
-}
-
-void LoopInfo::upsampleParents(LoopIteration* node, int correction_cycle) {
-  if (node->parent) {
-    node->parent->elapsed_cycle += correction_cycle;
-    upsampleParents(node->parent, correction_cycle);
-  }
+void LoopInfo::upsampleLoop(LoopIteration* node, int correction_cycle) {
+  if (node->isRootNode())
+    node->elapsed_cycle += correction_cycle;
+  else
+    upsampleLoop(node->parent, correction_cycle * node->factor);
 }
 
 int LoopInfo::upsampleLoops() {
@@ -193,13 +187,12 @@ int LoopInfo::upsampleLoops() {
     }
   }
 
-  // Upsample every sampled loop and propagate the sample execution across the
-  // tree.
+  // Upsample every sampled loop and propagate the sample execution upwards to
+  // update the elapsed cycle of the root node.
   for (auto& loop : loop_iters) {
-    if (loop->sampled) {
+    if (loop->sampled && loop->parent) {
       int correction_cycle = loop->elapsed_cycle * (loop->factor - 1);
-      upsampleChildren(loop, loop->factor);
-      upsampleParents(loop, correction_cycle);
+      upsampleLoop(loop->parent, correction_cycle);
     }
   }
   return root->elapsed_cycle;
