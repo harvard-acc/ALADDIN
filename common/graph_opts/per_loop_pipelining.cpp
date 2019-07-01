@@ -62,7 +62,7 @@ void PerLoopPipelining::optimize() {
   cleanLeafNodes();
 }
 
-void PerLoopPipelining::optimize(const std::list<LoopIteration*>& loops,
+void PerLoopPipelining::optimize(std::list<LoopIteration*>& loops,
                                  std::set<Edge>& to_remove_edges,
                                  std::vector<NewEdge>& to_add_edges) {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
@@ -96,6 +96,9 @@ void PerLoopPipelining::optimize(const std::list<LoopIteration*>& loops,
         // because this is exactly how we will change the control dependence
         // edge sources in the next step.
         first_non_isolated_nodes[next_bound_node_id] = node_id;
+        // Because now the loop entry becomes the FNIN, we need to update that
+        // information in LoopInfo.
+        (*bound_it)->start_node = exec_nodes.at(node_id);
         break;
       } else {
         it++;
