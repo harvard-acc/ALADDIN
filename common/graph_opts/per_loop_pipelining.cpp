@@ -32,6 +32,7 @@ void PerLoopPipelining::findAndPipelineLoops(
       if (user_params.pipeline.find(*child->label) !=
           user_params.pipeline.end()) {
         pipelined_loops[*child->label].push_back(child);
+        child->pipelined = true;
       }
     }
     for (auto& loop_list: pipelined_loops)

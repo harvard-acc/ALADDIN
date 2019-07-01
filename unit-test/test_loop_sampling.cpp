@@ -298,4 +298,144 @@ SCENARIO("Test sampling on loops", "[loop_sampling]") {
       }
     }
   }
+  GIVEN("Sampling pipelined loops") {
+    WHEN("Single pipelined loop") {
+      /* Code:
+       *
+       * "loop" is pipelined.
+       *
+       * void top_level(int* a, int* b, int loop_size, int sample_size) {
+       *   setSamplingFactor("loop", loop_size / sample_size);
+       *   loop:
+       *   for (int i = 0; i < sample_size; i++) {
+       *       b[i] += a[i] * a[i] + i * i * 1.0;
+       *   }
+       * }
+       *
+       * int main() {
+       *   int a[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+       *   int b[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+       *   top_level(a, b, 10, 2);
+       *   for (int i = 0; i < 10; i++)
+       *     printf("%d, ", b[i]);
+       *   printf("\n");
+       *   return 0;
+       * }
+       *
+       */
+      std::string bench("outputs/loop-sampling");
+      std::string trace_file("inputs/loop-sampling-single-pipelined-trace.gz");
+      std::string trace_ref_file(
+          "inputs/loop-sampling-single-pipelined-ref-trace.gz");
+      std::string config_file("inputs/config-loop-sampling-pipelined");
+
+      ScratchpadDatapath* acc =
+          new ScratchpadDatapath(bench, trace_file, config_file);
+      scheduleDatapath(acc);
+
+      // The reference accelerator doesn't do any sampling.
+      ScratchpadDatapath* acc_ref =
+          new ScratchpadDatapath(bench, trace_ref_file, config_file);
+      scheduleDatapath(acc_ref);
+
+      WHEN("After scheduling") {
+        REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      }
+    }
+    WHEN("With flattened inner loop") {
+      /* Code:
+       *
+       * "loop" is pipelined, "loop_flatten" is flattened.
+       *
+       * void top_level(int* a, int* b, int loop_size, int sample_size) {
+       *   setSamplingFactor("loop", loop_size / sample_size);
+       *   loop:
+       *   for (int i = 0; i < sample_size; i++) {
+       *     b[i] += a[i];
+       *     loop_flatten:
+       *     for (int j = 0; j < loop_size; j++)
+       *       b[i] += j * j * 1.0;
+       *   }
+       * }
+       *
+       * int main() {
+       *   int a[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+       *   int b[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+       *   top_level(a, b, 10, 2);
+       *   for (int i = 0; i < 10; i++)
+       *     printf("%d, ", b[i]);
+       *   printf("\n");
+       *   return 0;
+       * }
+       *
+       */
+      std::string bench("outputs/loop-sampling");
+      std::string trace_file(
+          "inputs/loop-sampling-pipelined-flattened-trace.gz");
+      std::string trace_ref_file(
+          "inputs/loop-sampling-pipelined-flattened-ref-trace.gz");
+      std::string config_file("inputs/config-loop-sampling-pipelined");
+
+      ScratchpadDatapath* acc =
+          new ScratchpadDatapath(bench, trace_file, config_file);
+      scheduleDatapath(acc);
+
+      // The reference accelerator doesn't do any sampling.
+      ScratchpadDatapath* acc_ref =
+          new ScratchpadDatapath(bench, trace_ref_file, config_file);
+      scheduleDatapath(acc_ref);
+
+      WHEN("After scheduling") {
+        REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      }
+    }
+    WHEN("Inner pipelined loop") {
+      /* Code:
+       *
+       * "loop1" is pipelined.
+       *
+       * void top_level(int* a, int* b, int loop_size, int sample_size) {
+       *   setSamplingFactor("loop0", loop_size / sample_size);
+       *   setSamplingFactor("loop1", loop_size / sample_size);
+       *   loop0:
+       *   for (int i = 0; i < sample_size; i++) {
+       *     b[i] += a[i];
+       *     loop1:
+       *     for (int j = 0; j < sample_size; j++) {
+       *         b[i] += a[j] * a[j] + j * j * 1.0;
+       *     }
+       *   }
+       * }
+       *
+       * int main() {
+       *   int a[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+       *   int b[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+       *   top_level(a, b, 10, 2);
+       *   for (int i = 0; i < 10; i++)
+       *     printf("%d, ", b[i]);
+       *   printf("\n");
+       *   return 0;
+       * }
+       *
+       */
+      std::string bench("outputs/loop-sampling");
+      std::string trace_file("inputs/loop-sampling-inner-pipelined-trace.gz");
+      std::string trace_ref_file(
+          "inputs/loop-sampling-inner-pipelined-ref-trace.gz");
+      std::string config_file("inputs/config-loop-sampling-pipelined");
+
+      ScratchpadDatapath* acc =
+          new ScratchpadDatapath(bench, trace_file, config_file);
+      scheduleDatapath(acc);
+
+      // The reference accelerator doesn't do any sampling.
+      ScratchpadDatapath* acc_ref =
+          new ScratchpadDatapath(bench, trace_ref_file, config_file);
+      scheduleDatapath(acc_ref);
+
+      WHEN("After scheduling") {
+        REQUIRE(acc->getCurrentCycle() == acc_ref->getCurrentCycle());
+      }
+    }
+  }
 }

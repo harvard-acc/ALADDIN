@@ -17,7 +17,8 @@ class LoopIteration {
                 const ExecNode* _start_node = nullptr,
                 const ExecNode* _end_node = nullptr)
       : label(_label), start_node(_start_node), end_node(_end_node),
-        parent(nullptr), sampled(false), factor(1), elapsed_cycle(0) {}
+        parent(nullptr), pipelined(false), sampled(false), factor(1),
+        upsampled(false), elapsed_cycle(0) {}
 
   bool contains(const LoopIteration* other) const {
     return isRootNode() ||
@@ -39,8 +40,8 @@ class LoopIteration {
          << end_node->get_node_id() << "], cycles: ["
          << start_node->get_complete_execution_cycle() << ", "
          << end_node->get_complete_execution_cycle()
-         << "], sampled: " << sampled << ", factor: " << factor
-         << ", elapsed cycle: " << elapsed_cycle;
+         << "], pipelined: " << pipelined << ", sampled: " << sampled
+         << ", factor: " << factor << ", elapsed cycle: " << elapsed_cycle;
     }
     return ss.str();
   }
@@ -50,10 +51,12 @@ class LoopIteration {
   const ExecNode* end_node;
   LoopIteration* parent;
   std::vector<LoopIteration*> children;
+  bool pipelined;
 
   // Fields specific to sampling.
   bool sampled;
   float factor;
+  bool upsampled;
   int elapsed_cycle;
 };
 

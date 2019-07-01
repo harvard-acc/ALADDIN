@@ -1,0 +1,10 @@
+pipelining,0
+cycle_time,1
+partition,complete,a,40,4
+partition,complete,b,40,4
+unrolling,top_level,loop,1
+unrolling,top_level,loop0,1
+unrolling,top_level,loop1,1
+flatten,top_level,loop_flatten
+pipeline,top_level,loop
+pipeline,top_level,loop1

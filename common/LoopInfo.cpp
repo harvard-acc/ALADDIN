@@ -190,9 +190,42 @@ int LoopInfo::upsampleLoops() {
   // Upsample every sampled loop and propagate the sample execution upwards to
   // update the elapsed cycle of the root node.
   for (auto& loop : loop_iters) {
-    if (loop->sampled && loop->parent) {
+    if (loop->sampled && loop->parent && !loop->upsampled) {
       int correction_cycle = loop->elapsed_cycle * (loop->factor - 1);
+      if (loop->pipelined) {
+        // Different from an un-pipelined loop, we need special handling to
+        // upsample a pipelined loop, as pipelined iterations have overlapped
+        // intervals. To estimate the correction cycle, we will calculate the
+        // average termination interval latency between two ajacent iterations.
+        assert(loop->children.size() == 0 &&
+               "Inner loops of a pipelined loop should be flattened!");
+        // Find all siblings of this pipelined iteration and mark them upsampled
+        // so that we won't upsample them twice.
+        std::vector<LoopIteration*> pipelined_iters;
+        for (auto& child : loop->parent->children) {
+          if (*child->label == *loop->label) {
+            pipelined_iters.push_back(child);
+            child->upsampled = true;
+          }
+        }
+        int total_termination_interval_cycle = 0;
+        for (size_t i = 0; i < pipelined_iters.size(); i++) {
+          if (i + 1 < pipelined_iters.size()) {
+            total_termination_interval_cycle +=
+                pipelined_iters[i + 1]
+                    ->end_node->get_complete_execution_cycle() -
+                pipelined_iters[i]->end_node->get_complete_execution_cycle();
+          }
+        }
+        int avg_termination_interval_cycle =
+            pipelined_iters.size() > 1 ? total_termination_interval_cycle /
+                                             (pipelined_iters.size() - 1)
+                                       : 0;
+        correction_cycle = avg_termination_interval_cycle *
+                           pipelined_iters.size() * (loop->factor - 1);
+      }
       upsampleLoop(loop->parent, correction_cycle);
+      loop->upsampled = true;
     }
   }
   return root->elapsed_cycle;
