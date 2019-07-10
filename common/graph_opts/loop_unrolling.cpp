@@ -158,21 +158,7 @@ void LoopUnrolling::optimize() {
           // We're repeating the same loop. Nothing to do.
           curr_loop = &loop_nests.top();
         } else {
-          // We've jumped to a different loop entirely.
-          while (!loop_nests.empty() &&
-                 loop_nests.top() != loop_id &&
-                 loop_nests.top().loop_depth >= loop_id.loop_depth) {
-            loop_nests.pop();
-          }
-
-          // Did not find anything matching this loop boundary node. Add a new
-          // one. This happens if the branch was a goto from a disjoint loop, but it
-          // can also happen if we don't have any loop depth information (aka
-          // all loops have depth 0).
-          if (loop_nests.empty() || loop_nests.top() != loop_id) {
-            loop_nests.push(loop_id);
-          }
-          curr_loop = &loop_nests.top();
+          continue;
         }
 
         // Counting number of loop iterations.
