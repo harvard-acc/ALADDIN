@@ -84,7 +84,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
   BaseDatapath::user_params.cycle_time = cycle_time;
   datapath_name = params->acceleratorName;
   cache_queue.initStats(datapath_name + ".cache_queue");
-  system->registerAccelerator(accelerator_id, this, accelerator_deps);
+  system->registerAccelerator(accelerator_id, this);
 
   /* In standalone mode, we charge the constant cost of a DMA setup operation
    * up front, instead of per dmaLoad call, or we'll overestimate the setup

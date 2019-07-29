@@ -115,12 +115,6 @@ class Gem5Datapath : public MemObject {
   unsigned cycles_since_last_node;
   const unsigned deadlock_threshold = 1000000;
 
-  /* Dependencies of this accelerator, expressed as a list of other
-   * accelerator ids. All other accelerators must complete execution before
-   * this one can be scheduled.
-   */
-  std::vector<int> accelerator_deps;
-
   /* Pointer to the rest of the system. */
   System* system;
 };
