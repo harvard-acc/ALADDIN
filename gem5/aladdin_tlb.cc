@@ -175,6 +175,22 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
   return true;
 }
 
+Addr AladdinTLB::translateInvisibly(Addr simVaddr, int size) {
+  Addr pageOffset = simVaddr % pageBytes;
+  Addr vpn = simVaddr - pageOffset;
+  Addr ppn;
+  if (!tlbMemory->lookup(vpn, ppn)) {
+    if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
+      ppn = infiniteBackupTLB[vpn];
+    else if (datapath->isExecuteStandalone())
+      ppn = vpn;
+    else
+      throw AddressTranslationException(vpn, size);
+  }
+
+  return ppn + pageOffset;
+}
+
 bool AladdinTLB::translateTiming(PacketPtr pkt) {
   Addr vaddr, vpn, ppn, page_offset;
   auto result = translateTraceToSimVirtual(pkt);

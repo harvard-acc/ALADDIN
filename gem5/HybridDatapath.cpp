@@ -36,18 +36,11 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
       Gem5Datapath(params,
                    params->acceleratorId,
                    params->executeStandalone,
+                   params->maxDmaRequests,
+                   params->dmaChunkSize,
+                   params->numDmaChannels,
+                   params->invalidateOnDmaStore,
                    params->system),
-      spadPort(this,
-               params->system,
-               params->maxDmaRequests,
-               params->dmaChunkSize,
-               params->numDmaChannels,
-               params->invalidateOnDmaStore),
-      spadMasterId(params->system->getMasterId(this, name() + ".spad")),
-      cachePort(this, "cache_port"),
-      cacheMasterId(params->system->getMasterId(this, name() + ".cache")),
-      acpPort(this, "acp_port"),
-      acpMasterId(params->system->getMasterId(this, name() + ".acp")),
       cache_queue(params->cacheQueueSize,
                   params->cacheBandwidth,
                   system->cacheLineSize(),
@@ -154,18 +147,6 @@ void HybridDatapath::initializeDatapath(int delay) {
 
 void HybridDatapath::startDatapathScheduling(int delay) {
   scheduleOnEventQueue(delay);
-}
-
-BaseMasterPort& HybridDatapath::getMasterPort(const std::string& if_name,
-                                              PortID idx) {
-  if (if_name == "spad_port")
-    return getDataPort();
-  else if (if_name == "cache_port")
-    return getCachePort();
-  else if (if_name == "acp_port")
-    return getAcpPort();
-  else
-    return MemObject::getMasterPort(if_name);
 }
 
 void HybridDatapath::insertTLBEntry(Addr vaddr, Addr paddr) {
@@ -772,6 +753,16 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   }
 }
 
+Addr HybridDatapath::translateAtomic(Addr vaddr, int size) {
+  Addr paddr;
+  try {
+    paddr = dtb.translateInvisibly(vaddr, size);
+  } catch (AladdinException& e) {
+    fatal("An error occurred during DMA address translation: %s\n", e.what());
+  }
+  return paddr;
+}
+
 // Issue a DMA request for memory.
 void HybridDatapath::issueDmaRequest(unsigned node_id) {
   ExecNode *node = program.nodes.at(node_id);
@@ -814,29 +805,6 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   // Update the tracking structures.
   inflight_dma_nodes.at(node_id) = WaitingFromDma;
 
-  // Prepare the transaction.
-  MemCmd::Command cmd = isLoad ? MemCmd::ReadReq : MemCmd::WriteReq;
-  // Marking the DMA packets as uncacheable ensures they are not snooped by
-  // caches.
-  Request::Flags flags = Request::UNCACHEABLE;
-
-  /* In order to make DMA stores visible to the rest of the memory hierarchy,
-   * we have to do a virtual address translation. However, we do this
-   * "invisibly" in zero time.  This is because DMAs are typically initiated by
-   * the CPU using physical addresses, but our DMA model initiates transfers
-   * from the accelerator, which can't know physical addresses without a
-   * translation.
-   *
-   * Make sure we use the right address for the host memory translation!
-   */
-  SrcTypes::Variable* var = isLoad ? mem_access->src_var : mem_access->dst_var;
-  AladdinTLBResponse translation;
-  try {
-    translation = getAddressTranslation(
-        isLoad ? src_vaddr : dst_vaddr, size, isLoad, var);
-  } catch (AladdinException& e) {
-    fatal("An error occurred during DMA at node %d: %s\n", node_id, e.what());
-  }
   uint8_t* data = new uint8_t[size];
   if (!isLoad) {
     try {
@@ -847,15 +815,23 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
     }
   }
 
-  DmaEvent* dma_event = new DmaEvent(this, node_id);
-  spadPort.dmaAction(
-      cmd, translation.paddr, size, dma_event, data, 0, flags);
+  // Because splitAndSendDmaRequest only receives the simulated start virtual
+  // address, here we do one translation to get that virtual address.
+  Addr traceStartVaddr = isLoad ? src_vaddr : dst_vaddr;
+  SrcTypes::Variable* var = isLoad ? mem_access->src_var : mem_access->dst_var;
+  AladdinTLBResponse translation =
+      getAddressTranslation(traceStartVaddr, size, isLoad, var);
+  Addr simStartVaddr = translation.vaddr;
+  AladdinDmaEvent* dmaEvent = new AladdinDmaEvent(this, simStartVaddr, node_id);
+  splitAndSendDmaRequest(simStartVaddr, size, isLoad, data, dmaEvent);
 }
 
 /* Mark the DMA request node as having completed. */
-void HybridDatapath::completeDmaRequest(unsigned node_id) {
+void HybridDatapath::dmaCompleteCallback(DmaEvent* event) {
+  AladdinDmaEvent* aladdinEvent = dynamic_cast<AladdinDmaEvent*>(event);
+  unsigned node_id = aladdinEvent->get_node_id();
   assert(inflight_dma_nodes.find(node_id) != inflight_dma_nodes.end());
-  DPRINTF(HybridDatapath, "completeDmaRequest for node %d.\n", node_id);
+  DPRINTF(HybridDatapath, "%s for node %d.\n", __func__, node_id);
   inflight_dma_nodes.at(node_id) = Returned;
 }
 
@@ -892,41 +868,20 @@ void HybridDatapath::sendFinishedSignal() {
   }
 }
 
-void HybridDatapath::CachePort::recvReqRetry() {
-  assert(inRetry());
-  assert(retryPkt->isRequest());
-  DPRINTF(HybridDatapath, "recvReqRetry for paddr: %#x \n", retryPkt->getAddr());
-  if (sendTimingReq(retryPkt)) {
-    DPRINTF(HybridDatapathVerbose, "Retry pass!\n");
-    datapath->updateCacheRequestStatusOnRetry(retryPkt);
-    clearRetryPkt();
-  } else {
-    DPRINTF(HybridDatapathVerbose, "Still blocked!\n");
-  }
+void HybridDatapath::cacheRetryCallback(PacketPtr retryPkt) {
+  updateCacheRequestStatusOnRetry(retryPkt);
 }
 
-bool HybridDatapath::CachePort::recvTimingResp(PacketPtr pkt) {
-  DPRINTF(HybridDatapath, "%s: for address: %#x %s\n", __func__, pkt->getAddr(),
-          pkt->cmdString());
-  if (pkt->isError()) {
-    DPRINTF(HybridDatapath,
-            "Got error packet back for address: %#x\n",
-            pkt->getAddr());
-  }
-  DatapathSenderState* state =
-      dynamic_cast<DatapathSenderState*>(pkt->popSenderState());
+void HybridDatapath::cacheRespCallback(PacketPtr pkt) {
+  DatapathSenderState* state = pkt->findNextSenderState<DatapathSenderState>();
   assert(state && "Packet did not contain a DatapathSenderState!");
   if (!state->is_ctrl_signal) {
-    datapath->updateCacheRequestStatusOnResp(pkt, state);
+    updateCacheRequestStatusOnResp(pkt, state);
   } else {
     DPRINTF(HybridDatapath,
-            "recvTimingResp for control signal access: %#x\n",
+            "cacheRespCallback for control signal access: %#x\n",
             pkt->getAddr());
   }
-  delete state;
-  delete pkt;
-
-  return true;
 }
 
 bool HybridDatapath::issueTLBRequestTiming(
@@ -1211,34 +1166,32 @@ void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
 }
 
 /* Receiving response from DMA. */
-bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
-  if (pkt->cmd == MemCmd::InvalidateResp) {
-    // TODO: We can create a completion event for invalidation responses so
-    // that DMA nodes cannot proceed until the invalidations are done.
-    return DmaPort::recvTimingResp(pkt);
-  }
-
+void HybridDatapath::dmaRespCallback(PacketPtr pkt) {
   // Get the DMA sender state to retrieve node id, so we can get the virtual
   // address (the packet address is possibly physical).
-  DmaEvent* event = dynamic_cast<DmaEvent*>(getPacketCompletionEvent(pkt));
+  AladdinDmaEvent* event =
+      dynamic_cast<AladdinDmaEvent*>(DmaPort::getPacketCompletionEvent(pkt));
   assert(event != nullptr && "Packet completion event is not a DmaEvent object!");
 
   unsigned node_id = event->get_node_id();
-  ExecNode * node = datapath->getProgram().nodes.at(node_id);
+  ExecNode * node = getProgram().nodes.at(node_id);
   assert(node != nullptr && "DMA node id is invalid!");
 
   DmaMemAccess* mem_access = node->get_dma_mem_access();
   Addr src_vaddr_base = mem_access->src_addr;
   Addr dst_vaddr_base = mem_access->dst_addr;
-  if (datapath->isExecuteStandalone()) {
+  if (isExecuteStandalone()) {
     src_vaddr_base &= ADDR_MASK;
     dst_vaddr_base &= ADDR_MASK;
   }
 
-  // This will compute the offset of THIS packet from the base address.
+  // This will compute the offset of THIS packet from the base address. We first
+  // calculate the offset within the page, then we retrieve the request offset
+  // (e.g., the N'th page of the overall DMA request) from the DMA event.
   Addr paddr = pkt->getAddr();
-  Addr paddr_base = getPacketAddr(pkt);
-  Addr pkt_offset = paddr - paddr_base;
+  Addr paddr_base = DmaPort::getPacketAddr(pkt);
+  Addr pageOffset = paddr - paddr_base;
+  Addr pkt_offset = pageOffset + event->getReqOffset();
   Addr vaddr =
       (node->is_dma_load() ? dst_vaddr_base : src_vaddr_base) + pkt_offset;
 
@@ -1247,32 +1200,20 @@ bool HybridDatapath::SpadPort::recvTimingResp(PacketPtr pkt) {
   DPRINTF(HybridDatapath, "Receiving DMA response for node %d, address %#x "
                           "with label %s and size %d.\n",
           node_id, vaddr, array_label.c_str(), size);
-  if (node->is_dma_load() && datapath->isReadyMode())
-    datapath->scratchpad->setReadyBitRange(array_label, vaddr, size);
+  if (node->is_dma_load() && isReadyMode())
+    scratchpad->setReadyBitRange(array_label, vaddr, size);
 
   // For dmaLoads, write the data into the scratchpad.
   if (node->is_dma_load()) {
     uint8_t* data = pkt->getPtr<uint8_t>();
     assert(data != nullptr && "Packet data is null!");
     try {
-      datapath->scratchpad->writeData(array_label, vaddr, data, size);
+      scratchpad->writeData(array_label, vaddr, data, size);
     } catch (ArrayAccessException& e) {
       fatal("When writing to array %s at node %d: %s\n", array_label, node_id,
             e.what());
     }
   }
-  return DmaPort::recvTimingResp(pkt);
-}
-
-HybridDatapath::DmaEvent::DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id)
-    : Event(Default_Pri, AutoDelete), datapath(_dpath), dma_node_id(_dma_node_id) {}
-
-void HybridDatapath::DmaEvent::process() {
-  datapath->completeDmaRequest(dma_node_id);
-}
-
-const char* HybridDatapath::DmaEvent::description() const {
-  return "Hybrid DMA datapath receiving request event";
 }
 
 void HybridDatapath::resetCacheCounters() {

@@ -67,5 +67,7 @@ Source('pybind_aladdin.cpp')
 
 DebugFlag('Aladdin')
 DebugFlag('AladdinTLB')
+DebugFlag('Gem5Datapath')
+DebugFlag('Gem5DatapathVerbose')
 DebugFlag('HybridDatapath')
 DebugFlag('HybridDatapathVerbose')

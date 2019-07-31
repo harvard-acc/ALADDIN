@@ -2,11 +2,13 @@
 #define __GEM5_DATAPATH_H__
 
 #include "mem/mem_object.hh"
+#include "dev/dma_device.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/system.hh"
 
-#include "aladdin/common/BaseDatapath.h"
+#include "debug/Gem5Datapath.hh"
+#include "debug/Gem5DatapathVerbose.hh"
 
 /* A collection of functions common to datapath objects used within GEM5.
  * Note: to avoid potential problems arising from the use of multiple
@@ -24,10 +26,37 @@ class Gem5Datapath : public MemObject {
   Gem5Datapath(const MemObjectParams* params,
                int _accelerator_id,
                bool _execute_standalone,
+               int maxDmaRequests,
+               int dmaChunkSize,
+               int numDmaChannels,
+               bool invalidateOnDmaStore,
                System* _system)
-      : MemObject(params), execute_standalone(_execute_standalone),
+      : MemObject(params), spadPort(this,
+                                    _system,
+                                    maxDmaRequests,
+                                    dmaChunkSize,
+                                    numDmaChannels,
+                                    invalidateOnDmaStore),
+        spadMasterId(_system->getMasterId(this, name() + ".spad")),
+        cachePort(this, "cache_port"),
+        cacheMasterId(_system->getMasterId(this, name() + ".cache")),
+        acpPort(this, "acp_port"),
+        acpMasterId(_system->getMasterId(this, name() + ".acp")),
+        execute_standalone(_execute_standalone),
         accelerator_id(_accelerator_id), finish_flag(0), context_id(-1),
         thread_id(-1), cycles_since_last_node(0), system(_system) {}
+
+  BaseMasterPort& getMasterPort(const std::string& if_name,
+                                PortID idx = InvalidPortID) override {
+    if (if_name == "spad_port")
+      return spadPort;
+    else if (if_name == "cache_port")
+      return cachePort;
+    else if (if_name == "acp_port")
+      return acpPort;
+    else
+      return MemObject::getMasterPort(if_name);
+  }
 
   /* Return the tick event object for the event queue for this datapath. */
   virtual Event& getTickEvent() = 0;
@@ -50,6 +79,9 @@ class Gem5Datapath : public MemObject {
 
   /* True if there are no CPUs in the simulation, false otherwise. */
   bool isExecuteStandalone() { return execute_standalone; }
+
+  /* Use this to set the accelerator parameters. */
+  virtual void setParams(void* accelParams) {}
 
   /* Send a signal to the rest of the system that the accelerator has
    * finished. This signal takes the form of a shared memory block. This is
@@ -89,6 +121,227 @@ class Gem5Datapath : public MemObject {
   virtual void resetTrace() = 0;
 
  protected:
+  class DmaEvent : public Event {
+   protected:
+    Gem5Datapath* datapath;
+    // This is the original simulated start virtual address of the DMA request
+    // from the datapath.
+    Addr startAddr;
+    // This is the virtual address offset of a DMA request with respect to the
+    // startAddr above.
+    Addr reqOffset;
+
+   public:
+    DmaEvent(Gem5Datapath* _datapath, Addr _startAddr)
+        : Event(Default_Pri, AutoDelete), datapath(_datapath),
+          startAddr(_startAddr) {}
+    DmaEvent(const DmaEvent& other)
+        : Event(Default_Pri, AutoDelete), datapath(other.datapath),
+          startAddr(other.startAddr) {}
+    void process() override {
+      // If all the outstanding requests of this DMA request have responded,
+      // inform the datapath.
+      if (--datapath->spadPort.outstandingReqs[startAddr] == 0) {
+        datapath->dmaCompleteCallback(this);
+        datapath->spadPort.outstandingReqs.erase(startAddr);
+      }
+    }
+    const char* description() const override { return "DmaEvent"; }
+    virtual DmaEvent* clone() const { return new DmaEvent(*this); }
+    Addr getStartAddr() const { return startAddr; }
+    void setReqOffset(Addr offset) { reqOffset = offset; }
+    Addr getReqOffset() const { return reqOffset; }
+  };
+
+  /* This port has to accept snoops but it doesn't need to do anything. See
+   * arch/arm/table_walker.hh
+   */
+  class SpadPort : public DmaPort {
+   public:
+    SpadPort(Gem5Datapath* dev,
+             System* s,
+             unsigned _max_req,
+             unsigned _chunk_size,
+             unsigned _numChannels,
+             bool _invalidateOnDmaStore)
+        : DmaPort(dev,
+                  s,
+                  _max_req,
+                  _chunk_size,
+                  _numChannels,
+                  _invalidateOnDmaStore),
+          datapath(dev) {}
+
+   protected:
+    virtual bool recvTimingResp(PacketPtr pkt) {
+      if (pkt->cmd == MemCmd::InvalidateResp) {
+        // TODO: We can create a completion event for invalidation responses so
+        // that DMA nodes cannot proceed until the invalidations are done.
+        return DmaPort::recvTimingResp(pkt);
+      }
+      datapath->dmaRespCallback(pkt);
+      return DmaPort::recvTimingResp(pkt);
+    }
+    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
+    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
+    virtual bool isSnooping() const { return true; }
+    Gem5Datapath* datapath;
+    // This tracks the original request (the start vaddr) and its outstanding
+    // sub-requests.
+    std::unordered_map<Addr, int> outstandingReqs;
+    friend class DmaEvent;
+    friend class Gem5Datapath;
+  };
+
+  // Port for cache coherent memory accesses. This implementation does not
+  // support functional or atomic accesses.
+  class CachePort : public MasterPort {
+   public:
+    CachePort(Gem5Datapath* dev, const std::string& name)
+        : MasterPort(dev->name() + "." + name, dev), datapath(dev),
+          retryPkt(nullptr) {}
+
+    bool inRetry() const { return retryPkt != NULL; }
+    void setRetryPkt(PacketPtr pkt) { retryPkt = pkt; }
+    void clearRetryPkt() { retryPkt = NULL; }
+   protected:
+    bool recvTimingResp(PacketPtr pkt) override {
+      DPRINTF(Gem5Datapath, "%s: for address: %#x %s\n", __func__,
+              pkt->getAddr(), pkt->cmdString());
+      if (pkt->isError()) {
+        DPRINTF(Gem5Datapath,
+                "Got error packet back for address: %#x\n",
+                pkt->getAddr());
+      }
+      datapath->cacheRespCallback(pkt);
+      delete pkt->popSenderState();
+      delete pkt;
+      return true;
+    }
+    void recvTimingSnoopReq(PacketPtr pkt) override {}
+    void recvFunctionalSnoop(PacketPtr pkt) override {}
+    Tick recvAtomicSnoop(PacketPtr pkt) override { return 0; }
+    void recvReqRetry() override {
+      assert(inRetry());
+      assert(retryPkt->isRequest());
+      DPRINTF(
+          Gem5Datapath, "recvReqRetry for paddr: %#x \n", retryPkt->getAddr());
+      if (sendTimingReq(retryPkt)) {
+        DPRINTF(Gem5DatapathVerbose, "Retry pass!\n");
+        datapath->cacheRetryCallback(retryPkt);
+        clearRetryPkt();
+      } else {
+        DPRINTF(Gem5DatapathVerbose, "Still blocked!\n");
+      }
+    }
+    bool isSnooping() const override { return true; }
+
+    Gem5Datapath* datapath;
+    PacketPtr retryPkt;
+  };
+
+  // ACP is connected to the L2 cache, but since there is no other caching
+  // agent to which it is attached (unlike the CachePort), it cannot accept
+  // snoops.
+  class AcpPort : public CachePort {
+    // Inherit parent constructors.
+    using CachePort::CachePort;
+
+   protected:
+    // The ACP port does not snoop transactions. If it did, then it could be
+    // considered the "holder" of cache lines, when in fact the L2 is still the
+    // holder.
+    virtual bool isSnooping() const { return false; }
+  };
+
+  MasterID getSpadMasterId() const { return spadMasterId; }
+  MasterID getCacheMasterId() const { return cacheMasterId; }
+  MasterID getAcpMasterId() const { return acpMasterId; }
+
+  // Callback functions to the datapath.
+  virtual void dmaRespCallback(PacketPtr pkt) {}
+  virtual void cacheRespCallback(PacketPtr pkt) {}
+  virtual void cacheRetryCallback(PacketPtr pkt) {}
+  // The callback when the complete DMA request has finished.
+  virtual void dmaCompleteCallback(DmaEvent* event) {}
+
+  // Address translation function, it returns the translation result without
+  // accounting for timing.
+  virtual Addr translateAtomic(Addr vaddr, int size) = 0;
+
+  // Send an DMA request. This splits the request if it crosses page boundaries,
+  // translates it, and then sends it to the DMA controller.
+  // TODO: Make the address translation account for timing, which would require
+  // a state machine.
+  virtual void splitAndSendDmaRequest(
+      Addr startAddr, int size, bool isRead, uint8_t* data, DmaEvent* event) {
+    // Initialize the outstanding page-aligned requests for this DMA request.
+    // This assumes no subsequent DMA request will be issued from the datapath
+    // if an outstanding one accesses the same start address.
+    assert(spadPort.outstandingReqs.find(startAddr) ==
+               spadPort.outstandingReqs.end() &&
+           "There is an inflight DMA that accesses the same start address!");
+    spadPort.outstandingReqs[startAddr] = 0;
+
+    Addr firstPageVaddr = startAddr & ~pageMask();
+    int firstPageOffset = startAddr & pageMask();
+
+    int remainingBytes = size;
+    int i = 0;
+    do {
+      Addr dmaReqVaddr = i == 0 ? startAddr : firstPageVaddr + i * pageBytes();
+      int dmaReqSize =
+          i == 0 ? std::min(remainingBytes, pageBytes() - firstPageOffset)
+                 : std::min(remainingBytes, pageBytes());
+      // When we break the original DMA request up into page-sized ones, we need
+      // to create a different DMA event for every sub-request because 1) the
+      // DMA event will be auto-deleted once the first sub-request finishes and
+      // schedules it, though it can be worked around by turning off the
+      // auto-delete feature of gem5 events. 2) the DMA event tracks offset
+      // information of a sub-request.
+      if (i > 0)
+        event = event->clone();
+      // Set the DMA request offset.
+      event->setReqOffset(dmaReqVaddr - startAddr);
+      i++;
+      remainingBytes -= dmaReqSize;
+
+      // Do the address translation.
+      Addr dmaReqPaddr;
+      dmaReqPaddr = translateAtomic(dmaReqVaddr, dmaReqSize);
+
+      // Prepare the DMA transaction.
+      MemCmd::Command cmd = isRead ? MemCmd::ReadReq : MemCmd::WriteReq;
+      // Marking the DMA packets as uncacheable ensures they are not snooped by
+      // caches.
+      Request::Flags flags = Request::UNCACHEABLE;
+
+      DPRINTF(Gem5DatapathVerbose,
+              "Sending DMA %s for paddr %#x with size %d.\n",
+              isRead ? "read" : "write",
+              dmaReqPaddr,
+              dmaReqSize);
+      spadPort.dmaAction(cmd, dmaReqPaddr, dmaReqSize, event, data, 0, flags);
+      spadPort.outstandingReqs[startAddr]++;
+      data += dmaReqSize;
+    } while (remainingBytes > 0);
+  }
+
+  Addr pageMask() { return system->getPageBytes() - 1; }
+  int pageBytes() { return system->getPageBytes(); }
+
+  // DMA port to the scratchpad.
+  SpadPort spadPort;
+  MasterID spadMasterId;
+
+  // Coherent port to the cache.
+  CachePort cachePort;
+  MasterID cacheMasterId;
+
+  // ACP port to the system's L2 cache.
+  AcpPort acpPort;
+  MasterID acpMasterId;
+
   /* True if gem5 is being simulated with just Aladdin, false if there are
    * CPUs in the system that are executing code and manually invoking the
    * accelerators.

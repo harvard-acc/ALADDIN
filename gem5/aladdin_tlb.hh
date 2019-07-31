@@ -277,6 +277,18 @@ class AladdinTLB {
    */
   bool translateInvisibly(PacketPtr pkt);
 
+  /* Perform a TLB translation invisibly.
+   *
+   * The difference between this and the one above is that this receives a
+   * simulated virtual address instead of a trace virtual address (wrapped in
+   * the TLB packet). Therefore, no trace to simulated adress translation is
+   * needed.
+   *
+   * Returns:
+   *   The translated simulated physical address.
+   */
+  Addr translateInvisibly(Addr simVaddr, int size);
+
   /* Translate a trace virtual address to a simulated virtual address.
    *
    * Returns:

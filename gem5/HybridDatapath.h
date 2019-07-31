@@ -37,7 +37,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   ~HybridDatapath();
 
   // Build, optimize, register and prepare datapath for scheduling.
-  virtual void initializeDatapath(int delay = 1);
+  void initializeDatapath(int delay = 1) override;
 
   // Deletes all datapath state, including the TLB, but does not reset stats.
   virtual void clearDatapath();
@@ -49,38 +49,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Start scheduling datapath
   void startDatapathScheduling(int delay = 1);
 
-  virtual MasterPort& getDataPort() {
-    return spadPort;
-  };
-  virtual MasterPort& getCachePort() {
-    return cachePort;
-  };
-  virtual MasterPort& getAcpPort() {
-    return acpPort;
-  };
-  MasterID getSpadMasterId() {
-    return spadMasterId;
-  };
-  MasterID getCacheMasterId() {
-    return cacheMasterId;
-  };
-  MasterID getAcpMasterId() {
-    return acpMasterId;
-  }
-
-  /**
-   * Get a master port on this CPU. All CPUs have a data and
-   * instruction port, and this method uses getDataPort and
-   * getInstPort of the subclasses to resolve the two ports.
-   *
-   * @param if_name the port name
-   * @param idx ignored index
-   *
-   * @return a reference to the port with the given name
-   */
-  BaseMasterPort& getMasterPort(const std::string& if_name,
-                                PortID idx = InvalidPortID);
-
   /* Wrapper function for the real step() function to match EventWrapper
    * interface.
    */
@@ -90,7 +58,7 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Handles how simulation exits.
   void exitSimulation();
   // Returns the tick event that will schedule the next step.
-  Event& getTickEvent() { return tickEvent; }
+  Event& getTickEvent() override { return tickEvent; }
 
   // Attempts to schedule and execute all nodes in the executing queue.
   void stepExecutingQueue();
@@ -101,20 +69,24 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Reset cache counters.
   void resetCacheCounters();
 
+  void setParams(void* accelParams) override {
+    fatal("Aladdin doesn't support custom accelerator parameters!\n");
+  }
+
   // Notify the CPU that the accelerator is finished.
-  virtual void sendFinishedSignal();
+  void sendFinishedSignal() override;
 
   // Get the base address of the array (or array partition).
-  virtual Addr getBaseAddress(std::string label);
+  Addr getBaseAddress(std::string label) override;
 
   // Insert a new virtual to physical address mapping into the Aladdin TLB.
-  virtual void insertTLBEntry(Addr vaddr, Addr paddr);
+  void insertTLBEntry(Addr vaddr, Addr paddr) override;
 
   // Insert an array label to its simulated virtual address mapping.
-  virtual void insertArrayLabelToVirtual(const std::string& array_label,
-                                         Addr vaddr,
-                                         size_t size);
-  virtual void resetTrace();
+  void insertArrayLabelToVirtual(const std::string& array_label,
+                                 Addr vaddr,
+                                 size_t size) override;
+  void resetTrace() override;
 
   /* Invoked by the TLB when a TLB request has completed.
    *
@@ -149,68 +121,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   int writeConfiguration(sql::Connection* con);
 #endif
 
- private:
-  /* This port has to accept snoops but it doesn't need to do anything. See
-   * arch/arm/table_walker.hh
-   */
-  class SpadPort : public DmaPort {
-   public:
-    SpadPort(HybridDatapath* dev, System* s, unsigned _max_req,
-             unsigned _chunk_size, unsigned _numChannels,
-             bool _invalidateOnDmaStore)
-        : DmaPort(dev, s, _max_req, _chunk_size,
-                  _numChannels, _invalidateOnDmaStore),
-          max_req(_max_req), datapath(dev) {}
-    // Maximum DMA requests that can be queued.
-    const unsigned max_req;
-
-   protected:
-    virtual bool recvTimingResp(PacketPtr pkt);
-    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
-    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
-    virtual bool isSnooping() const { return true; }
-    HybridDatapath* datapath;
-  };
-
-  // Port for cache coherent memory accesses. This implementation does not
-  // support functional or atomic accesses.
-  class CachePort : public MasterPort {
-   public:
-    CachePort(HybridDatapath* dev, const std::string& name)
-        : MasterPort(dev->name() + "." + name, dev), datapath(dev),
-          retryPkt(nullptr) {}
-
-    bool inRetry() const { return retryPkt != NULL; }
-    void setRetryPkt(PacketPtr pkt) { retryPkt = pkt; }
-    void clearRetryPkt() { retryPkt = NULL; }
-
-   protected:
-    virtual bool recvTimingResp(PacketPtr pkt);
-    virtual void recvTimingSnoopReq(PacketPtr pkt) {}
-    virtual void recvFunctionalSnoop(PacketPtr pkt) {}
-    virtual Tick recvAtomicSnoop(PacketPtr pkt) { return 0; }
-    virtual void recvReqRetry();
-    virtual void recvRespRetry() {}
-    virtual bool isSnooping() const { return true; }
-
-    HybridDatapath* datapath;
-    PacketPtr retryPkt;
-  };
-
-  // ACP is connected to the L2 cache, but since there is no other caching
-  // agent to which it is attached (unlike the CachePort), it cannot accept
-  // snoops.
-  class AcpPort : public CachePort {
-    // Inherit parent constructors.
-    using CachePort::CachePort;
-
-   protected:
-    // The ACP port does not snoop transactions. If it did, then it could be
-    // considered the "holder" of cache lines, when in fact the L2 is still the
-    // holder.
-    virtual bool isSnooping() const { return false; }
-  };
-
   class DatapathSenderState : public Packet::SenderState {
    public:
     DatapathSenderState(bool _is_ctrl_signal)
@@ -232,20 +142,25 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     bool is_ctrl_signal;
   };
 
-  class DmaEvent : public Event {
+  class AladdinDmaEvent : public DmaEvent {
    private:
-    HybridDatapath* datapath;
     /* To track which DMA request is returned. */
     unsigned dma_node_id;
 
    public:
-    /** Constructor */
-    DmaEvent(HybridDatapath* _dpath, unsigned _dma_node_id);
-    /** Process a dma event */
-    void process();
+    AladdinDmaEvent(HybridDatapath* datapath,
+                    Addr startAddr,
+                    unsigned _dma_node_id)
+        : DmaEvent(datapath, startAddr), dma_node_id(_dma_node_id) {}
+    AladdinDmaEvent(const AladdinDmaEvent& other)
+        : DmaEvent(other.datapath, other.startAddr),
+          dma_node_id(other.dma_node_id) {}
     /** Returns the description of the tick event. */
-    const char* description() const;
-    unsigned get_node_id() { return dma_node_id; }
+    const char* description() const override { return "AladdinDmaEvent"; }
+    AladdinDmaEvent* clone() const override {
+      return new AladdinDmaEvent(*this);
+    }
+    unsigned get_node_id() const { return dma_node_id; }
   };
 
   /* Error codes for attempts to issue a packet. */
@@ -255,6 +170,21 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
     WillRetry,      // Port will retry this packet.
     NumIssueResultTypes,
   };
+
+  // These callbacks will be called when the DMA (or cache, ACP) port receives
+  // response (or retry).
+  void dmaRespCallback(PacketPtr pkt) override;
+  void cacheRespCallback(PacketPtr pkt) override;
+  void cacheRetryCallback(PacketPtr pkt) override;
+  void dmaCompleteCallback(DmaEvent* event) override;
+
+  /* This translates a simulated virtual address (rather than a trace address)
+   * to its physical address. However, we do this "invisibly" in zero time. This
+   * is because DMAs are typically initiated by the CPU using physical
+   * addresses, but our DMA model initiates transfers from the accelerator,
+   * which can't know physical addresses without a translation.
+   */
+  Addr translateAtomic(Addr vaddr, int size) override;
 
   /* Returns the memory op type for this node.
    *
@@ -348,7 +278,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // DMA access functions.
   void delayedDmaIssue();  // Used to postpone a call to issueDmaRequest().
   void issueDmaRequest(unsigned node_id);
-  void completeDmaRequest(unsigned node_id);
   void addDmaNodeToIssueQueue(unsigned node_id);
   void incrementDmaScratchpadAccesses(std::string array_label,
                                       unsigned dma_size,
@@ -455,18 +384,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Number of cycles required for the CPU to initiate a DMA transfer.
   unsigned dmaSetupOverhead;
-
-  // DMA port to the scratchpad.
-  SpadPort spadPort;
-  MasterID spadMasterId;
-
-  // Coherent port to the cache.
-  CachePort cachePort;
-  MasterID cacheMasterId;
-
-  // ACP port to the system's L2 cache.
-  AcpPort acpPort;
-  MasterID acpMasterId;
 
   // Tracks outstanding cache access nodes.
   MemoryQueue cache_queue;
