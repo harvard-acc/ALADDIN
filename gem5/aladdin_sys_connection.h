@@ -30,6 +30,18 @@ typedef struct _aladdin_map_t {
   size_t size;
 } aladdin_map_t;
 
+// Struct for passing accelerator parameters in gem5.
+typedef struct _aladdin_params_t {
+  volatile int* finish_flag;
+  // This is a pointer to a struct that is defined by the accelerator SIMULATOR
+  // to pass custom parameters, not the USER. For example, the user who is using
+  // Aladdin to model the accelerator cannot use this to store arbitrary
+  // parameters. It is intended to be used by simulator developers.
+  void* accel_params_ptr;
+  // Actual size of the parameters struct defined by the accelerator simulator.
+  size_t size;
+} aladdin_params_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,10 +68,11 @@ void invokeAcceleratorAndBlock(unsigned req_code);
  *   A new pointer to a finish flag integer. The client code should delete this
  *     when it is finished with it.
  */
-int* invokeAcceleratorAndReturn(unsigned req_code);
+volatile int* invokeAcceleratorAndReturn(unsigned req_code);
 
-/* The only difference from invokeAcceleratorAndReturn is this one does not allocate
- * memory for the finish_flag pointer, and the client code is responsible for that.
+/* The only difference from invokeAcceleratorAndReturn is this one does not
+ * allocate memory for the finish_flag pointer, and the client code is
+ * responsible for that.
  */
 void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag);
 
