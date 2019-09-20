@@ -489,7 +489,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     unsigned cache_delay_cycles = 0;
     unsigned cache_lines_affected =
         ceil(((float)size) / system->cacheLineSize());
-    if (!ignoreCacheFlush && mem_access->src_var->get_name() != "dma_weights") {
+    if (!ignoreCacheFlush) {
       if (isLoad)
         cache_delay_cycles = cache_lines_affected * cacheLineFlushLatency;
       else
