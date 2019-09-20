@@ -120,6 +120,9 @@ class Gem5Datapath : public MemObject {
   /* Reset the dynamic trace to the beginning. */
   virtual void resetTrace() = 0;
 
+  int getContextId() const { return context_id; }
+  int getThreadId() const { return thread_id; }
+
  protected:
   class DmaEvent : public Event {
    protected:
