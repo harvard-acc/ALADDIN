@@ -175,7 +175,7 @@ class BaseDatapath {
     if (part_it == user_params.partition.end()) {
       // If this array doesn't exist in the user-declared arrays, then it
       // belongs to the host, which makes it only accessible by DMA.
-      PartitionEntry entry = { host, none, 0, 0, 0, addr };
+      PartitionEntry entry = { dma, none, 0, 0, 0, addr };
       user_params.partition[array_name] = entry;
     } else {
       // If we find an entry with a matching name, it was either a
@@ -219,6 +219,7 @@ class BaseDatapath {
 
   //=----------- User configuration functions ------------=//
 
+  const UserConfigParams& getUserConfigParams() const { return user_params; }
   bool isReadyMode() const { return user_params.ready_mode; }
 
   //=----------- Simulation/scheduling functions --------=//

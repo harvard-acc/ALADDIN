@@ -30,6 +30,14 @@ int setReadyBits(void* start_addr, size_t size, unsigned value) {
   return 0;
 }
 
+int hostLoad(void* dst_addr, void* src_host_addr, size_t size) {
+  return _dmaImpl3(dst_addr, src_host_addr, size);
+}
+
+int hostStore(void* dst_host_addr, void* src_addr, size_t size) {
+  return _dmaImpl3(dst_host_addr, src_addr, size);
+}
+
 #elif defined(DMA_INTERFACE_V2)
 
 // With version 2 and earlier, we return (void*)NULL and use the number of
@@ -66,6 +74,7 @@ void* dmaLoad(void* addr, size_t offset, size_t size) {
 void* dmaStore(void* addr, size_t offset, size_t size) {
   return _dmaImpl1(addr, offset, size);
 }
+
 #endif
 
 void dmaFence() {

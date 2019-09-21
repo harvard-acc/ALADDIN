@@ -86,6 +86,11 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   void insertArrayLabelToVirtual(const std::string& array_label,
                                  Addr vaddr,
                                  size_t size) override;
+
+  // Set the memory access type for an array.
+  void setArrayMemoryType(const std::string& array_label,
+                          MemoryType mem_type) override;
+
   void resetTrace() override;
 
   /* Invoked by the TLB when a TLB request has completed.
@@ -186,12 +191,13 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    */
   Addr translateAtomic(Addr vaddr, int size) override;
 
-  /* Returns the memory op type for this node.
+  /* Returns the memory op type for this node (or array label).
    *
    * The memory op type depends on the datapath's particular configuration,
    * so this must be determined by the datapath.
    */
   MemoryOpType getMemoryOpType(ExecNode* node);
+  MemoryOpType getMemoryOpType(const std::string& array_label);
 
   /* Handle a register memory operation and return true if success.
    *
@@ -246,6 +252,16 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    * functions.
    */
   bool handleAcpMemoryOp(ExecNode* node);
+
+  // If the specified vaddr doesn't match any entry in the cache queue, create
+  // an entry for it and insert it to the cache queue.
+  MemoryQueueEntry* createAndQueueAcpEntry(Addr vaddr,
+                                           int size,
+                                           bool isLoad,
+                                           const std::string& array_label,
+                                           unsigned node_id);
+  // Check the ACP entry's status and take actions correspondingly.
+  bool checkAcpEntryStatus(MemoryQueueEntry* entry, ExecNode* node);
 
   /* Prints the ids of all nodes currently on the executing queue.
    *
@@ -372,6 +388,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
    * DMA ops.
    */
   std::map<unsigned, MemAccessStatus> inflight_dma_nodes;
+
+  // A bursty memory access node will be broken up into cacheline size requests.
+  // This tracks the outstanding requests of the bursty nodes (except DMA).
+  // TODO: Refactor the host ACP/cache accesses into the ACP/Cache ports, so we
+  // don't need to track them here.
+  std::map<unsigned, std::list<MemoryQueueEntry*>> inflight_burst_nodes;
 
   /* Hash table to track DMA accesses. Indexed by the base address of DMA
    * accesses, and mapped to the corresponding node id for that DMA request. */

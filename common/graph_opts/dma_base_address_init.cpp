@@ -102,7 +102,7 @@ void DmaBaseAddressInit::optimize() {
       DynamicVariable dynvar = parent_node->get_dynamic_variable();
       DynamicVariable orig_var = call_argument_map.lookup(dynvar);
       if (node->is_dma_load() || node->is_dma_store()) {
-        DmaMemAccess* mem_access = node->get_dma_mem_access();
+        HostMemAccess* mem_access = node->get_host_mem_access();
         if (edge_parid == 1) {
           mem_access->dst_var = orig_var.get_variable();
           found_dst = true;

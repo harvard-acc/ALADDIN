@@ -78,6 +78,9 @@
 #define LLVM_IR_SpecialMathOp 102
 #define LLVM_IR_Intrinsic 104
 #define LLVM_IR_SetSamplingFactor 105
+// TODO: Combine HOST opcodes with DMA.
+#define LLVM_IR_HostStore 106
+#define LLVM_IR_HostLoad 107
 // clang-format on
 
 #endif

@@ -153,7 +153,7 @@ void DebugNodePrinter::printDmaOp() {
   if (!node->is_dma_op())
     return;
   if (node->is_dma_load() || node->is_dma_store()) {
-    DmaMemAccess* mem_access = node->get_dma_mem_access();
+    HostMemAccess* mem_access = node->get_host_mem_access();
     out << "  Source: " << mem_access->src_var->get_name()
         << ", addr: 0x" << std::hex << mem_access->src_addr << "\n"
         << "  Destination: " << mem_access->dst_var->get_name()

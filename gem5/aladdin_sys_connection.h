@@ -30,6 +30,18 @@ typedef struct _aladdin_map_t {
   size_t size;
 } aladdin_map_t;
 
+typedef enum _MemoryType { spad, reg, dma, acp, cache } MemoryType;
+
+// Parameters for setting an array's memory access type.
+typedef struct _aladdin_mem_desc_t {
+  // Name of the array as it appears in the trace.
+  const char* array_name;
+  // Memory access type.
+  MemoryType mem_type;
+  // Accelerator ioctl request code.
+  unsigned request_code;
+} aladdin_mem_desc_t;
+
 // Struct for passing accelerator parameters in gem5.
 typedef struct _aladdin_params_t {
   volatile int* finish_flag;
@@ -117,6 +129,22 @@ void mapArrayToAccelerator(unsigned req_code,
                            const char* array_name,
                            void* addr,
                            size_t size);
+
+/* Set the memory access type for the specified array.
+ *
+ * This can be used to set (or change) the memory access type of an array.
+ *
+ * Args:
+ *   req_code: Request code for the accelerator.
+ *   array_name: Name of the array or variable.
+ *   mem_type: String value of the memory type.
+ */
+void setArrayMemoryType(unsigned req_code,
+                        const char* array_name,
+                        MemoryType mem_type);
+
+/* Return the string value of the memory type. */
+const char* memoryTypeToString(MemoryType mem_type);
 
 #ifdef __cplusplus
 }  // extern "C"

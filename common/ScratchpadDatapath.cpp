@@ -235,7 +235,7 @@ void ScratchpadDatapath::stepExecutingQueue() {
         executed = true;
       } else if (scratchpadCanService) {
         PartitionEntry partition = user_params.partition.at(array_name);
-        assert(partition.memory_type != MemoryType::host &&
+        assert(partition.memory_type != dma &&
                "Host memory accesses are not supported by standalone Aladdin!");
         MemAccess* mem_access = node->get_mem_access();
         Addr vaddr = mem_access->vaddr;

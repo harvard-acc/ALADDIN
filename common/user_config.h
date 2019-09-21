@@ -8,14 +8,6 @@
 #include "SourceEntity.h"
 #include "typedefs.h"
 
-enum MemoryType {
-  spad,
-  reg,
-  cache,
-  acp,
-  host,
-};
-
 // None is used if an array is stored in a cache.
 enum PartitionType { block, cyclic, complete, none };
 
@@ -62,24 +54,23 @@ class UserConfigParams {
     Addr curr_array_base = 0;
     if (part_it != partition.end()) {
       MemoryType mtype = part_it->second.memory_type;
-      if (mtype == cache || mtype == acp || mtype == host) {
+      if (mtype == cache || mtype == acp || mtype == dma) {
         part_it->second.array_size = size;
         curr_array_base = part_it->second.base_addr;
-      } else {
-        if (size != part_it->second.array_size) {
-          std::cerr << "[WARNING]: " << array_name
-                    << " is mapped to a scratchpad or "
-                       "register file, whose size cannot "
-                       "be changed dynamically!\n";
-          return;
-        }
+      } else if (size != part_it->second.array_size) {
+        std::cerr << "[WARNING]: " << array_name
+                  << " is mapped to a scratchpad or "
+                     "register file, whose size cannot "
+                     "be changed dynamically!\n";
+        return;
       }
     } else {
       // The only case in where we don't find this array is if when we get a
       // call to mapArrayToAccelerator() for a region of host memory. We won't
       // have the trace base address until we parse the entry block in the
       // dynamic trace, but we can still set the size now.
-      partition[array_name] = { host, none, size, 0, 0, 0 };
+      // By default, the host memory type is set to DMA.
+      partition[array_name] = { dma, none, size, 0, 0, 0 };
     }
     // To resolve the overlapping array case, find all other partition entries
     // that overlap with this range and set their sizes to zero, so we can
@@ -92,12 +83,12 @@ class UserConfigParams {
       Addr part_base = part_it->second.base_addr;
       size_t part_size = part_it->second.array_size;
       MemoryType mtype = part_it->second.memory_type;
-      if ((mtype == cache || mtype == acp || mtype == host) &&
+      if ((mtype == cache || mtype == acp || mtype == dma) &&
+          part_name != array_name &&
           rangesOverlap(curr_array_base,
                         curr_array_base + size,
                         part_base,
-                        part_base + part_size) &&
-          part_name != array_name) {
+                        part_base + part_size)) {
         part_it->second.array_size = 0;
       }
     }

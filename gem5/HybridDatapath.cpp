@@ -9,6 +9,7 @@
 #include "base/trace.hh"
 #include "base/types.hh"
 #include "base/logging.hh"
+#include "base/chunk_generator.hh"
 #include "dev/dma_device.hh"
 #include "mem/mem_object.hh"
 #include "mem/packet.hh"
@@ -173,6 +174,22 @@ void HybridDatapath::insertArrayLabelToVirtual(const std::string& array_label,
   user_params.checkOverlappingRanges();
 }
 
+void HybridDatapath::setArrayMemoryType(const std::string& array_label,
+                                        MemoryType mem_type) {
+  assert((mem_type == dma || mem_type == acp || mem_type == cache) &&
+         "The host memory access type can only be DMA, ACP or cache!");
+  DPRINTF(HybridDatapath, "Setting %s to memory type %s.\n",
+          array_label.c_str(), memoryTypeToString(mem_type));
+  if (user_params.partition.find(array_label) != user_params.partition.end()) {
+    // This array is found in the partitions.
+    user_params.partition[array_label].memory_type = mem_type;
+  } else {
+    // New array. The dynamic trace will be parsed later to change other
+    // attributes.
+    user_params.partition[array_label] = { mem_type, none, 0, 0, 0, 0 };
+  }
+}
+
 void HybridDatapath::resetTrace() {
   DPRINTF(HybridDatapath, "%s: Resetting dynamic trace\n.", name());
   BaseDatapath::resetTrace();
@@ -236,7 +253,7 @@ void HybridDatapath::stepExecutingQueue() {
   while (it != executingQueue.end()) {
     ExecNode* node = *it;
     bool op_satisfied = false;
-    if (node->is_memory_op() || node->is_dma_op()) {
+    if (node->is_memory_op() || node->is_host_mem_op()) {
       MemoryOpType type;
       try {
         type = getMemoryOpType(node);
@@ -376,30 +393,49 @@ void HybridDatapath::exitSimulation() {
   }
 }
 
+MemoryOpType HybridDatapath::getMemoryOpType(const std::string& array_label) {
+  auto it = user_params.partition.find(array_label);
+  if (it != user_params.partition.end()) {
+    PartitionEntry entry = it->second;
+    switch (entry.memory_type) {
+      case spad:
+        return Scratchpad;
+      case reg:
+        return Register;
+      case dma:
+        return Dma;
+      case acp:
+        return ACP;
+      case cache:
+        return Cache;
+      default:
+        throw IllegalHostMemoryAccessException(array_label);
+    }
+  } else {
+    throw UnknownArrayException(array_label);
+  }
+  return NumMemoryOpTypes;
+}
+
 MemoryOpType HybridDatapath::getMemoryOpType(ExecNode* node) {
   if (node->is_dma_load() || node->is_dma_store() || node->is_dma_fence())
     return Dma;
   if (node->is_set_ready_bits())
     return ReadyBits;
 
-  const std::string& array_label = node->get_array_label();
-  auto it = user_params.partition.find(array_label);
-  if (it != user_params.partition.end()) {
-    PartitionEntry entry = it->second;
-    // TODO: Combine the enums MemoryOpType and MemoryType.
-    MemoryType memory_type = entry.memory_type;
-    switch (memory_type) {
-      case spad:
-        return Scratchpad;
-      case cache:
-        return Cache;
-      case reg:
-        return Register;
-      case acp:
-        return ACP;
-      case host:
-        throw IllegalHostMemoryAccessException(node);
-    }
+  if (node->is_host_mem_op()) {
+    HostMemAccess* mem_access = node->get_host_mem_access();
+    bool isLoad = node->is_host_load();
+    const std::string& array_label = isLoad ? mem_access->src_var->get_name()
+                                            : mem_access->dst_var->get_name();
+    return getMemoryOpType(array_label);
+  } else if (node->is_memory_op()) {
+    const std::string& array_label = node->get_array_label();
+    auto it = user_params.partition.find(array_label);
+    return getMemoryOpType(array_label);
+  } else {
+    fatal("Unexpected memory op! It should either be a host memory op or a "
+          "local memory op.\n");
   }
   return NumMemoryOpTypes;
 }
@@ -477,7 +513,7 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     inflight_dma_nodes[node_id] = status;
   else
     status = inflight_dma_nodes.at(node_id);
-  DmaMemAccess* mem_access = node->get_dma_mem_access();
+  HostMemAccess* mem_access = node->get_host_mem_access();
   if (status == Invalid && inflight_dma_nodes.size() < maxInflightNodes) {
     /* A DMA load needs to be preceded by a cache flush of the buffer being sent,
      * while a DMA store needs to be preceded by a cache invalidate of the
@@ -541,7 +577,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   if (!entry)
-    entry = cache_queue.allocateEntry(vaddr, isLoad);
+    entry = cache_queue.allocateEntry(vaddr, mem_access->size, isLoad);
   if (!entry) {
     DPRINTF(HybridDatapathVerbose,
             "Unable to service new cache request for node %d: "
@@ -620,71 +656,36 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
   }
 }
 
-bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
-  if (!acp_enabled) {
-    fatal("Attempted to perform an ACP access when ACP was not enabled on this "
-          "system! Add \"enable_acp = True\" to the gem5.cfg file and try "
-          "again.");
-  }
-
-  unsigned node_id = node->get_node_id();
-  if (!cache_queue.canIssue()) {
-    DPRINTF(HybridDatapathVerbose, "Unable to service ACP request for node %d: "
-                                   "out of cache queue bandwidth.\n",
-            node_id);
-    return false;
-  }
-
-  MemAccess* mem_access = node->get_mem_access();
-  bool isLoad = node->is_load_op();
-
-  // TODO: Use the simulation virtual address. This is the TRACE address, so if
-  // we are going to compute aligned addresses, then the trace needs to be
-  // generated with aligned addresses too. That's probably not an onerous
-  // requirement, but we should not depend on the trace address for anything
-  // performance related.
-  Addr vaddr = mem_access->vaddr;
-  uint8_t* data = mem_access->data();
-  int size = mem_access->size;
+MemoryQueueEntry* HybridDatapath::createAndQueueAcpEntry(
+    Addr vaddr,
+    int size,
+    bool isLoad,
+    const std::string& array_label,
+    unsigned node_id) {
   if (isExecuteStandalone())
     vaddr &= ADDR_MASK;
-
   // For loads: we don't need to ask for ownership at all. Instead, we collapse
   // simultaneous requests to the same cache line (aka an MSHR).
   //
   // For stores: we issue separate ownership requests for each request.
-  // TODO: ACP is only supposed to accept 2 different transaction sizes (16
-  // bytes and 64 bytes), not arbitrary burst lengths.
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
-  if (!entry)
-    entry = cache_queue.allocateEntry(vaddr, isLoad);
   if (!entry) {
-    DPRINTF(HybridDatapathVerbose,
-            "Unable to service new ACP request for node %d: "
-            "cache queue is full.\n",
-            node_id);
-    return false;
-  } else {
+    entry = cache_queue.allocateEntry(vaddr, size, isLoad);
     entry->type = ACP;
-  }
-
-  if (entry->status == Invalid) {
     if (use_acp_cache) {
       // If we have the middle cache, we don't need to handle ownership requests
       // ourselves. Just go ahead and issue the read or write.
+      // TODO: We should remove the ACP cache and require the user to use Ruby
+      // for ACP simulations.
       entry->status = ReadyToIssue;
     } else {
       // We need to explicitly request ownership of a cache line on stores.
       entry->status = isLoad ? ReadyToIssue : ReadyToRequestOwnership;
     }
-  }
-
-  if (entry->paddr == 0) {
     // ACP works with physical addresses, which the trace cannot possibly have,
     // so to model this faithfully, we perform the address translation in zero
     // time. Make sure we use the original virtual address.
-    SrcTypes::Variable* var =
-        srcManager.get<SrcTypes::Variable>(node->get_array_label());
+    SrcTypes::Variable* var = srcManager.get<SrcTypes::Variable>(array_label);
     try {
       AladdinTLBResponse translation =
           getAddressTranslation(vaddr, size, isLoad, var);
@@ -695,10 +696,16 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
             e.what());
     }
   }
-  if (!node->started())
-    markNodeStarted(node);
+  return entry;
+}
 
+bool HybridDatapath::checkAcpEntryStatus(MemoryQueueEntry* entry,
+                                         ExecNode* node) {
+  Addr vaddr = entry->vaddr;
   Addr paddr = entry->paddr;
+  int size = entry->size;
+  bool isLoad = entry->isLoad;
+  unsigned node_id = node->get_node_id();
   if (entry->status == ReadyToRequestOwnership) {
     IssueResult result = issueOwnershipRequest(vaddr, paddr, size, node_id);
     if (result == Accepted) {
@@ -715,6 +722,25 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     }
     return false;
   } else if (entry->status == ReadyToIssue) {
+    uint8_t* data;
+    if (node->is_memory_op()) {
+      data = node->get_mem_access()->data();
+    } else {
+      // This data will be deleted upon cache response.
+      data = new uint8_t[size];
+      if (!isLoad) {
+        HostMemAccess* mem_access = node->get_host_mem_access();
+        Addr offset = vaddr - mem_access->dst_addr;
+        Addr accel_addr = offset + mem_access->src_addr;
+        const std::string& array_label = mem_access->src_var->get_name();
+        try {
+          scratchpad->readData(array_label, accel_addr, size, data);
+        } catch (ArrayAccessException& e) {
+          fatal("When reading from array %s at node %d: %s\n",
+                node->get_array_label(), node->get_node_id(), e.what());
+        }
+      }
+    }
     IssueResult result =
         issueAcpRequest(vaddr, paddr, size, isLoad, node_id, data);
     if (result == Accepted) {
@@ -753,6 +779,76 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
   }
 }
 
+bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
+  if (!acp_enabled) {
+    fatal("Attempted to perform an ACP access when ACP was not enabled on this "
+          "system! Add \"enable_acp = True\" to the gem5.cfg file and try "
+          "again.");
+  }
+
+  unsigned node_id = node->get_node_id();
+  if (!cache_queue.canIssue()) {
+    DPRINTF(HybridDatapathVerbose, "Unable to service ACP request for node %d: "
+                                   "out of cache queue bandwidth.\n",
+            node_id);
+    return false;
+  }
+
+  if (!node->started())
+    markNodeStarted(node);
+
+  // There are two ways to access host memory via ACP: chunk-level access and
+  // fine-grained cacheline-level access. Chunk-level accesses will use
+  // the hostLoad/hostStore instructions, and cacheline-level accesses will use
+  // the normal Load/Store.
+  if (node->is_host_mem_op()) {
+    // This is a chunk-level ACP access.
+    if (inflight_burst_nodes.find(node_id) == inflight_burst_nodes.end()) {
+      // This is a new op. Break up the chunk into cacheline size requests and
+      // insert them into the cache queue.
+      bool isLoad = node->is_host_load();
+      HostMemAccess* mem_access = node->get_host_mem_access();
+      size_t size = mem_access->size;  // In bytes.
+      Addr src_vaddr = mem_access->src_addr;
+      Addr dst_vaddr = mem_access->dst_addr;
+      Addr host_vaddr = isLoad ? src_vaddr : dst_vaddr;
+      const std::string& array_label = isLoad ? mem_access->src_var->get_name()
+                                              : mem_access->dst_var->get_name();
+      for (ChunkGenerator gen(host_vaddr, size, cacheLineSize); !gen.done();
+           gen.next()) {
+        inflight_burst_nodes[node_id].push_back(createAndQueueAcpEntry(
+            gen.addr(), gen.size(), isLoad, array_label, node_id));
+      }
+    }
+    if (inflight_burst_nodes[node_id].size() > 0) {
+      // This node has outstanding requests.
+      for (auto entry : inflight_burst_nodes[node_id]) {
+        if (!checkAcpEntryStatus(entry, node))
+          return false;
+      }
+    }
+    // All the requests of this node have completed.
+    return true;
+  } else if (node->is_memory_op()) {
+    // This is a cacheline-level ACP access.
+    MemAccess* mem_access = node->get_mem_access();
+    bool isLoad = node->is_load_op();
+
+    // TODO: Use the simulation virtual address. This is the TRACE address, so
+    // if we are going to compute aligned addresses, then the trace needs to be
+    // generated with aligned addresses too. That's probably not an onerous
+    // requirement, but we should not depend on the trace address for anything
+    // performance related.
+    Addr vaddr = mem_access->vaddr;
+    int size = mem_access->size;
+    MemoryQueueEntry* entry = createAndQueueAcpEntry(
+        vaddr, size, isLoad, node->get_array_label(), node_id);
+    return checkAcpEntryStatus(entry, node);
+  } else {
+    fatal("Unexpected ACP access op, node id %d!\n", node_id);
+  }
+}
+
 Addr HybridDatapath::translateAtomic(Addr vaddr, int size) {
   Addr paddr;
   try {
@@ -768,7 +864,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   ExecNode *node = program.nodes.at(node_id);
   markNodeStarted(node);
   bool isLoad = node->is_dma_load();
-  DmaMemAccess* mem_access = node->get_dma_mem_access();
+  HostMemAccess* mem_access = node->get_host_mem_access();
   size_t size = mem_access->size;  // In bytes.
   Addr src_vaddr = mem_access->src_addr;
   Addr dst_vaddr = mem_access->dst_addr;
@@ -794,8 +890,7 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   fatal_if(!(mtype == spad || mtype == reg),
            "At node %d: DMA request to %s must be to/from a scratchpad or "
            "register, but we got %s\n",
-           node_id, node->get_array_label(),
-           mtype == cache ? "cache" : mtype == acp ? "acp" : "host");
+           node_id, node->get_array_label(), memoryTypeToString(mtype));
   if (mtype == spad)
     incrementDmaScratchpadAccesses(node->get_array_label(), size, isLoad);
   else
@@ -1099,6 +1194,32 @@ void HybridDatapath::updateCacheRequestStatusOnResp(
   if (entry->status == WaitingFromCache) {
     entry->status = Returned;
     Tick elapsed = curTick() - entry->when_issued;
+    ExecNode* node = getProgram().nodes.at(node_id);
+    if (node->is_host_mem_op()) {
+      // If this is a bursty memory op, remove the request from its request
+      // lists and write the data into the scratchpad if it's a hostLoad.
+      inflight_burst_nodes[node_id].remove(entry);
+      if (inflight_burst_nodes[node_id].empty()) {
+        DPRINTF(
+            HybridDatapath, "Host memory op completes for node %d.\n", node_id);
+      }
+      if (isLoad) {
+        uint8_t* data = pkt->getPtr<uint8_t>();
+        assert(data != nullptr && "Packet data is null!");
+        HostMemAccess* mem_access = node->get_host_mem_access();
+        const std::string& array_label = mem_access->dst_var->get_name();
+        Addr offset = vaddr - mem_access->src_addr;
+        Addr spadAddr = mem_access->dst_addr + offset;
+        unsigned size = pkt->req->getSize();  // in bytes
+        try {
+          scratchpad->writeData(array_label, spadAddr, data, size);
+        } catch (ArrayAccessException& e) {
+          fatal("When writing to array %s at node %d: %s\n", array_label,
+                node_id, e.what());
+        }
+        delete [] data;
+      }
+    }
     DPRINTF(HybridDatapath,
             "setting %s cache queue entry for vaddr %#x to Returned.\n",
             isLoad ? "load" : "store",
@@ -1177,7 +1298,7 @@ void HybridDatapath::dmaRespCallback(PacketPtr pkt) {
   ExecNode * node = getProgram().nodes.at(node_id);
   assert(node != nullptr && "DMA node id is invalid!");
 
-  DmaMemAccess* mem_access = node->get_dma_mem_access();
+  HostMemAccess* mem_access = node->get_host_mem_access();
   Addr src_vaddr_base = mem_access->src_addr;
   Addr dst_vaddr_base = mem_access->dst_addr;
   if (isExecuteStandalone()) {

@@ -66,6 +66,9 @@ extern int ALADDIN_FD;
 // the simulated user program.
 extern int ALADDIN_MAP_ARRAY;
 
+// fcntl command that describes the memory access type for an array.
+extern int ALADDIN_MEM_DESC;
+
 // A preprovided sentinel value to detect changes in finish flags.
 extern int NOT_COMPLETED;
 

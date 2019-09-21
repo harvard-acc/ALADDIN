@@ -39,7 +39,9 @@ class MemoryQueueEntry {
  public:
   MemoryQueueEntry() {
     status = Invalid;
+    vaddr = 0x0;
     paddr = 0x0;
+    size = 0;
     type = NumMemoryOpTypes;
     when_allocated = curTick();
     when_issued = 0;
@@ -49,7 +51,10 @@ class MemoryQueueEntry {
   Tick when_issued;
   MemoryOpType type;
   MemAccessStatus status;  // Current status of the request.
+  Addr vaddr;              // Virtual address, returned by the TLB.
   Addr paddr;              // Physical address, returned by the TLB.
+  int size;
+  bool isLoad;
 };
 
 class MemoryQueue {
@@ -74,7 +79,14 @@ class MemoryQueue {
 
   bool canIssue() { return bandwidth == 0 ? true : (issuedThisCycle < bandwidth); }
 
-  bool isFull() { return ops.size() == size; }
+  bool isFull() {
+    if (ops.size() >= size) {
+      warn("The memory queue becomes full. Capacity: %d, current size: %d.\n",
+           size,
+           ops.size());
+    }
+    return false;
+  }
 
   /* Returns true if the ops already contains an entry for this address. */
   bool contains(Addr vaddr) { return (ops.find(vaddr) != ops.end()); }
@@ -92,9 +104,17 @@ class MemoryQueue {
     return findMatch(vaddr);
   }
 
-  MemoryQueueEntry* allocateEntry(Addr vaddr, bool merge) {
-    vaddr = merge ? toCacheLineAddr(vaddr) : vaddr;
-    return allocateEntry(vaddr);
+  MemoryQueueEntry* allocateEntry(Addr vaddr, int size, bool merge) {
+    if (!isFull()) {
+      vaddr = merge ? toCacheLineAddr(vaddr) : vaddr;
+      MemoryQueueEntry* entry = new MemoryQueueEntry();
+      entry->vaddr = vaddr;
+      entry->size = size;
+      entry->isLoad = merge;
+      ops[vaddr] = entry;
+      return entry;
+    }
+    return nullptr;
   }
 
   void deallocateEntry(Addr vaddr, bool merge) {
@@ -179,14 +199,6 @@ class MemoryQueue {
   MemoryQueueEntry* findMatch(Addr vaddr) {
     if (ops.find(vaddr) != ops.end())
       return ops[vaddr];
-    return nullptr;
-  }
-
-  MemoryQueueEntry* allocateEntry(Addr vaddr) {
-    if (!isFull()) {
-      ops[vaddr] = new MemoryQueueEntry();
-      return ops[vaddr];
-    }
     return nullptr;
   }
 

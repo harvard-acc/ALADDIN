@@ -75,6 +75,34 @@ void mapArrayToAccelerator(unsigned req_code,
   syscall(SYS_fcntl, ALADDIN_FD, ALADDIN_MAP_ARRAY, &mapping);
 }
 
+void setArrayMemoryType(unsigned req_code,
+                        const char* array_name,
+                        MemoryType mem_type) {
+  aladdin_mem_desc_t desc;
+  desc.array_name = array_name;
+  desc.request_code = req_code;
+  desc.mem_type = mem_type;
+
+  syscall(SYS_fcntl, ALADDIN_FD, ALADDIN_MEM_DESC, &desc);
+}
+
+const char* memoryTypeToString(MemoryType mem_type) {
+  switch (mem_type) {
+    case spad:
+      return "spad";
+    case reg:
+      return "reg";
+    case dma:
+      return "dma";
+    case acp:
+      return "acp";
+    case cache:
+      return "cache";
+    default:
+      return "invalid";
+  }
+}
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

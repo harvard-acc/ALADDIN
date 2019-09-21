@@ -10,6 +10,7 @@
 #include "ExecNode.h"
 #include "ProgressTracker.h"
 #include "SourceManager.h"
+#include "user_config.h"
 
 using namespace SrcTypes;
 
@@ -463,7 +464,7 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
     }
   }
   if (curr_microop == LLVM_IR_Load || curr_microop == LLVM_IR_Store ||
-      curr_microop == LLVM_IR_GetElementPtr || curr_node->is_dma_op() ||
+      curr_microop == LLVM_IR_GetElementPtr || curr_node->is_host_mem_op() ||
       curr_node->is_set_sampling_factor()) {
     // NOTE: We are moving value into the parameter value list, so the value
     // object is now no longer valid and cannot be used directly!
@@ -522,7 +523,7 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
       const std::string& real_name = real_array->get_name();
       curr_node->set_array_label(real_name);
       datapath->addArrayBaseAddress(real_name, base_address);
-    } else if (param_tag == 1 && curr_node->is_dma_op()) {
+    } else if (param_tag == 1 && curr_node->is_host_mem_op()) {
       // Data dependencies are handled in parse_result(), because we need all
       // the arguments to dmaLoad in order to do this.
     } else if (curr_node->is_set_sampling_factor()) {
@@ -559,8 +560,8 @@ void DDDG::parse_result(const std::string& line) {
     mem_access->vaddr = mem_address;
     handle_post_write_dependency(mem_address, mem_size, current_node_id);
     curr_node->set_mem_access(mem_access);
-  } else if (curr_node->is_dma_load() || curr_node->is_dma_store()) {
-    DmaMemAccess* mem_access;
+  } else if (curr_node->is_host_load() || curr_node->is_host_store()) {
+    HostMemAccess* mem_access;
     Addr src_addr = 0, dst_addr = 0;
     size_t size = 0;
     Variable *src_var = nullptr, *dst_var = nullptr;
@@ -605,9 +606,21 @@ void DDDG::parse_result(const std::string& line) {
 
     src_var = get_array_real_var(src_var);
     dst_var = get_array_real_var(dst_var);
-    mem_access = new DmaMemAccess(dst_addr, src_addr, size, src_var, dst_var);
-    curr_node->set_dma_mem_access(mem_access);
-    if (curr_microop == LLVM_IR_DMALoad) {
+    assert(src_var->get_name() != dst_var->get_name() &&
+           "The local and host arrays must not have the same name!");
+    // Set the memory type of this host memory access. Use DMA by default if the
+    // user doesn't explicitly set the host memory access type.
+    const std::string& array_label =
+        curr_node->is_host_load() ? src_var->get_name() : dst_var->get_name();
+    MemoryType mem_type = dma;
+    auto it = datapath->getUserConfigParams().partition.find(array_label);
+    if (it != datapath->getUserConfigParams().partition.end())
+      mem_type = it->second.memory_type;
+    mem_access =
+        new HostMemAccess(mem_type, dst_addr, src_addr, size, src_var, dst_var);
+    curr_node->set_host_mem_access(mem_access);
+
+    if (curr_microop == LLVM_IR_DMALoad || curr_microop == LLVM_IR_HostLoad) {
       /* For dmaLoad (which is a STORE from the accelerator's perspective),
        * enforce RAW and WAW dependencies on subsequent nodes.
        *
@@ -661,7 +674,7 @@ void DDDG::parse_forward(const std::string& line) {
 
   // DMA and trig operations are not actually treated as called functions by
   // Aladdin, so there is no need to add any register name mappings.
-  if (curr_node->is_dma_op() || curr_node->is_special_math_op() ||
+  if (curr_node->is_host_mem_op() || curr_node->is_special_math_op() ||
       curr_node->is_set_sampling_factor())
     return;
 

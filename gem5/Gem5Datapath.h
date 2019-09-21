@@ -7,6 +7,8 @@
 #include "sim/eventq.hh"
 #include "sim/system.hh"
 
+#include "aladdin_sys_connection.h"
+
 #include "debug/Gem5Datapath.hh"
 #include "debug/Gem5DatapathVerbose.hh"
 
@@ -116,6 +118,10 @@ class Gem5Datapath : public MemObject {
   virtual void insertArrayLabelToVirtual(const std::string& array_label,
                                          Addr vaddr,
                                          size_t size) = 0;
+
+  // Set the memory access type for an array.
+  virtual void setArrayMemoryType(const std::string& array_label,
+                                  MemoryType mem_type){};
 
   /* Reset the dynamic trace to the beginning. */
   virtual void resetTrace() = 0;

@@ -78,21 +78,23 @@ class VectorMemAccess : public MemAccess {
     uint8_t* value;
 };
 
-class DmaMemAccess : public MemAccess {
+class HostMemAccess : public MemAccess {
   protected:
    typedef SrcTypes::Variable Variable;
 
   public:
-   DmaMemAccess()
-       : MemAccess(), src_addr(0), src_var(nullptr), dst_var(nullptr) {}
+   HostMemAccess()
+       : MemAccess(), memory_type(dma), src_addr(0), src_var(nullptr),
+         dst_var(nullptr) {}
 
-   DmaMemAccess(Addr _dst_addr,
-                Addr _src_addr,
-                size_t _size,
-                Variable* _src_var,
-                Variable* _dst_var)
-       : MemAccess(_dst_addr, _size), src_addr(_src_addr), src_var(_src_var),
-         dst_var(_dst_var) {}
+   HostMemAccess(MemoryType _memory_type,
+                 Addr _dst_addr,
+                 Addr _src_addr,
+                 size_t _size,
+                 Variable* _src_var,
+                 Variable* _dst_var)
+       : MemAccess(_dst_addr, _size), memory_type(_memory_type),
+         src_addr(_src_addr), src_var(_src_var), dst_var(_dst_var) {}
 
    virtual uint8_t* data() {
      assert(false &&
@@ -100,6 +102,7 @@ class DmaMemAccess : public MemAccess {
      return nullptr;
    }
 
+   MemoryType memory_type;
    Addr src_addr;
    Addr& dst_addr = MemAccess::vaddr;
 
@@ -188,8 +191,8 @@ class ExecNode {
   ScalarMemAccess* get_scalar_mem_access() const {
     return dynamic_cast<ScalarMemAccess*>(mem_access);
   }
-  DmaMemAccess* get_dma_mem_access() const {
-    return dynamic_cast<DmaMemAccess*>(mem_access);
+  HostMemAccess* get_host_mem_access() const {
+    return dynamic_cast<HostMemAccess*>(mem_access);
   }
   VectorMemAccess* get_vector_mem_access() const {
     return dynamic_cast<VectorMemAccess*>(mem_access);
@@ -236,8 +239,8 @@ class ExecNode {
   void set_array_label(const std::string& label) { array_label = label; }
   void set_partition_index(unsigned index) { partition_index = index; }
   void set_mem_access(MemAccess* mem_access) { this->mem_access = mem_access; }
-  void set_dma_mem_access(DmaMemAccess* dma_mem_access) {
-    mem_access = dma_mem_access;
+  void set_host_mem_access(HostMemAccess* host_mem_access) {
+    mem_access = host_mem_access;
   }
   void set_loop_depth(unsigned depth) { loop_depth = depth; }
   void set_special_math_op(const std::string& name) { special_math_op = name; }
@@ -387,12 +390,34 @@ class ExecNode {
     }
   }
 
-  bool is_dma_load() const { return microop == LLVM_IR_DMALoad; }
-  bool is_dma_store() const { return microop == LLVM_IR_DMAStore; }
+  bool is_dma_load() const {
+    if (microop == LLVM_IR_DMALoad)
+      return true;
+    if (microop == LLVM_IR_HostLoad && mem_access)
+      return get_host_mem_access()->memory_type == dma;
+    return false;
+  }
+  bool is_dma_store() const {
+    if (microop == LLVM_IR_DMAStore)
+      return true;
+    if (microop == LLVM_IR_HostStore && mem_access)
+      return get_host_mem_access()->memory_type == dma;
+    return false;
+  }
   bool is_dma_fence() const { return microop == LLVM_IR_DMAFence; }
   bool is_set_ready_bits() const { return microop == LLVM_IR_SetReadyBits; }
   bool is_dma_op() const {
     return is_dma_load() || is_dma_store() || is_dma_fence() || is_set_ready_bits();
+  }
+
+  bool is_host_load() const {
+    return microop == LLVM_IR_DMALoad || microop == LLVM_IR_HostLoad;
+  }
+  bool is_host_store() const {
+    return microop == LLVM_IR_DMAStore || microop == LLVM_IR_HostStore;
+  }
+  bool is_host_mem_op() const {
+    return is_dma_op() || is_host_load() || is_host_store();
   }
 
   bool is_set_sampling_factor() const {
@@ -672,6 +697,8 @@ class ExecNode {
       LLVM_IR_OPCODE_TO_NAME(DMAFence);
       LLVM_IR_OPCODE_TO_NAME(DMAStore);
       LLVM_IR_OPCODE_TO_NAME(DMALoad);
+      LLVM_IR_OPCODE_TO_NAME(HostStore);
+      LLVM_IR_OPCODE_TO_NAME(HostLoad);
       LLVM_IR_OPCODE_TO_NAME(IndexAdd);
       LLVM_IR_OPCODE_TO_NAME(SilentStore);
       LLVM_IR_OPCODE_TO_NAME(SpecialMathOp);
