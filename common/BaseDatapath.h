@@ -219,7 +219,6 @@ class BaseDatapath {
 
   //=----------- User configuration functions ------------=//
 
-  const UserConfigParams& getUserConfigParams() const { return user_params; }
   bool isReadyMode() const { return user_params.ready_mode; }
 
   //=----------- Simulation/scheduling functions --------=//

@@ -606,18 +606,13 @@ void DDDG::parse_result(const std::string& line) {
 
     src_var = get_array_real_var(src_var);
     dst_var = get_array_real_var(dst_var);
-    assert(src_var->get_name() != dst_var->get_name() &&
-           "The local and host arrays must not have the same name!");
-    // Set the memory type of this host memory access. Use DMA by default if the
-    // user doesn't explicitly set the host memory access type.
-    const std::string& array_label =
-        curr_node->is_host_load() ? src_var->get_name() : dst_var->get_name();
-    MemoryType mem_type = dma;
-    auto it = datapath->getUserConfigParams().partition.find(array_label);
-    if (it != datapath->getUserConfigParams().partition.end())
-      mem_type = it->second.memory_type;
+    // We set the default host memory access type to DMA here, because we don't
+    // know yet the original host array label, which may be set to use a
+    // different memory type by the user via the setArrayMemoryType API. We
+    // handle that in the DMA base address init pass, where the original array
+    // label of host node will be found.
     mem_access =
-        new HostMemAccess(mem_type, dst_addr, src_addr, size, src_var, dst_var);
+        new HostMemAccess(dma, dst_addr, src_addr, size, src_var, dst_var);
     curr_node->set_host_mem_access(mem_access);
 
     if (curr_microop == LLVM_IR_DMALoad || curr_microop == LLVM_IR_HostLoad) {

@@ -73,12 +73,26 @@ std::string DmaBaseAddressInit::getCenteredName(size_t size) {
   return "     Init DMA Base Address     ";
 }
 
+// Set the memory type of this host memory access node.
+void DmaBaseAddressInit::setHostMemoryType(ExecNode* node) {
+  HostMemAccess* mem_access = node->get_host_mem_access();
+  Variable* src_var = mem_access->src_var;
+  Variable* dst_var = mem_access->dst_var;
+  assert(src_var->get_name() != dst_var->get_name() &&
+         "The local and host arrays must not have the same name!");
+  const std::string& array_label =
+      node->is_host_load() ? src_var->get_name() : dst_var->get_name();
+  auto it = user_params.partition.find(array_label);
+  if (it != user_params.partition.end())
+    mem_access->memory_type = it->second.memory_type;
+}
+
 void DmaBaseAddressInit::optimize() {
   EdgeNameMap edge_to_parid = get(boost::edge_name, graph);
 
   for (auto& node_it : exec_nodes) {
     ExecNode* node = node_it.second;
-    if (!node->is_dma_op())
+    if (!node->is_host_mem_op())
       continue;
 
     Vertex dma_vertex = node->get_vertex();
@@ -95,13 +109,16 @@ void DmaBaseAddressInit::optimize() {
       // The edge weight between a DMA node and a GEP node is either 1 (for the
       // destination address) or 2 (for the source address). The values refer
       // to which function call parameter each argument was.
-      if (!(parent_node->is_gep_op() &&
-            (edge_parid == 1 || edge_parid == 2 || edge_parid == MEMORY_EDGE)))
+      if (!(parent_node->is_gep_op() && (edge_parid == 1 || edge_parid == 2 ||
+                                         edge_parid == MEMORY_EDGE))) {
+        if (node->is_host_load() || node->is_host_store())
+          setHostMemoryType(node);
         continue;
+      }
 
       DynamicVariable dynvar = parent_node->get_dynamic_variable();
       DynamicVariable orig_var = call_argument_map.lookup(dynvar);
-      if (node->is_dma_load() || node->is_dma_store()) {
+      if (node->is_host_load() || node->is_host_store()) {
         HostMemAccess* mem_access = node->get_host_mem_access();
         if (edge_parid == 1) {
           mem_access->dst_var = orig_var.get_variable();
@@ -110,6 +127,7 @@ void DmaBaseAddressInit::optimize() {
           mem_access->src_var = orig_var.get_variable();
           found_src = true;
         }
+        setHostMemoryType(node);
         if (found_src && found_dst) {
           break;
         }

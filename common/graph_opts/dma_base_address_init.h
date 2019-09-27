@@ -8,6 +8,10 @@ class DmaBaseAddressInit : public BaseAladdinOpt {
   using BaseAladdinOpt::BaseAladdinOpt;
   virtual void optimize();
   virtual std::string getCenteredName(size_t size);
+
+ private:
+  // Set the memory type of this host memory access node.
+  void setHostMemoryType(ExecNode* node);
 };
 
 #endif
