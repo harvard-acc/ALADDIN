@@ -254,10 +254,16 @@ void LoopInfo::sampleDmaCorrection(LoopIteration* sample) {
          ++in_edge_it) {
       Vertex parent_vertex = source(*in_edge_it, program->graph);
       ExecNode* parent_node = program->nodeAtVertex(parent_vertex);
-      if (parent_node->is_dma_load()) {
-        dma_intervals.push_back(
-            { parent_node->get_dma_scheduling_delay_cycle(),
-              parent_node->get_complete_execution_cycle() });
+      if (parent_node->is_host_load()) {
+        if (parent_node->is_dma_load()) {
+          dma_intervals.push_back(
+              { parent_node->get_dma_scheduling_delay_cycle(),
+                parent_node->get_complete_execution_cycle() });
+        } else {
+          dma_intervals.push_back(
+              { parent_node->get_start_execution_cycle(),
+                parent_node->get_complete_execution_cycle() });
+        }
       }
     }
   }
