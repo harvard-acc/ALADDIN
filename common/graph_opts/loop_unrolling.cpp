@@ -121,6 +121,9 @@ void LoopUnrolling::optimize() {
         // Once we've found the loop descriptor, use this pointer to the top of
         // the stack to update the invocations count.
         LoopBoundDescriptor* curr_loop = nullptr;
+        // This is used when an exit branch should be identified as a loop bound
+        // if the loop size is not multiples of the unrolling factor.
+        bool is_exit_loop_bound = false;
 
         /* Four possibilities with this loop:
          * 1. We're entering a new loop nest (possibly due to a Call).
@@ -137,6 +140,14 @@ void LoopUnrolling::optimize() {
           curr_loop = &loop_nests.top();
         } else if (loop_nests.top().exitBrIs(loop_id)) {
           curr_loop = &loop_nests.top();
+          // We are leaving the loop and by now we know how many iterations this
+          // loop has. If the loop's iteration number is not multiples of the
+          // unrolling factor, the exit branch should be a loop bound, otherwise
+          // we will have an isolated loop bound that messes up the loop tree
+          // building process later.
+          int unroll_factor = unroll_it->second;
+          if ((curr_loop->dyn_invocations + 1) % unroll_factor != 0)
+            is_exit_loop_bound = true;
           loop_nests.pop();
         } else if (loop_nests.top() == loop_id) {
           // We're repeating the same loop. Nothing to do.
@@ -146,9 +157,16 @@ void LoopUnrolling::optimize() {
         }
 
         // Counting number of loop iterations.
+        // The following unrolls the loop if its dynamic invocation number is
+        // not multiples of the unrolling factor. Here we don't know yet how
+        // many iterations this loop has, and as we have started applying
+        // unrolling and detecting loop boundaries, if the loop turns out to
+        // have non-multiple iterations of the unrolling factor, we will need to
+        // make the exit branch a loop bound as well.
         int unroll_factor = unroll_it->second;
         curr_loop->dyn_invocations++;
-        if (curr_loop->dyn_invocations % unroll_factor == 0) {
+        if (curr_loop->dyn_invocations % unroll_factor == 0 ||
+            is_exit_loop_bound) {
           if (loop_bounds.rbegin()->node_id != node_id) {
             loop_bounds.push_back(dyn_bound);
           }
