@@ -260,7 +260,6 @@ void HybridDatapath::stepExecutingQueue() {
       } catch (IllegalHostMemoryAccessException& e) {
         fatal(e.what());
       }
-
       switch (type) {
         case Register:
           op_satisfied = handleRegisterMemoryOp(node);
@@ -826,9 +825,14 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
         if (!checkAcpEntryStatus(entry, node))
           return false;
       }
+      return true;
+    } else {
+      DPRINTF(
+          HybridDatapath, "Host memory op completes for node %d.\n", node_id);
+      inflight_burst_nodes.erase(node_id);
+      // All the requests of this node have completed.
+      return true;
     }
-    // All the requests of this node have completed.
-    return true;
   } else if (node->is_memory_op()) {
     // This is a cacheline-level ACP access.
     MemAccess* mem_access = node->get_mem_access();
@@ -1199,10 +1203,6 @@ void HybridDatapath::updateCacheRequestStatusOnResp(
       // If this is a bursty memory op, remove the request from its request
       // lists and write the data into the scratchpad if it's a hostLoad.
       inflight_burst_nodes[node_id].remove(entry);
-      if (inflight_burst_nodes[node_id].empty()) {
-        DPRINTF(
-            HybridDatapath, "Host memory op completes for node %d.\n", node_id);
-      }
       if (isLoad) {
         uint8_t* data = pkt->getPtr<uint8_t>();
         assert(data != nullptr && "Packet data is null!");
