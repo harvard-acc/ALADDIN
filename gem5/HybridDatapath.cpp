@@ -698,7 +698,7 @@ MemoryQueueEntry* HybridDatapath::createAndQueueAcpEntry(
   return entry;
 }
 
-bool HybridDatapath::checkAcpEntryStatus(MemoryQueueEntry* entry,
+bool HybridDatapath::updateAcpEntryStatus(MemoryQueueEntry* entry,
                                          ExecNode* node) {
   Addr vaddr = entry->vaddr;
   Addr paddr = entry->paddr;
@@ -822,10 +822,16 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     if (inflight_burst_nodes[node_id].size() > 0) {
       // This node has outstanding requests.
       for (auto entry : inflight_burst_nodes[node_id]) {
-        if (!checkAcpEntryStatus(entry, node))
+        updateAcpEntryStatus(entry, node);
+        if (!cache_queue.canIssue()) {
+          DPRINTF(HybridDatapathVerbose,
+                  "Out of Cache queue bandwidth while issuing ACP requests of "
+                  "host node %d.\n",
+                  node_id);
           return false;
+        }
       }
-      return true;
+      return false;
     } else {
       DPRINTF(
           HybridDatapath, "Host memory op completes for node %d.\n", node_id);
@@ -847,7 +853,7 @@ bool HybridDatapath::handleAcpMemoryOp(ExecNode* node) {
     int size = mem_access->size;
     MemoryQueueEntry* entry = createAndQueueAcpEntry(
         vaddr, size, isLoad, node->get_array_label(), node_id);
-    return checkAcpEntryStatus(entry, node);
+    return updateAcpEntryStatus(entry, node);
   } else {
     fatal("Unexpected ACP access op, node id %d!\n", node_id);
   }

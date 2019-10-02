@@ -260,8 +260,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
                                            bool isLoad,
                                            const std::string& array_label,
                                            unsigned node_id);
-  // Check the ACP entry's status and take actions correspondingly.
-  bool checkAcpEntryStatus(MemoryQueueEntry* entry, ExecNode* node);
+  // Check and update the ACP entry's status and take actions correspondingly.
+  bool updateAcpEntryStatus(MemoryQueueEntry* entry, ExecNode* node);
 
   /* Prints the ids of all nodes currently on the executing queue.
    *
