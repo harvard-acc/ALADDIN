@@ -961,7 +961,7 @@ void HybridDatapath::sendFinishedSignal() {
   MemCmd::Command cmd = MemCmd::WriteReq;
   PacketPtr pkt = new Packet(req, cmd);
   pkt->dataStatic<uint8_t>(data);
-  DatapathSenderState* state = new DatapathSenderState(true);
+  DatapathSenderState* state = new DatapathSenderState(true, Cache);
   pkt->pushSenderState(state);
 
   if (!cachePort.sendTimingReq(pkt)) {
@@ -1125,7 +1125,7 @@ HybridDatapath::IssueResult HybridDatapath::issueCacheOrAcpRequest(
   PacketPtr data_pkt = new Packet(req, command);
   data_pkt->dataStatic(data);
 
-  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
+  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr, op_type);
   data_pkt->pushSenderState(state);
 
   if (!port.sendTimingReq(data_pkt)) {
@@ -1169,7 +1169,7 @@ HybridDatapath::IssueResult HybridDatapath::issueOwnershipRequest(
   MemCmd command = MemCmd::ReadExReq;
 
   PacketPtr data_pkt = new Packet(req, command);
-  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr);
+  DatapathSenderState* state = new DatapathSenderState(node_id, vaddr, ACP);
   data_pkt->pushSenderState(state);
   uint8_t* data = new uint8_t[size];
   data_pkt->dataDynamic<uint8_t>(data);
@@ -1259,6 +1259,12 @@ void HybridDatapath::updateCacheRequestStatusOnRetry(PacketPtr pkt) {
   DatapathSenderState* state = pkt->findNextSenderState<DatapathSenderState>();
   assert(state && "Retry packet is missing DatapathSenderState!");
   Addr vaddr = state->vaddr;
+  MemoryOpType mem_type = state->mem_type;
+  DPRINTF(
+      HybridDatapath,
+      "node:%d, vaddr = 0x%x, paddr = 0x%x, %s request retried successfully.\n",
+      state->node_id, vaddr, pkt->getAddr(),
+      mem_type == Cache ? "Cache" : "ACP");
 
   // If we receive a ReadExReq or ReadExReq, that means that the trace vaddr
   // associated with the request was for a STORE, and stores do not (currently)

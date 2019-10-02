@@ -128,17 +128,22 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   class DatapathSenderState : public Packet::SenderState {
    public:
-    DatapathSenderState(bool _is_ctrl_signal)
-        : node_id(-1), vaddr(0), is_ctrl_signal(_is_ctrl_signal) {}
+    DatapathSenderState(bool _is_ctrl_signal, MemoryOpType _mem_type)
+        : node_id(-1), vaddr(0), mem_type(_mem_type),
+          is_ctrl_signal(_is_ctrl_signal) {}
 
-    DatapathSenderState(unsigned _node_id, Addr _vaddr)
-        : node_id(_node_id), vaddr(_vaddr), is_ctrl_signal(false) {}
+    DatapathSenderState(unsigned _node_id, Addr _vaddr, MemoryOpType _mem_type)
+        : node_id(_node_id), vaddr(_vaddr), mem_type(_mem_type),
+          is_ctrl_signal(false) {}
 
     /* Aladdin node that triggered the memory access. */
     unsigned node_id;
 
     /* Virtual (trace) address for this memory access. */
     Addr vaddr;
+
+    // The request type.
+    MemoryOpType mem_type;
 
     /* Flag that determines whether a packet received on a data port is a
      * control signal accessed through memory (which needs to be handled
