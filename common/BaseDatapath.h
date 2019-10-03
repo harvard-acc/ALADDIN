@@ -84,6 +84,7 @@ struct summary_data_t {
   std::string benchName;
   std::string topLevelFunctionName;
   int num_cycles;
+  int upsampled_cycles;
   int idle_fu_cycles;
   float avg_power;
   float avg_mem_power;
@@ -362,6 +363,7 @@ class BaseDatapath {
   std::string benchName;
   std::string topLevelFunctionName;
   int num_cycles;
+  int upsampled_cycles;
 
   // The accelerated program description.
   Program program;

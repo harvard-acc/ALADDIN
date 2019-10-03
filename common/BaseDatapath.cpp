@@ -218,7 +218,8 @@ void BaseDatapath::dumpStats() {
 
 void BaseDatapath::upsampleLoops() {
   // Update num_cycles with the correction cycles.
-  num_cycles += program.loop_info.upsampleLoops();
+  upsampled_cycles = program.loop_info.upsampleLoops();
+  num_cycles += upsampled_cycles;
 }
 
 /*
@@ -715,6 +716,7 @@ void BaseDatapath::outputPerCycleActivity(
   summary.benchName = benchName;
   summary.topLevelFunctionName = topLevelFunctionName;
   summary.num_cycles = num_cycles;
+  summary.upsampled_cycles = upsampled_cycles;
   summary.idle_fu_cycles = idle_fu_cycles;
   summary.avg_power = avg_power;
   summary.avg_fu_power = avg_fu_power;
@@ -758,6 +760,8 @@ void BaseDatapath::writeSummary(std::ostream& outfile,
   outfile << "Running : " << summary.benchName << std::endl;
   outfile << "Top level function: " << summary.topLevelFunctionName << std::endl;
   outfile << "Cycle : " << summary.num_cycles << " cycles" << std::endl;
+  outfile << "Upsampled Cycle : " << summary.upsampled_cycles << " cycles"
+          << std::endl;
   outfile << "Avg Power: " << summary.avg_power << " mW" << std::endl;
   outfile << "Idle FU Cycles: " << summary.idle_fu_cycles << " cycles" << std::endl;
   outfile << "Avg FU Power: " << summary.avg_fu_power << " mW" << std::endl;
