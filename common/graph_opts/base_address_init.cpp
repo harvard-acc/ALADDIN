@@ -21,7 +21,7 @@ void BaseAddressInit::optimize() {
       continue;
     Vertex curr_vertex = *vi;
     ExecNode* node = getNodeFromVertex(curr_vertex);
-    if (!node->is_memory_op())
+    if (!(node->is_memory_op() || node->is_gep_op()))
       continue;
     int node_microop = node->get_microop();
     // iterate its parents, until it finds the root parent
@@ -49,6 +49,7 @@ void BaseAddressInit::optimize() {
           // remove address calculation directly
           DynamicVariable dynvar = parent_node->get_dynamic_variable();
           dynvar = call_argument_map.lookup(dynvar);
+          node->set_variable(parent_node->get_variable());
           const std::string& label = dynvar.get_variable()->get_name();
           node->set_array_label(label);
           curr_vertex = source(*in_edge_it, graph);
@@ -56,6 +57,7 @@ void BaseAddressInit::optimize() {
           found_parent = true;
           break;
         } else if (parent_microop == LLVM_IR_Alloca) {
+          node->set_variable(parent_node->get_variable());
           std::string label = exec_nodes.at(parent_id)->get_array_label();
           node->set_array_label(label);
           break;
