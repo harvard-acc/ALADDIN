@@ -36,6 +36,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   HybridDatapath(const HybridDatapathParams* params);
   ~HybridDatapath();
 
+  bool queueCommand(std::unique_ptr<AcceleratorCommand> cmd) override;
+
   // Build, optimize, register and prepare datapath for scheduling.
   void initializeDatapath(int delay = 1) override;
 
@@ -70,7 +72,8 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   void resetCacheCounters();
 
   void setParams(void* accelParams) override {
-    fatal("Aladdin doesn't support custom accelerator parameters!\n");
+    assert(accelParams == NULL &&
+           "Aladdin doesn't support custom accelerator parameters!");
   }
 
   // Notify the CPU that the accelerator is finished.
@@ -385,6 +388,12 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Marks a node as started and increments a stats counter.
   virtual void markNodeStarted(ExecNode* node);
+
+  // True if the accelerator is busy.
+  bool busy;
+
+  // Command queue for incoming commands from CPUs.
+  std::deque<std::unique_ptr<AcceleratorCommand>> commandQueue;
 
   /* Stores status information about memory nodes currently in flight.
    *

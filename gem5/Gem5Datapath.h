@@ -12,6 +12,8 @@
 #include "debug/Gem5Datapath.hh"
 #include "debug/Gem5DatapathVerbose.hh"
 
+class AcceleratorCommand;
+
 /* A collection of functions common to datapath objects used within GEM5.
  * Note: to avoid potential problems arising from the use of multiple
  * inheritance with this integration, Gem5Datapath should never extend
@@ -59,6 +61,9 @@ class Gem5Datapath : public MemObject {
     else
       return MemObject::getMasterPort(if_name);
   }
+
+  // Insert a command to the accelerator.
+  virtual bool queueCommand(std::unique_ptr<AcceleratorCommand> cmd) = 0;
 
   /* Return the tick event object for the event queue for this datapath. */
   virtual Event& getTickEvent() = 0;
@@ -379,6 +384,122 @@ class Gem5Datapath : public MemObject {
 
   /* Pointer to the rest of the system. */
   System* system;
+};
+
+class AcceleratorCommand {
+ public:
+  AcceleratorCommand() {}
+  virtual ~AcceleratorCommand() {}
+
+  // Execute the command.
+  virtual void run(Gem5Datapath* accel) = 0;
+
+  // Return the name of the command.
+  virtual std::string name() const = 0;
+
+  // True if this is a blocking command (no subsequent commands can run until it
+  // finishes).
+  virtual bool blocking() const { return true; };
+};
+
+class ActivateAcceleratorCmd : public AcceleratorCommand {
+ public:
+  ActivateAcceleratorCmd(Addr _finishFlag,
+                         void* _accelParams,
+                         int _contextId,
+                         int _threadId,
+                         int _delay)
+      : AcceleratorCommand(), finishFlag(_finishFlag),
+        accelParams(_accelParams), contextId(_contextId), threadId(_threadId),
+        delay(_delay) {}
+
+  void run(Gem5Datapath* accel) override {
+    /* Register a pointer to use for communication between accelerator and
+     * CPU.
+     */
+    accel->setFinishFlag(finishFlag);
+    /* Sets context and thread ids for a given accelerator. These are needed
+     * for supporting cache prefetchers.
+     */
+    accel->setContextThreadIds(contextId, threadId);
+    /* Set the accelerator params. */
+    accel->setParams(accelParams);
+    /* Adds the specified accelerator to the event queue with a given number
+     * of delay cycles (to emulate software overhead during invocation).
+     */
+    accel->initializeDatapath(delay);
+  }
+
+  std::string name() const override { return "ActivateAccelerator command"; }
+
+ protected:
+  Addr finishFlag;
+  void* accelParams;
+  int contextId;
+  int threadId;
+  int delay;
+};
+
+class InsertArrayLabelMappingCmd : public AcceleratorCommand {
+ public:
+  InsertArrayLabelMappingCmd(Addr _simVaddr, Addr _simPaddr)
+      : AcceleratorCommand(), simVaddr(_simVaddr), simPaddr(_simPaddr) {}
+
+  void run(Gem5Datapath* accel) override {
+    accel->insertTLBEntry(simVaddr, simPaddr);
+  }
+
+  std::string name() const override {
+    return "InsertArrayLabelMapping command";
+  }
+
+  bool blocking() const override { return false; }
+
+ protected:
+  Addr simVaddr;
+  Addr simPaddr;
+};
+
+class InsertAddressTranslationMappingCmd : public AcceleratorCommand {
+ public:
+  InsertAddressTranslationMappingCmd(const std::string& _arrayLabel,
+                                     Addr _simVaddr,
+                                     size_t _size)
+      : AcceleratorCommand(), arrayLabel(_arrayLabel), simVaddr(_simVaddr),
+        size(_size) {}
+
+  void run(Gem5Datapath* accel) override {
+    accel->insertArrayLabelToVirtual(arrayLabel, simVaddr, size);
+  }
+
+  std::string name() const override {
+    return "InsertAddressTranslationMapping command";
+  }
+
+  bool blocking() const override { return false; }
+
+ protected:
+  std::string arrayLabel;
+  Addr simVaddr;
+  size_t size;
+};
+
+class SetArrayMemoryTypeCmd : public AcceleratorCommand {
+ public:
+  SetArrayMemoryTypeCmd(const std::string& _arrayLabel, MemoryType _memType)
+      : AcceleratorCommand(), arrayLabel(_arrayLabel), memType(_memType) {}
+
+  void run(Gem5Datapath* accel) override {
+    accel->setArrayMemoryType(arrayLabel, memType);
+  }
+
+  std::string name() const override { return "SetArrayMemoryType command"; }
+
+  bool blocking() const override { return false; }
+
+ protected:
+  std::string arrayLabel;
+  MemoryType memType;
 };
 
 #endif

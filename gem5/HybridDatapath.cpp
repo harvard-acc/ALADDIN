@@ -46,7 +46,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                   params->cacheBandwidth,
                   system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
-      enable_stats_dump(params->enableStatsDump),
+      busy(false), enable_stats_dump(params->enableStatsDump),
       acp_enabled(params->enableAcp), use_acp_cache(params->useAcpCache),
       cacheSize(params->cacheSize), cacti_cfg(params->cactiCacheConfig),
       cacheLineSize(system->cacheLineSize()),
@@ -120,7 +120,22 @@ void HybridDatapath::resetCounters() {
   dtb.resetCounters();
 }
 
+bool HybridDatapath::queueCommand(std::unique_ptr<AcceleratorCommand> cmd) {
+  if (!busy) {
+    // Directly run the command if the accelerator is not busy.
+    cmd->run(this);
+  } else {
+    // Queue the command.
+    DPRINTF(HybridDatapath, "Queuing command %s on accelerator %d.\n",
+            cmd->name(), accelerator_id);
+    commandQueue.push_back(std::move(cmd));
+  }
+  return true;
+}
+
 void HybridDatapath::initializeDatapath(int delay) {
+  DPRINTF(HybridDatapath, "Activating accelerator id %d\n", accelerator_id);
+  busy = true;
   // Don't reset stats - the user can reset them manually through the CPU
   // interface or by setting the --enable-stats-dump flag.
   ScratchpadDatapath::clearDatapath();
@@ -365,9 +380,20 @@ bool HybridDatapath::step() {
       clearDatapath();
       schedule(reinitializeEvent, clockEdge(Cycles(1)));
     } else {
+      busy = false;
       enterDebuggerIfEnabled();
       adb::execution_status = adb::POSTSCHEDULING;
       exitSimulation();
+      // If there are more commands, run them until we reach the next
+      // ActivateAcceleratorCmd or the end of the queue.
+      while (!commandQueue.empty()) {
+        auto cmd = std::move(commandQueue.front());
+        bool blocking = cmd->blocking();
+        cmd->run(this);
+        commandQueue.pop_front();
+        if (blocking)
+          break;
+      }
     }
   }
   return false;
