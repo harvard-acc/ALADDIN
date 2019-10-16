@@ -365,6 +365,9 @@ class BaseDatapath {
   int num_cycles;
   int upsampled_cycles;
 
+  // True if we have done the upsampling of execution statistics.
+  bool upsampled;
+
   // The accelerated program description.
   Program program;
 

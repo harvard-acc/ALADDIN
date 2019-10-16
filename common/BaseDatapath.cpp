@@ -66,6 +66,7 @@ bool BaseDatapath::buildDddg() {
   program.createVertexMap();
 
   num_cycles = 0;
+  upsampled = false;
   return true;
 }
 
@@ -220,6 +221,7 @@ void BaseDatapath::upsampleLoops() {
   // Update num_cycles with the correction cycles.
   upsampled_cycles = program.loop_info.upsampleLoops();
   num_cycles += upsampled_cycles;
+  upsampled = true;
 }
 
 /*

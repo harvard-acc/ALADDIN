@@ -365,8 +365,10 @@ bool HybridDatapath::step() {
   if (executedNodes < totalConnectedNodes) {
     schedule(tickEvent, clockEdge(Cycles(1)));
     return true;
-  } else {
+  } else if (!upsampled) {
     dumpStats();
+    schedule(tickEvent, clockEdge(Cycles(upsampled_cycles)));
+  } else {
     DPRINTF(Aladdin, "Accelerator completed.\n");
     timeval endTime;
     gettimeofday(&endTime, NULL);
