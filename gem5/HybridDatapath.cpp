@@ -344,12 +344,12 @@ bool HybridDatapath::step() {
   stepExecutingQueue();
   copyToExecutingQueue();
   retireReturnedMemQEntries();
-  DPRINTF(Aladdin,
+  DPRINTF(HybridDatapathVerbose,
           "[CYCLES]:%d. executedNodes:%d, totalConnectedNodes:%d\n",
           num_cycles,
           executedNodes,
           totalConnectedNodes);
-  DPRINTF(Aladdin, "-----------------------------\n");
+  DPRINTF(HybridDatapathVerbose, "-----------------------------\n");
   if (executedNodesLastTrigger == executedNodes)
     cycles_since_last_node++;
   else
