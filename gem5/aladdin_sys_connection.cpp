@@ -14,10 +14,10 @@
 extern "C" {
 #endif
 
-static aladdin_params_t* getParams(volatile int* finish_flag,
-                                   int finish_flag_val,
-                                   void* accel_params_ptr,
-                                   int size) {
+aladdin_params_t* getParams(volatile int* finish_flag,
+                            int finish_flag_val,
+                            void* accel_params_ptr,
+                            int size) {
   aladdin_params_t* params =
       (aladdin_params_t*)malloc(sizeof(aladdin_params_t));
   params->finish_flag = finish_flag;
@@ -34,17 +34,22 @@ void invokeAcceleratorAndBlock(unsigned req_code) {
   ioctl(ALADDIN_FD, req_code, params);
   while (*(params->finish_flag) == NOT_COMPLETED)
     ;
+  free((void*)(params->finish_flag));
+  free(params);
 }
 
 volatile int* invokeAcceleratorAndReturn(unsigned req_code) {
   aladdin_params_t* params = getParams(NULL, NOT_COMPLETED, NULL, 0);
   ioctl(ALADDIN_FD, req_code, params);
-  return params->finish_flag;
+  volatile int* finish_flag = params->finish_flag;
+  free(params);
+  return finish_flag;
 }
 
 void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag) {
   aladdin_params_t* params = getParams(finish_flag, NOT_COMPLETED, NULL, 0);
   ioctl(ALADDIN_FD, req_code, params);
+  free(params);
 }
 
 void dumpGem5Stats(const char* stats_desc) {

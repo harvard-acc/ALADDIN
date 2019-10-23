@@ -58,6 +58,12 @@ typedef struct _aladdin_params_t {
 extern "C" {
 #endif
 
+/* Helper function to set up the accelerator parameters. */
+aladdin_params_t* getParams(volatile int* finish_flag,
+                            int finish_flag_val,
+                            void* accel_params_ptr,
+                            int size);
+
 /* Schedules the accelerator for execution in gem5 and spin waits until the
  *accelerator returns.
  *
