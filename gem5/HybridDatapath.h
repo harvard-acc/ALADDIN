@@ -5,6 +5,7 @@
  * caches.
  */
 
+#include <sys/time.h>
 #include <deque>
 #include <string>
 
@@ -388,6 +389,9 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Marks a node as started and increments a stats counter.
   virtual void markNodeStarted(ExecNode* node);
+
+  // This is used to measure the elapsed time on the host machine.
+  timeval beginTime;
 
   // True if the accelerator is busy.
   bool busy;

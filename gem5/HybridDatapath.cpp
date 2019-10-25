@@ -135,6 +135,7 @@ bool HybridDatapath::queueCommand(std::unique_ptr<AcceleratorCommand> cmd) {
 
 void HybridDatapath::initializeDatapath(int delay) {
   DPRINTF(HybridDatapath, "Activating accelerator id %d\n", accelerator_id);
+  gettimeofday(&beginTime, NULL);
   busy = true;
   // Don't reset stats - the user can reset them manually through the CPU
   // interface or by setting the --enable-stats-dump flag.
@@ -367,6 +368,11 @@ bool HybridDatapath::step() {
   } else {
     dumpStats();
     DPRINTF(Aladdin, "Accelerator completed.\n");
+    timeval endTime;
+    gettimeofday(&endTime, NULL);
+    double elapsed = (endTime.tv_sec - beginTime.tv_sec) +
+                     ((endTime.tv_usec - beginTime.tv_usec) / 1000000.0);
+    DPRINTF(Aladdin, "Elapsed host seconds %.2f.\n", elapsed);
     if (execute_standalone) {
       // If in standalone mode, we wait dmaSetupOverhead before the datapath
       // starts, but this cost must be added to this stat. For some reason,
