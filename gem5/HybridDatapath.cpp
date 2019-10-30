@@ -731,7 +731,7 @@ MemoryQueueEntry* HybridDatapath::createAndQueueAcpEntry(
 }
 
 bool HybridDatapath::updateAcpEntryStatus(MemoryQueueEntry* entry,
-                                         ExecNode* node) {
+                                          ExecNode* node) {
   Addr vaddr = entry->vaddr;
   Addr paddr = entry->paddr;
   int size = entry->size;
@@ -753,6 +753,8 @@ bool HybridDatapath::updateAcpEntryStatus(MemoryQueueEntry* entry,
     }
     return false;
   } else if (entry->status == ReadyToIssue) {
+    if (acpPort.inRetry())
+      return false;
     uint8_t* data;
     if (node->is_memory_op()) {
       data = node->get_mem_access()->data();
@@ -1241,8 +1243,8 @@ void HybridDatapath::updateCacheRequestStatusOnResp(
       // If this is a bursty memory op, remove the request from its request
       // lists and write the data into the scratchpad if it's a hostLoad.
       inflight_burst_nodes[node_id].remove(entry);
+      uint8_t* data = pkt->getPtr<uint8_t>();
       if (isLoad) {
-        uint8_t* data = pkt->getPtr<uint8_t>();
         assert(data != nullptr && "Packet data is null!");
         HostMemAccess* mem_access = node->get_host_mem_access();
         const std::string& array_label = mem_access->dst_var->get_name();
@@ -1255,8 +1257,8 @@ void HybridDatapath::updateCacheRequestStatusOnResp(
           fatal("When writing to array %s at node %d: %s\n", array_label,
                 node_id, e.what());
         }
-        delete [] data;
       }
+      delete[] data;
     }
     DPRINTF(HybridDatapath,
             "setting %s cache queue entry for vaddr %#x to Returned.\n",

@@ -142,10 +142,12 @@ class MemoryQueue {
   void retireReturnedEntries() {
     for (auto it = ops.begin(); it != ops.end(); /* no increment */) {
       MemoryQueueEntry* entry = it->second;
-      if (entry->status == Returned)
+      if (entry->status == Returned) {
         ops.erase(it++);  // Must be post-increment!
-      else
+        delete entry;
+      } else {
         ++it;
+      }
     }
   }
 
