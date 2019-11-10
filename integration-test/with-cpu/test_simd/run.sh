@@ -18,5 +18,5 @@ ${gem5_dir}/build/X86/gem5.opt \
   --caches \
   --cacheline_size=64 \
   --accel_cfg_file=${bmk_home}/gem5.cfg \
-  -c ${bmk_home}/test_simd-gem5-accel \
+  -c ${bmk_home}/test_simd \
   | gzip -c > stdout.gz
