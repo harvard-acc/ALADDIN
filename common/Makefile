@@ -50,7 +50,7 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -Icacti-p
+CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -I$(ALADDIN_HOME)/../ -Icacti-p
 CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS)
 LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lboost_regex -lpthread
 
