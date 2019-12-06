@@ -35,7 +35,7 @@ void* dmaStore(void* base_addr, size_t src_off, size_t dst_off, size_t size);
 void* hostLoad(void* base_addr, size_t src_off, size_t dst_off, size_t size);
 void* hostStore(void* base_addr, size_t src_off, size_t dst_off, size_t size);
 
-#else
+#elif defined(DMA_INTERFACE_V1)
 
 #error "DMA interface v1 is deprecated!"
 

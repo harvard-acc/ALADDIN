@@ -6,5 +6,6 @@
 #include "aladdin_sys_connection.h"
 #include "aladdin_sys_constants.h"
 #include "dma_interface.h"
+#include "sampling_interface.h"
 
 #endif

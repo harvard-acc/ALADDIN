@@ -58,7 +58,7 @@ void* dmaStore(void* base_addr, size_t src_off, size_t dst_off, size_t size) {
   return _dmaImpl2(base_addr, src_off, dst_off, size);
 }
 
-#else
+#elif defined(DMA_INTERFACE_V1)
 
 __attribute__((__always_inline__))
 void* _dmaImpl1(void* base_addr, size_t offset, size_t size) {
