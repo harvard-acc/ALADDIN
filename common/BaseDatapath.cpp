@@ -306,7 +306,8 @@ void BaseDatapath::updatePerCycleActivity(
     auto max_it = func_max_activity.find(func_id);
     assert(max_it != func_max_activity.end());
 
-    if (node->get_node_id() == bound_it->node_id) {
+    if (bound_it != program.loop_bounds.end() &&
+        node->get_node_id() == bound_it->node_id) {
       if (max_it->second.add < num_adds_so_far)
         max_it->second.add = num_adds_so_far;
       if (max_it->second.bit < num_bits_so_far)
