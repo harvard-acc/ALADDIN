@@ -198,10 +198,6 @@ class Gem5AladdinTest(unittest.TestCase):
     """ Specify simulated binary specific arguments."""
     self.test_specific_args.extend(args)
 
-  def setTestStandaloneMode(self):
-    """ Make this test standalone (no CPU). """
-    self.sim_script_args["num-cpus"] = 0
-
   def setCpuOnly(self):
     """ This test does not need any accelerators. """
     self.cpu_only = True

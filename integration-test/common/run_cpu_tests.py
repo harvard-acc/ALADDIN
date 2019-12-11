@@ -8,22 +8,6 @@ import os
 
 import gem5_aladdin_test as gat
 
-class StandaloneAesTest(gat.Gem5AladdinTest):
-  def setSimParams(self):
-    aladdin_home = os.environ["ALADDIN_HOME"]
-    self.setTestDir(os.path.join(
-        aladdin_home, "integration-test", "standalone", "test_aes"))
-    self.setTestStandaloneMode()
-    self.setGem5CfgFile("gem5.cfg")
-    self.addDebugFlags(["HybridDatapath", "Aladdin"])
-    self.addGem5Parameter({"cacheline_size": 32})
-
-  def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_datapath.sim_cycles", 3231)
-
-  def runTest(self):
-    self.runAndValidate()
-
 class AesTest(gat.Gem5AladdinTest):
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]

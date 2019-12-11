@@ -283,12 +283,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
 
   // Wrapper for initializeDatapath() to match EventWrapper interface.
   //
-  // This is only used in standalone mode (when the datapath must reinitialize
-  // itself instead of waiting for the CPU to invoke it again).
-  void reinitializeDatapath() {
-    ScratchpadDatapath::clearDatapath();
-    initializeDatapath(1);
-  }
 
   void enterDebuggerIfEnabled() {
     using namespace adb;
@@ -519,10 +513,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   EventWrapper<HybridDatapath, &HybridDatapath::delayedDmaIssue> delayedDmaEvent;
   // Datapath re-initialization.
   //
-  // Used in standalone mode to support multiple invocations.
-  EventWrapper<HybridDatapath, &HybridDatapath::reinitializeDatapath>
-      reinitializeEvent;
-
   // Event to start the debugger's interactive mode.
   EventWrapper<HybridDatapath, &HybridDatapath::enterDebuggerIfEnabled>
       enterDebuggerEvent;

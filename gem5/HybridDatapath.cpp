@@ -36,7 +36,6 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
           params->outputPrefix, params->traceFileName, params->configFileName),
       Gem5Datapath(params,
                    params->acceleratorId,
-                   params->executeStandalone,
                    params->maxDmaRequests,
                    params->dmaChunkSize,
                    params->numDmaChannels,
@@ -65,8 +64,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
       pipelinedDma(params->pipelinedDma),
       ignoreCacheFlush(params->ignoreCacheFlush), tickEvent(this),
       use_aladdin_debugger(params->useAladdinDebugger), delayedDmaEvent(this),
-      reinitializeEvent(this), enterDebuggerEvent(this),
-      executedNodesLastTrigger(0) {
+      enterDebuggerEvent(this), executedNodesLastTrigger(0) {
   BaseDatapath::use_db = params->useDb;
   BaseDatapath::experiment_name = params->experimentName;
 #ifdef USE_DB
@@ -80,19 +78,9 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
   cache_queue.initStats(datapath_name + ".cache_queue");
   system->registerAccelerator(accelerator_id, this);
 
-  /* In standalone mode, we charge the constant cost of a DMA setup operation
-   * up front, instead of per dmaLoad call, or we'll overestimate the setup
-   * latency.
-   */
-  dmaSetupOverhead = params->dmaSetupOverhead / cycle_time;
-  if (execute_standalone) {
-    initializeDatapath(dmaSetupOverhead);
-  }
-
   /* For the DMA model, compute the cost of a CPU cache flush in terms of
    * accelerator cycles.  Yeah, this is backwards -- we should be doing this
-   * from the CPU itself -- but in standalone mode where we don't have a CPU,
-   * this is the next best option.
+   * from the CPU itself.
    */
   cacheLineFlushLatency = params->cacheLineFlushLatency / cycle_time;
   cacheLineInvalidateLatency = params->cacheLineFlushLatency / cycle_time;
@@ -102,8 +90,7 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
 }
 
 HybridDatapath::~HybridDatapath() {
-  if (!execute_standalone)
-    system->deregisterAccelerator(accelerator_id);
+  system->deregisterAccelerator(accelerator_id);
 }
 
 void HybridDatapath::clearDatapath() {
@@ -375,55 +362,34 @@ bool HybridDatapath::step() {
     double elapsed = (endTime.tv_sec - beginTime.tv_sec) +
                      ((endTime.tv_usec - beginTime.tv_usec) / 1000000.0);
     DPRINTF(Aladdin, "Elapsed host seconds %.2f.\n", elapsed);
-    if (execute_standalone) {
-      // If in standalone mode, we wait dmaSetupOverhead before the datapath
-      // starts, but this cost must be added to this stat. For some reason,
-      // this cannot be done until we have started simulation of events,
-      // because all stats get cleared before that happens.  So until I figure
-      // out how to get around that, it's going to be accounted for at the end.
-      dma_setup_cycles += dmaSetupOverhead;
-
-      // In case there are more invocations to run, we will immediately
-      // reschedule for initialization.
-      clearDatapath();
-      schedule(reinitializeEvent, clockEdge(Cycles(1)));
-    } else {
-      busy = false;
-      enterDebuggerIfEnabled();
-      adb::execution_status = adb::POSTSCHEDULING;
-      exitSimulation();
-      // If there are more commands, run them until we reach the next
-      // ActivateAcceleratorCmd or the end of the queue.
-      while (!commandQueue.empty()) {
-        auto cmd = std::move(commandQueue.front());
-        bool blocking = cmd->blocking();
-        cmd->run(this);
-        commandQueue.pop_front();
-        if (blocking)
-          break;
-      }
+    busy = false;
+    enterDebuggerIfEnabled();
+    adb::execution_status = adb::POSTSCHEDULING;
+    exitSimulation();
+    // If there are more commands, run them until we reach the next
+    // ActivateAcceleratorCmd or the end of the queue.
+    while (!commandQueue.empty()) {
+      auto cmd = std::move(commandQueue.front());
+      bool blocking = cmd->blocking();
+      cmd->run(this);
+      commandQueue.pop_front();
+      if (blocking)
+        break;
     }
   }
   return false;
 }
 
 void HybridDatapath::exitSimulation() {
-  if (execute_standalone) {
-    system->deregisterAccelerator(accelerator_id);
-    if (system->numRunningAccelerators() == 0) {
-      exitSimLoop("Aladdin called exit()");
-    }
-  } else {
-    if (enable_stats_dump) {
-      std::string exit_reason =
-          DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
-      exitSimLoop(exit_reason);
-    }
-    sendFinishedSignal();
-    // Don't clear the datapath right now, since that will destroy stats. Delay
-    // clearing the datapath until it gets reinitialized on the next
-    // invocation.
+  if (enable_stats_dump) {
+    std::string exit_reason =
+        DUMP_STATS_EXIT_SIM_SIGNAL + datapath_name + " completed.";
+    exitSimLoop(exit_reason);
   }
+  sendFinishedSignal();
+  // Don't clear the datapath right now, since that will destroy stats. Delay
+  // clearing the datapath until it gets reinitialized on the next
+  // invocation.
 }
 
 MemoryOpType HybridDatapath::getMemoryOpType(const std::string& array_label) {
@@ -548,10 +514,9 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
     status = inflight_dma_nodes.at(node_id);
   HostMemAccess* mem_access = node->get_host_mem_access();
   if (status == Invalid && inflight_dma_nodes.size() < maxInflightNodes) {
-    /* A DMA load needs to be preceded by a cache flush of the buffer being sent,
-     * while a DMA store needs to be preceded by a cache invalidate of the
-     * receiving buffer. In CPU mode, this should be handled by the CPU; in standalone
-     * mode, we add extra latency to the DMA operation here.
+    /* A DMA load needs to be preceded by a cache flush of the buffer being
+     * sent, while a DMA store needs to be preceded by a cache invalidate of the
+     * receiving buffer.
      */
     size_t size = mem_access->size;
     bool isLoad = node->is_dma_load();
@@ -598,16 +563,7 @@ bool HybridDatapath::handleCacheMemoryOp(ExecNode* node) {
 
   MemAccess* mem_access = program.nodes[node_id]->get_mem_access();
   bool isLoad = node->is_load_op();
-
-  // If Aladdin is executing standalone, then the actual addresses that are
-  // sent to the memory system of gem5 don't matter as long as there is a 1:1
-  // correspondence between them and those in the trace. This mask ensures
-  // that even if a trace was generated on a 64 bit system, gem5 will not
-  // attempt to access an address outside of a 32-bit address space.
   Addr vaddr = mem_access->vaddr;
-  if (isExecuteStandalone())
-    vaddr &= ADDR_MASK;
-
   MemoryQueueEntry* entry = cache_queue.findMatch(vaddr, isLoad);
   if (!entry)
     entry = cache_queue.allocateEntry(vaddr, mem_access->size, isLoad);
@@ -695,8 +651,6 @@ MemoryQueueEntry* HybridDatapath::createAndQueueAcpEntry(
     bool isLoad,
     const std::string& array_label,
     unsigned node_id) {
-  if (isExecuteStandalone())
-    vaddr &= ADDR_MASK;
   // For loads: we don't need to ask for ownership at all. Instead, we collapse
   // simultaneous requests to the same cache line (aka an MSHR).
   //
@@ -914,10 +868,6 @@ void HybridDatapath::issueDmaRequest(unsigned node_id) {
   size_t size = mem_access->size;  // In bytes.
   Addr src_vaddr = mem_access->src_addr;
   Addr dst_vaddr = mem_access->dst_addr;
-  if (isExecuteStandalone()) {
-    src_vaddr &= ADDR_MASK;
-    dst_vaddr &= ADDR_MASK;
-  }
   DPRINTF(HybridDatapath,
           "issueDmaRequest: src_addr: %#x, dst_addr: %#x, size: %u\n",
           src_vaddr, dst_vaddr, size);
@@ -1228,9 +1178,6 @@ void HybridDatapath::updateCacheRequestStatusOnResp(
     PacketPtr pkt, DatapathSenderState* state) {
   unsigned node_id = state->node_id;
   Addr vaddr = state->vaddr;
-  if (isExecuteStandalone())
-    vaddr &= ADDR_MASK;
-
   DPRINTF(HybridDatapath, "%s for node_id %d, %s\n", __func__, node_id,
           pkt->print());
 
@@ -1349,10 +1296,6 @@ void HybridDatapath::dmaRespCallback(PacketPtr pkt) {
   HostMemAccess* mem_access = node->get_host_mem_access();
   Addr src_vaddr_base = mem_access->src_addr;
   Addr dst_vaddr_base = mem_access->dst_addr;
-  if (isExecuteStandalone()) {
-    src_vaddr_base &= ADDR_MASK;
-    dst_vaddr_base &= ADDR_MASK;
-  }
 
   // This will compute the offset of THIS packet from the base address. We first
   // calculate the offset within the page, then we retrieve the request offset

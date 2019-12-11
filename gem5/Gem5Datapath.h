@@ -29,7 +29,6 @@ class Gem5Datapath : public MemObject {
    */
   Gem5Datapath(const MemObjectParams* params,
                int _accelerator_id,
-               bool _execute_standalone,
                int maxDmaRequests,
                int dmaChunkSize,
                int numDmaChannels,
@@ -46,7 +45,6 @@ class Gem5Datapath : public MemObject {
         cacheMasterId(_system->getMasterId(this, name() + ".cache")),
         acpPort(this, "acp_port"),
         acpMasterId(_system->getMasterId(this, name() + ".acp")),
-        execute_standalone(_execute_standalone),
         accelerator_id(_accelerator_id), finish_flag(0), context_id(-1),
         thread_id(-1), cycles_since_last_node(0), system(_system) {}
 
@@ -83,9 +81,6 @@ class Gem5Datapath : public MemObject {
   }
 
   void setFinishFlag(Addr _finish_flag) { finish_flag = _finish_flag; }
-
-  /* True if there are no CPUs in the simulation, false otherwise. */
-  bool isExecuteStandalone() { return execute_standalone; }
 
   /* Use this to set the accelerator parameters. */
   virtual void setParams(void* accelParams) {}
@@ -355,12 +350,6 @@ class Gem5Datapath : public MemObject {
   // ACP port to the system's L2 cache.
   AcpPort acpPort;
   MasterID acpMasterId;
-
-  /* True if gem5 is being simulated with just Aladdin, false if there are
-   * CPUs in the system that are executing code and manually invoking the
-   * accelerators.
-   */
-  bool execute_standalone;
 
   /* Accelerator id, assigned by the system. It can also be the ioctl request
    * code for the particular kernel.

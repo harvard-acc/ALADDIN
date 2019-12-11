@@ -107,11 +107,6 @@ const std::string AladdinTLB::outStandingWalkReturnEvent::name() const {
 std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
   /* A somewhat complex translation process.
    *
-   * First, we have to determine the simulation environment. If Aladdin is
-   * being run standalone without a CPU model, then we directly use the trace
-   * address to access memory. Otherwise, if Aladdin was invoked by a simulated
-   * program, we perform address translation as follows:
-   *
    * We use the node id to get the array name of the array being accessed. We
    * then look up the translation from this array name to the simulated
    * virtual address (which represents the head of the array). We also get the
@@ -122,27 +117,21 @@ std::pair<Addr, Addr> AladdinTLB::translateTraceToSimVirtual(PacketPtr pkt) {
    * simulated physical address.
    */
   Addr vaddr, vpn, page_offset;
-  if (datapath->isExecuteStandalone()) {
-    vaddr = pkt->req->getPaddr();
-    page_offset = vaddr % pageBytes;
-    vpn = vaddr - page_offset;
-  } else {
-    TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
-    Addr trace_req_vaddr = pkt->req->getPaddr();
-    const std::string& array_name = state->var->get_name();
-    Addr base_sim_vaddr = lookupVirtualAddr(array_name);
-    Addr base_trace_addr =
-        static_cast<Addr>(datapath->getBaseAddress(array_name));
-    Addr array_offset = trace_req_vaddr - base_trace_addr;
-    vaddr = base_sim_vaddr + array_offset;
-    DPRINTF(AladdinTLB,
-            "Accessing array %s with base address %#x.\n",
-            array_name.c_str(),
-            base_sim_vaddr);
-    DPRINTF(AladdinTLB, "Translating vaddr %#x.\n", vaddr);
-    page_offset = vaddr % pageBytes;
-    vpn = vaddr - page_offset;
-  }
+  TLBSenderState* state = dynamic_cast<TLBSenderState*>(pkt->senderState);
+  Addr trace_req_vaddr = pkt->req->getPaddr();
+  const std::string& array_name = state->var->get_name();
+  Addr base_sim_vaddr = lookupVirtualAddr(array_name);
+  Addr base_trace_addr =
+      static_cast<Addr>(datapath->getBaseAddress(array_name));
+  Addr array_offset = trace_req_vaddr - base_trace_addr;
+  vaddr = base_sim_vaddr + array_offset;
+  DPRINTF(AladdinTLB,
+          "Accessing array %s with base address %#x.\n",
+          array_name.c_str(),
+          base_sim_vaddr);
+  DPRINTF(AladdinTLB, "Translating vaddr %#x.\n", vaddr);
+  page_offset = vaddr % pageBytes;
+  vpn = vaddr - page_offset;
   return std::make_pair(vpn, page_offset);
 }
 
@@ -158,8 +147,6 @@ bool AladdinTLB::translateInvisibly(PacketPtr pkt) {
     if (!tlbMemory->lookup(curr_vpn, curr_ppn)) {
       if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
         curr_ppn = infiniteBackupTLB[curr_vpn];
-      else if (datapath->isExecuteStandalone())
-        curr_ppn = curr_vpn;
       else
         throw AddressTranslationException(curr_vpn, size);
     }
@@ -182,8 +169,6 @@ Addr AladdinTLB::translateInvisibly(Addr simVaddr, int size) {
   if (!tlbMemory->lookup(vpn, ppn)) {
     if (infiniteBackupTLB.find(vpn) != infiniteBackupTLB.end())
       ppn = infiniteBackupTLB[vpn];
-    else if (datapath->isExecuteStandalone())
-      ppn = vpn;
     else
       throw AddressTranslationException(vpn, size);
   }
