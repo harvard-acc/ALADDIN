@@ -22,7 +22,7 @@ class AesTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 9714)
+    self.addExpectedStatResult("system.test_aes_datapath.sim_cycles", 5482)
 
   def runTest(self):
     self.runAndValidate()
@@ -57,7 +57,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_load_store_datapath.sim_cycles", 2999)
+        "system.test_load_store_datapath.sim_cycles", 3376)
 
   def runTest(self):
     self.runAndValidate()
@@ -75,6 +75,23 @@ class DmaLoadStoreTest(gat.Gem5AladdinTest):
   def setExpectedResults(self):
     self.addExpectedStatResult(
         "system.test_dma_load_store_datapath.sim_cycles", 3409)
+
+  def runTest(self):
+    self.runAndValidate()
+
+class HostLoadStoreTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_host_load_store"))
+    self.setSimBin("test_host_load_store")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64, "l2cache" : True})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult(
+        "system.test_host_load_store_datapath.sim_cycles", 1402)
 
   def runTest(self):
     self.runAndValidate()
@@ -189,23 +206,24 @@ class AcpTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 3706)
+    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 4225)
 
   def runTest(self):
     self.runAndValidate()
 
-class SimdTest(gat.Gem5AladdinTest):
+class HybridSimdTest(gat.Gem5AladdinTest):
   def setSimParams(self):
     aladdin_home = os.environ["ALADDIN_HOME"]
     self.setTestDir(os.path.join(
-        aladdin_home, "integration-test", "with-cpu", "test_simd"))
-    self.setSimBin("test_simd")
+        aladdin_home, "integration-test", "with-cpu", "test_hybrid_simd"))
+    self.setSimBin("test_hybrid_simd")
     self.setGem5CfgFile("gem5.cfg")
     self.addDebugFlags(["HybridDatapath", "Aladdin"])
     self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_simd_datapath.sim_cycles", 4012)
+    self.addExpectedStatResult("system.test_hybrid_simd_datapath.sim_cycles",
+                               4012)
 
   def runTest(self):
     self.runAndValidate()
@@ -222,7 +240,48 @@ class StreamingDmaTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_streaming_dma_datapath.sim_cycles", 521)
+        "system.test_streaming_dma_datapath.sim_cycles", 535)
+
+  def runTest(self):
+    self.runAndValidate()
+
+class CommandQueueTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(os.path.join(
+        aladdin_home, "integration-test", "with-cpu", "test_command_queue"))
+    self.setSimBin("test_command_queue")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult(
+        "system.test_command_queue_datapath.sim_cycles", 1404)
+
+  def runTest(self):
+    self.runAndValidate()
+
+class MultipleAcceleratorsTest(gat.Gem5AladdinTest):
+  def setSimParams(self):
+    aladdin_home = os.environ["ALADDIN_HOME"]
+    self.setTestDir(
+        os.path.join(aladdin_home, "integration-test", "with-cpu",
+                     "test_multiple_accelerators"))
+    self.setSimBin("test_multiple_accelerators")
+    self.setGem5CfgFile("gem5.cfg")
+    self.addDebugFlags(["HybridDatapath", "Aladdin"])
+    self.addGem5Parameter({
+        "cacheline_size": 64,
+        "caches": True,
+        "l2cache": True
+    })
+
+  def setExpectedResults(self):
+    self.addExpectedStatResult("system.test_acc0_datapath.sim_cycles", 585)
+    self.addExpectedStatResult("system.test_acc1_datapath.sim_cycles", 585)
+    self.addExpectedStatResult("system.test_acc2_datapath.sim_cycles", 585)
+    self.addExpectedStatResult("system.test_acc3_datapath.sim_cycles", 585)
 
   def runTest(self):
     self.runAndValidate()

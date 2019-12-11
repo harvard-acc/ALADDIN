@@ -134,8 +134,11 @@ class Gem5AladdinTest(unittest.TestCase):
 
     if not self.cpu_only:
       # Symlink the dynamic trace (which could be large).
-      os.symlink(os.path.join(self.test_dir, "dynamic_trace.gz"),
-                 os.path.join(self.run_dir, "dynamic_trace.gz"))
+      for root,dir,files in os.walk(self.test_dir):
+        for f in files:
+          if f.endswith(".gz"):
+            os.symlink(os.path.join(self.test_dir, f),
+                       os.path.join(self.run_dir, f))
       # Generates a new gem5.cfg file for the temp run dir.
       self.createGem5Config()
       # Copies the Aladdin array/loop config file
