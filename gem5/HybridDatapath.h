@@ -390,6 +390,10 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // True if the accelerator is busy.
   bool busy;
 
+  // True if the accelerator has received the acknowledgement of the sent finish
+  // signal.
+  bool ackedFinishSignal;
+
   // Command queue for incoming commands from CPUs.
   std::deque<std::unique_ptr<AcceleratorCommand>> commandQueue;
 

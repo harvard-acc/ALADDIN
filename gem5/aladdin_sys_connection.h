@@ -94,6 +94,15 @@ volatile int* invokeAcceleratorAndReturn(unsigned req_code);
  */
 void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag);
 
+/* Wait until the accelerator sends a finish signal. This suspends the CPU
+ * thread.
+ *
+ * Args:
+ *   finish_flag: A flag allocated in the shared memory used for synchronization
+ *       between the accelerator and the CPU.
+ */
+void waitForAccelerator(volatile int* finish_flag);
+
 /* Trigger gem5 to dump its stats and then resume simulation.
  *
  * This is accomplished using a special request code in lieu of one assigned to
@@ -148,6 +157,7 @@ void mapArrayToAccelerator(unsigned req_code,
 void setArrayMemoryType(unsigned req_code,
                         const char* array_name,
                         MemoryType mem_type);
+
 
 /* Return the string value of the memory type. */
 const char* memoryTypeToString(MemoryType mem_type);

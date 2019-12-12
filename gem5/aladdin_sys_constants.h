@@ -82,6 +82,10 @@ extern int RESET_STATS;
 // again.
 extern int RESET_TRACE;
 
+// A special request code to suspend the CPU context if the value of the finish
+// flag is equal to NOT_COMPLETED.
+extern int WAIT_FINISH_SIGNAL;
+
 // A string to pass to exitSimLoop to indicate that this is just a point to
 // dump stats, not to end simulation.
 extern const char* DUMP_STATS_EXIT_SIM_SIGNAL;

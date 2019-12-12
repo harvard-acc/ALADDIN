@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-bmk_home=${ALADDIN_HOME}/integration-test/with-cpu/test_simd
+bmk_home=${ALADDIN_HOME}/integration-test/with-cpu/test_hybrid_simd
 gem5_dir=${ALADDIN_HOME}/../..
 
 ${gem5_dir}/build/X86/gem5.opt \

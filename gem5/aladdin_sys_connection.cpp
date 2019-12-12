@@ -29,11 +29,28 @@ aladdin_params_t* getParams(volatile int* finish_flag,
   return params;
 }
 
+// Block the CPU thread context if the value of the finish flag is not already
+// COMPLETED.
+static void blockOnFinishSignal(volatile int* finish_flag) {
+  // The loading of the finish flag's value, the comparison of that value with
+  // the expected value, and the actual blocking of the CPU thread should happen
+  // atomically, because a wakeup can happen in the interim leading to a
+  // deadlock. The following ioctl with the WAIT_FINISH_SIGNAL request code
+  // achieve this. It suspends the CPU context until it's woken up by the
+  // accelerator. Upon a wakeup, to ward off spurious wakeups induced by other
+  // system events (e.g., atomic memory accesses), we ensure the accelerator has
+  // finished by checking the finish flag again.
+  while (1) {
+    ioctl(ALADDIN_FD, WAIT_FINISH_SIGNAL, finish_flag);
+    if (*finish_flag != NOT_COMPLETED)
+      break;
+  }
+}
+
 void invokeAcceleratorAndBlock(unsigned req_code) {
   aladdin_params_t* params = getParams(NULL, NOT_COMPLETED, NULL, 0);
   ioctl(ALADDIN_FD, req_code, params);
-  while (*(params->finish_flag) == NOT_COMPLETED)
-    ;
+  blockOnFinishSignal(params->finish_flag);
   free((void*)(params->finish_flag));
   free(params);
 }
@@ -50,6 +67,10 @@ void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag) {
   aladdin_params_t* params = getParams(finish_flag, NOT_COMPLETED, NULL, 0);
   ioctl(ALADDIN_FD, req_code, params);
   free(params);
+}
+
+void waitForAccelerator(volatile int* finish_flag) {
+  blockOnFinishSignal(finish_flag);
 }
 
 void dumpGem5Stats(const char* stats_desc) {

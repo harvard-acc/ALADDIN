@@ -100,7 +100,7 @@ int main() {
       // they finish. For simplicity, we wait until all the accelerators
       // finished.
       for (int i = 0; i < num_accels; i++) {
-        while (*finish_flags[i] == NOT_COMPLETED);
+        waitForAccelerator(finish_flags[i]);
         fprintf(stdout, "Accelerator %d finished!\n", i);
         free((void*)finish_flags[i]);
       }

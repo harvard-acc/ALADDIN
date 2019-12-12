@@ -94,6 +94,12 @@ class Gem5Datapath : public MemObject {
    */
   virtual void sendFinishedSignal() = 0;
 
+  /* Wake up the CPU thread that invokes the datapath. */
+  virtual void wakeupCpuThread() {
+    ThreadContext* cpuThread = system->getThreadContext(context_id);
+    cpuThread->activate();
+  }
+
   /* Return the base address of the array specified by label. The base address
    * corresponds to the zeroth element of the array.
    */

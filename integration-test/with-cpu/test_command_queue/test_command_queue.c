@@ -86,8 +86,8 @@ int main() {
   volatile int* finish_flag1 = invokeAcceleratorAndReturn(INTEGRATION_TEST);
 
   // Wait the two invocations to finish.
-  while (*finish_flag0 == NOT_COMPLETED || *finish_flag1 == NOT_COMPLETED)
-    ;
+  waitForAccelerator(finish_flag0);
+  waitForAccelerator(finish_flag1);
   fprintf(stdout, "Accelerator finished!\n");
 
   free((void*)finish_flag0);

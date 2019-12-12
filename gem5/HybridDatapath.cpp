@@ -45,7 +45,8 @@ HybridDatapath::HybridDatapath(const HybridDatapathParams* params)
                   params->cacheBandwidth,
                   system->cacheLineSize(),
                   params->cactiCacheQueueConfig),
-      busy(false), enable_stats_dump(params->enableStatsDump),
+      busy(false), ackedFinishSignal(false),
+      enable_stats_dump(params->enableStatsDump),
       acp_enabled(params->enableAcp), use_acp_cache(params->useAcpCache),
       cacheSize(params->cacheSize), cacti_cfg(params->cactiCacheConfig),
       cacheLineSize(system->cacheLineSize()),
@@ -355,7 +356,7 @@ bool HybridDatapath::step() {
   } else if (!upsampled) {
     dumpStats();
     schedule(tickEvent, clockEdge(Cycles(upsampled_cycles)));
-  } else {
+  } else if (busy) {
     DPRINTF(Aladdin, "Accelerator completed.\n");
     timeval endTime;
     gettimeofday(&endTime, NULL);
@@ -366,6 +367,13 @@ bool HybridDatapath::step() {
     enterDebuggerIfEnabled();
     adb::execution_status = adb::POSTSCHEDULING;
     exitSimulation();
+  } else if (ackedFinishSignal) {
+    // Wake up the CPU thread after we receive the ack of the sent finish
+    // signal. This ensures the CPU will see the new value of the finish flag
+    // after it's woken up.
+    wakeupCpuThread();
+    DPRINTF(Aladdin, "Woken up the CPU thread context.\n");
+    ackedFinishSignal = false;
     // If there are more commands, run them until we reach the next
     // ActivateAcceleratorCmd or the end of the queue.
     while (!commandQueue.empty()) {
@@ -969,6 +977,8 @@ void HybridDatapath::cacheRespCallback(PacketPtr pkt) {
   if (!state->is_ctrl_signal) {
     updateCacheRequestStatusOnResp(pkt, state);
   } else {
+    ackedFinishSignal = true;
+    schedule(tickEvent, clockEdge(Cycles(1)));
     DPRINTF(HybridDatapath,
             "cacheRespCallback for control signal access: %#x\n",
             pkt->getAddr());
