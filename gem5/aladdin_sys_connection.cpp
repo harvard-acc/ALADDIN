@@ -29,9 +29,7 @@ aladdin_params_t* getParams(volatile int* finish_flag,
   return params;
 }
 
-// Block the CPU thread context if the value of the finish flag is not already
-// COMPLETED.
-static void blockOnFinishSignal(volatile int* finish_flag) {
+void suspendCPUUntilFlagChanges(volatile int* finish_flag) {
   // The loading of the finish flag's value, the comparison of that value with
   // the expected value, and the actual blocking of the CPU thread should happen
   // atomically, because a wakeup can happen in the interim leading to a
@@ -50,7 +48,7 @@ static void blockOnFinishSignal(volatile int* finish_flag) {
 void invokeAcceleratorAndBlock(unsigned req_code) {
   aladdin_params_t* params = getParams(NULL, NOT_COMPLETED, NULL, 0);
   ioctl(ALADDIN_FD, req_code, params);
-  blockOnFinishSignal(params->finish_flag);
+  suspendCPUUntilFlagChanges(params->finish_flag);
   free((void*)(params->finish_flag));
   free(params);
 }
@@ -70,7 +68,7 @@ void invokeAcceleratorAndReturn2(unsigned req_code, volatile int* finish_flag) {
 }
 
 void waitForAccelerator(volatile int* finish_flag) {
-  blockOnFinishSignal(finish_flag);
+  suspendCPUUntilFlagChanges(finish_flag);
 }
 
 void dumpGem5Stats(const char* stats_desc) {

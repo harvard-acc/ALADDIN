@@ -64,6 +64,9 @@ aladdin_params_t* getParams(volatile int* finish_flag,
                             void* accel_params_ptr,
                             int size);
 
+// Suspend the CPU thread context *until* finish_flag is not NOT_COMPLETED.
+void suspendCPUUntilFlagChanges(volatile int* finish_flag);
+
 /* Schedules the accelerator for execution in gem5 and spin waits until the
  *accelerator returns.
  *
