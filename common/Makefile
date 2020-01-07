@@ -50,7 +50,7 @@ CACTI_OBJS = Ucache.o bank.o cacti_interface.o decoder.o  parameter.o \
 CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
-CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -I$(ALADDIN_HOME)/../ -Icacti-p
+CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -Icacti-p
 CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS)
 LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lboost_regex -lpthread
 
@@ -64,7 +64,8 @@ LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | 
 ifneq ($(filter $(LLVM_VERSION), 34 60),)
   CFLAGS += -DLLVM_VERSION=$(LLVM_VERSION)
 else
-  $(error We only support LLVM-3.4 and LLVM-6.0!)
+  $(warning We only support LLVM-3.4 and LLVM-6.0!)
+  CFLAGS += -DLLVM_VERSION=34
 endif
 
 DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(OBJ_DIR)/debugger $(CACTI_OBJ_DIR)

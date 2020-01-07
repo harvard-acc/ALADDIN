@@ -44,8 +44,8 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)
 
 CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include \
-         -I$(ALADDIN_HOME)/common
-LFLAGS += -L$(BOOST_ROOT)/stage/lib -lboost_graph -lboost_regex \
+         -I$(ALADDIN_HOME)/common -I$(ALADDIN_HOME)
+LFLAGS += -L$(BOOST_ROOT)/lib -lboost_graph -lboost_regex \
          -L$(ALADDIN_HOME) -laladdin -lpthread -lz
 
 # Get the LLVM version
@@ -53,7 +53,8 @@ LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | 
 ifneq ($(filter $(LLVM_VERSION), 34 60),)
   CFLAGS += -DLLVM_VERSION=$(LLVM_VERSION)
 else
-  $(error We only support LLVM-3.4 and LLVM-6.0!)
+  $(warning We only support LLVM-3.4 and LLVM-6.0!)
+  CFLAGS += -DLLVM_VERSION=34
 endif
 
 all: CFLAGS+=-DDEBUG -O3
