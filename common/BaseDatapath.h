@@ -30,6 +30,7 @@
 #include "DDDG.h"
 #include "file_func.h"
 #include "opcode_func.h"
+#include "MemoryType.h"
 #include "Program.h"
 #include "Registers.h"
 #include "Scratchpad.h"

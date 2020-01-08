@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 
+#include "MemoryType.h"
 #include "opcode_func.h"
 #include "typedefs.h"
 #include "SourceEntity.h"

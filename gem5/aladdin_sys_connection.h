@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "../common/MemoryType.h"
+
 /* Support for invoking accelerators via ioctl() system call. A user level
  * program invokes an accelerator in the system like so:
  *
@@ -29,8 +31,6 @@ typedef struct _aladdin_map_t {
   // Size of the array.
   size_t size;
 } aladdin_map_t;
-
-typedef enum _MemoryType { spad, reg, dma, acp, cache } MemoryType;
 
 // Parameters for setting an array's memory access type.
 typedef struct _aladdin_mem_desc_t {

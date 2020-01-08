@@ -11,8 +11,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "aladdin/gem5/aladdin_sys_connection.h"
-
 typedef uint64_t Addr;
 
 // Typedefs for Boost::Graph.

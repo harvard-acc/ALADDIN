@@ -5,6 +5,7 @@
 
 #include "AladdinExceptions.h"
 #include "ExecNode.h"
+#include "MemoryType.h"
 #include "SourceEntity.h"
 #include "typedefs.h"
 
