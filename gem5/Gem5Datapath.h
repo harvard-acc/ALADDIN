@@ -83,7 +83,7 @@ class Gem5Datapath : public MemObject {
   void setFinishFlag(Addr _finish_flag) { finish_flag = _finish_flag; }
 
   /* Use this to set the accelerator parameters. */
-  virtual void setParams(void* accelParams) {}
+  virtual void setParams(std::unique_ptr<uint8_t[]> accel_params) {}
 
   /* Send a signal to the rest of the system that the accelerator has
    * finished. This signal takes the form of a shared memory block. This is
@@ -400,13 +400,13 @@ class AcceleratorCommand {
 class ActivateAcceleratorCmd : public AcceleratorCommand {
  public:
   ActivateAcceleratorCmd(Addr _finishFlag,
-                         void* _accelParams,
+                         std::unique_ptr<uint8_t[]> _accelParams,
                          int _contextId,
                          int _threadId,
                          int _delay)
       : AcceleratorCommand(), finishFlag(_finishFlag),
-        accelParams(_accelParams), contextId(_contextId), threadId(_threadId),
-        delay(_delay) {}
+        accelParams(std::move(_accelParams)), contextId(_contextId),
+        threadId(_threadId), delay(_delay) {}
 
   void run(Gem5Datapath* accel) override {
     /* Register a pointer to use for communication between accelerator and
@@ -418,7 +418,7 @@ class ActivateAcceleratorCmd : public AcceleratorCommand {
      */
     accel->setContextThreadIds(contextId, threadId);
     /* Set the accelerator params. */
-    accel->setParams(accelParams);
+    accel->setParams(std::move(accelParams));
     /* Adds the specified accelerator to the event queue with a given number
      * of delay cycles (to emulate software overhead during invocation).
      */
@@ -429,7 +429,7 @@ class ActivateAcceleratorCmd : public AcceleratorCommand {
 
  protected:
   Addr finishFlag;
-  void* accelParams;
+  std::unique_ptr<uint8_t[]> accelParams;
   int contextId;
   int threadId;
   int delay;

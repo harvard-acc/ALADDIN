@@ -72,11 +72,6 @@ class HybridDatapath : public ScratchpadDatapath, public Gem5Datapath {
   // Reset cache counters.
   void resetCacheCounters();
 
-  void setParams(void* accelParams) override {
-    assert(accelParams == NULL &&
-           "Aladdin doesn't support custom accelerator parameters!");
-  }
-
   // Notify the CPU that the accelerator is finished.
   void sendFinishedSignal() override;
 
