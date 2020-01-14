@@ -1,6 +1,6 @@
 cycle_time,1
 pipelining,1
-partition,cyclic,a,8192,4,1
-partition,cyclic,b,8192,4,1
-partition,cyclic,c,8192,4,1
-unrolling,triad,10,1
+partition,cyclic,a_acc,128,4,1
+partition,cyclic,b_acc,128,4,1
+partition,cyclic,c_acc,128,4,1
+unrolling,triad,triad,1
