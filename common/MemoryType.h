@@ -3,6 +3,6 @@
 
 // Defines how an array is mapped to the accelerator and how it can be accessed
 // via the host.
-enum MemoryType { spad, reg, dma, acp, cache };
+typedef enum _MemoryType { spad, reg, dma, acp, cache } MemoryType;
 
 #endif
