@@ -16,8 +16,8 @@ SCENARIO("Test DDDG Generation w/ Triad", "[triad]") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
-        REQUIRE(acc->getProgram().getNumNodes() == 1538);
-        REQUIRE(acc->getProgram().getNumEdges() == 3328);
+        REQUIRE(acc->getProgram().getNumNodes() == 1547);
+        REQUIRE(acc->getProgram().getNumEdges() == 3980);
       }
     }
   }
@@ -34,8 +34,8 @@ SCENARIO("Test DDDG Generation w/ Reduction", "[reduction]") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
-        REQUIRE(acc->getProgram().getNumNodes() == 1026);
-        REQUIRE(acc->getProgram().getNumEdges() == 2175);
+        REQUIRE(acc->getProgram().getNumNodes() == 1029);
+        REQUIRE(acc->getProgram().getNumEdges() == 2435);
       }
     }
   }
@@ -52,8 +52,8 @@ SCENARIO("Test DDDG Generation w/ Pp_scan", "[pp_scan]") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
-        REQUIRE(acc->getProgram().getNumNodes() == 3178);
-        REQUIRE(acc->getProgram().getNumEdges() == 7807);
+        REQUIRE(acc->getProgram().getNumNodes() == 2837);
+        REQUIRE(acc->getProgram().getNumEdges() == 7427);
       }
     }
   }
@@ -70,8 +70,8 @@ SCENARIO("Test DDDG Generation w/ aes", "[aes]") {
       acc = new ScratchpadDatapath(bench, trace_file, config_file);
       acc->buildDddg();
       THEN("The Graph Size should match expectations.") {
-        REQUIRE(acc->getProgram().getNumNodes() == 14822);
-        REQUIRE(acc->getProgram().getNumEdges() == 35774);
+        REQUIRE(acc->getProgram().getNumNodes() == 13294);
+        REQUIRE(acc->getProgram().getNumEdges() == 32637);
       }
     }
   }

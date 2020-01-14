@@ -1,9 +1,10 @@
 cycle_time,1
 pipelining,1
-partition,cyclic,bucket,512,4,4
+partition,cyclic,bucket_acc,512,4,4
+partition,cyclic,bucket2_acc,512,4,4
 partition,cyclic,sum,64,4,4
-unrolling,sum_scan,25,4
-unrolling,local_scan,16,4
-flatten,local_scan,17
-unrolling,last_step_scan,32,4
-flatten,last_step_scan,33
+unrolling,sum_scan,loop2,4
+unrolling,local_scan,loop1_outer,4
+flatten,local_scan,loop1_inner
+unrolling,last_step_scan,loop3_outer,4
+flatten,last_step_scan,loop3_inner
