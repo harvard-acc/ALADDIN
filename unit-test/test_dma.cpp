@@ -22,40 +22,46 @@ SCENARIO("Test DMA Dependence w/ Triad", "[triad]") {
     acc->initBaseAddress();
     acc->scratchpadPartition();
     WHEN("Test DMA dependence before loop unrolling.") {
-      THEN("Before loop unrolling, all DMA ops are only dependent on memory operations.") {
-        REQUIRE(prog.getNumConnectedNodes(0) == 2048);  // dmaLoad
-        REQUIRE(prog.getNumConnectedNodes(1) == 2048);  // dmaLoad
-        REQUIRE(prog.getNumConnectedNodes(24579) == 2048);  // dmaStore
+      THEN("Before loop unrolling, all DMA ops are only dependent on memory "
+           "operations.") {
+        REQUIRE(prog.getNumConnectedNodes(2) == 2048);      // dmaLoad
+        REQUIRE(prog.getNumConnectedNodes(5) == 2048);      // dmaLoad
+        REQUIRE(prog.getNumConnectedNodes(24585) == 2048);  // dmaStore
       }
-      THEN("Before loop unrolling, the last dmaStore cannot proceed until all stores "
+      THEN("Before loop unrolling, the last dmaStore cannot proceed until all "
+           "stores "
            "to the array has completed.") {
-        REQUIRE(prog.getNumConnectedNodes(24579) == 2048);
+        REQUIRE(prog.getNumConnectedNodes(24585) == 2048);
       }
-      THEN("Before loop unrolling, there is no edge between the first two dmaLoads.") {
-        REQUIRE(prog.edgeExists(0, 1) == false);
+      THEN("Before loop unrolling, there is no edge between the first two "
+           "dmaLoads.") {
+        REQUIRE(prog.edgeExists(2, 5) == false);
       }
-      THEN("Before loop unrolling, there is no edge between the dmaStore and the "
+      THEN("Before loop unrolling, there is no edge between the dmaStore and "
+           "the "
            "previous boundary node.") {
-        REQUIRE(prog.edgeExists(24578, 24579) == false);
+        REQUIRE(prog.edgeExists(24582, 24585) == false);
       }
     }
     WHEN("Test DMA dependence after loop unrolling.") {
       acc->loopUnrolling();
-      THEN("First, the number of dependences on the DMA operations do not change. ") {
-        REQUIRE(prog.getNumConnectedNodes(0) == 2048);
-        REQUIRE(prog.getNumConnectedNodes(1) == 2048);
-        REQUIRE(prog.getNumConnectedNodes(24579) == 2048);
+      THEN("First, the number of dependences on the DMA operations do not "
+           "change. ") {
+        REQUIRE(prog.getNumConnectedNodes(2) == 2048);
+        REQUIRE(prog.getNumConnectedNodes(5) == 2048);
+        REQUIRE(prog.getNumConnectedNodes(24585) == 2048);
       }
       THEN("Second, there is no edge between the first two dmaLoads.") {
-        REQUIRE(prog.edgeExists(0, 1) == false);
+        REQUIRE(prog.edgeExists(2, 5) == false);
       }
       THEN("Third, the boundary node after the two dmaLoads is independent of "
            "both of them, because the dmaLoads will only block memory nodes.") {
-        REQUIRE(prog.edgeExists(0, 2) == false);
-        REQUIRE(prog.edgeExists(1, 2) == false);
+        REQUIRE(prog.edgeExists(2, 6) == false);
+        REQUIRE(prog.edgeExists(5, 6) == false);
       }
-      THEN("Fourth, the dmaStore remains independent of the previous boundary node."){
-        REQUIRE(prog.edgeExists(24578, 24579) == false);
+      THEN("Fourth, the dmaStore remains independent of the previous boundary "
+           "node.") {
+        REQUIRE(prog.edgeExists(24582, 24585) == false);
       }
     }
   }
@@ -65,6 +71,7 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
   GIVEN("A simple, single-iteration of a double buffered memcpy, "
         "input size 128 integers, with unrolling factor 2 and "
         "partitioning factor 1") {
+    // The code for this test uses integration-test/test_double_buffering.
     std::string bench("outputs/double-buffering");
     std::string trace_file("inputs/double_buffering_trace.gz");
     std::string config_file("inputs/double_buffering.cfg");
@@ -80,38 +87,40 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
     acc->scratchpadPartition();
 
     // Location of important nodes.
-    unsigned dmaLoad1 = 1;
-    unsigned dmaLoad2 = 2;
-    unsigned dmaLoad3 = 527;
-    unsigned dmaLoad4 = 1048;
-    unsigned dmaStore1 = 520;
-    unsigned dmaStore2 = 1043;
-    unsigned dmaStore3 = 1569;
-    unsigned dmaStore4 = 2087;
-    unsigned dmaFence1 = 524;
-    unsigned dmaFence2 = 1045;
-    unsigned firstLoopLoad = 9;
-    unsigned secondLoopLoad = 531;
-    unsigned firstLoopStore = 11;
-    unsigned secondLoopStore = 533;
+    unsigned dmaLoad1 = 2;
+    unsigned dmaLoad2 = 7;
+    unsigned dmaLoad3 = 536;
+    unsigned dmaLoad4 = 1060;
+    unsigned dmaStore1 = 529;
+    unsigned dmaStore2 = 1054;
+    unsigned dmaStore3 = 1581;
+    unsigned dmaStore4 = 2100;
+    unsigned dmaFence1 = 532;
+    unsigned dmaFence2 = 1056;
+    unsigned firstLoopLoad = 16;
+    unsigned secondLoopLoad = 541;
+    unsigned firstLoopStore = 18;
+    unsigned secondLoopStore = 543;
+    // There are 64 total loop iterations with 8 nodes per iteration.
+    int numNodesInLoop = 64 * 8;
 
     WHEN("After building the initial DDDG") {
       THEN("The first two DMA ops are only dependent on memory operations and "
            "fences.") {
         REQUIRE(prog.getNumConnectedNodes(dmaLoad1) == 65);
-        REQUIRE(prog.getNumConnectedNodes(dmaLoad2) == 65);
+        REQUIRE(prog.getNumConnectedNodes(dmaLoad2) == 67);
 
         THEN("The following DMA loads and stores are also dependent on index "
              "computations.") {
           // First dmaStore is connected to ONE fence (which immediately
           // precedes it) and ONE index computation.
           REQUIRE(prog.getNumConnectedNodes(dmaStore1) == 66);
-          REQUIRE(prog.edgeExists(dmaStore1 - 1, dmaStore1));
+          REQUIRE(prog.edgeExists(dmaStore1 - 2, dmaStore1));
           REQUIRE(prog.edgeExists(dmaStore1, dmaFence1));
           // Second dmaStore is connected to TWO fences and ONE index
           // computation.
-          REQUIRE(prog.getNumConnectedNodes(dmaStore2) == 67);
-          REQUIRE(prog.edgeExists(dmaStore2 - 1, dmaStore2));
+          REQUIRE(prog.getNumConnectedNodes(dmaStore2) == 68);
+          REQUIRE(prog.edgeExists(dmaStore2 - 2, dmaStore2));
           REQUIRE(prog.edgeExists(dmaFence1, dmaStore2));
           REQUIRE(prog.edgeExists(dmaStore2, dmaFence2));
         }
@@ -124,13 +133,15 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
       }
       THEN("The loads in the memcpy are only connected to dmaLoads, GEPs, "
            "stores, and the final return node.") {
-        for (unsigned node_id = firstLoopLoad; node_id < dmaStore1;
+        for (unsigned node_id = firstLoopLoad;
+             node_id < firstLoopLoad + numNodesInLoop;
              node_id += 8) {
           REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
           REQUIRE(prog.edgeExists(dmaLoad1, node_id) == true);
           REQUIRE(prog.edgeExists(dmaLoad2, node_id) == false);
         }
-        for (unsigned node_id = secondLoopLoad; node_id < dmaStore2;
+        for (unsigned node_id = secondLoopLoad;
+             node_id < secondLoopLoad + numNodesInLoop;
              node_id += 8) {
           REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
           REQUIRE(prog.edgeExists(dmaLoad2, node_id) == true);
@@ -140,7 +151,8 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
       }
       THEN("The stores in the memcpy are only connected to dmaStores, GEPs, "
            "loads, and the final return node.") {
-        for (unsigned node_id = firstLoopStore; node_id < dmaStore1;
+        for (unsigned node_id = firstLoopStore;
+             node_id < firstLoopStore + numNodesInLoop;
              node_id += 8) {
           REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
           REQUIRE(prog.edgeExists(node_id, dmaStore1) == true);
@@ -148,13 +160,14 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
           REQUIRE(prog.edgeExists(dmaLoad1, node_id) == false);
           REQUIRE(prog.edgeExists(dmaLoad2, node_id) == false);
         }
-        for (unsigned node_id = secondLoopStore; node_id < dmaStore2;
+        for (unsigned node_id = secondLoopStore;
+             node_id < secondLoopStore + numNodesInLoop;
              node_id += 8) {
           REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
           REQUIRE(prog.edgeExists(node_id, dmaStore2) == true);
           REQUIRE(prog.edgeExists(dmaLoad1, node_id) == false);
           REQUIRE(prog.edgeExists(dmaLoad2, node_id) == false);
-          REQUIRE(prog.edgeExists(node_id, 517) == false);
+          REQUIRE(prog.edgeExists(node_id, 524) == false);
         }
       }
     }
@@ -163,25 +176,29 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
       THEN("The number of connected nodes to DMA loads/stores should not "
            "change.") {
         REQUIRE(prog.getNumConnectedNodes(dmaLoad1) == 65);
-        REQUIRE(prog.getNumConnectedNodes(dmaLoad2) == 65);
+        REQUIRE(prog.getNumConnectedNodes(dmaLoad2) == 67);
         REQUIRE(prog.getNumConnectedNodes(dmaStore1) == 66);
-        REQUIRE(prog.getNumConnectedNodes(dmaStore2) == 67);
+        REQUIRE(prog.getNumConnectedNodes(dmaStore2) == 68);
       }
       THEN(
           "The loads in the memcpy are connected to two more branch nodes.") {
-        for (unsigned node_id = firstLoopLoad; node_id < dmaStore1;
+        for (unsigned node_id = firstLoopLoad;
+             node_id < firstLoopLoad + numNodesInLoop;
              node_id += 8)
           REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
-        for (unsigned node_id = secondLoopLoad; node_id < dmaStore2;
+        for (unsigned node_id = secondLoopLoad;
+             node_id < secondLoopLoad + numNodesInLoop;
              node_id += 8)
           REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
       }
       THEN("The stores in the memcpy are also connected to two more "
            "branches.") {
-        for (unsigned node_id = firstLoopStore; node_id < dmaStore1;
+        for (unsigned node_id = firstLoopStore;
+             node_id < firstLoopStore + numNodesInLoop;
              node_id += 8)
           REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
-        for (unsigned node_id = secondLoopStore; node_id < dmaStore2;
+        for (unsigned node_id = secondLoopStore;
+             node_id < secondLoopStore + numNodesInLoop;
              node_id += 8)
           REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
       }

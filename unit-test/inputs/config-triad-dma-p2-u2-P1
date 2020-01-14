@@ -1,7 +1,7 @@
 cycle_time,1
 pipelining,1
 ready_mode,0
-partition,cyclic,a,8192,4,2
-partition,cyclic,b,8192,4,2
-partition,cyclic,c,8192,4,2
-unrolling,triad,10,2
+partition,cyclic,a_acc,8192,4,2
+partition,cyclic,b_acc,8192,4,2
+partition,cyclic,c_acc,8192,4,2
+unrolling,triad,triad,2
