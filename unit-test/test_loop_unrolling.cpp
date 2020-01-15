@@ -23,35 +23,35 @@ SCENARIO("Test loopUnrolling w/ Triad", "[triad]") {
     WHEN("Test loopUnrolling()") {
       acc->loopUnrolling();
       THEN("Unrolled loop boundary should match the expectations.") {
-        REQUIRE(prog.loop_bounds.at(1).node_id == 24);
-        REQUIRE(prog.loop_bounds.at(2).node_id == 48);
-        REQUIRE(prog.loop_bounds.at(3).node_id == 72);
-        REQUIRE(prog.loop_bounds.at(21).node_id == 504);
-        REQUIRE(prog.loop_bounds.at(64).node_id == 1536);
+        REQUIRE(prog.loop_bounds.at(1).node_id == 30);
+        REQUIRE(prog.loop_bounds.at(2).node_id == 54);
+        REQUIRE(prog.loop_bounds.at(3).node_id == 78);
+        REQUIRE(prog.loop_bounds.at(21).node_id == 510);
+        REQUIRE(prog.loop_bounds.at(64).node_id == 1542);
       }
       THEN("Branch nodes inside unrolled iterations are isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(12) == 0);
-        REQUIRE(prog.getNumConnectedNodes(24) != 0);
-        REQUIRE(prog.getNumConnectedNodes(36) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1524) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1536) != 0);
+        REQUIRE(prog.getNumConnectedNodes(18) == 0);
+        REQUIRE(prog.getNumConnectedNodes(30) != 0);
+        REQUIRE(prog.getNumConnectedNodes(42) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1530) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1542) != 0);
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(prog.edgeExists(0, 9));
-        REQUIRE(prog.edgeExists(24, 27));
-        REQUIRE(prog.edgeExists(48, 53));
-        REQUIRE(prog.edgeExists(72, 81));
-        REQUIRE(prog.edgeExists(504, 513));
-        REQUIRE(prog.edgeExists(1512, 1527));
+        REQUIRE(prog.edgeExists(6, 20));
+        REQUIRE(prog.edgeExists(30, 44));
+        REQUIRE(prog.edgeExists(54, 68));
+        REQUIRE(prog.edgeExists(78, 92));
+        REQUIRE(prog.edgeExists(510, 524));
+        REQUIRE(prog.edgeExists(1518, 1532));
       }
       THEN("Branch edges are added between boundary nodes and nodes inside "
            "the current unrolled iterations.") {
-        REQUIRE(prog.edgeExists(3, 24));
-        REQUIRE(prog.edgeExists(27, 48));
-        REQUIRE(prog.edgeExists(53, 72));
-        REQUIRE(prog.edgeExists(501, 504));
-        REQUIRE(prog.edgeExists(1503, 1512));
+        REQUIRE(prog.edgeExists(6, 16));
+        REQUIRE(prog.edgeExists(30, 40));
+        REQUIRE(prog.edgeExists(54, 64));
+        REQUIRE(prog.edgeExists(510, 520));
+        REQUIRE(prog.edgeExists(1518, 1528));
       }
     }
   }
@@ -76,28 +76,32 @@ SCENARIO("Test loopUnrolling w/ Reduction", "[reduction]") {
     WHEN("Test loopUnrolling()") {
       acc->loopUnrolling();
       THEN("Unrolled loop boundary should match the expectations.") {
-        REQUIRE(prog.loop_bounds.at(1).node_id == 32);
-        REQUIRE(prog.loop_bounds.at(2).node_id == 64);
-        REQUIRE(prog.loop_bounds.at(32).node_id == 1024);
+        REQUIRE(prog.loop_bounds.at(1).node_id == 35);
+        REQUIRE(prog.loop_bounds.at(2).node_id == 67);
+        REQUIRE(prog.loop_bounds.at(32).node_id == 1027);
       }
       THEN("Branch nodes inside unrolled iterations are isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(8) == 0);
-        REQUIRE(prog.getNumConnectedNodes(24) == 0);
-        REQUIRE(prog.getNumConnectedNodes(32) != 0);
-        REQUIRE(prog.getNumConnectedNodes(1016) == 0);
+        REQUIRE(prog.getNumConnectedNodes(11) == 0);
+        REQUIRE(prog.getNumConnectedNodes(19) == 0);
+        REQUIRE(prog.getNumConnectedNodes(27) == 0);
+        REQUIRE(prog.getNumConnectedNodes(35) != 0);
+        REQUIRE(prog.getNumConnectedNodes(1003) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1011) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1019) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1027) != 0);
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(prog.edgeExists(0, 5));
-        REQUIRE(prog.edgeExists(32, 37));
-        REQUIRE(prog.edgeExists(32, 45));
-        REQUIRE(prog.edgeExists(992, 1021));
+        REQUIRE(prog.edgeExists(3, 14));
+        REQUIRE(prog.edgeExists(35, 46));
+        REQUIRE(prog.edgeExists(67, 78));
+        REQUIRE(prog.edgeExists(995, 1006));
       }
       THEN("Branch edges are added between boundary nodes and nodes inside "
            "the current unrolled iterations.") {
-        REQUIRE(prog.edgeExists(5, 32));
-        REQUIRE(prog.edgeExists(29, 32));
-        REQUIRE(prog.edgeExists(1021, 1024));
+        REQUIRE(prog.edgeExists(3, 6));
+        REQUIRE(prog.edgeExists(35, 38));
+        REQUIRE(prog.edgeExists(995, 998));
       }
     }
   }
@@ -122,45 +126,40 @@ SCENARIO("Test loopUnrolling w/ pp_scan", "[pp_scan]") {
     WHEN("Test loopUnrolling()") {
       acc->loopUnrolling();
       THEN("Unrolled loop boundary should match the expectations.") {
-        REQUIRE(prog.loop_bounds.at(0).node_id == 0); // call break
-        REQUIRE(prog.loop_bounds.at(1).node_id == 1);
-        REQUIRE(prog.loop_bounds.at(2).node_id == 369);
-        REQUIRE(prog.loop_bounds.at(3).node_id == 737);
-        REQUIRE(prog.loop_bounds.at(4).node_id == 1105);
-        REQUIRE(prog.loop_bounds.at(5).node_id == 1473);
-        REQUIRE(prog.loop_bounds.at(6).node_id == 1475);  // call break
-        REQUIRE(prog.loop_bounds.at(7).node_id == 1477);
-        REQUIRE(prog.loop_bounds.at(8).node_id == 1545);
-        REQUIRE(prog.loop_bounds.at(9).node_id == 1613);
-        REQUIRE(prog.loop_bounds.at(10).node_id == 1681);
-        REQUIRE(prog.loop_bounds.at(11).node_id == 1732);
-        REQUIRE(prog.loop_bounds.at(12).node_id == 1734);  // call break
-        REQUIRE(prog.loop_bounds.at(13).node_id == 1735);
-        REQUIRE(prog.loop_bounds.at(14).node_id == 2095);
-        REQUIRE(prog.loop_bounds.at(15).node_id == 2455);
-        REQUIRE(prog.loop_bounds.at(16).node_id == 2815);
-        REQUIRE(prog.loop_bounds.at(17).node_id == 3175);
-        REQUIRE(prog.loop_bounds.at(18).node_id == 3178);  // end
+        // Call break to local_scan.
+        REQUIRE(prog.loop_bounds.at(0).node_id == 3);
+        REQUIRE(prog.loop_bounds.at(1).node_id == 4);
+        REQUIRE(prog.loop_bounds.at(2).node_id == 640);
+        REQUIRE(prog.loop_bounds.at(3).node_id == 1276);
+        // Call break to sum_scan.
+        REQUIRE(prog.loop_bounds.at(4).node_id == 1278);
+        REQUIRE(prog.loop_bounds.at(5).node_id == 1280);
+        REQUIRE(prog.loop_bounds.at(6).node_id == 1328);
+        REQUIRE(prog.loop_bounds.at(7).node_id == 1364);
+        // Call break to last_step_scan.
+        REQUIRE(prog.loop_bounds.at(8).node_id == 1366);
+        REQUIRE(prog.loop_bounds.at(9).node_id == 1367);
+        REQUIRE(prog.loop_bounds.at(10).node_id == 2099);
+        REQUIRE(prog.loop_bounds.at(11).node_id == 2831);
+        // Exit.
+        REQUIRE(prog.loop_bounds.at(12).node_id == 2837);
       }
       THEN("Branch nodes inside unrolled iterations are isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(93) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1511) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1545) != 0);
-        REQUIRE(prog.getNumConnectedNodes(3085) == 0);
+        REQUIRE(prog.getNumConnectedNodes(163) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1292) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1550) == 0);
       }
       THEN("Branch edges are added between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(prog.edgeExists(1, 11));
-        REQUIRE(prog.edgeExists(369, 379));
-        REQUIRE(prog.edgeExists(1735, 1746));
-        REQUIRE(prog.edgeExists(2455, 2466));
+        REQUIRE(prog.edgeExists(4, 165));
+        REQUIRE(prog.edgeExists(1280, 1295));
+        REQUIRE(prog.edgeExists(1367, 1552));
       }
       THEN("Branch edges are added between boundary nodes and nodes inside "
            "the current unrolled iterations.") {
-        REQUIRE(prog.edgeExists(11, 369));
-        REQUIRE(prog.edgeExists(379, 737));
-        REQUIRE(prog.edgeExists(1726, 1732));
-        REQUIRE(prog.edgeExists(2447, 2455));
+        REQUIRE(prog.edgeExists(4, 6));
+        REQUIRE(prog.edgeExists(1280, 1283));
+        REQUIRE(prog.edgeExists(1367, 1369));
       }
     }
   }

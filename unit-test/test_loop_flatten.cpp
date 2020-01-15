@@ -30,7 +30,7 @@ SCENARIO("Test loopFlatten w/ pp_scan", "[pp_scan]") {
         */
       }
       THEN("Branch nodes for flatten loops are isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(18) == 0);
+        REQUIRE(prog.getNumConnectedNodes(20) == 0);
         REQUIRE(prog.getNumConnectedNodes(30) == 0);
       }
     }
