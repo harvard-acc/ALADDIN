@@ -22,31 +22,30 @@ SCENARIO("Test loopPipelining w/ Triad", "[triad]") {
     acc->scratchpadPartition();
     acc->loopUnrolling();
     WHEN("Test loopPipelining()") {
-      acc->loopPipelining();
+      acc->perLoopPipelining();
       THEN("Dependences exist between first instructions of pipelined "
            "iterations.") {
-        REQUIRE(prog.edgeExists(2, 26) == 1);
-        REQUIRE(prog.edgeExists(26, 50) == 1);
-        REQUIRE(prog.edgeExists(50, 74) == 1);
-        REQUIRE(prog.edgeExists(482, 506) == 1);
-        REQUIRE(prog.edgeExists(1490, 1514) == 1);
+        REQUIRE(prog.edgeExists(8, 32) == 1);
+        REQUIRE(prog.edgeExists(32, 56) == 1);
+        REQUIRE(prog.edgeExists(56, 80) == 1);
+        REQUIRE(prog.edgeExists(488, 512) == 1);
+        REQUIRE(prog.edgeExists(1496, 1520) == 1);
       }
       THEN("Dependences exist between the first instructions and the rest of "
            "instructions in the same loop region.") {
-        REQUIRE(prog.edgeExists(0, 9) == 1);
-        REQUIRE(prog.edgeExists(26, 29) == 1);
-        REQUIRE(prog.edgeExists(26, 33) == 1);
-        REQUIRE(prog.edgeExists(50, 54) == 1);
-        REQUIRE(prog.edgeExists(482, 487) == 1);
-        REQUIRE(prog.edgeExists(1490, 1505) == 1);
+        REQUIRE(prog.edgeExists(6, 8) == 1);
+        REQUIRE(prog.edgeExists(32, 33) == 1);
+        REQUIRE(prog.edgeExists(56, 57) == 1);
+        REQUIRE(prog.edgeExists(488, 489) == 1);
+        REQUIRE(prog.edgeExists(1496, 1497) == 1);
       }
       THEN("Branch edges are removed between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(prog.edgeExists(24, 27) == 0);
-        REQUIRE(prog.edgeExists(48, 53) == 0);
-        REQUIRE(prog.edgeExists(72, 81) == 0);
-        REQUIRE(prog.edgeExists(504, 513) == 0);
-        REQUIRE(prog.edgeExists(1512, 1527) == 0);
+        REQUIRE(prog.edgeExists(30, 53) == 0);
+        REQUIRE(prog.edgeExists(54, 77) == 0);
+        REQUIRE(prog.edgeExists(78, 101) == 0);
+        REQUIRE(prog.edgeExists(510, 533) == 0);
+        REQUIRE(prog.edgeExists(1494, 1517) == 0);
       }
     }
   }
@@ -71,24 +70,24 @@ SCENARIO("Test loopPipelining w/ Reduction", "[reduction]") {
     acc->loopUnrolling();
     acc->treeHeightReduction();
     WHEN("Test loopPipelining()") {
-      acc->loopPipelining();
+      acc->perLoopPipelining();
       THEN("Dependences exist between first instructions of pipelined "
            "iterations.") {
-        REQUIRE(prog.edgeExists(3, 35) == 1);
-        REQUIRE(prog.edgeExists(35, 67) == 1);
-        REQUIRE(prog.edgeExists(963, 995) == 1);
+        REQUIRE(prog.edgeExists(6, 38) == 1);
+        REQUIRE(prog.edgeExists(38, 70) == 1);
+        REQUIRE(prog.edgeExists(966, 998) == 1);
       }
       THEN("Dependences exist between the first instructions and the rest of "
            "instructions in the same loop region.") {
-        REQUIRE(prog.edgeExists(0, 11) == 1);
-        REQUIRE(prog.edgeExists(35, 53) == 1);
-        REQUIRE(prog.edgeExists(995, 1012) == 1);
+        REQUIRE(prog.edgeExists(3, 18) == 1);
+        REQUIRE(prog.edgeExists(38, 54) == 1);
+        REQUIRE(prog.edgeExists(998, 1014) == 1);
       }
       THEN("Branch edges are removed between boundary branch nodes and nodes "
            "in the next unrolled iterations.") {
-        REQUIRE(prog.edgeExists(32, 37) == 0);
-        REQUIRE(prog.edgeExists(32, 45) == 0);
-        REQUIRE(prog.edgeExists(992, 1021) == 0);
+        REQUIRE(prog.edgeExists(35, 37) == 0);
+        REQUIRE(prog.edgeExists(35, 45) == 0);
+        REQUIRE(prog.edgeExists(995, 1021) == 0);
       }
     }
   }
