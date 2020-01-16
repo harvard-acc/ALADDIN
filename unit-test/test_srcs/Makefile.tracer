@@ -1,0 +1,81 @@
+#### NOTES ####
+# Define ACCEL_NAME, TRACER_HOME, ALADDIN_HOME, WORKLOAD, SRCS before including
+# this.
+###############
+
+CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+COMMON_DIR := $(CURRENT_DIR)
+EXEC = $(ACCEL_NAME)
+
+.PHONY: trace-binary dma-trace-binary run-trace clean-trace
+
+##################################
+#         TOP LEVEL RULES        #
+##################################
+
+trace-binary: $(EXEC)-instrumented labelmap
+
+dma-trace-binary:
+	$(MAKE) -C . DMA_MODE=1 trace-binary
+
+run-trace: trace-binary
+	./$(EXEC)-instrumented
+
+##################################
+#      COMPILATION FLAGS         #
+##################################
+
+TRACER = $(TRACER_HOME)/lib/full_trace.so
+LOGGER = $(TRACER_HOME)/lib/trace_logger.llvm
+GET_LABELED_STMTS = $(TRACER_HOME)/bin/get-labeled-stmts
+
+MODE = LLVM_TRACE
+
+ALL_SRCS = $(SRCS)
+CPPFLAGS = -I$(ALADDIN_HOME) -I$(COMMON_DIR) -D$(MODE)
+
+ifneq ($(DMA_MODE),)
+	ALL_SRCS += $(ALADDIN_HOME)/gem5/dma_interface.c
+	CPPFLAGS += -DDMA_MODE -DDMA_INTERFACE_V3 -I$(ALADDIN_HOME)/gem5
+endif
+
+LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
+LLVM_VERSION = $(shell clang --version | grep -o -m 1 "[0-9\.]\+" | head -n 1)
+
+#########################################################
+#        INSTRUMENTATION AND TRACE FILE GENERATION      #
+#########################################################
+
+labelmap: $(ALL_SRCS)
+	$(GET_LABELED_STMTS) $(ALL_SRCS) -- -I$(LLVM_HOME)/lib/clang/$(LLVM_VERSION)/include $(CPPFLAGS)
+
+full.llvm: $(LLVM_OBJS)
+	llvm-link -o $@ $^ $(LOGGER)
+
+full.s: full.llvm
+	llc -O0 -disable-fp-elim -filetype=asm -o $@ $<
+
+$(EXEC)-instrumented: full.s
+	$(CXX) -O0 -fno-inline -o $@ $< -lm -lz -lpthread
+
+%-opt.llvm: %.c labelmap
+	@$(eval CC1_COMMAND=$(shell clang -static -g -O1 -S -fno-slp-vectorize \
+		-fno-vectorize -fno-unroll-loops -fno-inline -fno-builtin \
+		-emit-llvm \
+		$(CPPFLAGS) \
+		-I$(ALADDIN_HOME)/gem5 \
+		-D$(MODE) \
+		$(BMARK_SPECIFIC_CFLAGS) \
+		-o $*.llvm $< -### 2>&1 >/dev/null | tail -n 1 | sed 's/"-discard-value-names"//g'))
+	$(CC1_COMMAND)
+	opt -S -load=$(TRACER) -fulltrace -labelmapwriter -trace-all-callees $*.llvm -o $@
+
+clean-trace:
+	rm -rf $(COMMON_TEMP_DIR)
+	rm -f *.llvm
+	rm -f *.o
+	rm -f dynamic_trace.gz
+	rm -f static_trace
+	rm -f *-instrumented
+	rm -f full.s
+	rm -f labelmap

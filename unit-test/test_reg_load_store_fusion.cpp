@@ -4,21 +4,6 @@
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
 
-/* Code:
- *
- * int result[10];
- * int input0[8];
- * input input1[8];
- *
- * outer:
- * for (int i = 0; i < 10; i++) {
- *   inner:
- *   for (int j = 0; j < 8; j++) {
- *     result[i] += input0[j] * input1[j];
- *   }
- * }
- *
- */
 SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
   GIVEN("Doubly-nested loop with a multiply-accumulate operation in "
         "the innermost loop") {
@@ -50,19 +35,19 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
         REQUIRE(prog.nodes.at(10)->get_microop() == LLVM_IR_Load);
         REQUIRE(prog.nodes.at(11)->get_microop() == LLVM_IR_Add);
         REQUIRE(prog.nodes.at(12)->get_microop() == LLVM_IR_Store);
-        REQUIRE(prog.nodes.at(23)->get_microop() == LLVM_IR_Load);
-        REQUIRE(prog.nodes.at(24)->get_microop() == LLVM_IR_Add);
-        REQUIRE(prog.nodes.at(25)->get_microop() == LLVM_IR_Store);
-        REQUIRE(prog.nodes.at(49)->get_microop() == LLVM_IR_Load);
-        REQUIRE(prog.nodes.at(50)->get_microop() == LLVM_IR_Add);
-        REQUIRE(prog.nodes.at(51)->get_microop() == LLVM_IR_Store);
+        REQUIRE(prog.nodes.at(22)->get_microop() == LLVM_IR_Load);
+        REQUIRE(prog.nodes.at(23)->get_microop() == LLVM_IR_Add);
+        REQUIRE(prog.nodes.at(24)->get_microop() == LLVM_IR_Store);
+        REQUIRE(prog.nodes.at(46)->get_microop() == LLVM_IR_Load);
+        REQUIRE(prog.nodes.at(47)->get_microop() == LLVM_IR_Add);
+        REQUIRE(prog.nodes.at(48)->get_microop() == LLVM_IR_Store);
 
         REQUIRE(prog.getEdgeWeight(10, 11) == 1);
         REQUIRE(prog.getEdgeWeight(11, 12) == 1);
+        REQUIRE(prog.getEdgeWeight(22, 23) == 1);
         REQUIRE(prog.getEdgeWeight(23, 24) == 1);
-        REQUIRE(prog.getEdgeWeight(24, 25) == 1);
-        REQUIRE(prog.getEdgeWeight(49, 50) == 1);
-        REQUIRE(prog.getEdgeWeight(50, 51) == 1);
+        REQUIRE(prog.getEdgeWeight(46, 47) == 1);
+        REQUIRE(prog.getEdgeWeight(47, 48) == 1);
       }
     }
 
@@ -72,10 +57,10 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
       THEN("Edge weights should be set to REGISTER_EDGE") {
         REQUIRE(prog.getEdgeWeight(10, 11) == REGISTER_EDGE);
         REQUIRE(prog.getEdgeWeight(11, 12) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(22, 23) == REGISTER_EDGE);
         REQUIRE(prog.getEdgeWeight(23, 24) == REGISTER_EDGE);
-        REQUIRE(prog.getEdgeWeight(24, 25) == REGISTER_EDGE);
-        REQUIRE(prog.getEdgeWeight(49, 50) == REGISTER_EDGE);
-        REQUIRE(prog.getEdgeWeight(50, 51) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(46, 47) == REGISTER_EDGE);
+        REQUIRE(prog.getEdgeWeight(47, 48) == REGISTER_EDGE);
       }
     }
 
@@ -91,18 +76,18 @@ SCENARIO("Test register load/store fusion", "[reg_ls_fusion]") {
                 node_10_time + 1);
         REQUIRE(prog.nodes.at(12)->get_complete_execution_cycle() ==
                 node_10_time + 1);
-        unsigned node_23_time =
-            prog.nodes.at(23)->get_complete_execution_cycle();
+        unsigned node_22_time =
+            prog.nodes.at(22)->get_complete_execution_cycle();
+        REQUIRE(prog.nodes.at(23)->get_complete_execution_cycle() ==
+                node_22_time + 1);
         REQUIRE(prog.nodes.at(24)->get_complete_execution_cycle() ==
-                node_23_time + 1);
-        REQUIRE(prog.nodes.at(25)->get_complete_execution_cycle() ==
-                node_23_time + 1);
-        unsigned node_49_time =
-            prog.nodes.at(49)->get_complete_execution_cycle();
-        REQUIRE(prog.nodes.at(50)->get_complete_execution_cycle() ==
-                node_49_time + 1);
-        REQUIRE(prog.nodes.at(51)->get_complete_execution_cycle() ==
-                node_49_time + 1);
+                node_22_time + 1);
+        unsigned node_46_time =
+            prog.nodes.at(46)->get_complete_execution_cycle();
+        REQUIRE(prog.nodes.at(47)->get_complete_execution_cycle() ==
+                node_46_time + 1);
+        REQUIRE(prog.nodes.at(48)->get_complete_execution_cycle() ==
+                node_46_time + 1);
       }
     }
   }
