@@ -1,0 +1,5 @@
+cycle_time,1
+partition,complete,input0,32,4
+partition,complete,input1,32,4
+partition,complete,result,320,4
+unrolling,test_store_buffer,loop,1
