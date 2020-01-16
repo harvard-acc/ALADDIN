@@ -23,18 +23,18 @@ SCENARIO("Test treeHeightReduction w/ Reduction", "[reduction]") {
     WHEN("before treeHeightReduction()") {
       THEN("Distance between the last sums in two unrolled iterations should "
            "be 4.") {
-        REQUIRE(prog.shortestDistanceBetweenNodes(29, 61) == 4);
-        REQUIRE(prog.shortestDistanceBetweenNodes(61, 93) == 4);
-        REQUIRE(prog.shortestDistanceBetweenNodes(989, 1021) == 4);
+        REQUIRE(prog.shortestDistanceBetweenNodes(32, 64) == 4);
+        REQUIRE(prog.shortestDistanceBetweenNodes(64, 96) == 4);
+        REQUIRE(prog.shortestDistanceBetweenNodes(992, 1024) == 4);
       }
     }
     WHEN("Test treeHeightReduction()") {
       acc->treeHeightReduction();
       THEN("Distance between the last sums in two unrolled iterations should "
            "be 1.") {
-        REQUIRE(prog.shortestDistanceBetweenNodes(29, 61) == 1);
-        REQUIRE(prog.shortestDistanceBetweenNodes(61, 93) == 1);
-        REQUIRE(prog.shortestDistanceBetweenNodes(989, 1021) == 1);
+        REQUIRE(prog.shortestDistanceBetweenNodes(32, 64) == 1);
+        REQUIRE(prog.shortestDistanceBetweenNodes(64, 96) == 1);
+        REQUIRE(prog.shortestDistanceBetweenNodes(992, 1024) == 1);
       }
     }
   }
