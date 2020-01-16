@@ -101,7 +101,7 @@ MemoryAddrSources MemoryAmbiguationOpt::findMemoryAddrSources(
       sources.add_noninductive(parent_node);
       continue;
     }
-    if (parent_node->is_compute_op() &&
+    if ((parent_node->is_gep_op() || parent_node->is_compute_op()) &&
         parent_node->get_static_function() == current_func) {
       if (parent_node->get_microop() == LLVM_IR_IndexAdd) {
         sources.add_inductive(parent_node);
