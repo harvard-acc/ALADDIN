@@ -19,9 +19,9 @@ SCENARIO("Test removeInductionVariable w/ Triad", "[triad]") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(prog.nodes.at(10)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(22)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(1534)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(16)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(28)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1540)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }
@@ -41,9 +41,9 @@ SCENARIO("Test removeInductionVariable w/ Reduction", "[reduction]") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(prog.nodes.at(6)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(22)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(1022)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(9)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(17)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1025)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }
@@ -63,9 +63,9 @@ SCENARIO("Test removeInductionVariable w/ Pp_scan", "[pp_scan]") {
       acc->removeInductionDependence();
       THEN("Addition w/ Induction Variable should be converted to "
            "LLVM_IR_IndexAdd.") {
-        REQUIRE(prog.nodes.at(28)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(1492)->get_microop() == LLVM_IR_IndexAdd);
-        REQUIRE(prog.nodes.at(1750)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(18)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(1501)->get_microop() == LLVM_IR_IndexAdd);
+        REQUIRE(prog.nodes.at(2829)->get_microop() == LLVM_IR_IndexAdd);
       }
     }
   }
