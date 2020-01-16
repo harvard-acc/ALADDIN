@@ -19,9 +19,9 @@ SCENARIO("Test removePhiNodes w/ Triad", "[triad]") {
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(13) == 0);
-        REQUIRE(prog.getNumConnectedNodes(25) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1525) == 0);
+        REQUIRE(prog.getNumConnectedNodes(19) == 0);
+        REQUIRE(prog.getNumConnectedNodes(31) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1531) == 0);
       }
     }
   }
@@ -41,10 +41,10 @@ SCENARIO("Test removePhiNodes w/ Reduction", "[reduction]") {
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(1) == 0);
-        REQUIRE(prog.getNumConnectedNodes(10) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1009) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1018) == 0);
+        REQUIRE(prog.getNumConnectedNodes(4) == 0);
+        REQUIRE(prog.getNumConnectedNodes(13) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1012) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1021) == 0);
       }
     }
   }
@@ -64,12 +64,12 @@ SCENARIO("Test removePhiNodes w/ Pp_scan", "[pp_scan]") {
     WHEN("Test removePhiNodes()") {
       acc->removePhiNodes();
       THEN("Phi Nodes in the DDDG should be isolated.") {
-        REQUIRE(prog.getNumConnectedNodes(2) == 0);
-        REQUIRE(prog.getNumConnectedNodes(19) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1478) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1495) == 0);
-        REQUIRE(prog.getNumConnectedNodes(1736) == 0);
-        REQUIRE(prog.getNumConnectedNodes(3163) == 0);
+        REQUIRE(prog.getNumConnectedNodes(5) == 0);
+        REQUIRE(prog.getNumConnectedNodes(22) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1482) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1504) == 0);
+        REQUIRE(prog.getNumConnectedNodes(1749) == 0);
+        REQUIRE(prog.getNumConnectedNodes(2818) == 0);
       }
     }
   }
