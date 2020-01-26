@@ -240,7 +240,7 @@ A corresponding dynamic power trace is
 
 Caveats
 -------
-1. This distribution of Aladdin models the datapath and local scratcpad memory
+1. This distribution of Aladdin models the datapath and local scratchpad memory
 of accelerators but does not include the rest of the memory hierarchy.  If you
 are interested in an SoC simulator that includes support for caches as well as
 CPUs (and more), please take a look at
