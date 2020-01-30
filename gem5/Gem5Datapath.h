@@ -1,7 +1,6 @@
 #ifndef __GEM5_DATAPATH_H__
 #define __GEM5_DATAPATH_H__
 
-#include "mem/mem_object.hh"
 #include "dev/dma_device.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
@@ -19,7 +18,7 @@ class AcceleratorCommand;
  * inheritance with this integration, Gem5Datapath should never extend
  * BaseDatapath.
  */
-class Gem5Datapath : public MemObject {
+class Gem5Datapath : public ClockedObject {
 
  public:
   /* These extra parameters are needed because making a Gem5DatapathParams
@@ -27,19 +26,19 @@ class Gem5Datapath : public MemObject {
    * Gem5Datapath has to pass the base class of MemObjectParams to its parent
    * constructor, which doesn't contain any of our custom parameters.
    */
-  Gem5Datapath(const MemObjectParams* params,
+  Gem5Datapath(const Params* params,
                int _accelerator_id,
                int maxDmaRequests,
                int dmaChunkSize,
                int numDmaChannels,
                bool invalidateOnDmaStore,
                System* _system)
-      : MemObject(params), spadPort(this,
-                                    _system,
-                                    maxDmaRequests,
-                                    dmaChunkSize,
-                                    numDmaChannels,
-                                    invalidateOnDmaStore),
+      : ClockedObject(params), spadPort(this,
+                                        _system,
+                                        maxDmaRequests,
+                                        dmaChunkSize,
+                                        numDmaChannels,
+                                        invalidateOnDmaStore),
         spadMasterId(_system->getMasterId(this, name() + ".spad")),
         cachePort(this, "cache_port"),
         cacheMasterId(_system->getMasterId(this, name() + ".cache")),
@@ -48,8 +47,8 @@ class Gem5Datapath : public MemObject {
         accelerator_id(_accelerator_id), finish_flag(0), context_id(-1),
         thread_id(-1), cycles_since_last_node(0), system(_system) {}
 
-  BaseMasterPort& getMasterPort(const std::string& if_name,
-                                PortID idx = InvalidPortID) override {
+  Port& getPort(const std::string& if_name,
+                PortID idx = InvalidPortID) override {
     if (if_name == "spad_port")
       return spadPort;
     else if (if_name == "cache_port")
@@ -57,7 +56,7 @@ class Gem5Datapath : public MemObject {
     else if (if_name == "acp_port")
       return acpPort;
     else
-      return MemObject::getMasterPort(if_name);
+      return ClockedObject::getPort(if_name);
   }
 
   // Insert a command to the accelerator.

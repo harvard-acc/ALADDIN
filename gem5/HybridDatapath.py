@@ -25,7 +25,7 @@ class AcpCache(Cache):
   write_buffers = 4
   prefetcher = NULL
 
-class HybridDatapath(MemObject):
+class HybridDatapath(ClockedObject):
   type = "HybridDatapath"
   cxx_header = "aladdin/gem5/HybridDatapath.h"
   # MemObject is assumed to be a parent.

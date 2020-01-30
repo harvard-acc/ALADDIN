@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "base/statistics.hh"
-#include "mem/mem_object.hh"
+#include "mem/packet.hh"
 #include "mem/request.hh"
 
 #include "aladdin/common/AladdinExceptions.h"
