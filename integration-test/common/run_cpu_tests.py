@@ -57,7 +57,7 @@ class LoadStoreTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_load_store_datapath.sim_cycles", 3376)
+        "system.test_load_store_datapath.sim_cycles", 3020)
 
   def runTest(self):
     self.runAndValidate()
@@ -122,7 +122,7 @@ class MmapTest(gat.Gem5AladdinTest):
     self.setCpuOnly()
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 686975500)
+    self.addExpectedStatResult("sim_ticks", 1505261000)
 
   def runTest(self):
     self.runAndValidate()
@@ -206,7 +206,7 @@ class AcpTest(gat.Gem5AladdinTest):
     self.addGem5Parameter({"cacheline_size": 64, "l2cache": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 4225)
+    self.addExpectedStatResult("system.test_acp_datapath.sim_cycles", 3712)
 
   def runTest(self):
     self.runAndValidate()
@@ -223,7 +223,7 @@ class HybridSimdTest(gat.Gem5AladdinTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult("system.test_hybrid_simd_datapath.sim_cycles",
-                               4012)
+                               4140)
 
   def runTest(self):
     self.runAndValidate()

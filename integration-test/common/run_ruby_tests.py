@@ -23,7 +23,7 @@ class DmaCacheHybridTest(tests.DmaCacheHybridTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 2259)
+    self.addExpectedStatResult("system.test_hybrid_datapath.sim_cycles", 2003)
 
   def runTest(self):
     self.runAndValidate()
@@ -36,9 +36,9 @@ class LoadStoreTest(tests.LoadStoreTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_load_store_datapath.sim_cycles", 4095)
+        "system.test_load_store_datapath.sim_cycles", 2591)
     self.addExpectedStatResult(
-        "system.ruby.l1_cntrl_acc0.L1Dcache.demand_hits", 2047)
+        "system.ruby.l1_cntrl_acc0.L1Dcache.demand_hits", 509)
     self.addExpectedStatResult(
         "system.ruby.l1_cntrl_acc0.L1Dcache.demand_misses", 258)
 
@@ -52,7 +52,7 @@ class DmaLoadStoreTest(tests.DmaLoadStoreTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_dma_load_store_datapath.sim_cycles", 3620)
+        "system.test_dma_load_store_datapath.sim_cycles", 3557)
 
   def runTest(self):
     self.runAndValidate()
@@ -87,7 +87,7 @@ class MmapTest(tests.MmapTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("sim_ticks", 766725500)
+    self.addExpectedStatResult("sim_ticks", 1271812000)
 
   def runTest(self):
     self.runAndValidate()
@@ -111,7 +111,7 @@ class ArrayFunctionRenamedArgTest(tests.ArrayFunctionRenamedArgTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_array_func_arg_datapath.sim_cycles", 679)
+        "system.test_array_func_arg_datapath.sim_cycles", 672)
 
   def runTest(self):
     self.runAndValidate()
@@ -123,7 +123,7 @@ class MultipleInvocationsTest(tests.MultipleInvocationsTest):
 
   def setExpectedResults(self):
     self.addExpectedStatResult(
-        "system.test_multiple_invocations_datapath.sim_cycles", 1325)
+        "system.test_multiple_invocations_datapath.sim_cycles", 1464)
 
   def runTest(self):
     self.runAndValidate()
@@ -193,8 +193,8 @@ class MultipleAcceleratorsTest(tests.MultipleAcceleratorsTest):
     self.addGem5Parameter({"ruby": True})
 
   def setExpectedResults(self):
-    self.addExpectedStatResult("system.test_acc0_datapath.sim_cycles", 593)
-    self.addExpectedStatResult("system.test_acc1_datapath.sim_cycles", 572)
+    self.addExpectedStatResult("system.test_acc0_datapath.sim_cycles", 551)
+    self.addExpectedStatResult("system.test_acc1_datapath.sim_cycles", 552)
     self.addExpectedStatResult("system.test_acc2_datapath.sim_cycles", 549)
     self.addExpectedStatResult("system.test_acc3_datapath.sim_cycles", 549)
 
