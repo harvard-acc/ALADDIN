@@ -2,5 +2,5 @@ partition,cyclic,a,8192,4,2
 partition,cyclic,b,8192,4,2
 partition,cyclic,c,8192,4,2
 unrolling,triad,triad,2
-pipelining,1
+pipeline,triad,1
 cycle_time,6

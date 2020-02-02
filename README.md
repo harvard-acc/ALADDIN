@@ -1,4 +1,4 @@
-ALADDIN v1.3.1 Public Release
+ALADDIN v2.0 Public Release
 ============================================
 [![build status](https://travis-ci.org/ysshao/ALADDIN.svg?branch=master)](https://travis-ci.org/ysshao/ALADDIN)
 
@@ -17,99 +17,75 @@ International Symposium on Computer Architecture, June, 2014
 
 Requirements:
 =============
-1. Boost Graph Library 1.55.0
+We *highly* recommend that users use the
+[Docker image](https://hub.docker.com/repository/docker/xyzsam/gem5-aladdin),
+as it has all the required dependencies installed and the environment prepared.
+If you do not or cannot use Docker, then read on.
+
+### Boost Graph Library 1.55.0 ###
 
 The Boost Graph Library is a header-only library and does not need to be
-built most of the time. But we do need a function that requires building
-`libboost_graph` and `libboost_regex`. To build the two libraries:
+built most of the time. But we use the Boost graph library, and this does
+require building the dynamic library `libboost_graph`. The Boost library
+can be downloaded
+[here](https://www.boost.org/users/history/version_1_55_0.html).
+Build and installation directions are
+[here](https://www.boost.org/doc/libs/1_72_0/more/getting_started/unix-variants.html).
 
-* Download the Boost library from here:
+You can pick any directory to install the libraries. Then, set the `BOOST_ROOT`
+environment variable to that location, such that `$BOOST_ROOT/include` contains
+the headers and `$BOOST_ROOT/lib` contains the libraries.
 
-`wget http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.gz`
+### GCC ###
+GCC 4.7 or more recent is *required*. However, we strongly suggest 4.9+, as
+we use many C++11 features.
 
-* Unzip the tarball and set your `$BOOST_ROOT`:
-```
-tar -xzvf boost_1_55_0.tar.gz
-cd boost_1_55_0
-export BOOST_ROOT=/your/path/to/boost_1_55_0/
-```
-* Run:
+### LLVM and Clang dev headers and libraries ###
 
-`./bootstrap.sh`
+* Aladdin v2.0+: LLVM and Clang 6.0.0.
+* Aladdin pre v2.0: LLVM and Clang 3.4.0.
 
-* Install:
+In both cases, they should be built from source with the `Debug` build type.
+Download [here](http://releases.llvm.org/download.html). More detailed
+instructions for installation can be found in the LLVM-Tracer instructions.
 
-```
-mkdir build
-./b2 --build-dir=./build --with-graph --with-regex
-```
+### zlib ###
+zlib 1.2.11 or later is required.
 
-* It will compile these two libraries to `$BOOST_ROOT/stage/lib`
+### LLVM Tracer ###
 
-2. GCC 4.7+ or more recent is *required*. However, we strongly suggest 4.9+, as we use many C++11 features.
-
-3. LLVM 3.4.0 and Clang 3.4.0 64-bit. Notice that LLVM is not backward compatible. We recommend users to use the exact versions for LLVM and Clang.
-
-4. zlib 1.2.8 or later.
-
-5. LLVM IR Trace Profiler (LLVM-Tracer)
 LLVM-Tracer is an LLVM compiler pass that instruments code in LLVM
-machine-independent IR. It prints out a dynamic trace of your program, which can
-then be taken as an input for Aladdin.
+machine-independent IR. It prints out a dynamic trace of your program, which is
+then used as an input for Aladdin.
 
-You can find  LLVM-Tracer here:
+Download and install [here](https://github.com/ysshao/LLVM-Tracer.git).
 
-[https://github.com/ysshao/LLVM-Tracer.git]
+### Environment variables ###
 
-To build LLVM-Tracer:
-
-* Set `LLVM_HOME` to where you installed LLVM
-
-```
-export LLVM_HOME=/your/path/to/llvm
-export PATH=$LLVM_HOME/bin/:$PATH
-export LD_LIBRARY_PATH=$LLVM_HOME/lib/:$LD_LIBRARY_PATH
-```
-
-* Go to where you put LLVM-Tracer source code
-
-```
-cd /path/to/LLVM-Tracer
-cd /path/to/LLVM-Tracer/full-trace
-make
-cd /path/to/LLVM-Tracer/profile-func
-make
-```
+* `ALADDIN_HOME`: where the root of the Aladdin source tree is located.
+* `LLVM_HOME`: where LLVM is installed.
+* `TRACER_HOME`: where the LLVM-Tracer shared libraries are installed
+* `BOOST_ROOT`: where Boost is installed
+* `PATH`: prepend `LLVM_HOME/lib`
+* `LD_LIBRARY_PATH`: prepend `$BOOST_ROOT/lib` and `$TRACER_HOME/lib`
 
 Build:
 ======
-1. Set `$ALADDIN_HOME` to where put Aladdin source code.
-
-`export ALADDIN_HOME=/your/path/to/aladdin`
-
-2. Set `$BOOST_ROOT` to where put Boost source code and update `$LD_LIBRARY_PATH`
-
-```
-export BOOST_ROOT=/your/path/to/boost
-export LD_LIBRARY_PATH=$BOOST_ROOT/stage/lib:$LD_LIBRARY_PATH
-```
-
-3. Build aladdin
-
+After setting the environment variables:
 ```
 cd $ALADDIN_HOME/common
-make -j4
+make
 ```
 
 Run:
 ======
-After you build Aladdin and LLVM-Tracer, you can use example SHOC programs in the SHOC
-directory to test Aladdin.
+After you build Aladdin and LLVM-Tracer, you can use the provided programs in
+the SHOC and MachSuite directories to test Aladdin.
 
-This distribution of Aladdin models fixed-function
-accelerators with scratchpad memory. Parameters like loop unrolling factors for
-each loop and memory partition (or memory bandwith) for each array allocated in
-your program. The functional units power models are based on OpenPDK 45nm and SRAM model from
+This distribution of Aladdin models fixed-function accelerators with scratchpad
+memory. Parameters like loop unrolling factors for each loop and memory
+partition (or memory bandwith) for each array allocated in your program. The
+functional units power models are based on OpenPDK 45nm and SRAM model from
 CACTI 5.3.
 
 In the following sessions, we use the `triad` benchmark in `SHOC` benchmark
@@ -123,14 +99,16 @@ Step-by-step:
 3. Internally, the `make` script wraps up the following parts:
 
 * Declare functions to be accelerated. To tell LLVM-Tracer the functions we are
-interested in, set environment variable `WORKLOAD` to be the function names):
+interested in, set the environment variable `WORKLOAD` to be the function names):
 
 ```
 export WORKLOAD=triad
 ```
-(if you have multiple functions you are interested in, separate with commas):
+This will cause LLVM-Tracer to trace the function `triad` and all functions
+called from it. If you have more than one function in your program you want to
+trace, just add it to WORKLOAD:
 ```
-export WORKLOAD=md,md_kernel
+export WORKLOAD=triad,md
 ```
 * Generate LLVM IR:
 
@@ -157,52 +135,56 @@ gcc -fno-inline -o triad-instrumented full.s -lm -lz
 
 `./triad-instrumented`
 
-It will generate a file called `dynamic_trace` under current directory.
-We provide a python script to run the above steps automatically for SHOC.
+It will generate a file called `dynamic_trace` under the current directory.
 
-```
-cd $ALADDIN_HOME/SHOC/scripts/
-python llvm_compile.py $ALADDIN_HOME/SHOC/triad triad
-```
+4. Configuration
 
-4. Config file
+Aladdin takes a set of user defined parameters to model the corresponding
+accelerator designs. For example, here is one possible config for `triad`:
 
-Aladdin takes user defined parameters to model corresponding accelerator
-designs. We prepare an example of such config file at
-
-```
-cd $ALADDIN_HOME/SHOC/triad/example
-cat config_example
-```
-```
-partition,cyclic,a,8192,4,2  //cyclic partition array a, size 8192B, wordsize is 4B, with partition factor 2
-partition,cyclic,b,8192,4,2  //cyclic partition array b, size 8192B, wordsize is 4B, with partition factor 2
-partition,cyclic,c,8192,4,2  //cyclic partition array c, size 8192B, wordsize is 4B, with partition factor 2
-unrolling,triad,triad,2        //unroll loop in triad, the loop label in triad.c, with unrolling factor 2
-pipelining,1               //enable loop pipelining, applied to all loops
-cycle_time,6               //clock period, currently we support 1, 2, 3, 4, 5, and 6ns.
+```c
+partition,cyclic,a,8192,4,2  // cyclic partition array a, size 8192B, wordsize is 4B, with partition factor 2
+partition,cyclic,b,8192,4,2  // cyclic partition array b, size 8192B, wordsize is 4B, with partition factor 2
+partition,cyclic,c,8192,4,2  // cyclic partition array c, size 8192B, wordsize is 4B, with partition factor 2
+unrolling,triad,triad,2      // unroll loop in triad, the loop label in triad.c, with unrolling factor 2
+pipeline,triad,1             // enable loop pipelining on the "triad" loop.
+cycle_time,6                 // clock period. Currently we support 1, 2, 3, 4, 5, and 6ns.
 ```
 
-The format of config file is:
+The configuration file accepts several different optimization directives:
+`partition`,`unrolling`,`flatten`,`pipeline`, and `cycle_time`. The format of
+each is shown below:
 
-```
+**Array partitioning** can be `cyclic`, `block`, or `complete`:
+
+```c
+// Cyclic partitioning of the array.
 partition,cyclic,array_name,array_size_in_bytes,wordsize,partition_factor
-unrolling,function_name,loop_label,unrolling_factor
+// Block partitioning of the array.
+partition,block,array_name,array_size_in_bytes,wordsize,partition_factor
+// Convert the array into registers.
+partition,complete,array_name,array_size_in_bytes
 ```
-
-Two more configs:
-
-```
-partition,complete,array_name,array_size_in_bytes //convert the array into register
-flatten,function_name,loop_increment_happend_at_line  //flatten the loop
-```
-
 Note that you need to explicitly config how to partition each array in your
 source code. If you do not want to partition the array, declare it as
 partition_factor 1 in your config file, like:
 
+**Loop unrolling**: each loop must be labeled in the code in order for these
+directives to work.
+
+```c
+// Unroll the specified loop by the given factor.
+unrolling,function_name,loop_label,unrolling_factor
+// Flatten the loop completely.
+flatten,function_name,loop_label
 ```
-partition,cyclic,your-array,size-of-the-array,wordsize-of-each-element,1
+
+**Loop pipelining**: Aladdin pre v2.0 supported a "global pipelining" directive
+(`pipelining`) that would attempt to pipeline every single loop in the code.
+This has been deprecated and now replaced with a per-loop pipelining directive.
+
+```c
+pipeline,loop_name
 ```
 
 4. Run Aladdin
@@ -261,10 +243,10 @@ modify the constants there with your power delay characteristics and then
 recompile Aladdin. We will be releasing the microbenchmark set that we used to
 do power characterization soon.
 
+-------
 
-============================================
-Sophia Shao,
+Sam Xi, Yuan Yao, and Sophia Shao.
 
-shao@eecs.harvard.edu
+If you have any questions, please send an email to gem5-Aladdin-users@googlegroups.com
 
-Harvard University, 2014
+Original release: Harvard University, 2014
