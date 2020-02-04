@@ -52,7 +52,7 @@ CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
 CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -Icacti-p
 CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS)
-LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lboost_regex -lpthread
+LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lpthread
 
 ifeq ($(HAS_READLINE),1)
   CFLAGS += -DHAS_READLINE
