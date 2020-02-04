@@ -45,8 +45,7 @@ TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)
 
 CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include \
          -I$(ALADDIN_HOME)/common -I$(ALADDIN_HOME)
-LFLAGS += -L$(BOOST_ROOT)/lib -lboost_graph -lboost_regex \
-         -L$(ALADDIN_HOME) -laladdin -lpthread -lz
+LFLAGS += -L$(BOOST_ROOT)/lib -L$(ALADDIN_HOME) -laladdin -lboost_graph -lpthread -lz
 
 # Get the LLVM version
 LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | head -n 1 | sed 's/\.//g')
