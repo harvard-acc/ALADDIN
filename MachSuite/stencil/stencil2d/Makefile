@@ -22,7 +22,7 @@ hls: $(KERN).c $(KERN).h
 clean:
 	rm -f $(KERN) generate output.data
 
-ACCEL_NAME = stencil-stencil2d
+ACCEL_NAME = stencil_stencil2d
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD

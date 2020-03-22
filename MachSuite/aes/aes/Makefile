@@ -23,7 +23,7 @@ clean:
 	rm -f $(KERN) generate output.data
 
 # For the tracer makefile
-ACCEL_NAME = aes-aes
+ACCEL_NAME = aes_aes
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD

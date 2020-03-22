@@ -22,7 +22,7 @@ hls: $(KERN).c $(KERN).h
 clean:
 	rm -f $(KERN) generate output.data
 
-ACCEL_NAME = spmv-crs
+ACCEL_NAME = spmv_crs
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD

@@ -22,7 +22,7 @@ hls: $(KERN).c $(KERN).h
 clean:
 	rm -f $(KERN) generate output.data
 
-ACCEL_NAME = viterbi-viterbi
+ACCEL_NAME = viterbi_viterbi
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD

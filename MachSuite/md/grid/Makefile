@@ -22,7 +22,7 @@ hls: $(KERN).c $(KERN).h
 clean:
 	rm -f $(KERN) generate output.data
 
-ACCEL_NAME = md-grid
+ACCEL_NAME = md_grid
 TEST_BIN = $(ACCEL_NAME)
 export TRACE_OUTPUT_DIR=$(ACCEL_NAME)
 ifndef WORKLOAD
