@@ -11,17 +11,25 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_work_x = malloc_aligned_memcpy(&args->work_x, sizeof(args->work_x));
+  TYPE* host_work_y = malloc_aligned_memcpy(&args->work_y, sizeof(args->work_y));
+  TYPE* accel_work_x = malloc_aligned(sizeof(args->work_x));
+  TYPE* accel_work_y = malloc_aligned(sizeof(args->work_y));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_FFT_TRANSPOSE, "work_x", (void*)&args->work_x,
-      sizeof(args->work_x));
+      MACHSUITE_FFT_TRANSPOSE, "host_work_x", host_work_x, sizeof(args->work_x));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_TRANSPOSE, "work_y", (void*)&args->work_y,
-      sizeof(args->work_y));
+      MACHSUITE_FFT_TRANSPOSE, "host_work_y", host_work_y, sizeof(args->work_y));
   invokeAcceleratorAndBlock(MACHSUITE_FFT_TRANSPOSE);
 #else
-  fft1D_512( args->work_x, args->work_y);
+  fft1D_512(host_work_x, host_work_y, accel_work_x, accel_work_y);
 #endif
+  memcpy(&args->work_x, host_work_x, sizeof(args->work_x));
+  memcpy(&args->work_y, host_work_y, sizeof(args->work_y));
+  free(host_work_x);
+  free(host_work_y);
+  free(accel_work_x);
+  free(accel_work_y);
 }
 
 /* Input format:

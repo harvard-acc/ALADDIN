@@ -11,18 +11,26 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_orig = malloc_aligned_memcpy(&args->orig, sizeof(args->orig));
+  TYPE* host_sol = calloc_aligned(sizeof(args->sol));
+  TYPE* accel_orig = malloc_aligned(sizeof(args->orig));
+  TYPE* accel_sol = calloc_aligned(sizeof(args->sol));
+  TYPE* accel_filter = malloc_aligned_memcpy(&args->filter, sizeof(args->filter));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_STENCIL_2D, "orig", (void*)&args->orig, sizeof(args->orig));
+      MACHSUITE_STENCIL_2D, "host_orig", host_orig, sizeof(args->orig));
   mapArrayToAccelerator(
-      MACHSUITE_STENCIL_2D, "sol", (void*)&args->sol, sizeof(args->sol));
-  mapArrayToAccelerator(
-      MACHSUITE_STENCIL_2D, "filter", (void*)&args->filter,
-      sizeof(args->filter));
+      MACHSUITE_STENCIL_2D, "host_sol", host_sol, sizeof(args->sol));
   invokeAcceleratorAndBlock(MACHSUITE_STENCIL_2D);
 #else
-  stencil( args->orig, args->sol, args->filter );
+  stencil(host_orig, host_sol, accel_orig, accel_sol, accel_filter);
 #endif
+  memcpy(&args->sol, host_sol, sizeof(args->sol));
+  free(host_orig);
+  free(host_sol);
+  free(accel_orig);
+  free(accel_sol);
+  free(accel_filter);
 }
 
 /* Input format:

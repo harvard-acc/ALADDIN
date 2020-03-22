@@ -9,25 +9,45 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  char* host_SEQA = malloc_aligned_memcpy(&args->seqA, sizeof(args->seqA));
+  char* host_SEQB = malloc_aligned_memcpy(&args->seqB, sizeof(args->seqB));
+  char* host_alignedA = malloc_aligned_memcpy(&args->alignedA, sizeof(args->alignedA));
+  char* host_alignedB = malloc_aligned_memcpy(&args->alignedB, sizeof(args->alignedB));
+  char* accel_SEQA = malloc_aligned(sizeof(args->seqA));
+  char* accel_SEQB = malloc_aligned(sizeof(args->seqB));
+  char* accel_alignedA = calloc_aligned(sizeof(args->alignedA));
+  char* accel_alignedB = calloc_aligned(sizeof(args->alignedB));
+  int* accel_M = malloc_aligned(sizeof(args->M));
+  char* accel_ptr = malloc_aligned(sizeof(args->ptr));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "seqA", (void*)&args->seqA, sizeof(args->seqA));
+      MACHSUITE_NW_NW, "host_SEQA", host_SEQA, sizeof(args->seqA));
   mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "seqB", (void*)&args->seqB, sizeof(args->seqB));
+      MACHSUITE_NW_NW, "host_SEQB", host_SEQB, sizeof(args->seqB));
   mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "alignedA", (void*)&args->alignedA,
+      MACHSUITE_NW_NW, "host_alignedA", host_alignedA,
       sizeof(args->alignedA));
   mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "alignedB", (void*)&args->alignedB,
+      MACHSUITE_NW_NW, "host_alignedB", host_alignedB,
       sizeof(args->alignedB));
-  mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "M", (void*)&args->M, sizeof(args->M));
-  mapArrayToAccelerator(
-      MACHSUITE_NW_NW, "ptr", (void*)&args->ptr, sizeof(args->ptr));
   invokeAcceleratorAndBlock(MACHSUITE_NW_NW);
 #else
-  needwun( args->seqA, args->seqB, args->alignedA, args->alignedB, args->M, args->ptr);
+  needwun(
+      host_SEQA, host_SEQB, host_alignedA, host_alignedB,
+      accel_SEQA, accel_SEQB, accel_alignedA, accel_alignedB, accel_M, accel_ptr);
 #endif
+  memcpy(&args->alignedA, host_alignedA, sizeof(args->alignedA));
+  memcpy(&args->alignedB, host_alignedB, sizeof(args->alignedB));
+  free(host_SEQA);
+  free(host_SEQB);
+  free(host_alignedA);
+  free(host_alignedB);
+  free(accel_SEQA);
+  free(accel_SEQB);
+  free(accel_alignedA);
+  free(accel_alignedB);
+  free(accel_M);
+  free(accel_ptr);
 }
 
 /* Input format:

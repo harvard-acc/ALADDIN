@@ -4,13 +4,13 @@
 # The gem5 dependencies are listed as .cpp files for compatibility with gem5.
 # To compile them with C code, we need to explicitly use gcc.
 
-.PHONY: gem5 gem5-cpu gem5-accel clean-gem5
+.PHONY: all gem5 gem5-cpu gem5-accel clean-gem5
 
 GEM5_SRCS = aladdin_sys_connection.cpp aladdin_sys_constants.cpp dma_interface.c
 GEM5_FULL_SRCS = $(GEM5_SRCS:%=$(ALADDIN_HOME)/gem5/%)
 
 # For the MachSuite harness and support system.
-CFLAGS = -O3 -Wall -Wno-unused-label -I../../common -DDMA_INTERFACE_V3 -DDMA_MODE
+CFLAGS = -O3 -Wall -Wno-unused-label -I../../common -I$(ALADDIN_HOME) -DDMA_INTERFACE_V3 -DDMA_MODE
 ALL_SRCS = $(SRCS) ../../common/harness.c
 
 GEM5_CFLAGS = -static -O3
@@ -18,6 +18,8 @@ GEM5_CFLAGS = -static -O3
 INCLUDES += -I$(ALADDIN_HOME)
 LFLAGS = -lm
 BMARK = $(ACCEL_NAME)
+
+all: gem5
 
 # Builds both standalone CPU version and the HW accelerated version.
 gem5: gem5-cpu gem5-accel

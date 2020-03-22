@@ -11,13 +11,21 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 #include "gem5/dma_interface.h"
 #endif
 
-void md_kernel(TYPE force_x[nAtoms],
-               TYPE force_y[nAtoms],
-               TYPE force_z[nAtoms],
-               TYPE position_x[nAtoms],
-               TYPE position_y[nAtoms],
-               TYPE position_z[nAtoms],
-               int32_t NL[nAtoms*maxNeighbors])
+void md_kernel(TYPE* host_force_x,
+               TYPE* host_force_y,
+               TYPE* host_force_z,
+               TYPE* host_position_x,
+               TYPE* host_position_y,
+               TYPE* host_position_z,
+               int32_t* host_NL,
+               TYPE* force_x,
+               TYPE* force_y,
+               TYPE* force_z,
+               TYPE* position_x,
+               TYPE* position_y,
+               TYPE* position_z,
+               int32_t* NL)
+
 {
     TYPE delx, dely, delz, r2inv;
     TYPE r6inv, potential, force, j_x, j_y, j_z;
@@ -25,17 +33,10 @@ void md_kernel(TYPE force_x[nAtoms],
     int32_t i, j, jidx;
 
 #ifdef DMA_MODE
-    dmaLoad(&position_x[0], 0, nAtoms * sizeof(TYPE));
-    dmaLoad(&position_y[0], 0, nAtoms * sizeof(TYPE));
-    dmaLoad(&position_z[0], 0, nAtoms * sizeof(TYPE));
-    dmaLoad(&NL[0], 0 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 1 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 2 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 3 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 4 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 5 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 6 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
-    dmaLoad(&NL[0], 7 * 512 * sizeof(TYPE), 512 * sizeof(TYPE));
+    dmaLoad(position_x, host_position_x, nAtoms * sizeof(TYPE));
+    dmaLoad(position_y, host_position_y, nAtoms * sizeof(TYPE));
+    dmaLoad(position_z, host_position_z, nAtoms * sizeof(TYPE));
+    dmaLoad(NL, host_NL, nAtoms * maxNeighbors * sizeof(int32_t));
 #endif
 
 loop_i : for (i = 0; i < nAtoms; i++){
@@ -73,8 +74,8 @@ loop_j : for( j = 0; j < maxNeighbors; j++){
          //printf("dF=%lf,%lf,%lf\n", fx, fy, fz);
          }
 #ifdef DMA_MODE
-    dmaStore(&force_x[0], 0, 256 * sizeof(TYPE));
-    dmaStore(&force_y[0], 0, 256 * sizeof(TYPE));
-    dmaStore(&force_z[0], 0, 256 * sizeof(TYPE));
+    dmaStore(host_force_x, force_x, nAtoms * sizeof(TYPE));
+    dmaStore(host_force_y, force_y, nAtoms * sizeof(TYPE));
+    dmaStore(host_force_z, force_z, nAtoms * sizeof(TYPE));
 #endif
 }

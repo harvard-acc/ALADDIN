@@ -24,14 +24,18 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 #define SCAN_BLOCK 16
 #define SCAN_RADIX BUCKETSIZE/SCAN_BLOCK
 
-void ss_sort(int a[SIZE], int b[SIZE], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]);
-
+void ss_sort(int* host_a,
+             int* a,
+             int* b,
+             int* bucket,
+             int* sum);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 
 struct bench_args_t {
   int a[SIZE];
   int b[SIZE];
-  int bucket[BUCKETSIZE];
+  // Need one extra bucket (for overflow of histogram?)
+  int bucket[BUCKETSIZE+1];
   int sum[SCAN_RADIX];
 };

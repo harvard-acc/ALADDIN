@@ -14,18 +14,24 @@
 
 #define MAX(A,B) ( ((A)>(B))?(A):(B) )
 
-void needwun(char SEQA[ALEN], char SEQB[BLEN],
-             char alignedA[ALEN+BLEN], char alignedB[ALEN+BLEN],
-             int M[(ALEN+1)*(BLEN+1)], char ptr[(ALEN+1)*(BLEN+1)]){
-
+void needwun(char* host_SEQA,
+             char* host_SEQB,
+             char* host_alignedA,
+             char* host_alignedB,
+             char* SEQA,
+             char* SEQB,
+             char* alignedA,
+             char* alignedB,
+             int* M,
+             char* ptr) {
     int score, up_left, up, left, max;
     int row, row_up, r;
     int a_idx, b_idx;
     int a_str_idx, b_str_idx;
 
 #ifdef DMA_MODE
-    dmaLoad(&SEQA[0], 0, ALEN * sizeof(char));
-    dmaLoad(&SEQB[0], 0, BLEN * sizeof(char));
+    dmaLoad(SEQA, host_SEQA, ALEN * sizeof(char));
+    dmaLoad(SEQB, host_SEQB, BLEN * sizeof(char));
 #endif
 
     init_row: for(a_idx=0; a_idx<(ALEN+1); a_idx++){
@@ -98,7 +104,7 @@ void needwun(char SEQA[ALEN], char SEQB[BLEN],
       alignedB[b_str_idx] = '_';
     }
 #ifdef DMA_MODE
-    dmaStore(&alignedA[0], 0, (ALEN + BLEN) * sizeof(char));
-    dmaStore(&alignedB[0], 0, (ALEN + BLEN) * sizeof(char));
+    dmaStore(host_alignedA, alignedA, (ALEN + BLEN) * sizeof(char));
+    dmaStore(host_alignedB, alignedB, (ALEN + BLEN) * sizeof(char));
 #endif
 }

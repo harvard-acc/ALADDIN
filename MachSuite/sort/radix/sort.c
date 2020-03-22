@@ -11,7 +11,7 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 #include "gem5/dma_interface.h"
 #endif
 
-void local_scan(int bucket[BUCKETSIZE])
+void local_scan(int bucket[BUCKETSIZE+1])
 {
     int radixID, i, bucket_indx;
     local_1 : for (radixID=0; radixID<SCAN_RADIX; radixID++) {
@@ -22,7 +22,7 @@ void local_scan(int bucket[BUCKETSIZE])
     }
 }
 
-void sum_scan(int sum[SCAN_RADIX], int bucket[BUCKETSIZE])
+void sum_scan(int sum[SCAN_RADIX], int bucket[BUCKETSIZE+1])
 {
     int radixID, bucket_indx;
     sum[0] = 0;
@@ -32,7 +32,7 @@ void sum_scan(int sum[SCAN_RADIX], int bucket[BUCKETSIZE])
     }
 }
 
-void last_step_scan(int bucket[BUCKETSIZE], int sum[SCAN_RADIX])
+void last_step_scan(int bucket[BUCKETSIZE+1], int sum[SCAN_RADIX])
 {
     int radixID, i, bucket_indx;
     last_1:for (radixID=0; radixID<SCAN_RADIX; radixID++) {
@@ -43,15 +43,15 @@ void last_step_scan(int bucket[BUCKETSIZE], int sum[SCAN_RADIX])
     }
 }
 
-void init(int bucket[BUCKETSIZE])
+void init(int bucket[BUCKETSIZE+1])
 {
     int i;
-    init_1 : for (i=0; i<BUCKETSIZE; i++) {
+    init_1 : for (i=0; i<BUCKETSIZE+1; i++) {
         bucket[i] = 0;
     }
 }
 
-void hist(int bucket[BUCKETSIZE], int a[SIZE], int exp)
+void hist(int bucket[BUCKETSIZE+1], int a[SIZE], int exp)
 {
     int blockID, i, bucket_indx, a_indx;
     blockID = 0;
@@ -64,7 +64,7 @@ void hist(int bucket[BUCKETSIZE], int a[SIZE], int exp)
     }
 }
 
-void update(int b[SIZE], int bucket[BUCKETSIZE], int a[SIZE], int exp)
+void update(int b[SIZE], int bucket[BUCKETSIZE+1], int a[SIZE], int exp)
 {
     int i, blockID, bucket_indx, a_indx;
     blockID = 0;
@@ -79,13 +79,16 @@ void update(int b[SIZE], int bucket[BUCKETSIZE], int a[SIZE], int exp)
     }
 }
 
-void ss_sort(int a[SIZE], int b[SIZE], int bucket[BUCKETSIZE], int sum[SCAN_RADIX]) {
+void ss_sort(int* host_a,
+             int* a,
+             int* b,
+             int* bucket,
+             int* sum) {
     int exp=0;
     int valid_buffer=0;
 
 #ifdef DMA_MODE
-    dmaLoad(&a[0], 0 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&a[0], 1 * 1024 * sizeof(TYPE), PAGE_SIZE);
+    dmaLoad(a, host_a, SIZE * sizeof(int));
 #endif
 
     #define BUFFER_A 0
@@ -113,7 +116,6 @@ void ss_sort(int a[SIZE], int b[SIZE], int bucket[BUCKETSIZE], int sum[SCAN_RADI
     }
     // If trip count is even, buffer A will be valid at the end.
 #ifdef DMA_MODE
-    dmaStore(&a[0], 0 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&a[0], 1 * 1024 * sizeof(TYPE), PAGE_SIZE);
+    dmaStore(host_a, a, SIZE * sizeof(int));
 #endif
 }

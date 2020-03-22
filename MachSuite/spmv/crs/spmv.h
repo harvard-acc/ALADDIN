@@ -13,8 +13,16 @@ http://www.cs.berkeley.edu/~mhoemmen/matrix-seminar/slides/UCB_sparse_tutorial_1
 
 #define TYPE double
 
-void spmv(TYPE val[NNZ], int32_t cols[NNZ], int32_t rowDelimiters[N + 1],
-          TYPE vec[N], TYPE out[N]);
+void spmv(TYPE* host_val,
+          int32_t* host_cols,
+          int32_t* host_rowDelimiters,
+          TYPE* host_vec,
+          TYPE* host_out,
+          TYPE* val,
+          int32_t* cols,
+          int32_t* rowDelimiters,
+          TYPE* vec,
+          TYPE* out);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 

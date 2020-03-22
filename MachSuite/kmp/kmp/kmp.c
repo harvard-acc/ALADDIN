@@ -25,20 +25,19 @@ void CPF(char pattern[PATTERN_SIZE], int32_t kmpNext[PATTERN_SIZE]) {
 }
 
 
-int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int32_t kmpNext[PATTERN_SIZE], int32_t n_matches[1]) {
+int kmp(char* host_input,
+        int32_t* host_n_matches,
+        char* pattern,
+        char* input,
+        int32_t* kmpNext,
+        int32_t* n_matches) {
     int32_t i, q;
 
 #ifdef DMA_MODE
-    dmaLoad(&pattern[0], 0, PATTERN_SIZE*sizeof(char));
-    dmaLoad(&kmpNext[0], 0, PATTERN_SIZE*sizeof(int32_t));
-    dmaLoad(&input[0], 0*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 1*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 2*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 3*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 4*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 5*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 6*4096, PAGE_SIZE);
-    dmaLoad(&input[0], 7*4096, 3739);
+    // The pattern and kmpNext arrays are so small that they should always be
+    // mapped to registers, not SRAM, in which case they don't need to be
+    // loaded.
+    dmaLoad(input, host_input, STRING_SIZE * sizeof(char));
 #endif
     n_matches[0] = 0;
 
@@ -57,5 +56,11 @@ int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int32_t kmpNext[PAT
             q = kmpNext[q - 1];
         }
     }
+#ifdef DMA_MODE
+    // The n_matches array is also too small for SRAM, but there's no other way
+    // to get the data out of the accelerator right now besides a DMA store
+    // from a scratchpad.
+    dmaStore(host_n_matches, n_matches, sizeof(int32_t));
+#endif
     return 0;
 }

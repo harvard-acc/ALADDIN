@@ -11,19 +11,37 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_nzval = malloc_aligned_memcpy(&args->nzval, sizeof(args->nzval));
+  int32_t* host_cols = malloc_aligned_memcpy(&args->cols, sizeof(args->cols));
+  TYPE* host_vec = malloc_aligned_memcpy(&args->vec, sizeof(args->vec));
+  TYPE* host_out = malloc_aligned_memcpy(&args->out, sizeof(args->out));
+  TYPE* accel_nzval = malloc_aligned(sizeof(args->nzval));
+  int32_t* accel_cols = malloc_aligned(sizeof(args->cols));
+  TYPE* accel_vec = malloc_aligned(sizeof(args->vec));
+  TYPE* accel_out = calloc_aligned(sizeof(args->out));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_ELLPACK, "nzval", (void*)&args->nzval, sizeof(args->nzval));
+      MACHSUITE_SPMV_ELLPACK, "host_nzval", host_nzval, sizeof(args->nzval));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_ELLPACK, "cols", (void*)&args->cols, sizeof(args->cols));
+      MACHSUITE_SPMV_ELLPACK, "host_cols", host_cols, sizeof(args->cols));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_ELLPACK, "vec", (void*)&args->vec, sizeof(args->vec));
+      MACHSUITE_SPMV_ELLPACK, "host_vec", host_vec, sizeof(args->vec));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_ELLPACK, "out", (void*)&args->out, sizeof(args->out));
+      MACHSUITE_SPMV_ELLPACK, "host_out", host_out, sizeof(args->out));
   invokeAcceleratorAndBlock(MACHSUITE_SPMV_ELLPACK);
 #else
-  ellpack( args->nzval, args->cols, args->vec, args->out );
+  ellpack(host_nzval, host_cols, host_vec, host_out,
+          accel_nzval, accel_cols, accel_vec, accel_out);
 #endif
+  memcpy(&args->out, host_out, sizeof(args->out));
+  free(host_nzval);
+  free(host_cols);
+  free(host_vec);
+  free(host_out);
+  free(accel_nzval);
+  free(accel_cols);
+  free(accel_vec);
+  free(accel_out);
 }
 
 /* Input format:

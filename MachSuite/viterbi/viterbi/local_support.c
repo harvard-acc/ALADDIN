@@ -9,24 +9,43 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  prob_t* host_init = malloc_aligned_memcpy(&args->init, sizeof(args->init));
+  prob_t* host_transition = malloc_aligned_memcpy(&args->transition, sizeof(args->transition));
+  prob_t* host_emission = malloc_aligned_memcpy(&args->emission, sizeof(args->emission));
+  state_t* host_path = malloc_aligned_memcpy(&args->path, sizeof(args->path));
+  tok_t* accel_obs = malloc_aligned_memcpy(&args->obs, sizeof(args->obs));
+  prob_t* accel_init = malloc_aligned(sizeof(args->init));
+  prob_t* accel_transition = malloc_aligned(sizeof(args->transition));
+  prob_t* accel_emission = malloc_aligned(sizeof(args->emission));
+  state_t* accel_path = calloc_aligned(sizeof(args->path));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "obs", (void*)&args->obs, sizeof(args->obs));
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "path", (void*)&args->path, sizeof(args->path));
-  mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "transition", (void*)&args->transition,
+      MACHSUITE_VITERBI_VITERBI, "host_transition", host_transition,
       sizeof(args->transition));
   mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "emission", (void*)&args->emission,
+      MACHSUITE_VITERBI_VITERBI, "host_emission", host_emission,
       sizeof(args->emission));
   mapArrayToAccelerator(
-      MACHSUITE_VITERBI_VITERBI, "init", (void*)&args->init,
+      MACHSUITE_VITERBI_VITERBI, "host_init", host_init,
       sizeof(args->init));
+  mapArrayToAccelerator(
+      MACHSUITE_VITERBI_VITERBI, "host_path", host_path,
+      sizeof(args->path));
   invokeAcceleratorAndBlock(MACHSUITE_VITERBI_VITERBI);
 #else
-  viterbi( args->obs, args->init, args->transition, args->emission, args->path );
+  viterbi(host_init, host_transition, host_emission, host_path,
+          accel_obs, accel_init, accel_transition, accel_emission, accel_path);
 #endif
+  memcpy(&args->path, host_path, sizeof(args->path));
+  free(host_init);
+  free(host_transition);
+  free(host_emission);
+  free(host_path);
+  free(accel_obs);
+  free(accel_init);
+  free(accel_transition);
+  free(accel_emission);
+  free(accel_path);
 }
 
 /* Input format:

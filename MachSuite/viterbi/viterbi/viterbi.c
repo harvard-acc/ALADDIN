@@ -4,7 +4,15 @@
 #include "gem5/dma_interface.h"
 #endif
 
-int viterbi( tok_t obs[N_OBS], prob_t init[N_STATES], prob_t transition[N_STATES*N_STATES], prob_t emission[N_STATES*N_TOKENS], state_t path[N_OBS] )
+int viterbi(prob_t* host_init,
+            prob_t* host_transition,
+            prob_t* host_emission,
+            state_t* host_path,
+            tok_t* obs,
+            prob_t* init,
+            prob_t* transition,
+            prob_t* emission,
+            state_t* path)
 {
   prob_t llike[N_OBS][N_STATES];
   step_t t;
@@ -14,24 +22,9 @@ int viterbi( tok_t obs[N_OBS], prob_t init[N_STATES], prob_t transition[N_STATES
   // All probabilities are in -log space. (i.e.: P(x) => -log(P(x)) )
 
 #ifdef DMA_MODE
-  dmaLoad(&obs[0], 0, N_OBS * sizeof(tok_t));
-  dmaLoad(&init[0], 0, N_STATES * sizeof(prob_t));
-  dmaLoad(&transition[0], 0 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 1 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 2 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 3 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 4 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 5 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 6 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&transition[0], 7 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 0 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 1 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 2 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 3 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 4 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 5 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 6 * 512 * sizeof(prob_t), PAGE_SIZE);
-  dmaLoad(&emission[0], 7 * 512 * sizeof(prob_t), PAGE_SIZE);
+  dmaLoad(init, host_init, N_STATES * sizeof(prob_t));
+  dmaLoad(transition, host_transition, N_STATES * N_STATES * sizeof(prob_t));
+  dmaLoad(emission, host_emission, N_STATES * N_TOKENS * sizeof(prob_t));
 #endif
 
   // Initialize with first observation and initial probabilities
@@ -86,7 +79,7 @@ int viterbi( tok_t obs[N_OBS], prob_t init[N_STATES], prob_t transition[N_STATES
   }
 
 #ifdef DMA_MODE
-  dmaStore(&path[0], 0, N_OBS * sizeof(state_t));
+  dmaStore(host_path, path, N_OBS * sizeof(state_t));
 #endif
 
   return 0;

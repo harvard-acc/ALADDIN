@@ -18,7 +18,8 @@
 //Set number of iterations to execute
 #define MAX_ITERATION 1
 
-void gemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]);
+void gemm(TYPE* host_m1, TYPE* host_m2, TYPE* host_prod,
+            TYPE* m1, TYPE* m2, TYPE* prod);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 

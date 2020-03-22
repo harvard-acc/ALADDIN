@@ -21,7 +21,11 @@ SC 2008
 #define SIZE (row_size * col_size * height_size)
 #define INDX(_row_size,_col_size,_i,_j,_k) ((_i)+_row_size*((_j)+_col_size*(_k)))
 
-void stencil3d( TYPE C[2], TYPE orig[SIZE], TYPE sol[SIZE] );
+void stencil3d(TYPE* host_orig,
+               TYPE* host_sol,
+               TYPE* C,
+               TYPE* orig,
+               TYPE* sol);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.

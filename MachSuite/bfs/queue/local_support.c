@@ -10,23 +10,38 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  node_t* host_nodes = malloc_aligned_memcpy(&args->nodes, sizeof(args->nodes));
+  edge_t* host_edges = malloc_aligned_memcpy(&args->edges, sizeof(args->edges));
+  level_t* host_level = malloc_aligned_memcpy(&args->level, sizeof(args->level));
+  edge_index_t* host_level_counts = calloc_aligned(sizeof(args->level_counts));
+  node_t* accel_nodes = malloc_aligned(sizeof(args->nodes));
+  edge_t* accel_edges = malloc_aligned(sizeof(args->edges));
+  level_t* accel_level = malloc_aligned(sizeof(args->level));
+  edge_index_t* accel_level_counts = calloc_aligned(sizeof(args->level_counts));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_BFS_QUEUE, "nodes", (void*)&args->nodes, sizeof(args->nodes));
+      MACHSUITE_BFS_QUEUE, "host_nodes", host_nodes, sizeof(args->nodes));
   mapArrayToAccelerator(
-      MACHSUITE_BFS_QUEUE, "edges", (void*)&args->edges, sizeof(args->edges));
+      MACHSUITE_BFS_QUEUE, "host_edges", host_edges, sizeof(args->edges));
   mapArrayToAccelerator(
-      MACHSUITE_BFS_QUEUE, "starting_node", (void*)&args->starting_node,
-      sizeof(args->starting_node));
+      MACHSUITE_BFS_QUEUE, "host_level", host_level, sizeof(args->level));
   mapArrayToAccelerator(
-      MACHSUITE_BFS_QUEUE, "level", (void*)&args->level, sizeof(args->level));
-  mapArrayToAccelerator(
-      MACHSUITE_BFS_QUEUE, "level_counts", (void*)&args->level_counts,
-                                           sizeof(args->level_counts));
+      MACHSUITE_BFS_QUEUE, "host_level_counts", host_level_counts, sizeof(args->level_counts));
   invokeAcceleratorAndBlock(MACHSUITE_BFS_QUEUE);
 #else
-  bfs(args->nodes, args->edges, args->starting_node, args->level, args->level_counts);
+  bfs(host_nodes, host_edges, host_level, host_level_counts,
+      accel_nodes, accel_edges, accel_level, accel_level_counts,
+      args->starting_node);
 #endif
+  memcpy(&args->level_counts, host_level_counts, sizeof(args->level_counts));
+  free(host_nodes);
+  free(host_edges);
+  free(host_level);
+  free(host_level_counts);
+  free(accel_nodes);
+  free(accel_edges);
+  free(accel_level);
+  free(accel_level_counts);
 }
 
 /* Input format:

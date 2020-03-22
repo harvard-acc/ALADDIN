@@ -9,19 +9,24 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  int* host_a = malloc_aligned_memcpy(&args->a, sizeof(args->a));
+  int* accel_a = calloc_aligned(sizeof(args->a));
+  int* accel_b = calloc_aligned(sizeof(args->b));
+  int* accel_bucket = calloc_aligned(sizeof(args->a));
+  int* accel_sum = calloc_aligned(sizeof(args->b));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_SORT_RADIX, "a", (void*)&args->a, sizeof(args->a));
-  mapArrayToAccelerator(
-      MACHSUITE_SORT_RADIX, "b", (void*)&args->b, sizeof(args->b));
-  mapArrayToAccelerator(
-      MACHSUITE_SORT_RADIX, "bucket", (void*)&args->bucket, sizeof(args->bucket));
-  mapArrayToAccelerator(
-      MACHSUITE_SORT_RADIX, "sum", (void*)&args->sum, sizeof(args->sum));
+      MACHSUITE_SORT_RADIX, "host_a", host_a, sizeof(args->a));
   invokeAcceleratorAndBlock(MACHSUITE_SORT_RADIX);
 #else
-  ss_sort( args->a, args->b, args->bucket, args->sum );
+  ss_sort(host_a, accel_a, accel_b, accel_bucket, accel_sum);
 #endif
+  memcpy(&args->a, host_a, sizeof(args->a));
+  free(host_a);
+  free(accel_a);
+  free(accel_b);
+  free(accel_bucket);
+  free(accel_sum);
 }
 
 /* Input format:

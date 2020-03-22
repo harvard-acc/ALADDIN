@@ -11,21 +11,38 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  double* host_real = malloc_aligned_memcpy(&args->real, sizeof(args->real));
+  double* host_img = malloc_aligned_memcpy(&args->img, sizeof(args->img));
+  double* host_real_twid = malloc_aligned_memcpy(&args->real_twid, sizeof(args->real_twid));
+  double* host_img_twid = malloc_aligned_memcpy(&args->img_twid, sizeof(args->img_twid));
+  double* accel_real = malloc_aligned(sizeof(args->real));
+  double* accel_img = malloc_aligned(sizeof(args->img));
+  double* accel_real_twid = malloc_aligned(sizeof(args->real_twid));
+  double* accel_img_twid = malloc_aligned(sizeof(args->img_twid));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "real", (void*)&args->real, sizeof(args->real));
+      MACHSUITE_FFT_STRIDED, "host_real", host_real, sizeof(args->real));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "img", (void*)&args->img, sizeof(args->img));
+      MACHSUITE_FFT_STRIDED, "host_img", host_img, sizeof(args->img));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "real_twid", (void*)&args->real_twid,
-                                          sizeof(args->real_twid));
+      MACHSUITE_FFT_STRIDED, "host_real_twid", host_real_twid, sizeof(args->real_twid));
   mapArrayToAccelerator(
-      MACHSUITE_FFT_STRIDED, "img_twid", (void*)&args->img_twid,
-                                          sizeof(args->img_twid));
+      MACHSUITE_FFT_STRIDED, "host_img_twid", host_img_twid, sizeof(args->img_twid));
   invokeAcceleratorAndBlock(MACHSUITE_FFT_STRIDED);
 #else
-  fft(args->real, args->img, args->real_twid, args->img_twid );
+  fft(host_real, host_img, host_real_twid, host_img_twid,
+      accel_real, accel_img, accel_real_twid, accel_img_twid);
 #endif
+  memcpy(&args->real, host_real, sizeof(args->real));
+  memcpy(&args->img, host_img, sizeof(args->img));
+  free(host_real);
+  free(host_real_twid);
+  free(host_img);
+  free(host_img_twid);
+  free(accel_real);
+  free(accel_real_twid);
+  free(accel_img);
+  free(accel_img_twid);
 }
 
 /* Input format:

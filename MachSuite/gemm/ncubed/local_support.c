@@ -11,17 +11,30 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_m1 = malloc_aligned_memcpy(&args->m1, sizeof(args->m1));
+  TYPE* host_m2 = malloc_aligned_memcpy(&args->m2, sizeof(args->m2));
+  TYPE* host_prod = malloc_aligned_memcpy(&args->prod, sizeof(args->prod));
+  TYPE* accel_m1 = malloc_aligned(sizeof(args->m1));
+  TYPE* accel_m2 = malloc_aligned(sizeof(args->m2));
+  TYPE* accel_prod = calloc_aligned(sizeof(args->prod));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_GEMM_NCUBED, "m1", (void*)&args->m1, sizeof(args->m1));
+      MACHSUITE_GEMM_NCUBED, "host_m1", host_m1, sizeof(args->m1));
   mapArrayToAccelerator(
-      MACHSUITE_GEMM_NCUBED, "m2", (void*)&args->m2, sizeof(args->m2));
+      MACHSUITE_GEMM_NCUBED, "host_m2", host_m2, sizeof(args->m2));
   mapArrayToAccelerator(
-      MACHSUITE_GEMM_NCUBED, "prod", (void*)&args->prod, sizeof(args->prod));
+      MACHSUITE_GEMM_NCUBED, "host_prod", host_prod, sizeof(args->prod));
   invokeAcceleratorAndBlock(MACHSUITE_GEMM_NCUBED);
 #else
-  gemm( args->m1, args->m2, args->prod );
+  gemm(host_m1, host_m2, host_prod, accel_m1, accel_m2, accel_prod);
 #endif
+  memcpy(&args->prod, host_prod, sizeof(args->prod));
+  free(host_m1);
+  free(host_m2);
+  free(host_prod);
+  free(accel_m1);
+  free(accel_m2);
+  free(accel_prod);
 }
 
 /* Input format:

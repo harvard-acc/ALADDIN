@@ -7,26 +7,25 @@
 #define MIN(x,y) ( (x)<(y) ? (x) : (y) )
 #define MAX(x,y) ( (x)>(y) ? (x) : (y) )
 
-void md( int n_points[blockSide][blockSide][blockSide],
-         dvector_t force[blockSide][blockSide][blockSide][densityFactor],
-         dvector_t position[blockSide][blockSide][blockSide][densityFactor] )
-{
+void md(int* host_n_points,
+        dvector_t* host_force,
+        dvector_t* host_position,
+        int* n_points,
+        dvector_t* force,
+        dvector_t* position) {
   ivector_t b0, b1; // b0 is the current block, b1 is b0 or a neighboring block
   dvector_t p, q; // p is a point in b0, q is a point in either b0 or b1
   int32_t p_idx, q_idx;
   TYPE dx, dy, dz, r2inv, r6inv, potential, f;
+  ARRAY_3D(int, _n_points, n_points, blockSide, blockSide);
+  ARRAY_4D(dvector_t, _force, force, blockSide, blockSide, densityFactor);
+  ARRAY_4D(dvector_t, _position, position, blockSide, blockSide, densityFactor);
 
 #ifdef DMA_MODE
-  dmaLoad(&n_points[0], 0, blockSide * blockSide * blockSide * sizeof(int));
-  // position is three doubles -> 24 bytes -> 4096/24 = 170 -> 170*24 = 4080.
-  dmaLoad(&position[0], 0 * 4080, 4080);
-  dmaLoad(&position[0], 1 * 4080, 4080);
-  dmaLoad(&position[0], 2 * 4080, 4080);
-  dmaLoad(&position[0], 3 * 4080, 3120);
-  dmaLoad(&force[0], 0 * 4080, 4080);
-  dmaLoad(&force[0], 1 * 4080, 4080);
-  dmaLoad(&force[0], 2 * 4080, 4080);
-  dmaLoad(&force[0], 3 * 4080, 3120);
+  int32_t blockSideCubed = blockSide * blockSide * blockSide;
+  dmaLoad(&n_points[0], host_n_points, blockSideCubed * sizeof(int));
+  dmaLoad(&force[0], host_force, blockSideCubed * densityFactor * sizeof(dvector_t));
+  dmaLoad(&position[0], host_position, blockSideCubed * densityFactor * sizeof(dvector_t));
 #endif
 
   // Iterate over the grid, block by block
@@ -38,13 +37,13 @@ void md( int n_points[blockSide][blockSide][blockSide],
   loop_grid1_y: for( b1.y=MAX(0,b0.y-1); b1.y<MIN(blockSide,b0.y+2); b1.y++ ) {
   loop_grid1_z: for( b1.z=MAX(0,b0.z-1); b1.z<MIN(blockSide,b0.z+2); b1.z++ ) {
     // For all points in b0
-    dvector_t *base_q = position[b1.x][b1.y][b1.z];
-    int q_idx_range = n_points[b1.x][b1.y][b1.z];
-    loop_p: for( p_idx=0; p_idx<n_points[b0.x][b0.y][b0.z]; p_idx++ ) {
-      p = position[b0.x][b0.y][b0.z][p_idx];
-      TYPE sum_x = force[b0.x][b0.y][b0.z][p_idx].x;
-      TYPE sum_y = force[b0.x][b0.y][b0.z][p_idx].y;
-      TYPE sum_z = force[b0.x][b0.y][b0.z][p_idx].z;
+    dvector_t *base_q = _position[b1.x][b1.y][b1.z];
+    int q_idx_range = _n_points[b1.x][b1.y][b1.z];
+    loop_p: for( p_idx=0; p_idx<_n_points[b0.x][b0.y][b0.z]; p_idx++ ) {
+      p = _position[b0.x][b0.y][b0.z][p_idx];
+      TYPE sum_x = _force[b0.x][b0.y][b0.z][p_idx].x;
+      TYPE sum_y = _force[b0.x][b0.y][b0.z][p_idx].y;
+      TYPE sum_z = _force[b0.x][b0.y][b0.z][p_idx].z;
       // For all points in b1
       loop_q: for( q_idx=0; q_idx< q_idx_range ; q_idx++ ) {
         q = *(base_q + q_idx);
@@ -65,17 +64,14 @@ void md( int n_points[blockSide][blockSide][blockSide],
           sum_z += f*dz;
         }
       } // loop_q
-      force[b0.x][b0.y][b0.z][p_idx].x = sum_x ;
-      force[b0.x][b0.y][b0.z][p_idx].y = sum_y ;
-      force[b0.x][b0.y][b0.z][p_idx].z = sum_z ;
+      _force[b0.x][b0.y][b0.z][p_idx].x = sum_x ;
+      _force[b0.x][b0.y][b0.z][p_idx].y = sum_y ;
+      _force[b0.x][b0.y][b0.z][p_idx].z = sum_z ;
     } // loop_p
   }}} // loop_grid1_*
   }}} // loop_grid0_*
 
 #ifdef DMA_MODE
-  dmaStore(&force[0], 0 * 4080, 4080);
-  dmaStore(&force[0], 1 * 4080, 4080);
-  dmaStore(&force[0], 2 * 4080, 4080);
-  dmaStore(&force[0], 3 * 4080, 3120);
+  dmaStore(host_force, force, blockSideCubed * densityFactor * sizeof(dvector_t));
 #endif
 }

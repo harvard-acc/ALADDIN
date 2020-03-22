@@ -9,19 +9,32 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  char* host_input = malloc_aligned_memcpy(&args->input, sizeof(args->input));
+  int32_t* host_n_matches = malloc_aligned_memcpy(&args->n_matches, sizeof(args->n_matches));
+  // pattern and kmpNext are mapped to registers (too small for SRAM), so they
+  // are not DMA loaded. As a result, the accel_xyz arrays needs to have the
+  // correct values from the beginning.
+  char* accel_pattern = malloc_aligned_memcpy(&args->pattern, sizeof(args->pattern));
+  int32_t* accel_kmpNext = malloc_aligned_memcpy(&args->kmpNext, sizeof(args->kmpNext));
+  char* accel_input = malloc_aligned(sizeof(args->input));
+  int32_t* accel_n_matches = calloc_aligned(sizeof(args->n_matches));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_KMP_KMP, "pattern", (void*)&args->pattern, sizeof(args->pattern));
+      MACHSUITE_KMP_KMP, "host_input", host_input, sizeof(args->input));
   mapArrayToAccelerator(
-      MACHSUITE_KMP_KMP, "input", (void*)&args->input, sizeof(args->input));
-  mapArrayToAccelerator(
-      MACHSUITE_KMP_KMP, "kmpNext", (void*)&args->kmpNext, sizeof(args->kmpNext));
-  mapArrayToAccelerator(
-      MACHSUITE_KMP_KMP, "n_matches", (void*)&args->n_matches, sizeof(args->n_matches));
+      MACHSUITE_KMP_KMP, "host_n_matches", host_n_matches, sizeof(args->n_matches));
   invokeAcceleratorAndBlock(MACHSUITE_KMP_KMP);
 #else
-  kmp( args->pattern, args->input, args->kmpNext, args->n_matches );
+  kmp(host_input, host_n_matches,
+      accel_pattern, accel_input, accel_kmpNext, accel_n_matches);
 #endif
+  memcpy(&args->n_matches, host_n_matches, sizeof(int32_t));
+  free(host_input);
+  free(host_n_matches);
+  free(accel_pattern);
+  free(accel_input);
+  free(accel_kmpNext);
+  free(accel_n_matches);
 }
 
 /* Input format:

@@ -11,17 +11,31 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  int32_t* host_n_points = malloc_aligned_memcpy(&args->n_points, sizeof(args->n_points));
+  dvector_t* host_force = malloc_aligned_memcpy(&args->force, sizeof(args->force));
+  dvector_t* host_position = malloc_aligned_memcpy(&args->position, sizeof(args->position));
+  int32_t* accel_n_points = malloc_aligned(sizeof(args->n_points));
+  dvector_t* accel_force = malloc_aligned(sizeof(args->force));
+  dvector_t* accel_position = malloc_aligned(sizeof(args->position));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_MD_GRID, "n_points", (void*)&args->n_points, sizeof(args->n_points));
+      MACHSUITE_MD_GRID, "host_n_points", host_n_points, sizeof(args->n_points));
   mapArrayToAccelerator(
-      MACHSUITE_MD_GRID, "force", (void*)&args->force, sizeof(args->force));
+      MACHSUITE_MD_GRID, "host_force", host_force, sizeof(args->force));
   mapArrayToAccelerator(
-      MACHSUITE_MD_GRID, "position", (void*)&args->position, sizeof(args->position));
+      MACHSUITE_MD_GRID, "host_position", host_position, sizeof(args->position));
   invokeAcceleratorAndBlock(MACHSUITE_MD_GRID);
 #else
-  md( args->n_points, args->force, args->position );
+  md(host_n_points, host_force, host_position,
+     accel_n_points, accel_force, accel_position);
 #endif
+  memcpy(&args->force, host_force, sizeof(args->force));
+  free(host_n_points);
+  free(host_force);
+  free(host_position);
+  free(accel_n_points);
+  free(accel_force);
+  free(accel_position);
 }
 
 /* Input format:

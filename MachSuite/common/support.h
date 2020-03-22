@@ -4,6 +4,10 @@
 #define CACHELINE_SIZE 64
 
 void* malloc_aligned(size_t size);
+void* calloc_aligned(size_t size);
+// Allocates new aligned memory and copies src (which may be unaligned) into
+// it.
+void* malloc_aligned_memcpy(void* src, size_t size);
 size_t next_multiple(size_t request, size_t align);
 
 ///// File and section functions

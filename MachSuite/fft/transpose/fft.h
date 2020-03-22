@@ -19,7 +19,7 @@ typedef struct complex_t {
 #ifndef M_SQRT1_2
 #define M_SQRT1_2      0.70710678118654752440f
 #endif
-void fft1D_512(TYPE work_x[512], TYPE work_y[512]);
+void fft1D_512(TYPE* host_work_x, TYPE* host_work_y, TYPE* work_x, TYPE* work_y);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.

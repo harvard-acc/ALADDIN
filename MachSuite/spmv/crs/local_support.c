@@ -11,22 +11,44 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_val = malloc_aligned_memcpy(&args->val, sizeof(args->val));
+  int32_t* host_cols = malloc_aligned_memcpy(&args->cols, sizeof(args->cols));
+  int32_t* host_rowDelimiters = malloc_aligned_memcpy(&args->rowDelimiters, sizeof(args->rowDelimiters));
+  TYPE* host_vec = malloc_aligned_memcpy(&args->vec, sizeof(args->vec));
+  TYPE* host_out = malloc_aligned(sizeof(args->out));
+  TYPE* accel_val = malloc_aligned(sizeof(args->val));
+  int32_t* accel_cols = malloc_aligned(sizeof(args->cols));
+  int32_t* accel_rowDelimiters = malloc_aligned(sizeof(args->rowDelimiters));
+  TYPE* accel_vec = malloc_aligned(sizeof(args->vec));
+  TYPE* accel_out = calloc_aligned(sizeof(args->out));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_CRS, "val", (void*)&args->val, sizeof(args->val));
+      MACHSUITE_SPMV_CRS, "host_val", host_val, sizeof(args->val));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_CRS, "cols", (void*)&args->cols, sizeof(args->cols));
+      MACHSUITE_SPMV_CRS, "host_cols", host_cols, sizeof(args->cols));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_CRS, "rowDelimiters", (void*)&args->rowDelimiters,
+      MACHSUITE_SPMV_CRS, "host_rowDelimiters", host_rowDelimiters,
       sizeof(args->rowDelimiters));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_CRS, "vec", (void*)&args->vec, sizeof(args->vec));
+      MACHSUITE_SPMV_CRS, "host_vec", host_vec, sizeof(args->vec));
   mapArrayToAccelerator(
-      MACHSUITE_SPMV_CRS, "out", (void*)&args->out, sizeof(args->out));
+      MACHSUITE_SPMV_CRS, "host_out", host_out, sizeof(args->out));
   invokeAcceleratorAndBlock(MACHSUITE_SPMV_CRS);
 #else
-  spmv( args->val, args->cols, args->rowDelimiters, args->vec, args->out );
+  spmv(host_val, host_cols, host_rowDelimiters, host_vec, host_out,
+       accel_val, accel_cols, accel_rowDelimiters, accel_vec, accel_out);
 #endif
+  memcpy(&args->out, host_out, sizeof(args->out));
+  free(host_val);
+  free(host_cols);
+  free(host_rowDelimiters);
+  free(host_vec);
+  free(host_out);
+  free(accel_val);
+  free(accel_cols);
+  free(accel_rowDelimiters);
+  free(accel_vec);
+  free(accel_out);
 }
 
 /* Input format:

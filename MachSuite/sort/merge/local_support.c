@@ -9,13 +9,18 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_a = malloc_aligned_memcpy(&args->a, sizeof(args->a));
+  TYPE* accel_a = calloc_aligned(sizeof(args->a));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_SORT_MERGE, "a", (void*)&args->a, sizeof(args->a));
+      MACHSUITE_SORT_MERGE, "host_a", host_a, sizeof(args->a));
   invokeAcceleratorAndBlock(MACHSUITE_SORT_MERGE);
 #else
-  ms_mergesort( args->a );
+  ms_mergesort(host_a, accel_a);
 #endif
+  memcpy(&args->a, host_a, sizeof(args->a));
+  free(host_a);
+  free(accel_a);
 }
 
 /* Input format:

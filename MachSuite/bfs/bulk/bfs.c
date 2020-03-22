@@ -10,9 +10,15 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 #include "gem5/dma_interface.h"
 #endif
 
-void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
-            node_index_t starting_node, level_t level[N_NODES],
-            edge_index_t level_counts[N_LEVELS])
+void bfs(node_t* host_nodes,
+         edge_t* host_edges,
+         level_t* host_level,
+         edge_index_t* host_level_counts,
+         node_t* nodes,
+         edge_t* edges,
+         level_t* level,
+         edge_index_t* level_counts,
+         node_index_t starting_node)
 {
   node_index_t n;
   edge_index_t e;
@@ -20,19 +26,13 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   edge_index_t cnt;
 
 #ifdef DMA_MODE
-  dmaLoad(&level[0], 0, N_NODES * sizeof(level_t));
-  dmaLoad(&nodes[0], 0, N_NODES * sizeof(node_t));
-  dmaLoad(&edges[0], 0 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 1 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 2 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 3 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 4 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 5 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 6 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 7 * 512 * sizeof(edge_t), PAGE_SIZE);
+  dmaLoad(nodes, host_nodes, N_NODES * sizeof(node_t));
+  dmaLoad(edges, host_edges, N_EDGES * sizeof(edge_t));
+  dmaLoad(level, host_level, N_NODES * sizeof(level_t));
 #endif
 
-  level[starting_node] = 0;
+  init_horizons: for( i=0; i<N_LEVELS; i++ )
+    level_counts[i] = 0;
   level_counts[0] = 1;
 
   loop_horizons: for( horizon=0; horizon<N_LEVELS; horizon++ ) {
@@ -57,6 +57,6 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
       break;
   }
 #ifdef DMA_MODE
-  dmaStore(&level[0], 0, N_NODES * sizeof(level_t));
+  dmaStore(host_level_counts, level_counts, N_LEVELS * sizeof(edge_index_t));
 #endif
 }

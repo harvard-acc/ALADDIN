@@ -14,9 +14,15 @@ Hong, Oguntebi, Olukotun. "Efficient Parallel Graph Exploration on Multi-Core CP
 #define Q_POP() { q_out = (q_out+1)%N_NODES; }
 #define Q_EMPTY() (q_in>q_out ? q_in==q_out+1 : (q_in==0)&&(q_out==N_NODES-1))
 
-void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
-            node_index_t starting_node, level_t level[N_NODES],
-            edge_index_t level_counts[N_LEVELS])
+void bfs(node_t* host_nodes,
+         edge_t* host_edges,
+         level_t* host_level,
+         edge_index_t* host_level_counts,
+         node_t* nodes,
+         edge_t* edges,
+         level_t* level,
+         edge_index_t* level_counts,
+         node_index_t starting_node)
 {
   node_index_t queue[N_NODES];
   node_index_t q_in, q_out;
@@ -26,16 +32,9 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   unsigned i;
 
 #ifdef DMA_MODE
-  dmaLoad(&level[0], 0, N_NODES * sizeof(level_t));
-  dmaLoad(&nodes[0], 0, N_NODES * sizeof(node_t));
-  dmaLoad(&edges[0], 0 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 1 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 2 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 3 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 4 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 5 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 6 * 512 * sizeof(edge_t), PAGE_SIZE);
-  dmaLoad(&edges[0], 7 * 512 * sizeof(edge_t), PAGE_SIZE);
+  dmaLoad(nodes, host_nodes, N_NODES * sizeof(node_t));
+  dmaLoad(edges, host_edges, N_EDGES * sizeof(edge_t));
+  dmaLoad(level, host_level, N_NODES * sizeof(level_t));
 #endif
 
   /*init_levels: for( n=0; n<N_NODES; n++ )*/
@@ -76,6 +75,6 @@ void bfs(node_t nodes[N_NODES], edge_t edges[N_EDGES],
   printf("\n");
   */
 #ifdef DMA_MODE
-  dmaStore(&level[0], 0, N_NODES * sizeof(level_t));
+  dmaStore(host_level_counts, level_counts, N_LEVELS * sizeof(edge_index_t));
 #endif
 }

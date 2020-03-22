@@ -15,9 +15,11 @@
 //Set number of iterations to execute
 #define MAX_ITERATION 1
 
-void stencil( TYPE orig[row_size * col_size],
-        TYPE sol[row_size * col_size],
-        TYPE filter[f_size] );
+void stencil(TYPE* host_orig,
+             TYPE* host_sol,
+             TYPE* orig,
+             TYPE* sol,
+             TYPE* filter);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.

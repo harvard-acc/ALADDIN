@@ -11,28 +11,15 @@ ASPLOS 1991
 #include "gem5/dma_interface.h"
 #endif
 
-void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
+void bbgemm(TYPE* host_m1, TYPE* host_m2, TYPE* host_prod,
+            TYPE* m1, TYPE* m2, TYPE* prod) {
     int i, k, j, jj, kk;
     int i_row, k_row;
     TYPE temp_x, mul;
 
 #ifdef DMA_MODE
-    dmaLoad(&m1[0], 0 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 1 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 2 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 3 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 4 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 5 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 6 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m1[0], 7 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 0 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 1 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 2 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 3 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 4 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 5 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 6 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&m2[0], 7 * 512 * sizeof(TYPE), PAGE_SIZE);
+    dmaLoad(m1, host_m1, N * sizeof(TYPE));
+    dmaLoad(m2, host_m2, N * sizeof(TYPE));
 #endif
 
     loopjj:for (jj = 0; jj < row_size; jj += block_size){
@@ -51,13 +38,6 @@ void bbgemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
         }
     }
 #ifdef DMA_MODE
-    dmaStore(&prod[0], 0 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 1 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 2 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 3 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 4 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 5 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 6 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&prod[0], 7 * 512 * sizeof(TYPE), PAGE_SIZE);
+    dmaStore(host_prod, prod, N * sizeof(TYPE));
 #endif
 }

@@ -10,7 +10,12 @@ Implementation based on http://www-igm.univ-mlv.fr/~lecroq/string/node8.html
 #define PATTERN_SIZE 4
 #define STRING_SIZE (32411)
 
-int kmp(char pattern[PATTERN_SIZE], char input[STRING_SIZE], int32_t kmpNext[PATTERN_SIZE], int32_t n_matches[1]);
+int kmp(char* host_input,
+        int32_t* host_n_matches,
+        char* pattern,
+        char* input,
+        int32_t* kmpNext,
+        int32_t* n_matches);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 

@@ -4,18 +4,22 @@
 #include "gem5/dma_interface.h"
 #endif
 
-void fft(double real[FFT_SIZE], double img[FFT_SIZE],
-         double real_twid[FFT_SIZE/2], double img_twid[FFT_SIZE/2]) {
+void fft(double* host_real,
+         double* host_img,
+         double* host_real_twid,
+         double* host_img_twid,
+         double* real,
+         double* img,
+         double* real_twid,
+         double* img_twid) {
     int even, odd, span, log, rootindex;
     double temp;
 
 #ifdef DMA_MODE
-    dmaLoad(&real[0], 0 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaLoad(&real[0], 1 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaLoad(&img[0], 0 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaLoad(&img[0], 1 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaLoad(&real_twid[0], 0, 512 * sizeof(double));
-    dmaLoad(&img_twid[0], 0, 512 * sizeof(double));
+    dmaLoad(real, host_real, FFT_SIZE * sizeof(double));
+    dmaLoad(img, host_img, FFT_SIZE * sizeof(double));
+    dmaLoad(real_twid, host_real_twid, (FFT_SIZE / 2) * sizeof(double));
+    dmaLoad(img_twid, host_img_twid, (FFT_SIZE / 2) * sizeof(double));
 #endif
 
     log = 0;
@@ -44,9 +48,7 @@ void fft(double real[FFT_SIZE], double img[FFT_SIZE],
         }
     }
 #ifdef DMA_MODE
-    dmaStore(&real[0], 0 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaStore(&real[0], 1 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaStore(&img[0], 0 * 512 * sizeof(double), 512 * sizeof(double));
-    dmaStore(&img[0], 1 * 512 * sizeof(double), 512 * sizeof(double));
+    dmaStore(host_real, real, FFT_SIZE * sizeof(double));
+    dmaStore(host_img, img, FFT_SIZE * sizeof(double));
 #endif
 }

@@ -11,28 +11,16 @@ SC 2008
 #include "gem5/dma_interface.h"
 #endif
 
-void stencil3d(TYPE C[2], TYPE orig[SIZE], TYPE sol[SIZE]) {
+void stencil3d(TYPE* host_orig,
+               TYPE* host_sol,
+               TYPE* C,
+               TYPE* orig,
+               TYPE* sol) {
     int i, j, k;
     TYPE sum0, sum1, mul0, mul1;
 
 #ifdef DMA_MODE
-    dmaLoad(&orig[0], 0 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 1 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 2 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 3 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 4 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 5 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 6 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 7 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 8 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 9 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 10 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 11 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 12 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 13 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 14 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&orig[0], 15 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&C[0], 0, 2 * sizeof(TYPE));
+    dmaLoad(orig, host_orig, SIZE * sizeof(TYPE));
 #endif
 
     // Handle boundary conditions by filling with original values
@@ -75,21 +63,6 @@ void stencil3d(TYPE C[2], TYPE orig[SIZE], TYPE sol[SIZE]) {
     }
 
 #ifdef DMA_MODE
-    dmaStore(&sol[0], 0 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 1 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 2 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 3 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 4 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 5 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 6 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 7 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 8 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 9 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 10 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 11 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 12 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 13 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 14 * 1024 * sizeof(TYPE), PAGE_SIZE);
-    dmaStore(&sol[0], 15 * 1024 * sizeof(TYPE), PAGE_SIZE);
+    dmaStore(host_sol, sol, SIZE * sizeof(TYPE));
 #endif
 }

@@ -10,7 +10,9 @@ typedef struct {
   uint8_t deckey[32];
 } aes256_context;
 
-void aes256_encrypt_ecb(aes256_context *ctx, uint8_t k[32], uint8_t buf[16]);
+void aes256_encrypt_ecb(
+    aes256_context *host_ctx, uint8_t* host_k, uint8_t* host_buf,
+    aes256_context *ctx, uint8_t* k, uint8_t* buf);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.

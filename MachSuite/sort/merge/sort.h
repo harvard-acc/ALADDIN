@@ -7,7 +7,7 @@
 #define TYPE int32_t
 #define TYPE_MAX INT32_MAX
 
-void ms_mergesort(TYPE a[SIZE]);
+void ms_mergesort(TYPE* host_a, TYPE* a);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.

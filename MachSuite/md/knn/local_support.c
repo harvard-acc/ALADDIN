@@ -11,33 +11,59 @@ int INPUT_SIZE = sizeof(struct bench_args_t);
 
 void run_benchmark( void *vargs ) {
   struct bench_args_t *args = (struct bench_args_t *)vargs;
+  TYPE* host_force_x = malloc_aligned_memcpy(&args->force_x, sizeof(args->force_x));
+  TYPE* host_force_y = malloc_aligned_memcpy(&args->force_y, sizeof(args->force_y));
+  TYPE* host_force_z = malloc_aligned_memcpy(&args->force_z, sizeof(args->force_z));
+  TYPE* host_position_x = malloc_aligned_memcpy(&args->position_x, sizeof(args->position_x));
+  TYPE* host_position_y = malloc_aligned_memcpy(&args->position_y, sizeof(args->position_y));
+  TYPE* host_position_z = malloc_aligned_memcpy(&args->position_z, sizeof(args->position_z));
+  int32_t* host_NL= malloc_aligned_memcpy(&args->NL, sizeof(args->NL));
+  TYPE* accel_force_x = calloc_aligned(sizeof(args->force_x));
+  TYPE* accel_force_y = calloc_aligned(sizeof(args->force_y));
+  TYPE* accel_force_z = calloc_aligned(sizeof(args->force_z));
+  TYPE* accel_position_x = malloc_aligned(sizeof(args->position_x));
+  TYPE* accel_position_y = malloc_aligned(sizeof(args->position_y));
+  TYPE* accel_position_z = malloc_aligned(sizeof(args->position_z));
+  int32_t* accel_NL = malloc_aligned(sizeof(args->NL));
 #ifdef GEM5_HARNESS
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "force_x", (void*)&args->force_x,
-      sizeof(args->force_x));
+      MACHSUITE_MD_KNN, "host_force_x", host_force_x, sizeof(args->force_x));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "force_y", (void*)&args->force_y,
-      sizeof(args->force_y));
+      MACHSUITE_MD_KNN, "host_force_y", host_force_y, sizeof(args->force_y));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "force_z", (void*)&args->force_z,
-      sizeof(args->force_z));
+      MACHSUITE_MD_KNN, "host_force_z", host_force_z, sizeof(args->force_z));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_x", (void*)&args->position_x,
-      sizeof(args->position_x));
+      MACHSUITE_MD_KNN, "host_position_x", host_position_x, sizeof(args->position_x));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_y", (void*)&args->position_y,
-      sizeof(args->position_y));
+      MACHSUITE_MD_KNN, "host_position_y", host_position_y, sizeof(args->position_y));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "position_z", (void*)&args->position_z,
-      sizeof(args->position_z));
+      MACHSUITE_MD_KNN, "host_position_z", host_position_z, sizeof(args->position_z));
   mapArrayToAccelerator(
-      MACHSUITE_MD_KNN, "NL", (void*)&args->NL, sizeof(args->NL));
+      MACHSUITE_MD_KNN, "host_NL", host_NL, sizeof(args->NL));
   invokeAcceleratorAndBlock(MACHSUITE_MD_KNN);
 #else
-  md_kernel( args->force_x, args->force_y, args->force_z,
-             args->position_x, args->position_y, args->position_z,
-             args->NL );
+  md_kernel(host_force_x, host_force_y, host_force_z,
+            host_position_x, host_position_y, host_position_z, host_NL,
+            accel_force_x, accel_force_y, accel_force_z,
+            accel_position_x, accel_position_y, accel_position_z, accel_NL);
 #endif
+  memcpy(&args->force_x, host_force_x, sizeof(args->force_x));
+  memcpy(&args->force_y, host_force_y, sizeof(args->force_y));
+  memcpy(&args->force_z, host_force_z, sizeof(args->force_z));
+  free(host_force_x);
+  free(host_force_y);
+  free(host_force_z);
+  free(host_position_x);
+  free(host_position_y);
+  free(host_position_z);
+  free(host_NL);
+  free(accel_force_x);
+  free(accel_force_y);
+  free(accel_force_z);
+  free(accel_position_x);
+  free(accel_position_y);
+  free(accel_position_z);
+  free(accel_NL);
 }
 
 /* Input format:

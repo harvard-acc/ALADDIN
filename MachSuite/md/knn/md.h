@@ -18,13 +18,20 @@ In Proceedings of the 3rd Workshop on General-Purpose Computation on Graphics Pr
 #define lj1           1.5
 #define lj2           2.0
 
-void md_kernel(TYPE force_x[nAtoms],
-               TYPE force_y[nAtoms],
-               TYPE force_z[nAtoms],
-               TYPE position_x[nAtoms],
-               TYPE position_y[nAtoms],
-               TYPE position_z[nAtoms],
-               int32_t NL[nAtoms*maxNeighbors]);
+void md_kernel(TYPE* host_force_x,
+               TYPE* host_force_y,
+               TYPE* host_force_z,
+               TYPE* host_position_x,
+               TYPE* host_position_y,
+               TYPE* host_position_z,
+               int32_t* host_NL,
+               TYPE* force_x,
+               TYPE* force_y,
+               TYPE* force_z,
+               TYPE* position_x,
+               TYPE* position_y,
+               TYPE* position_z,
+               int32_t* NL);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 

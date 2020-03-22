@@ -17,6 +17,18 @@ void* malloc_aligned(size_t size) {
   return ptr;
 }
 
+void* calloc_aligned(size_t size) {
+  void* ptr = malloc_aligned(size);
+  memset(ptr, 0, size);
+  return ptr;
+}
+
+void* malloc_aligned_memcpy(void* src, size_t size) {
+  void* dest = malloc_aligned(size);
+  memcpy(dest, src, size);
+  return dest;
+}
+
 size_t next_multiple(size_t request, size_t align) {
   size_t n = request / align;
   if (n == 0)

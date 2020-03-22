@@ -9,19 +9,24 @@ http://www.cs.berkeley.edu/~mhoemmen/matrix-seminar/slides/UCB_sparse_tutorial_1
 #include "gem5/dma_interface.h"
 #endif
 
-void spmv(TYPE val[NNZ], int32_t cols[NNZ], int32_t rowDelimiters[N+1], TYPE vec[N], TYPE out[N]) {
+void spmv(TYPE* host_val,
+          int32_t* host_cols,
+          int32_t* host_rowDelimiters,
+          TYPE* host_vec,
+          TYPE* host_out,
+          TYPE* val,
+          int32_t* cols,
+          int32_t* rowDelimiters,
+          TYPE* vec,
+          TYPE* out) {
     int i, j;
     TYPE sum, Si;
 
 #ifdef DMA_MODE
-    dmaLoad(&rowDelimiters[0], 0, (N + 1) * sizeof(int32_t));
-    dmaLoad(&vec[0], 0, N * sizeof(TYPE));
-    dmaLoad(&val[0], 0 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&val[0], 1 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&val[0], 2 * 512 * sizeof(TYPE), PAGE_SIZE);
-    dmaLoad(&val[0], 3 * 512 * sizeof(TYPE), 130 * sizeof(TYPE));
-    dmaLoad(&cols[0], 0 * 1024 * sizeof(int32_t), PAGE_SIZE);
-    dmaLoad(&cols[0], 1 * 1024 * sizeof(int32_t), 642 * sizeof(int32_t));
+    dmaLoad(rowDelimiters, host_rowDelimiters, (N + 1) * sizeof(int32_t));
+    dmaLoad(vec, host_vec, N * sizeof(TYPE));
+    dmaLoad(val, host_val, NNZ * sizeof(TYPE));
+    dmaLoad(cols, host_cols, NNZ * sizeof(int32_t));
 #endif
 
     spmv_1 : for(i = 0; i < N; i++){
@@ -35,7 +40,7 @@ void spmv(TYPE val[NNZ], int32_t cols[NNZ], int32_t rowDelimiters[N+1], TYPE vec
         out[i] = sum;
     }
 #ifdef DMA_MODE
-    dmaStore(&out[0], 0, N * sizeof(TYPE));
+    dmaStore(host_out, out, N * sizeof(TYPE));
 #endif
 }
 
