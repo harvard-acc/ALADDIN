@@ -81,3 +81,4 @@ clean-trace:
 	rm -f dynamic_trace.gz
 	rm -f *-instrumented
 	rm -f full.s
+	rm -f labelmap
