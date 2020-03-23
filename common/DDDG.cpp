@@ -492,13 +492,9 @@ void DDDG::parse_parameter(const std::string& line, int param_tag) {
 
       auto addr_it = address_last_written.find(mem_address);
       if (addr_it != address_last_written.end()) {
-        // Check if the last node to write was a DMA load. If so, we must obey
-        // this memory ordering, because DMA loads are variable-latency
-        // operations.
-        ExecNode* last_node_to_write = program->nodes.at(addr_it->second);
-        if (last_node_to_write->is_dma_load())
-          handle_post_write_dependency(
-              mem_address, mem_size, current_node_id);
+        // Found a WAW dependency.
+        handle_post_write_dependency(
+            mem_address, mem_size, current_node_id);
         // Now we can overwrite the last written node id.
         addr_it->second = current_node_id;
       } else {
