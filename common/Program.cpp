@@ -80,9 +80,9 @@ std::list<cnode_pair_t> Program::findLoopBoundaries(
   // section and add the corresponding pair of nodes to loop_boundaries.
   //
   // The last loop bound node is one past the last node, so we'll ignore it.
-  for (auto it = loop_bounds.begin(); it != --loop_bounds.end(); ++it) {
-    const DynLoopBound& loop_bound = *it;
-    const ExecNode* node = nodes.at(loop_bound.node_id);
+  for (int i = 0; i < int(loop_bounds.size()) - 1; ++i) {
+    const DynLoopBound* loop_bound = &loop_bounds[i];
+    const ExecNode* node = nodes.at(loop_bound->node_id);
     const Vertex vertex = node->get_vertex();
     // Check if the loop information matches.
     bool is_same_loop = false;
@@ -97,22 +97,22 @@ std::list<cnode_pair_t> Program::findLoopBoundaries(
     }
     if (boost::degree(vertex, graph) > 0 && is_same_loop) {
       if (!is_loop_executing) {
-        if (loop_bound.target_loop_depth > node->get_loop_depth()) {
+        if (loop_bound->target_loop_depth > node->get_loop_depth()) {
           is_loop_executing = true;
           loop_start = node;
-          current_loop_depth = loop_bound.target_loop_depth;
+          current_loop_depth = loop_bound->target_loop_depth;
         }
       } else {
-        if (loop_bound.target_loop_depth == current_loop_depth) {
+        if (loop_bound->target_loop_depth == current_loop_depth) {
           // We're repeating an iteration of the same loop body.
           loop_boundaries.push_back(std::make_pair(loop_start, node));
           loop_start = node;
-        } else if (loop_bound.target_loop_depth < current_loop_depth) {
+        } else if (loop_bound->target_loop_depth < current_loop_depth) {
           // We've left the loop.
           loop_boundaries.push_back(std::make_pair(loop_start, node));
           is_loop_executing = false;
           loop_start = NULL;
-        } else if (loop_bound.target_loop_depth > current_loop_depth) {
+        } else if (loop_bound->target_loop_depth > current_loop_depth) {
           // We've entered an inner loop nest. We're not interested in the
           // inner loop nest.
           continue;
