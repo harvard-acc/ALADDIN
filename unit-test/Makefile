@@ -44,7 +44,7 @@ TESTS = $(patsubst %.o,%,$(TEST_OBJS))
 TEST_DEPS = $(ALADDIN_HOME)/libaladdin.a $(COMMON_OBJS)
 
 CFLAGS += -g $(BITWIDTH) -std=c++0x -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include \
-         -I$(ALADDIN_HOME)/common -I$(ALADDIN_HOME)
+         -I$(ALADDIN_HOME)/common -I$(ALADDIN_HOME) -Wno-deprecated-declarations
 LFLAGS += -L$(BOOST_ROOT)/lib -L$(ALADDIN_HOME) -laladdin -lboost_graph -lpthread -lz
 
 # Get the LLVM version

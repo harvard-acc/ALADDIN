@@ -13,4 +13,7 @@
 #error "Only LLVM-3.4 and LLVM-6.0 are supported!"
 #endif
 
+// Returns the name of the opcode.
+std::string opcode_name(uint8_t opcode);
+
 #endif

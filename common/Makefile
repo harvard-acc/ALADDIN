@@ -25,7 +25,7 @@ GRAPH_OPTS_OBJS = graph_opts/base_opt.o \
 									graph_opts/global_loop_pipelining.o \
 									graph_opts/dma_base_address_init.o
 
-UTILS_OBJS = file_func.o power_func.o
+UTILS_OBJS = file_func.o power_func.o opcode_func.o
 DEBUGGER_OBJS = debugger/debugger_print.o \
 		debugger/debugger_commands.o \
 		debugger/debugger_prompt.o
@@ -51,7 +51,7 @@ CACTI_SRCS = $(patsubst %.o,%.cc,$(CACTI_OBJS))
 CACTI_OBJ_FILES = $(patsubst %.o,$(CACTI_OBJ_DIR)/%.o,$(CACTI_OBJS))
 
 CPPFLAGS = -I$(BOOST_ROOT) -I$(BOOST_ROOT)/include -I$(ALADDIN_HOME) -Icacti-p
-CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS)
+CFLAGS += -g $(BITWIDTH) -std=c++11 $(CPPFLAGS) -Wno-deprecated-declarations
 LFLAGS += -L$(BOOST_ROOT)/lib -lz -lboost_graph -lpthread
 
 ifeq ($(HAS_READLINE),1)

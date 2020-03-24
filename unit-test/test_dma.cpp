@@ -4,6 +4,12 @@
 #include "file_func.h"
 #include "Scratchpad.h"
 #include "ScratchpadDatapath.h"
+#include "node_matchers.h"
+
+using aladdin::testing::ContainsLoadConnectedTo;
+using aladdin::testing::ContainsStoreConnectedTo;
+using aladdin::testing::ContainsDMAStoreConnectedTo;
+using aladdin::testing::ContainsBranchConnectedTo;
 
 SCENARIO("Test DMA Dependence w/ Triad", "[triad]") {
   GIVEN("Test Triad w/ Input Size 2048, cyclic partition with a factor of 2, "
@@ -150,11 +156,14 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
         }
       }
       THEN("The stores in the memcpy are only connected to dmaStores, GEPs, "
-           "loads, and the final return node.") {
+           "loads, other stores to the same address, and the final return "
+           "node.") {
         for (unsigned node_id = firstLoopStore;
              node_id < firstLoopStore + numNodesInLoop;
              node_id += 8) {
-          REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
+          REQUIRE_THAT(prog, ContainsLoadConnectedTo(node_id) &&
+                                 ContainsStoreConnectedTo(node_id) &&
+                                 ContainsDMAStoreConnectedTo(node_id));
           REQUIRE(prog.edgeExists(node_id, dmaStore1) == true);
           REQUIRE(prog.edgeExists(node_id, dmaStore2) == false);
           REQUIRE(prog.edgeExists(dmaLoad1, node_id) == false);
@@ -163,7 +172,9 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
         for (unsigned node_id = secondLoopStore;
              node_id < secondLoopStore + numNodesInLoop;
              node_id += 8) {
-          REQUIRE(prog.getNumConnectedNodes(node_id) == 4);
+          REQUIRE_THAT(prog, ContainsLoadConnectedTo(node_id) &&
+                                 ContainsStoreConnectedTo(node_id) &&
+                                 ContainsDMAStoreConnectedTo(node_id));
           REQUIRE(prog.edgeExists(node_id, dmaStore2) == true);
           REQUIRE(prog.edgeExists(dmaLoad1, node_id) == false);
           REQUIRE(prog.edgeExists(dmaLoad2, node_id) == false);
@@ -195,12 +206,14 @@ SCENARIO("Test double buffering memcpy", "[double-buffering]") {
            "branches.") {
         for (unsigned node_id = firstLoopStore;
              node_id < firstLoopStore + numNodesInLoop;
-             node_id += 8)
-          REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
+             node_id += 8) {
+          REQUIRE_THAT(prog, ContainsBranchConnectedTo(node_id, 2));
+        }
         for (unsigned node_id = secondLoopStore;
              node_id < secondLoopStore + numNodesInLoop;
-             node_id += 8)
-          REQUIRE(prog.getNumConnectedNodes(node_id) == 6);
+             node_id += 8) {
+          REQUIRE_THAT(prog, ContainsBranchConnectedTo(node_id, 2));
+        }
       }
     }
   }
