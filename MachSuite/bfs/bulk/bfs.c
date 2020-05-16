@@ -24,6 +24,7 @@ void bfs(node_t* host_nodes,
   edge_index_t e;
   level_t horizon;
   edge_index_t cnt;
+  int i;
 
 #ifdef DMA_MODE
   dmaLoad(nodes, host_nodes, N_NODES * sizeof(node_t));
@@ -31,6 +32,7 @@ void bfs(node_t* host_nodes,
   dmaLoad(level, host_level, N_NODES * sizeof(level_t));
 #endif
 
+  level[starting_node] = 0;
   init_horizons: for( i=0; i<N_LEVELS; i++ )
     level_counts[i] = 0;
   level_counts[0] = 1;
