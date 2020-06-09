@@ -17,6 +17,11 @@ void md(int* host_n_points,
   dvector_t p, q; // p is a point in b0, q is a point in either b0 or b1
   int32_t p_idx, q_idx;
   TYPE dx, dy, dz, r2inv, r6inv, potential, f;
+#ifndef DMA_MODE
+  n_points = host_n_points;
+  force = host_force;
+  position = host_position;
+#endif
   ARRAY_3D(int, _n_points, n_points, blockSide, blockSide);
   ARRAY_4D(dvector_t, _force, force, blockSide, blockSide, densityFactor);
   ARRAY_4D(dvector_t, _position, position, blockSide, blockSide, densityFactor);

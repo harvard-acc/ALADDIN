@@ -128,6 +128,9 @@ void fft1D_512(TYPE* host_work_x, TYPE* host_work_y, TYPE* work_x, TYPE* work_y)
 #ifdef DMA_MODE
     dmaLoad(work_x, host_work_x, 512 * sizeof(TYPE));
     dmaLoad(work_y, host_work_y, 512 * sizeof(TYPE));
+#else
+    work_x = host_work_x;
+    work_y = host_work_y;
 #endif
 
     stride = THREADS;

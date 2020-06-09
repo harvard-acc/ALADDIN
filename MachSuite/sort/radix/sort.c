@@ -89,6 +89,8 @@ void ss_sort(int* host_a,
 
 #ifdef DMA_MODE
     dmaLoad(a, host_a, SIZE * sizeof(int));
+#else
+    a = host_a;
 #endif
 
     #define BUFFER_A 0

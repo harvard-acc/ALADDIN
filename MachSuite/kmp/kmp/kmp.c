@@ -38,6 +38,9 @@ int kmp(char* host_input,
     // mapped to registers, not SRAM, in which case they don't need to be
     // loaded.
     dmaLoad(input, host_input, STRING_SIZE * sizeof(char));
+#else
+    input = host_input;
+    n_matches = host_n_matches;
 #endif
     n_matches[0] = 0;
 

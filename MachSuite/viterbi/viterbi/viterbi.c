@@ -25,6 +25,11 @@ int viterbi(prob_t* host_init,
   dmaLoad(init, host_init, N_STATES * sizeof(prob_t));
   dmaLoad(transition, host_transition, N_STATES * N_STATES * sizeof(prob_t));
   dmaLoad(emission, host_emission, N_STATES * N_TOKENS * sizeof(prob_t));
+#else
+  init = host_init;
+  transition = host_transition;
+  emission = host_emission;
+  path = host_path;
 #endif
 
   // Initialize with first observation and initial probabilities

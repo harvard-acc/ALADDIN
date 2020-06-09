@@ -32,6 +32,11 @@ void needwun(char* host_SEQA,
 #ifdef DMA_MODE
     dmaLoad(SEQA, host_SEQA, ALEN * sizeof(char));
     dmaLoad(SEQB, host_SEQB, BLEN * sizeof(char));
+#else
+    SEQA = host_SEQA;
+    SEQB = host_SEQB;
+    alignedA = host_alignedA;
+    alignedB = host_alignedB;
 #endif
 
     init_row: for(a_idx=0; a_idx<(ALEN+1); a_idx++){

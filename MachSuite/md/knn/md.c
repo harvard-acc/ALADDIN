@@ -37,6 +37,14 @@ void md_kernel(TYPE* host_force_x,
     dmaLoad(position_y, host_position_y, nAtoms * sizeof(TYPE));
     dmaLoad(position_z, host_position_z, nAtoms * sizeof(TYPE));
     dmaLoad(NL, host_NL, nAtoms * maxNeighbors * sizeof(int32_t));
+#else
+    position_x = host_position_x;
+    position_y = host_position_y;
+    position_z = host_position_z;
+    NL = host_NL;
+    force_x = host_force_x;
+    force_y = host_force_y;
+    force_z = host_force_z;
 #endif
 
 loop_i : for (i = 0; i < nAtoms; i++){

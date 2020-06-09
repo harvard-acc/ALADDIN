@@ -16,6 +16,9 @@ void stencil(TYPE* host_orig,
     dmaLoad(orig, host_orig, row_size * col_size * sizeof(TYPE));
     // This is used to zero-initialize the array.
     dmaLoad(sol, host_sol, row_size * col_size * sizeof(TYPE));
+#else
+    orig = host_orig;
+    sol = host_sol;
 #endif
 
     stencil_label1:for (r=0; r<row_size-2; r++) {

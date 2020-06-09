@@ -13,6 +13,10 @@ void gemm(TYPE* host_m1, TYPE* host_m2, TYPE* host_prod,
 #ifdef DMA_MODE
     dmaLoad(m1, host_m1, N * sizeof(TYPE));
     dmaLoad(m2, host_m2, N * sizeof(TYPE));
+#else
+    m1 = host_m1;
+    m2 = host_m2;
+    prod = host_prod;
 #endif
 
     outer:for(i=0;i<row_size;i++) {

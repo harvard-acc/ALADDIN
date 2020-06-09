@@ -35,6 +35,11 @@ void bfs(node_t* host_nodes,
   dmaLoad(nodes, host_nodes, N_NODES * sizeof(node_t));
   dmaLoad(edges, host_edges, N_EDGES * sizeof(edge_t));
   dmaLoad(level, host_level, N_NODES * sizeof(level_t));
+#else
+  nodes = host_nodes;
+  edges = host_edges;
+  level = host_level;
+  level_counts = host_level_counts;
 #endif
 
   /*init_levels: for( n=0; n<N_NODES; n++ )*/

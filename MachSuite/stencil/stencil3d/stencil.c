@@ -21,6 +21,9 @@ void stencil3d(TYPE* host_orig,
 
 #ifdef DMA_MODE
     dmaLoad(orig, host_orig, SIZE * sizeof(TYPE));
+#else
+    orig = host_orig;
+    sol = host_sol;
 #endif
 
     // Handle boundary conditions by filling with original values

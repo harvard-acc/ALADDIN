@@ -38,6 +38,8 @@ void ms_mergesort(TYPE* host_a, TYPE* a) {
 
 #ifdef DMA_MODE
     dmaLoad(a, host_a, SIZE * sizeof(TYPE));
+#else
+    a = host_a;
 #endif
 
     start = 0;

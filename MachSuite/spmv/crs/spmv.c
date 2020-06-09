@@ -27,6 +27,12 @@ void spmv(TYPE* host_val,
     dmaLoad(vec, host_vec, N * sizeof(TYPE));
     dmaLoad(val, host_val, NNZ * sizeof(TYPE));
     dmaLoad(cols, host_cols, NNZ * sizeof(int32_t));
+#else
+    rowDelimiters = host_rowDelimiters;
+    vec = host_vec;
+    val = host_val;
+    cols = host_cols;
+    out = host_out;
 #endif
 
     spmv_1 : for(i = 0; i < N; i++){

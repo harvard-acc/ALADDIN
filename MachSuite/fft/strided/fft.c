@@ -20,6 +20,11 @@ void fft(double* host_real,
     dmaLoad(img, host_img, FFT_SIZE * sizeof(double));
     dmaLoad(real_twid, host_real_twid, (FFT_SIZE / 2) * sizeof(double));
     dmaLoad(img_twid, host_img_twid, (FFT_SIZE / 2) * sizeof(double));
+#else
+    real = host_real;
+    img = host_img;
+    real_twid = host_real_twid;
+    img_twid = host_img_twid;
 #endif
 
     log = 0;

@@ -190,6 +190,10 @@ void aes256_encrypt_ecb(
     dmaLoad(k, host_k, 32 * sizeof(uint8_t));
     dmaLoad(buf, host_buf, 16 * sizeof(uint8_t));
     dmaLoad(ctx, host_ctx, sizeof(aes256_context));
+#else
+    k = host_k;
+    buf = host_buf;
+    ctx = host_ctx;
 #endif
 
     ecb1 : for (i = 0; i < sizeof(ctx->key); i++){
