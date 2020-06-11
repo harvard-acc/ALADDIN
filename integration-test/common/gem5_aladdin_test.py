@@ -3,7 +3,7 @@
 # All integration tests should inherit from this class.
 # Framework design inspired by that of XIOSim.
 
-import ConfigParser
+from configparser import ConfigParser
 import unittest
 import os
 import shutil
@@ -109,7 +109,7 @@ class Gem5AladdinTest(unittest.TestCase):
 
     This can only be reliably done by reading the gem5.cfg file.
     """
-    gem5cfg = ConfigParser.SafeConfigParser()
+    gem5cfg = ConfigParser()
     gem5cfg.read(os.path.join(target_dir, self.accel_cfg_file))
     test = gem5cfg.sections()[0]
     aladdin_cfg = gem5cfg.get(test, "config_file_name")
@@ -157,7 +157,7 @@ class Gem5AladdinTest(unittest.TestCase):
     manually in that same directory. We have to update paths for the test
     directory.
     """
-    gem5cfg = ConfigParser.SafeConfigParser()
+    gem5cfg = ConfigParser()
     gem5cfg.read(os.path.join(self.test_dir, self.accel_cfg_file))
     # TODO: We only support a single accelerator test at the moment. Expand
     # this when we encounter the need for multi-accelerator tests.
@@ -216,7 +216,7 @@ class Gem5AladdinTest(unittest.TestCase):
       params: Dict of parameters to values. For switch flags, simply pass True
          as the value.
     """
-    for param, value in params.iteritems():
+    for param, value in params.items():
       self.sim_script_args[param] = value
 
   def addExpectedStatResult(self, stat_name, stat_value):
@@ -237,13 +237,13 @@ class Gem5AladdinTest(unittest.TestCase):
     sim_script = "%s/configs/aladdin/aladdin_se.py" % self.workspace
 
     combined_sim_script_args = []
-    for param, value in self.sim_script_args.iteritems():
+    for param, value in self.sim_script_args.items():
       if isinstance(value, bool):
         combined_sim_script_args.append("--%s" % param)
       else:
         combined_sim_script_args.append("--%s=%s" % (param, value))
 
-    for param, value in DEFAULT_POST_SCRIPT_ARGS.iteritems():
+    for param, value in DEFAULT_POST_SCRIPT_ARGS.items():
       if param not in self.sim_script_args:
         if type(value) == bool:
           combined_sim_script_args.append("--%s" % param)
@@ -327,14 +327,14 @@ class Gem5AladdinTest(unittest.TestCase):
     process = subprocess.Popen("sh run.sh", shell=True,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, _ = process.communicate()
-    with open(os.path.join(self.run_dir, "stdout"), "w") as f:
+    with open(os.path.join(self.run_dir, "stdout"), "wb") as f:
       f.write(stdout)
     self.assertEqual(process.returncode, 0, msg="gem5 returned nonzero exit code!")
 
-    expected_stats = [s for s in self.expected_results.iterkeys()]
+    expected_stats = [s for s in self.expected_results]
     statistics = self.parseGem5Stats(expected_stats=expected_stats)
 
-    for stat, value in self.expected_results.iteritems():
+    for stat, value in self.expected_results.items():
       delta = SIM_TICKS_ERROR * value;
       self.assertAlmostEqual(
           statistics[stat], value, delta=delta,
