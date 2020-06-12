@@ -37,11 +37,11 @@ GET_LABELED_STMTS = $(TRACER_HOME)/bin/get-labeled-stmts
 MODE = LLVM_TRACE
 
 ALL_SRCS = $(SRCS)
-CPPFLAGS = -I$(ALADDIN_HOME) -I$(COMMON_DIR) -D$(MODE)
+CPPFLAGS = -I$(ALADDIN_HOME) -I$(ALADDIN_HOME)/gem5 -I$(COMMON_DIR) -D$(MODE)
 
 ifeq ($(DMA_MODE),1)
 	ALL_SRCS += $(ALADDIN_HOME)/gem5/dma_interface.c
-	CPPFLAGS += -DDMA_MODE -I$(ALADDIN_HOME)/gem5
+	CPPFLAGS += -DDMA_MODE
 endif
 
 LLVM_VERSION = $(shell clang --version | grep -o -m 1 "[0-9\.]\+" | head -n 1)
@@ -61,7 +61,7 @@ full.s: full.llvm
 	llc -O0 -disable-fp-elim -filetype=asm -o $@ $<
 
 $(EXEC)-instrumented: full.s
-	$(CXX) -static -O0 -fno-inline -o $@ $< -lm -lz -lpthread
+	$(CXX) -no-pie -O0 -fno-inline -o $@ $< -lm -lz -lpthread
 
 %-opt.llvm: %.c labelmap
 	@$(eval CC1_COMMAND=$(shell clang -static -g -O1 -S -fno-slp-vectorize \
