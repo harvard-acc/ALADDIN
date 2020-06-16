@@ -292,21 +292,22 @@ int ScratchpadDatapath::rescheduleNodesWhenNeeded() {
   std::vector<Vertex> topo_nodes;
   boost::topological_sort(program.graph, std::back_inserter(topo_nodes));
   // bottom nodes first
-  std::map<unsigned, float> alap_finish_time;
+  std::map<unsigned, int> alap_finish_time;
   for (auto node_it : program.nodes)
-    alap_finish_time[node_it.first] = num_cycles * cycle_time;
+    alap_finish_time[node_it.first] = ceil(num_cycles * (double)cycle_time);
 
   for (auto vi = topo_nodes.begin(); vi != topo_nodes.end(); ++vi) {
     unsigned node_id = program.atVertex(*vi);
     ExecNode* node = program.nodes.at(node_id);
     if (node->is_isolated())
       continue;
-    float alap_start_execution_time =
+    int alap_start_execution_time =
         node->get_start_execution_cycle() * cycle_time;
     /* Do not reschedule memory ops and branch ops.*/
     if (!node->is_memory_op() && !node->is_branch_op()) {
-      float alap_complete_execution_time = alap_finish_time.at(node_id);
-      int new_cycle = floor(alap_complete_execution_time / cycle_time) - 1;
+      int alap_complete_execution_time = alap_finish_time.at(node_id);
+      int new_cycle =
+          floor(alap_complete_execution_time / (double)cycle_time) - 1;
       if (new_cycle > node->get_complete_execution_cycle()) {
         node->set_complete_execution_cycle(new_cycle);
         if (node->is_fp_op()) {
