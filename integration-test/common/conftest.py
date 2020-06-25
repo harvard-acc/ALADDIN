@@ -1,4 +1,4 @@
-""" This contains pytest hook implementations.
+""" Implements pytest hooks to run MachSuite tests on Aladdin.
 
 pytest will look for a conftest.py for directory-specific pytest hook
 implementations (tests in the same directory will share the hooks). All the hook
@@ -12,22 +12,6 @@ specify the number of processes to run the tests. xdist uses a master node for
 control process and worker nodes for running actual tests. Each node will start
 a pytest session to collect the tests (they must see the tests consistent
 across all nodes), and then the tests will be distributed to all the workers.
-
-Here we implement these pytest hooks:
-- pytest_addoption: It allows the test to take in command line arguments. This
-    is called once at the beginning of a test run. We add a sweep file command
-    line option.
-- pytest_configure: It performs initial configuration. This is called after
-    command line options have been parsed. We use this hook to invoke the sweep
-    generator to create sweeps.
-- pytest_unconfigure: It's called before test run is exited. We implement this
-    to delete temporary test files.
-- pytest_configure_node: This is a pytest-xdist hook. It configures worker
-    nodes. It only runs on a worker node. We implement this to make the master
-    share the test run scripts with the workers.
-- pytest_generate_tests: This can be used to generate (multiple) parametrized
-    calls to a test function. We use the shared `run_scripts` to dynamically
-    generate tests (one for each run script).
 """
 
 import pytest
@@ -46,13 +30,19 @@ def is_master(config):
   return not hasattr(config, 'workerinput')
 
 def pytest_addoption(parser):
-  """Add an option for specifying the sweep file."""
+  """Add an option for specifying the sweep file.
+
+  This hook allows the test to take in command line arguments. This is called
+  once at the beginning of a test run. We add a sweep file command line option.
+  """
   parser.addoption("--sweep-file", action="store", help="Sweep file")
 
 def pytest_configure(config):
   """Generate sweeps using the sweep generator.
 
-  Only the master node performs the sweep generation.
+  This hook performs initial configuration. This is called after command line
+  options have been parsed. We use this hook to invoke the sweep generator to
+  create sweeps. Only the master node performs the sweep generation.
   """
   if is_master(config):
     cwd = os.getcwd()
@@ -92,17 +82,31 @@ def pytest_configure(config):
     config.run_scripts = run_scripts
 
 def pytest_unconfigure(config):
-  """Delete test temporary files."""
+  """Delete test temporary files.
+
+  This is called before test run is exited. We implement this to delete
+  temporary test files.
+  """
   if is_master(config):
     shutil.rmtree(config.tmp_output_dir)
     os.remove(config.tmp_sweep_file)
 
 def pytest_configure_node(node):
-  """This hook only runs on the workers to get the shared `run_scripts`."""
+  """This hook only runs on the workers to get the shared `run_scripts`.
+
+  This is a pytest-xdist hook. It configures worker nodes. It only runs on a
+  worker node. We implement this to make the master share the test run scripts
+  with the workers.
+  """
   node.workerinput["run_scripts"] = node.config.run_scripts
 
 def pytest_generate_tests(metafunc):
-  """Generate a test for each run script in the shared `run_scripts`."""
+  """Generate a test for each run script in the shared `run_scripts`.
+
+  This can be used to generate (multiple) parametrized calls to a test function.
+  We use the shared `run_scripts` to dynamically generate tests (one for each
+  run script).
+  """
   if is_master(metafunc.config):
     run_scripts = metafunc.config.run_scripts
   else:
