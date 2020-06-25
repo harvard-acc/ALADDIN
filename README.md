@@ -1,6 +1,6 @@
 ALADDIN v2.0 Public Release
 ============================================
-[![build status](https://travis-ci.org/ysshao/ALADDIN.svg?branch=master)](https://travis-ci.org/ysshao/ALADDIN)
+[![build status](https://travis-ci.org/harvard-acc/ALADDIN.svg?branch=master)](https://travis-ci.org/harvard-acc/ALADDIN)
 
 Aladdin is a pre-RTL, power-performance simulator for fixed-function
 accelerators.
