@@ -1,0 +1,22 @@
+# This imports the Gem5DesignSweep type into global scope.
+use benchmarks.designsweeptypes.Gem5DesignSweep
+
+begin Gem5DesignSweep single
+
+use benchmarks.machsuite.*
+
+generate configs
+generate dma_trace
+generate gem5_binary
+
+# Set parameters.
+set output_dir "%(output_dir)s" # A comment
+set source_dir "../src/aladdin/MachSuite"
+set simulator "gem5-cpu"
+set memory_type "spad"
+
+sweep cycle_time from 1 to 3
+
+source "../../../../sweeps/benchmarks/machsuite_constants.xe"
+
+end single
