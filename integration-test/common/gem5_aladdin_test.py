@@ -326,9 +326,13 @@ class Gem5AladdinTest(unittest.TestCase):
     os.chdir(self.run_dir)
     process = subprocess.Popen("sh run.sh", shell=True,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, _ = process.communicate()
+    stdout, stderr = process.communicate()
     with open(os.path.join(self.run_dir, "stdout"), "wb") as f:
       f.write(stdout)
+    with open(os.path.join(self.run_dir, "stderr"), "wb") as f:
+      f.write(stderr)
+    print(stdout)
+    print(stderr)
     self.assertEqual(process.returncode, 0, msg="gem5 returned nonzero exit code!")
 
     expected_stats = [s for s in self.expected_results]
