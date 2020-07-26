@@ -28,7 +28,7 @@ LFLAGS += -lmysqlcppconn
 CFLAGS += -I$(MYSQL_HOME)/include -DUSE_DB
 endif
 
-TEST_REPORT_DIR = report_dir
+TEST_REPORT_DIR ?= report_dir
 
 COMMON_OBJS = catch_common.o
 TEST_OBJS = test_dddg_generation.o test_init_base_address.o \
