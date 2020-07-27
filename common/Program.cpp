@@ -73,7 +73,7 @@ std::list<cnode_pair_t> Program::findLoopBoundaries(
   bool is_loop_executing = false;
   unsigned current_loop_depth = (unsigned)-1;
 
-  const ExecNode* loop_start;
+  const ExecNode* loop_start = nullptr;
 
   // The loop boundaries provided by the accelerator are in a linear list with
   // no structure. We need to identify the start and end of each unrolled loop
