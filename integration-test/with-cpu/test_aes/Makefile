@@ -8,11 +8,11 @@ all: aes trace
 
 aes:
 	$(MAKE) -C $(ALADDIN_HOME)/MachSuite/aes/aes gem5-accel
-	cp $(ALADDIN_HOME)/MachSuite/aes/aes/aes-aes-gem5-accel aes
+	cp $(ALADDIN_HOME)/MachSuite/aes/aes/aes_aes-gem5-accel aes
 
 trace:
 	$(MAKE) -C $(ALADDIN_HOME)/MachSuite/aes/aes clean-trace
-	$(MAKE) -C $(ALADDIN_HOME)/MachSuite/aes/aes trace-binary
+	$(MAKE) -C $(ALADDIN_HOME)/MachSuite/aes/aes dma-trace-binary
 	$(MAKE) -C $(ALADDIN_HOME)/MachSuite/aes/aes run-trace
 	cp $(ALADDIN_HOME)/MachSuite/aes/aes/dynamic_trace.gz .
 
