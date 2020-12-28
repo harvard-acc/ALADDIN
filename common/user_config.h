@@ -121,8 +121,6 @@ class UserConfigParams {
           continue;
 
         if (rangesOverlap(base_0, end_0, base_1, end_1)) {
-          continue;
-        } else {
           overlapping_arrays.insert(OverlappingArrayPair(
               array_0_name, base_0, end_0, array_1_name, base_1, end_1));
         }
