@@ -516,12 +516,16 @@ bool HybridDatapath::handleDmaMemoryOp(ExecNode* node) {
 
   MemAccessStatus status = Invalid;
   unsigned node_id = node->get_node_id();
-  if (inflight_dma_nodes.find(node_id) == inflight_dma_nodes.end())
-    inflight_dma_nodes[node_id] = status;
-  else
+  if (inflight_dma_nodes.find(node_id) == inflight_dma_nodes.end()) {
+    if (inflight_dma_nodes.size() < maxInflightNodes)
+      inflight_dma_nodes[node_id] = status;
+    else
+      return false;
+  } else {
     status = inflight_dma_nodes.at(node_id);
+  }
   HostMemAccess* mem_access = node->get_host_mem_access();
-  if (status == Invalid && inflight_dma_nodes.size() < maxInflightNodes) {
+  if (status == Invalid) {
     /* A DMA load needs to be preceded by a cache flush of the buffer being
      * sent, while a DMA store needs to be preceded by a cache invalidate of the
      * receiving buffer.
