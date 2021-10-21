@@ -73,6 +73,12 @@ class UserConfigParams {
       // By default, the host memory type is set to DMA.
       partition[array_name] = { dma, none, size, 0, 0, 0 };
     }
+    // This API may get called via mapArrayToAccelerator, which happens before
+    // we actually parse the DDDG. In these cases, the base address is often
+    // zero (we haven't parsed the trace yet, and this base address is the
+    // TRACE address), which means we can't check for overlap, so just bail.
+    if (curr_array_base == 0) return;
+
     // To resolve the overlapping array case, find all other partition entries
     // that overlap with this range and set their sizes to zero, so we can
     // guarantee that a call to getArrayConfig(addr) will not return the wrong
@@ -82,6 +88,8 @@ class UserConfigParams {
          ++part_it) {
       const std::string& part_name = part_it->first;
       Addr part_base = part_it->second.base_addr;
+      // Same thing here - skip overlap check if the base address is zero.
+      if (part_base == 0) continue;
       size_t part_size = part_it->second.array_size;
       MemoryType mtype = part_it->second.memory_type;
       if ((mtype == cache || mtype == acp || mtype == dma) &&
