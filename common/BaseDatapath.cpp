@@ -1111,10 +1111,11 @@ void BaseDatapath::parse_config(std::string& bench,
           p_type = block;
       } else {
         sscanf(rest_line.c_str(),
-               "%[^,],%[^,],%d\n",
+               "%[^,],%[^,],%d,%d\n",
                part_type,
                array_label,
-               &size);
+               &size,
+               &wordsize);
         p_type = complete;
         m_type = reg;
       }
