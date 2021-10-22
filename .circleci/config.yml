@@ -1,0 +1,27 @@
+version: 2.1
+orbs:
+  docker: circleci/docker@1.3.0
+jobs:
+  build:
+    docker:
+      - image: xyzsam/smaug:latest
+    environment:
+      ALADDIN_HOME: /root/project
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: |
+            cd common
+            make all -j2
+            cd ../unit-test
+            make all -j4
+      - run:
+          name: Run unit tests
+          environment:
+            TEST_REPORT_DIR: ~/aladdin-junit-report-dir
+          command: |
+            cd unit-test
+            make junit_test
+      - store_test_results:
+          path: ~/aladdin-junit-report-dir

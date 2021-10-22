@@ -6,6 +6,7 @@
 from configparser import ConfigParser
 import unittest
 import os
+import six
 import shutil
 import subprocess
 import tempfile
@@ -110,7 +111,10 @@ class Gem5AladdinTest(unittest.TestCase):
     This can only be reliably done by reading the gem5.cfg file.
     """
     gem5cfg = ConfigParser()
-    gem5cfg.read(os.path.join(target_dir, self.accel_cfg_file))
+    filepath = os.path.join(target_dir, self.accel_cfg_file)
+    readfiles = gem5cfg.read(filepath)
+    self.assertEqual(
+        len(readfiles), 1, msg="Failed to read gem5 cfg at %s" % filepath)
     test = gem5cfg.sections()[0]
     aladdin_cfg = gem5cfg.get(test, "config_file_name")
     return os.path.basename(aladdin_cfg)
@@ -326,9 +330,16 @@ class Gem5AladdinTest(unittest.TestCase):
     os.chdir(self.run_dir)
     process = subprocess.Popen("sh run.sh", shell=True,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, _ = process.communicate()
-    with open(os.path.join(self.run_dir, "stdout"), "wb") as f:
-      f.write(stdout)
+    stdout, stderr = process.communicate()
+    if stdout is not None:
+      with open(os.path.join(self.run_dir, "stdout"), "wb") as f:
+        f.write(stdout)
+    if stderr is not None:
+      with open(os.path.join(self.run_dir, "stderr"), "wb") as f:
+        f.write(stderr)
+    if process.returncode != 0:
+      print(six.ensure_str(stdout))
+      print(six.ensure_str(stderr))
     self.assertEqual(process.returncode, 0, msg="gem5 returned nonzero exit code!")
 
     expected_stats = [s for s in self.expected_results]
