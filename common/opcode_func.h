@@ -9,6 +9,8 @@
 #include "opcode_func_llvm34.h"
 #elif LLVM_VERSION == 60
 #include "opcode_func_llvm60.h"
+#elif LLVM_VERSION == 180
+#include "opcode_func_llvm180.h"
 #else
 #error "Only LLVM-3.4 and LLVM-6.0 are supported!"
 #endif

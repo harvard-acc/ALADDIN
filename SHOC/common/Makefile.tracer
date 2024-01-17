@@ -45,7 +45,7 @@ ifneq ($(DMA_MODE),)
 endif
 
 LLVM_OBJS = $(patsubst %.c, %-opt.llvm, $(ALL_SRCS))
-LLVM_VERSION = $(shell clang --version | grep -o -m 1 "[0-9\.]\+" | head -n 1)
+LLVM_VERSION = 18#$(shell clang --version | grep -o -m 1 "[0-9\.]\+" | head -n 1)
 
 #########################################################
 #        INSTRUMENTATION AND TRACE FILE GENERATION      #
@@ -58,10 +58,10 @@ full.llvm: $(LLVM_OBJS)
 	llvm-link -o $@ $^ $(LOGGER)
 
 full.s: full.llvm
-	llc -O0 -disable-fp-elim -filetype=asm -o $@ $<
+	llc -O0 -filetype=asm -o $@ $<
 
 $(EXEC)-instrumented: full.s
-	$(CXX) -no-pie -O0 -fno-inline -o $@ $< -lm -lz -lpthread
+	clang++ -no-pie -O0 -fno-inline -o $@ $< -lm -lz -lpthread
 
 %-opt.llvm: %.c labelmap
 	@$(eval CC1_COMMAND=$(shell clang -static -g -O1 -S -fno-slp-vectorize \
@@ -73,7 +73,7 @@ $(EXEC)-instrumented: full.s
 		$(BMARK_SPECIFIC_CFLAGS) \
 		-o $*.llvm $< -### 2>&1 >/dev/null | tail -n 1 | sed 's/"-discard-value-names"//g'))
 	$(CC1_COMMAND)
-	opt -S -load=$(TRACER) -fulltrace -labelmapwriter $*.llvm -o $@
+	opt -S -load-pass-plugin $(TRACER) -passes='labelmapwriter,full-trace' $*.llvm -o $@
 
 clean-trace:
 	rm -rf $(COMMON_TEMP_DIR)

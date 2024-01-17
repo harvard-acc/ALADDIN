@@ -153,7 +153,7 @@ class Value {
     if (is_string) {
       type = String;
       data_str = value_str;
-    } else if (size > 8) {
+    } else if (size > 8 && value_str.substr(0, 2) == "0x") {
       type = Vector;
       vector_buf = std::unique_ptr<uint8_t>(hexStrToBytes(value_buf, size));
     } else if (value_str.find('.') != std::string::npos) {

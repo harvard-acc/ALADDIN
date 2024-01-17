@@ -60,13 +60,16 @@ ifeq ($(HAS_READLINE),1)
 endif
 
 # Get the LLVM version
-LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | head -n 1 | sed 's/\.//g')
-ifneq ($(filter $(LLVM_VERSION), 34 60),)
-  CFLAGS += -DLLVM_VERSION=$(LLVM_VERSION)
-else
-  $(warning We only support LLVM-3.4 and LLVM-6.0!)
-  CFLAGS += -DLLVM_VERSION=34
-endif
+# LLVM_VERSION = $(shell clang --version | grep -o -E "[[:digit:]].[[:digit:]]" | head -n 1 | sed 's/\.//g')
+# ifneq ($(filter $(LLVM_VERSION), 34 60),)
+#   CFLAGS += -DLLVM_VERSION=$(LLVM_VERSION)
+# else
+#   $(warning We only support LLVM-3.4 and LLVM-6.0!)
+#   CFLAGS += -DLLVM_VERSION=34
+# endif
+LLVM_VERSION = 180
+CFLAGS += -DLLVM_VERSION=180
+
 
 DIRS = $(OBJ_DIR) $(OBJ_DIR)/graph_opts $(OBJ_DIR)/debugger $(CACTI_OBJ_DIR)
 
@@ -96,7 +99,7 @@ $(EXE): $(DIRS) $(CACTI_OBJ_FILES) $(OBJ_FILES)
 	$(CXX)  $(BITWIDTH) -o $(EXE) $(EXE).o $(OBJ_FILES) $(CACTI_OBJ_FILES) $(LFLAGS)
 
 $(OBJ_DIR)/%.o : %.h %.cpp
-	$(CXX) $(CFLAGS) -Werror -Wall $(WARNING_EXCEPTIONS) -o $@ -c $*.cpp
+	$(CXX) $(CFLAGS) -Werror -Wno-error=nonnull -Wall $(WARNING_EXCEPTIONS) -o $@ -c $*.cpp
 
 $(CACTI_OBJ_DIR)/%.o : $(CACTI_DIR)/%.cc
 	$(CXX) $(CFLAGS)  -DNTHREADS=$(NTHREADS) -o $@ -c $(CACTI_DIR)/$*.cc
